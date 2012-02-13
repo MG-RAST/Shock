@@ -28,13 +28,13 @@ import (
 //       multipart-form containing: data file and/or attributes (json file)
 //       empty body
 
-type NodeController struct {}
+type NodeController struct{}
 
 // POST: /node
 //            multipart-form containing: data file and/or attributes (json file)
 //            empty body
 func (cr *NodeController) Create(cx *goweb.Context) {
-	
+
 	cx.ResponseWriter.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(cx.ResponseWriter, "{ \"message\" : \"operation currently not supported\" }")
 }
@@ -57,7 +57,7 @@ func (cr *NodeController) DeleteMany(cx *goweb.Context) {
 //                ?list={indexes||functions||parts&index={index}...}
 func (cr *NodeController) Read(id string, cx *goweb.Context) {
 	query := cx.Request.URL.Query()
-	for key, arr := range query { 
+	for key, arr := range query {
 		for i := range arr {
 			fmt.Println(key, arr[i])
 		}
