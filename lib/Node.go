@@ -33,6 +33,17 @@ type ACL struct {
 }
 
 func LoadNode(id string) (node *Node, err os.Error) {
+	path := getPath(id)
+	var nJson []byte
+	nJson, err = ioutil.ReadFile(fmt.Sprintf("%s/%s.json", path, id))
+	if err != nil {
+		return
+	}
+	node = new(Node)
+	err = json.Unmarshal(nJson, &node)
+	if err != nil {
+		return
+	}
 	return
 }
 
@@ -122,8 +133,13 @@ func (node *Node) setId() {
 	return
 }
 
+func getPath(id string) (path string) {
+	path = fmt.Sprintf("%s/%s/%s/%s/%s", DATAROOT, id[0:2], id[2:4], id[4:6], id)
+	return
+}
+
 func (node *Node) Path() (path string) {
-	path = fmt.Sprintf("%s/%s/%s/%s/%s", DATAROOT, node.Id[0:2], node.Id[2:4], node.Id[4:6], node.Id)
+	path = getPath(node.Id)
 	return
 }
 

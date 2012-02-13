@@ -27,6 +27,12 @@ func main() {
 	}
 	fmt.Println(n.Path())
 
+	n, err = LoadNode("bf6d2f5b9611cb4ebe28d79f25cd65f4")
+	if err != nil {
+		fmt.Println("hells bells: " + err.String())
+	}
+	fmt.Println(n.ToJson())
+
 	//goweb.MapRest("/node", new(NodeController))
 	//goweb.ListenAndServe(":"+fmt.Sprintf("%d", *PORT))  
 }
