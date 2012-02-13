@@ -1,0 +1,9 @@
+# git ignore file 
+
+# ignore all generated files
+common
+common/**/*
+
+# ignore files with # and ~
+*\#*
+*\~*
