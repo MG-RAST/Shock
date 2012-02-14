@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"Shock/DataStore"
+	ds "shock/datastore"
 )
 
 // Command line options
@@ -17,7 +17,7 @@ func init() {}
 func main() {
 	flag.Parse()
 
-	n, err := DataStore.CreateNode("/Users/jared/ANL/Apr_Day_pf.fas", "test.json")
+	n, err := ds.CreateNode("/Users/jared/ANL/Apr_Day_pf.fas", "test.json")
 	if err != nil {
 		fmt.Println("hells bells: " + err.String())
 	}
