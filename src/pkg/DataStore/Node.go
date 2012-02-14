@@ -1,4 +1,4 @@
-package main
+package DataStore
 
 import (
 	"fmt"
@@ -134,6 +134,7 @@ func (node *Node) setId() {
 }
 
 func getPath(id string) (path string) {
+	DATAROOT := "/Users/jared/projects/GoShockData"
 	path = fmt.Sprintf("%s/%s/%s/%s/%s", DATAROOT, id[0:2], id[2:4], id[4:6], id)
 	return
 }
