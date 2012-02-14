@@ -1,4 +1,4 @@
-include ~/go/src/Make.inc
+include $(GOROOT)/src/Make.inc
 
 TARG=bin/shock-server
 
@@ -7,4 +7,4 @@ GOFILES=\
 		lib/node.go\
 		lib/nodeRoutes.go\
 
-include ~/go/src/Make.cmd
+include $(GOROOT)/src/Make.cmd
