@@ -4,7 +4,7 @@ TARG=bin/shock-server
 
 GOFILES=\
         shock-server.go\
-		lib/Node.go\
-		lib/NodeRoutes.go\
+		lib/node.go\
+		lib/nodeRoutes.go\
 
 include ~/go/src/Make.cmd

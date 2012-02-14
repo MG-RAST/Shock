@@ -7,3 +7,16 @@ common/**/*
 # ignore files with # and ~
 *\#*
 *\~*
+
+# go build files
+*.o
+*.a 
+*.[568vq]
+[568vq].out  
+_test 
+_testmain.go 
+test.out 
+build.out
+
+# bin
+bin
