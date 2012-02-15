@@ -1,9 +1,8 @@
 include $(GOROOT)/src/Make.inc
 
-TARG=shock/datastore
+TARG=shock/indexer
 GOFILES=\
-		node.go\
-		store.go\
+		indexer.go
 
 include $(GOROOT)/src/Make.pkg
 

@@ -6,6 +6,6 @@ mk () {
     popd >/dev/null
 }
 
-for target in pkg/datastore cmd/shock-server; do
+for target in pkg/datastore pkg/indexer pkg/index pkg/index/size pkg/index/fasta pkg/index/fastq cmd/shock-server; do
     mk $target $1
 done
