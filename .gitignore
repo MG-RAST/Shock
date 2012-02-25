@@ -17,6 +17,7 @@ _test
 _testmain.go 
 test.out 
 build.out
+_obj
 
 # bin
 bin

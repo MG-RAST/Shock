@@ -4,6 +4,6 @@ TARG=shock-server
 
 GOFILES=\
         shock-server.go\
- 		nodeRoutes.go\
+ 		routes.go\
 
 include $(GOROOT)/src/Make.cmd
