@@ -1,3 +1,1 @@
-To build the sources, 
-$ cd src
-$ ./all.sh install
+go install -a shock/shock-server
