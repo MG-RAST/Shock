@@ -23,3 +23,9 @@ _obj
 bin
 src/*/*/_obj
 src/cmd/shock-server/shock-server
+
+# os x files
+.DS_Store
+
+# Thumbnails
+._*
