@@ -12,7 +12,7 @@ Shock is for scientific data. One of the challenges of large volume scientific d
 
 Shock is an active storage layer. Annotate, anonymize, convert, filter, quality control, statically subsample at line speed bioinformatics sequence data. Extensible plug-in architecture(in development).
 
-Most importantly Shock is still very much in development. Be patient and contribute.
+*Most importantly Shock is still very much in development. Be patient and contribute.*
 
 To build:
 ---------
