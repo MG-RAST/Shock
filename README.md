@@ -175,8 +175,12 @@ All attributes are queriable. For example if a node has in it's attributes "abou
 would return it and all other nodes with that attribute. Address of nested attributes like "metadata": { "env_biome": "ENVO:human-associated habitat", ... } is done via a dot notation 
 
     /node/?query&metadata.env_biome=ENVO:human-associated%20habitat
+
+Multiple attributes can be selected in a single query and are treated as AND operations
+
+    /node/?query&metadata.env_biome=ENVO:human-associated%20habitat&about=metagenome
     
-Note all special characters like a space must be url encoded.
+**Note** all special characters like a space must be url encoded.
 
 ##### example
 	
