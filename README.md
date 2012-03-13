@@ -14,6 +14,11 @@ Shock is an active storage layer. Annotate, anonymize, convert, filter, quality 
 
 **Most importantly Shock is still very much in development. Be patient and contribute.**
 
+RoadMap:
+--------
+
+Coming soon
+
 To build:
 ---------
 
@@ -39,8 +44,8 @@ To run (additional requires mongodb=>2.0.3):
   
     ./bin/shock-server -port=<port#> -dataroot=<path_to_data_root> -mongo=<mongo_host(s)>
   
-API
----
+Data Types
+----------
 
 ### Node:
 
@@ -88,7 +93,9 @@ access control (in development)
 	    }
 	}
 
-### Actions
+API
+---
+
 ### Create node:
 POST /node (multipart/form-data encoded)
 
@@ -107,8 +114,8 @@ POST /node (multipart/form-data encoded)
 ### List nodes:
 GET /node
 
- - by adding ?offset=N you get the nodes starting at N+1 (in development)
- - by adding ?count=N you get a maximum of N nodes returned (in development)
+ - by adding ?offset=N you get the nodes starting at N+1 
+ - by adding ?limit=N you get a maximum of N nodes returned 
 
 #### example
 	
