@@ -6,7 +6,7 @@ To build:
 
 Unix/Macintosh 
 
-To install go weekly.2012-01-20 (http://weekly.golang.org/doc/install/source):
+To install go weekly.2012-01-20 ( http://weekly.golang.org/doc/install/source ):
     
     hg clone -u release https://code.google.com/p/go
     hg pull
