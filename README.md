@@ -1,4 +1,4 @@
-Shock 
+![Shock](http://github.com/jaredwilkening/Shock/raw/master/misc/shock_logo.png)
 =====
 
 To build:
