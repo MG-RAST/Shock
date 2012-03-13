@@ -14,8 +14,8 @@ Shock is an active storage layer. Annotate, anonymize, convert, filter, quality 
 
 **Most importantly Shock is still very much in development. Be patient and contribute.**
 
-RoadMap:
---------
+Road Map:
+---------
 
 Coming soon
 
@@ -52,14 +52,11 @@ Data Types
 ##### id
 unique identifier
 
-##### file_name 
-file name for attached file if present
+##### file 
 
-##### size
-file size for attached file if present
-
-##### checksum
-file checksum for attached file if present
+ - file name 
+ - file size
+ - file checksum(s) 
 
 ##### attributes
 arbitrary json
@@ -67,34 +64,82 @@ arbitrary json
 ##### acl
 access control (in development)
 
-#### node example:
+##### node example (metagenome from MG-RAST):
 
-	{
-	    "id": 6775,
-	    "file_name": "h_sapiens_asm.tar.gz",
-	    "checksum": "8fd07ad670159c491eed7baefe97c16a",
-	    "size": 2819582549,
-	    "attributes": {
-	        "description": "tar gzip of h_sapiens_asm bowtie indexes",
-	        "file_list": [
-	            "h_sapiens_asm.1.ebwt",
-	            "h_sapiens_asm.2.ebwt",
-	            "h_sapiens_asm.3.ebwt",
-	            "h_sapiens_asm.4.ebwt",
-	            "h_sapiens_asm.rev.1.ebwt",
-	            "h_sapiens_asm.rev.2.ebwt"
-	        ],
-	        "source": "ftp://ftp.cbcb.umd.edu/pub/data/bowtie_indexes/h_sapiens_asm.ebwt.zip"
-	    },
-	    "acl": {
-	        "read": [],
-	        "write": [],
-	        "delete": []
-	    }
-	}
+    {
+        "D": {
+            "id": "75ccb7e590c8fc8df90f3759847e8947", 
+            "file": {
+                "checksum": {}, 
+                "name": "", 
+                "size": 0
+            }, 
+            "attributes": {
+                "about": "metagenome", 
+                "created": "2011-05-19 11:08:48", 
+                "id": "mgm4456668.3", 
+                "library": "mgl1812", 
+                "metadata": {
+                    "ANONYMIZED_NAME": "sample499", 
+                    "COMMON_NAME": "M14Fcsw", 
+                    "DESCRIPTION": "Bacterial Community Variation in Human Body Habitats Across Space and Time", 
+                    "TAXON_ID": "9606", 
+                    "TITLE": "Bacterial Community Variation in Human Body Habitats Across Space and Time", 
+                    "altitude": "0.0", 
+                    "anatomical_sample_site": "FMA:Feces", 
+                    "assigned_from_geo": "n", 
+                    "biological_specimen": "M14Fcsw", 
+                    "body_habitat": "UBERON:feces", 
+                    "body_site": "UBERON:feces", 
+                    "collection_date": "2008-2009", 
+                    "common_sample_site": "stool", 
+                    "country": "GAZ:United States of America", 
+                    "depth": "0", 
+                    "elevation": "1624.097656", 
+                    "env_biome": "ENVO:human-associated habitat", 
+                    "env_feature": "ENVO:human-associated habitat", 
+                    "env_matter": "ENVO:human-associated habitat", 
+                    "host_individual": "M1", 
+                    "latitude": "40.0149856", 
+                    "longitude": "-105.2705456", 
+                    "original_sample_site": "stool", 
+                    "public": "y", 
+                    "samp_collect_device": "swab with sterile saline", 
+                    "samp_size": "1 swab", 
+                    "sample_id": "qiime:145415", 
+                    "sample_name": "M14Fcsw", 
+                    "sex": "male", 
+                    "study_id": "qiime:449"
+                }, 
+                "name": "1812", 
+                "project": "mgp81", 
+                "sample": "mgs1812", 
+                "url": "http://api.metagenomics.anl.gov/metagenome/mgm4456668.3", 
+                "version": 1
+            }, 
+            "indexes": {},
+            "acl": {
+                "delete": [], 
+                "read": [], 
+                "write": []
+            } 
+        }, 
+        "E": null, 
+        "S": 200
+    }
 
 API
 ---
+
+### Response wrapper:
+All responses from Shock currently are in the following encoding. 
+
+    {
+        "C":"",
+        "D": <data in json or null>,
+        "E": <error message or null>, 
+        "S": <http status of request>
+    }
 
 ### Create node:
 POST /node (multipart/form-data encoded)
@@ -102,13 +147,18 @@ POST /node (multipart/form-data encoded)
  - to set attributes include file field named "attributes" containing a json file of attributes
  - to set file include file field named "file" containing any file
 
-#### example
+##### example
 	
-	curl -X POST [ -F "attributes=@<path_to_json>" -F "file=@<path_to_data_file>" ] <shock_url>[:<port>]/node
+	curl -X POST [ -F "attributes=@<path_to_json>" -F "file=@<path_to_data_file>" ] http://<shock_host>[:<port>]/node
 	
-#### returns
+##### returns
 
-	<new_node>
+    {
+        "C":"",
+        "D": {<node>},
+        "E": <error message or null>, 
+        "S": <http status of request>
+    } 
 
 <br/>
 ### List nodes:
@@ -117,25 +167,38 @@ GET /node
  - by adding ?offset=N you get the nodes starting at N+1 
  - by adding ?limit=N you get a maximum of N nodes returned 
 
-#### example
-	
-	curl -X GET <shock_url>[:<port>]/node/[?offset=<offset>&count=<count>]
-		
-#### returns
+Querying: 
+All attributes are queriable. For example if a node has in it's attributes "about" : "metagenome" the url /node/?query&about=metagenome would return it and all other nodes with that attribute. Address of nested attributes like "metadata": { "env_biome": "ENVO:human-associated habitat", ... } is done via a dot notation /node/?query&metadata.env_biome=ENVO:human-associated habitat.
 
-	{"total_nodes":42,"offset":0,"count":4,"nodes":[<node_1>, <node_2>, <node_3>, <node_4>]}
+##### example
+	
+	curl -X GET http://<shock_host>[:<port>]/node/[?offset=<offset>&limit=<count>][&query&<tag>=<value>]
+		
+##### returns
+
+  	{
+        "C":"",
+        "D": {[<array of nodes>]},
+        "E": <error message or null>, 
+        "S": <http status of request>
+    }
 
 <br/>	
 ### Get node:
-GET /node/<nodeid>
+GET /node/:nodeid
 	
  - ?download - complete file download
 	
-#### example	
+##### example	
 
-	curl -X GET <shock_url>[:<port>]/node/<nodeid>
+	curl -X GET http://<shock_host>[:<port>]/node/:nodeid
 	
-#### returns
+##### returns
 
-	<node>
+    {
+        "C":"",
+        "D": {<node>},
+        "E": <error message or null>, 
+        "S": <http status of request>
+    }
 
