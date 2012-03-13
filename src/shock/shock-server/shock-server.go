@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"goweb"
-	//ds "shock/datastore"
 )
 
 // Command line options

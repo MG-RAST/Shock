@@ -2,40 +2,57 @@ package datastore
 
 import (
 	"fmt"
-	//"time"	
-	//"crypto/md5"
-	//"crypto/sha1"
-	//"path/filepath"
-	//"math/rand"
+	"time"	
+	"crypto/md5"
+	"math/rand"
 	"os"
 	"errors"
 	"encoding/json"	
 	"io/ioutil"
 	"strconv"
-	uuid "github.com/nu7hatch/gouuid"
+	bson "launchpad.net/mgo/bson"
 )
+
+// Node array type
+type Nodes []Node
+
+func (n *Nodes) GetAll(q bson.M) (err error) {
+	db, err := DBConnect(); if err != nil { return }
+	defer db.Close()
+	
+	err = db.GetAll(q, n)
+	return
+} 
+
+func (n *Nodes) GetAllLimitOffset(q bson.M, limit int, offset int) (err error) {
+	db, err := DBConnect(); if err != nil { return }
+	defer db.Close()
+	
+	err = db.GetAllLimitOffset(q, n, limit, offset)
+	return
+}
 
 // Node struct
 type Node struct {
-	Id         string            `json:"id"`
-	File       nodeFile          `json:"file"`	
-	Attributes interface{}       `json:"attributes"`
-	Indexes    map[string]string `json:"indexes"`
-	Acl        acl               `json:"acl"`
+	Id         string            `bson:"id" json:"id"`
+	File       nodeFile          `bson:"file" json:"file"`	
+	Attributes interface{}       `bson:"attributes" json:"attributes"`
+	Indexes    map[string]string `bson:"indexes" json:"indexes"`
+	Acl        acl               `bson:"acl" json:"acl"`
 }
 
 // Node.nodefile struct
 type nodeFile struct {
-	Name     string            `json:"name"`
-	Size     int64             `json:"size"`
-	Checksum map[string]string `json:"checksum"`
+	Name     string            `bson:"name" json:"name"`
+	Size     int64             `bson:"size" json:"size"`
+	Checksum map[string]string `bson:"checksum" json:"checksum"`
 }
 
 // Node.acl struct
 type acl struct {
-	Read   []string `json:"read"`
-	Write  []string `json:"write"`
-	Delete []string `json:"delete"`
+	Read   []string `bson:"read" json:"read"`
+	Write  []string `bson:"write" json:"write"`
+	Delete []string `bson:"delete" json:"delete"`
 }
 
 // FormFiles struct
@@ -55,17 +72,19 @@ func (n *nodeFile) Empty() (bool){
 }
 
 func LoadNode(id string) (node *Node, err error) {
-	path := getPath(id)
-	var nJson []byte
-	nJson, err = ioutil.ReadFile(fmt.Sprintf("%s/%s.json", path, id))
-	if err != nil {
-		return
-	}
+	db, err := DBConnect(); if err != nil { return }
+	defer db.Close()
+	
 	node = new(Node)
-	err = json.Unmarshal(nJson, &node)
-	if err != nil {
-		return
-	}
+	err = db.FindById(id, node); if err != nil { node = nil }
+	return
+}
+
+func LoadNodeFromDisk(id string) (node *Node, err error) {
+	path := getPath(id)
+	nbson, err := ioutil.ReadFile(fmt.Sprintf("%s/%s.bson", path, id)); if err != nil {	return }
+	node = new(Node)
+	err = bson.Unmarshal(nbson, &node);	if err != nil {	node = nil }
 	return
 }
 
@@ -157,7 +176,7 @@ func CreateNodeUpload(params map[string]string, files FormFiles) (node *Node, er
 	return
 }
 
-func (node *Node) Update(params map[string]string, files FormFiles) (err error){	
+func (node *Node) Update(params map[string]string, files FormFiles) (err error){
 	_, hasParts := params["parts"]
 	if hasParts && node.partsCount() < 0 {
 		if !node.File.Empty() { return errors.New("file alreay set and is immutable") }		
@@ -214,16 +233,16 @@ func (node *Node) SetAttributes(attr FormFile) (err error){
 	return
 }
 
-func (node *Node) setId() {
-	/*
+func (node *Node) setId() {	
 	var s []byte
 	h := md5.New()
 	h.Write([]byte(fmt.Sprint(time.Now().String(), rand.Float64())))	
-	h.Sum(s)
+	s = h.Sum(s)
 	node.Id = fmt.Sprintf("%x",s)
-	*/	
+	/*
 	id, _ := uuid.NewV5(uuid.NamespaceURL, []byte("shock"))	
 	node.Id = id.String()
+	*/	
 	return
 }
 
@@ -252,9 +271,18 @@ func (node *Node) ToJson() (s string, err error) {
 }
 
 func (node *Node) Save() (err error) {
-	jsonPath := fmt.Sprintf("%s/%s.json", node.Path(), node.Id)
-	os.Remove(jsonPath)
-	n, err := node.ToJson(); if err != nil { return }
-	err = ioutil.WriteFile(jsonPath, []byte(n), 0644); if err != nil { return }
+	//jsonPath := fmt.Sprintf("%s/%s.json", node.Path(), node.Id)
+	//os.Remove(jsonPath)
+	//n, err := node.ToJson(); if err != nil { return }	
+	//err = ioutil.WriteFile(jsonPath, []byte(n), 0644); if err != nil { return }
+
+	db, err := DBConnect(); if err != nil { return }
+	defer db.Close()
+
+	bsonPath := fmt.Sprintf("%s/%s.bson", node.Path(), node.Id)
+	os.Remove(bsonPath)
+	nbson, err := bson.Marshal(node); if err != nil { return }
+	err = ioutil.WriteFile(bsonPath, nbson, 0644); if err != nil { return }
+	err = db.Upsert(node); if err != nil { return }
 	return
 }

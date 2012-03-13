@@ -55,8 +55,8 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files ds.For
 			}
 			
 			var md5s, sha1s []byte
-			md5h.Sum(md5s)
-			sha1h.Sum(sha1s)							
+			md5s = md5h.Sum(md5s)
+			sha1s = sha1h.Sum(sha1s)							
 			files[part.FormName()].Checksum["md5"] = fmt.Sprintf("%x", md5s)	
 			files[part.FormName()].Checksum["sha1"] = fmt.Sprintf("%x", sha1s)
 		

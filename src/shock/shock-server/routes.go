@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"goweb"
 	"os"
+	"strconv"
 	ds "shock/datastore"
+	bson "launchpad.net/mgo/bson"
 )
 
 // GET
@@ -118,8 +120,53 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 //           ?paginate[&limit={limit}&offset={offset}]
 //           ?query={queryString}[&paginate[&limit={limit}&offset={offset}]]
 func (cr *NodeController) ReadMany(cx *goweb.Context) {
-	cx.ResponseWriter.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(cx.ResponseWriter, "{ \"message\" : \"readmany operation currently not supported\" }")
+	fmt.Printf("GET: /node\n")
+	query := cx.Request.URL.Query()
+	l, hasLimit := query["limit"]
+	o, hasOffset := query["offset"]
+	_, hasQuery := query["query"]
+
+	q := bson.M{}
+	nodes := new(ds.Nodes)
+	
+	skip := map[string]int{"limit" : 1,"offset" : 1,"query" : 1}
+	if hasQuery {
+		for key, val := range query {
+			_, s := skip[key]
+			if !s { 
+				q[fmt.Sprintf("attributes.%s",key)] = val[0]
+			}
+		}
+	}
+	if hasLimit || hasOffset {
+		var lim, off int
+		fmt.Printf("limit: %s, offset: %s\n", l[0], o[0])
+		if !hasLimit {
+			lim = 100
+		} else {
+			lim, _ = strconv.Atoi(l[0])
+		}
+		if !hasOffset {
+			off = 0
+		} else {
+			off, _ = strconv.Atoi(o[0])
+		}
+		err := nodes.GetAllLimitOffset(q, lim, off)
+		if err != nil {
+			fmt.Println("err", err.Error())
+			cx.RespondWithError(http.StatusBadRequest) 
+			return
+		}
+	} else {
+		err := nodes.GetAll(q)
+		if err != nil {
+			fmt.Println("err", err.Error())
+			cx.RespondWithError(http.StatusBadRequest) 
+			return
+		}
+	}
+	cx.RespondWithData(nodes)	
+	return
 }
 
 // PUT: /node/{id} -> multipart-form 
