@@ -20,12 +20,13 @@ build.out
 _obj
 
 # bin
+pkg/*/
 bin
 src/*/*/_obj
 src/cmd/shock-server/shock-server
 
 # os x files
-.DS_Store
+*.DS_Store
 
 # Thumbnails
 ._*
