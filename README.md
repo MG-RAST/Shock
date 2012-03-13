@@ -44,22 +44,22 @@ API
 
 ### Node:
 
-#### id
+##### id
 unique identifier
 
-#### file_name 
+##### file_name 
 file name for attached file if present
 
-#### size
+##### size
 file size for attached file if present
 
-#### checksum
+##### checksum
 file checksum for attached file if present
 
-#### attributes
+##### attributes
 arbitrary json
 
-#### acl
+##### acl
 access control (in development)
 
 #### node example:
@@ -123,9 +123,6 @@ GET /node
 GET /node/<nodeid>
 	
  - ?download - complete file download
- - ?download&index=$index&part=$part - file part download (in development)
- - ?list&indexes - list available indexes (in development)
- - ?list&index=$index - index parts list	(in development)
 	
 #### example	
 
