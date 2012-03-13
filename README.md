@@ -1,16 +1,31 @@
 Shock 
-===
+=====
 
-### To build:
+To build:
+---------
 
-Unix/Macintosh (requires go=weekly.2012-01-20, mongodb=>2.0.3):
+Unix/Macintosh 
 
+To install go weekly.2012-01-20 (http://weekly.golang.org/doc/install/source):
     
+  hg clone -u release https://code.google.com/p/go
+  hg pull
+  hg update weekly.2012-01-20
+  cd go/src
+  ./all.bash
+  <add ../bin to $PATH>
 
-Windows:
-	
-	untested (theoretically possible)
+To build Shock:
 
+  git clone <this repo>
+  cd Shock
+  export GOPATH=`pwd`
+  go install shock/shock-server
+  
+To run (additional requires mongodb=>2.0.3):
+  
+  ./bin/shock-server -port=<port#> -dataroot=<path_to_data_root>
+  
 API
 ---
 
