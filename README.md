@@ -1,6 +1,19 @@
 ![Shock](http://github.com/jaredwilkening/Shock/raw/master/misc/shock_logo.png)
 =====
 
+About:
+------
+
+Shock is a platform for computation, storage, and distribution. Designed from the ground up to be fast, scalable, fault tolerant, federated. 
+
+Shock is RESTful. Accessible from desktops, HPC systems, exotic hardware, the cloud and your smartphone.
+
+Shock is for scientific data. One of the challenges of large volume scientific data is that without often complex metadata it is of little to no value. Store and query(in development) complex metadata.   
+
+Shock is an active storage layer. Annotate, anonymize, convert, filter, quality control, statically subsample at line speed bioinformatics sequence data. Extensible plug-in architecture(in development).
+
+Most importantly Shock is still very much in development. Be patient and contribute.
+
 To build:
 ---------
 
@@ -24,7 +37,7 @@ To build Shock:
   
 To run (additional requires mongodb=>2.0.3):
   
-    ./bin/shock-server -port=<port#> -dataroot=<path_to_data_root>
+    ./bin/shock-server -port=<port#> -dataroot=<path_to_data_root> -mongo=<mongo_host(s)>
   
 API
 ---
