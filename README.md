@@ -168,7 +168,15 @@ GET /node
  - by adding ?limit=N you get a maximum of N nodes returned 
 
 ##### querying
-All attributes are queriable. For example if a node has in it's attributes "about" : "metagenome" the url "/node/?query&about=metagenome" would return it and all other nodes with that attribute. Address of nested attributes like "metadata": { "env_biome": "ENVO:human-associated habitat", ... } is done via a dot notation "/node/?query&metadata.env_biome=ENVO:human-associated%20habitat". Note all special characters like a space must be url encoded.
+All attributes are queriable. For example if a node has in it's attributes "about" : "metagenome" the url 
+
+    /node/?query&about=metagenome
+    
+would return it and all other nodes with that attribute. Address of nested attributes like "metadata": { "env_biome": "ENVO:human-associated habitat", ... } is done via a dot notation 
+
+    /node/?query&metadata.env_biome=ENVO:human-associated%20habitat
+    
+Note all special characters like a space must be url encoded.
 
 ##### example
 	
