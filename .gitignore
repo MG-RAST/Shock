@@ -20,7 +20,7 @@ build.out
 _obj
 
 # bin
-pkg/*/
+pkg/
 bin
 src/*/*/_obj
 src/cmd/shock-server/shock-server
