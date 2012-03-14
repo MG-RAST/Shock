@@ -42,7 +42,7 @@ To build Shock:
   
 To run (additional requires mongodb=>2.0.3):
   
-    ./bin/shock-server -port=<port#> -dataroot=<path_to_data_root> -mongo=<mongo_host(s)>
+    ./bin/shock-server -port=<port to listen on> -data=<data directory to store on disk files> -mongo=<hostname(s) of mongodb>
   
 Data Types
 ----------
@@ -164,7 +164,7 @@ POST /node (multipart/form-data encoded)
 ### List nodes:
 GET /node
 
- - by adding ?offset=N you get the nodes starting at N+1 
+ - by adding ?skip=N you get the nodes starting at N+1 
  - by adding ?limit=N you get a maximum of N nodes returned 
 
 ##### querying
@@ -180,11 +180,11 @@ Multiple attributes can be selected in a single query and are treated as AND ope
 
     /node/?query&metadata.env_biome=ENVO:human-associated%20habitat&about=metagenome
     
-**Note** all special characters like a space must be url encoded.
+**Note:** all special characters like a space must be url encoded.
 
 ##### example
 	
-	curl -X GET http://<shock_host>[:<port>]/node/[?offset=<offset>&limit=<count>][&query&<tag>=<value>]
+	curl -X GET http://<shock_host>[:<port>]/node/[?skip=<skip>&limit=<count>][&query&<tag>=<value>]
 		
 ##### returns
 

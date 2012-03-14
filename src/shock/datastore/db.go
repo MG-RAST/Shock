@@ -1,9 +1,9 @@
 package datastore
 
 import (
-	"fmt"
 	mgo "launchpad.net/mgo"
 	bson "launchpad.net/mgo/bson"
+	conf "shock/conf"
 )
 
 type db struct {
@@ -12,8 +12,7 @@ type db struct {
 }
 	
 func DBConnect() (d *db, err error) {
-	MONGODBHOST := "localhost"
-	session, err := mgo.Dial(MONGODBHOST); if err != nil { return }
+	session, err := mgo.Dial(*conf.MONGODB); if err != nil { return }
 	d = &db{Nodes: session.DB("ShockDB").C("Nodes"), Session : session}	
 	return
 }
@@ -29,7 +28,6 @@ func (d *db) FindById(id string, result *Node) (err error) {
 }
 
 func (d *db) GetAll(q bson.M, results *Nodes) (err error) {
-	fmt.Println(q)
 	err = d.Nodes.Find(q).All(results)
 	return
 } 
