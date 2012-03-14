@@ -1,0 +1,23 @@
+Release 0.2 (3/19/12)
+ - Client command (shell script)
+ - basic auth
+ - indices
+ - node ACLs
+
+Release 0.3 (4/1/12)
+ - data set mirroring
+ - virtual nodes
+ - filters
+ - checksums on content
+ - object version checksum
+ 
+Release 0.4 (4/25/12)
+
+Unfiled:
+ - testing
+ - OAuth
+ - client command (go version)
+ - server side processing
+ - web UI
+ - logging
+ - server info?
