@@ -11,7 +11,10 @@ import (
 	"io/ioutil"
 	"strconv"
 	bson "launchpad.net/mgo/bson"
+	conf "shock/conf"
 )
+
+func init() {}
 
 // Node array type
 type Nodes []Node
@@ -247,8 +250,7 @@ func (node *Node) setId() {
 }
 
 func getPath(id string) (string) {
-	DATAROOT := "/Users/jared/projects/GoShockData"
-	return fmt.Sprintf("%s/%s/%s/%s/%s", DATAROOT, id[0:2], id[2:4], id[4:6], id)
+	return fmt.Sprintf("%s/%s/%s/%s/%s", *conf.DATAROOT, id[0:2], id[2:4], id[4:6], id)
 }
 
 func (node *Node) Path() (string) {
