@@ -39,7 +39,7 @@ type NodeController struct{}
 //            multipart-form containing: data file and/or attributes (json file)
 //            empty body
 func (cr *NodeController) Create(cx *goweb.Context) {
-	fmt.Println("POST: /node")
+	logReq(cx)
 	params, files, err := ParseMultipartForm(cx.Request)
 	if err != nil {
 		if err.Error() == "request Content-Type isn't multipart/form-data" {
@@ -70,13 +70,14 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 
 // DELETE: /node/{id}
 func (cr *NodeController) Delete(id string, cx *goweb.Context) {
-	fmt.Printf("DELETE: /node/%s\n", id)	
+	logReq(cx)
 	cx.ResponseWriter.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(cx.ResponseWriter, "{ \"message\" : \"delete operation currently not supported\" }")
 }
 
 // DELETE: /node
 func (cr *NodeController) DeleteMany(cx *goweb.Context) {
+	logReq(cx)
 	cx.ResponseWriter.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(cx.ResponseWriter, "{ \"message\" : \"deletemany operation currently not supported\" }")
 }
@@ -86,7 +87,7 @@ func (cr *NodeController) DeleteMany(cx *goweb.Context) {
 //                ?pipe(&{func}={funcOptions})+)
 //                ?list={indexes||functions||parts&index={index}...}
 func (cr *NodeController) Read(id string, cx *goweb.Context) {
-	fmt.Printf("GET: /node/%s\n", id)	
+	logReq(cx)	
 	query := cx.Request.URL.Query()
 	_, download := query["download"]
 	_, pipe := query["pipe"]
@@ -120,16 +121,16 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 //           ?paginate[&limit={limit}&offset={offset}]
 //           ?query={queryString}[&paginate[&limit={limit}&offset={offset}]]
 func (cr *NodeController) ReadMany(cx *goweb.Context) {
-	fmt.Printf("GET: /node\n")
+	logReq(cx)
 	query := cx.Request.URL.Query()
 	l, hasLimit := query["limit"]
-	o, hasOffset := query["offset"]
+	o, hasOffset := query["skip"]
 	_, hasQuery := query["query"]
 
 	q := bson.M{}
 	nodes := new(ds.Nodes)
 	
-	skip := map[string]int{"limit" : 1,"offset" : 1,"query" : 1}
+	skip := map[string]int{"limit" : 1,"skip" : 1,"query" : 1}
 	if hasQuery {
 		for key, val := range query {
 			_, s := skip[key]
@@ -140,7 +141,6 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 	}
 	if hasLimit || hasOffset {
 		var lim, off int
-		fmt.Printf("limit: %s, offset: %s\n", l[0], o[0])
 		if !hasLimit {
 			lim = 100
 		} else {
@@ -174,8 +174,7 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 //                ?index={type}[&options={options}]
 //                ?file[&part={part}] 
 func (cr *NodeController) Update(id string, cx *goweb.Context) {
-	fmt.Printf("PUT: /node/%s\n", id)	
-	
+	logReq(cx)	
 	node, err := ds.LoadNode(id); if err != nil {
 		// add node not found message
 		cx.RespondWithError(http.StatusBadRequest)
@@ -208,6 +207,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 
 // PUT: /node
 func (cr *NodeController) UpdateMany(cx *goweb.Context) {
+	logReq(cx)
 	cx.ResponseWriter.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(cx.ResponseWriter, "{ \"message\" : \"updatemany operation currently not supported\" }")
 }

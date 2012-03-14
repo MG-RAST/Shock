@@ -9,6 +9,8 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	ds "shock/datastore"
+	conf "shock/conf"
+	"goweb"
 )
 
 type streamer struct {
@@ -42,7 +44,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files ds.For
 			if n == 0 || err != nil { break }
 			params[part.FormName()] = fmt.Sprintf("%s", buffer[0:n])
 		} else {
-			tmpPath := fmt.Sprintf("%s/temp/%d%d", DATAROOT, rand.Int(), rand.Int())
+			tmpPath := fmt.Sprintf("%s/temp/%d%d", *conf.DATAROOT, rand.Int(), rand.Int())
 			files[part.FormName()] = ds.FormFile{Name: part.FileName(), Path: tmpPath, Checksum: make(map[string]string)}
 			tmpFile, err := os.Create(tmpPath); if err != nil { break }
 			buffer := make([]byte, 32*1024)
@@ -67,4 +69,12 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files ds.For
 	}
 	if err != nil { return }
 	return
+}
+
+func logReq(cx *goweb.Context) () {
+	if cx.Request.URL.RawQuery != "" {
+		fmt.Printf("%s: %s?%s\n", cx.Request.Method, cx.Request.URL.Path, cx.Request.URL.RawQuery)
+	} else {
+		fmt.Printf("%s: %s\n", cx.Request.Method, cx.Request.URL.Path)
+	}
 }
