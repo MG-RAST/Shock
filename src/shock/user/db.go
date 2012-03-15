@@ -31,8 +31,13 @@ func DBConnect() (d *db, err error) {
 	return
 }
 
-func (d *db) Upsert(user *User) (err error) {
-	_, err = d.User.Upsert(bson.M{"uuid": user.Uuid}, &user)
+func (d *db) GetUser(u *User) (err error) {
+	err = d.User.Find(bson.M{"name": u.Name, "passwd" : u.Passwd}).One(&u)
+	return
+}
+
+func (d *db) Insert(user *User) (err error) {
+	err = d.User.Insert(&user)
 	return
 }
 

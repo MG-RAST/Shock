@@ -39,6 +39,15 @@ func (d *db) FindById(id string, result *Node) (err error) {
 	return
 }
 
+func (d *db) FindByIdAuth(id string, uuid string, result *Node) (err error) {	
+	err = d.Nodes.Find(bson.M{"id": id}).One(&result); if err != nil { return }
+	rights := result.Acl.check(uuid)
+	if !rights["read"] {
+		err = errors.New("User Unauthorized")
+	}
+	return
+}
+
 func (d *db) GetAll(q bson.M, results *Nodes) (err error) {
 	err = d.Nodes.Find(q).All(results)
 	return
