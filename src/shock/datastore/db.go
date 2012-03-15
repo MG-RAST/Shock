@@ -1,10 +1,22 @@
 package datastore
 
 import (
+	"errors"
+	"time"
 	mgo "launchpad.net/mgo"
 	bson "launchpad.net/mgo/bson"
 	conf "shock/conf"
 )
+
+const (
+	DbTimeout = time.Duration(time.Second*1)
+)
+
+func init() {
+	d, err := DBConnect(); if err != nil { panic(errors.New("No reachable mongodb servers.")) }	
+	idIdx := mgo.Index{Key: []string{"id"}, Unique: true}
+	err = d.Nodes.EnsureIndex(idIdx); if err != nil { panic(err) }
+}
 
 type db struct {
 	Nodes *mgo.Collection
@@ -12,7 +24,7 @@ type db struct {
 }
 	
 func DBConnect() (d *db, err error) {
-	session, err := mgo.Dial(*conf.MONGODB); if err != nil { return }
+	session, err := mgo.DialWithTimeout(*conf.MONGODB, DbTimeout); if err != nil { return }
 	d = &db{Nodes: session.DB("ShockDB").C("Nodes"), Session : session}	
 	return
 }
