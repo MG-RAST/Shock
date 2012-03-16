@@ -1,9 +1,10 @@
 Release 0.2 (3/19/12)
  - Client command (shell script)
- - basic auth
+ - basic auth: Done
  - indices
- - node ACLs
-
+ - node ACLs: Done
+ - basic user management: Done
+ 
 Release 0.3 (4/1/12)
  - data set mirroring
  - virtual nodes

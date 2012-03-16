@@ -20,19 +20,28 @@ func init() {
 	err = d.User.EnsureIndex(nameIdx); if err != nil { panic(err) }
 }
 
-type db struct {
-	User *mgo.Collection
-	Session *mgo.Session
-}
-	
 func DBConnect() (d *db, err error) {
 	session, err := mgo.DialWithTimeout(*conf.MONGODB, DbTimeout); if err != nil { return }
 	d = &db{User: session.DB("ShockDB").C("Users"), Session : session}	
 	return
 }
 
+type db struct {
+	User *mgo.Collection
+	Session *mgo.Session
+}
+
+func (d *db) AdminGet(u *Users) (err error) {
+	err = d.User.Find(nil).All(u)
+	return
+}
+
 func (d *db) GetUser(u *User) (err error) {
-	err = d.User.Find(bson.M{"name": u.Name, "passwd" : u.Passwd}).One(&u)
+	if u.Uuid != "" {
+		err = d.User.Find(bson.M{"uuid": u.Uuid}).One(&u)
+	} else {
+		err = d.User.Find(bson.M{"name": u.Name, "passwd" : u.Passwd}).One(&u)		
+	}
 	return
 }
 

@@ -6,6 +6,7 @@ import (
 	"goweb"
 	"os"
 	"strconv"
+	e "shock/errors"
 	user "shock/user"
 	ds "shock/datastore"
 	bson "launchpad.net/mgo/bson"
@@ -19,10 +20,15 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 	LogRequest(cx.Request)
 	u, err := AuthenticateRequest(cx.Request); if err != nil {
 		// No Auth is not damning. Other errors are probably a dead db connection
-		if err.Error() != "No Authorization" {			
-			fmt.Println("Error at Auth:", err.Error())
-			cx.RespondWithError(http.StatusInternalServerError) 
-			return			
+		if err.Error() != e.NoAuth {
+			if err.Error() == e.MongoDocNotFound {
+				cx.RespondWithErrorMessage("Invalid username or password", http.StatusBadRequest) 	
+				return
+			} else {
+				fmt.Println("Error at Auth:", err.Error())
+				cx.RespondWithError(http.StatusInternalServerError) 
+				return	
+			}
 		}		
 	}
 	
@@ -75,15 +81,13 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 // DELETE: /node/{id}
 func (cr *NodeController) Delete(id string, cx *goweb.Context) {
 	LogRequest(cx.Request)
-	cx.ResponseWriter.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(cx.ResponseWriter, "{ \"message\" : \"delete operation currently not supported\" }")
+	cx.RespondWithError(http.StatusNotImplemented) 
 }
 
 // DELETE: /node
 func (cr *NodeController) DeleteMany(cx *goweb.Context) {
 	LogRequest(cx.Request)
-	cx.ResponseWriter.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(cx.ResponseWriter, "{ \"message\" : \"deletemany operation currently not supported\" }")
+	cx.RespondWithError(http.StatusNotImplemented) 
 }
 
 // GET: /node/{id}
@@ -92,10 +96,15 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 	LogRequest(cx.Request)
 	u, err := AuthenticateRequest(cx.Request); if err != nil {
 		// No Auth is not damning. Other errors are probably a dead db connection
-		if err.Error() != "No Authorization" {			
-			fmt.Println("Error at Auth:", err.Error())
-			cx.RespondWithError(http.StatusInternalServerError) 
-			return			
+		if err.Error() != e.NoAuth {
+			if err.Error() == e.MongoDocNotFound {
+				cx.RespondWithErrorMessage("Invalid username or password", http.StatusBadRequest) 	
+				return
+			} else {
+				fmt.Println("Error at Auth:", err.Error())
+				cx.RespondWithError(http.StatusInternalServerError) 
+				return	
+			}
 		}		
 	}
 	
@@ -113,17 +122,17 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 	// Load node and handle user unauthorized
 	node, err := ds.LoadNode(id, u.Uuid)
 	if err != nil {
-		if err.Error() == "User Unauthorized" {
+		if err.Error() == e.UnAuth {
 			fmt.Println("Unauthorized")
 			cx.RespondWithError(http.StatusUnauthorized) 
 			return	
-		} else if err.Error() == "Document not found" {
+		} else if err.Error() == e.MongoDocNotFound {
 			cx.RespondWithNotFound()
 			return
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			fmt.Println("Load Error:", err.Error())		
+			fmt.Println("Err@node_Read:LoadNode:", err.Error())		
 			cx.RespondWithError(http.StatusInternalServerError) 
 			return
 		}
@@ -153,15 +162,22 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 }
 
 // GET: /node
+// To do:
+// - Iterate node queries
 func (cr *NodeController) ReadMany(cx *goweb.Context) {
 	// Log Request and check for Auth
 	LogRequest(cx.Request)
 	u, err := AuthenticateRequest(cx.Request); if err != nil {
 		// No Auth is not damning. Other errors are probably a dead db connection
-		if err.Error() != "No Authorization" {			
-			fmt.Println("Error at Auth:", err.Error())
-			cx.RespondWithError(http.StatusInternalServerError) 
-			return			
+		if err.Error() != e.NoAuth {
+			if err.Error() == e.MongoDocNotFound {
+				cx.RespondWithErrorMessage("Invalid username or password", http.StatusBadRequest) 	
+				return
+			} else {
+				fmt.Println("Error at Auth:", err.Error())
+				cx.RespondWithError(http.StatusInternalServerError) 
+				return	
+			}
 		}		
 	}
 	
@@ -176,8 +192,12 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 	nodes := new(ds.Nodes)
 
 	if u != nil {
-		q["$or"] = []bson.M{bson.M{"acl.read": []string{}}, bson.M{"acl.read": u.Uuid}}
+		// Admin sees all
+		if !u.Admin {		
+			q["$or"] = []bson.M{bson.M{"acl.read": []string{}}, bson.M{"acl.read": u.Uuid}}
+		}
 	} else {
+		// select on only nodes with no read rights set
 		q["acl.read"] = []string{}
 	}
 	
@@ -222,17 +242,49 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 			return
 		}
 	}
-	cx.RespondWithData(nodes)	
+	
+	cx.RespondWithData(nodes)		
 	return
 }
 
 // PUT: /node/{id} -> multipart-form 
 func (cr *NodeController) Update(id string, cx *goweb.Context) {
+	// Log Request and check for Auth
 	LogRequest(cx.Request)
-	node, err := ds.LoadNode(id, ""); if err != nil {
-		// add node not found message
-		cx.RespondWithError(http.StatusBadRequest)
-		return
+	u, err := AuthenticateRequest(cx.Request); if err != nil {
+		// No Auth is not damning. Other errors are probably a dead db connection
+		if err.Error() != e.NoAuth {
+			if err.Error() == e.MongoDocNotFound {
+				cx.RespondWithErrorMessage("Invalid username or password", http.StatusBadRequest) 	
+				return
+			} else {
+				fmt.Println("Error at Auth:", err.Error())
+				cx.RespondWithError(http.StatusInternalServerError) 
+				return	
+			}
+		}		
+	}
+	
+	// Fake public user 
+	if u == nil {
+		u = &user.User{Uuid:""}
+	}
+
+	node, err := ds.LoadNode(id, u.Uuid); if err != nil {
+		if err.Error() == e.UnAuth {
+			fmt.Println("Unauthorized")
+			cx.RespondWithError(http.StatusUnauthorized) 
+			return	
+		} else if err.Error() == e.MongoDocNotFound {
+			cx.RespondWithNotFound()
+			return
+		} else {
+			// In theory the db connection could be lost between
+			// checking user and load but seems unlikely.
+			fmt.Println("Err@node_Update:LoadNode:", err.Error())		
+			cx.RespondWithError(http.StatusInternalServerError) 
+			return
+		}		
 	}
 
 	params, files, err := ParseMultipartForm(cx.Request)
@@ -262,6 +314,5 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 // PUT: /node
 func (cr *NodeController) UpdateMany(cx *goweb.Context) {
 	LogRequest(cx.Request)
-	cx.ResponseWriter.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(cx.ResponseWriter, "{ \"message\" : \"updatemany operation currently not supported\" }")
+	cx.RespondWithError(http.StatusNotImplemented) 
 }
