@@ -12,6 +12,7 @@ import (
 	"strconv"
 	bson "launchpad.net/mgo/bson"
 	conf "shock/conf"
+	user "shock/user"
 )
 
 func init() {}
@@ -22,15 +23,13 @@ type Nodes []Node
 func (n *Nodes) GetAll(q bson.M) (err error) {
 	db, err := DBConnect(); if err != nil { return }
 	defer db.Close()
-	
 	err = db.GetAll(q, n)
 	return
 } 
 
 func (n *Nodes) GetAllLimitOffset(q bson.M, limit int, offset int) (err error) {
 	db, err := DBConnect(); if err != nil { return }
-	defer db.Close()
-	
+	defer db.Close()	
 	err = db.GetAllLimitOffset(q, n, limit, offset)
 	return
 }
@@ -58,6 +57,33 @@ type acl struct {
 	Delete []string `bson:"delete" json:"delete"`
 }
 
+type rights map[string]bool
+
+func (a *acl) set(uuid string, r rights) {	
+	if r["read"] { a.Read = append(a.Read, uuid) } 
+	if r["write"] { a.Write = append(a.Write, uuid) } 
+	if r["delete"] { a.Delete = append(a.Delete, uuid) }
+	return
+}
+
+func (a *acl) check(uuid string) (r rights) {
+	r = rights{"read":false, "write":false, "delete":false}
+	acls := map[string][]string{"read":a.Read, "write":a.Write, "delete":a.Delete}
+	for k, v := range acls {
+		if len(v) == 0 {
+			r[k] = true
+		} else {
+			for _, id := range a.Read {
+				if uuid == id {
+					r[k] = true
+					break
+				}
+			}
+		}
+	}
+	return
+}
+
 // FormFiles struct
 type FormFiles map[string]FormFile
 
@@ -74,12 +100,12 @@ func (n *nodeFile) Empty() (bool){
 	return false
 }
 
-func LoadNode(id string) (node *Node, err error) {
+func LoadNode(id string, uuid string) (node *Node, err error) {
 	db, err := DBConnect(); if err != nil { return }
 	defer db.Close()
 	
 	node = new(Node)
-	err = db.FindById(id, node); if err != nil { node = nil }
+	err = db.FindByIdAuth(id, uuid, node); if err != nil { node = nil }
 	return
 }
 
@@ -167,12 +193,14 @@ func CreateNode(filePath string, attrPath string) (node *Node, error) {
 }
 */
 
-func CreateNodeUpload(params map[string]string, files FormFiles) (node *Node, err error) {
+func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (node *Node, err error) {
 	node = new(Node)
 	node.Indexes = make(map[string]string)
 	node.File.Checksum = make(map[string]string)
 	node.setId()
-
+	if u.Uuid != "" {
+		node.Acl.set(u.Uuid, rights{"read":true, "write": true, "delete": true})
+	}
 	err = node.Mkdir(); if err != nil { return }
 	err = node.Update(params, files); if err != nil { return }
 	err = node.Save()
