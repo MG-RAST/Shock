@@ -1,0 +1,22 @@
+GET
+/node/{id} 
+		?download[&index={index}[&part={part}]]
+		?pipe(&{func}={funcOptions})+)
+		?list={indexes||functions||parts&index={index}...}
+/node
+		?paginate[&limit={limit}&offset={offset}]
+		?query={queryString}[&paginate[&limit={limit}&offset={offset}]]
+
+PUT
+/node/{id}
+           ?pipe(&{func}={funcOptions})+
+           ?index={type}[&options={options}]
+           ?attributes 
+            -> multipart-form or json file as body
+           ?file[&part={part}] 
+            -> multipart-form or data file as body
+
+POST
+/node
+       multipart-form containing: data file and/or attributes (json file)
+       empty body

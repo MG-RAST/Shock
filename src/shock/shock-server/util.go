@@ -1,6 +1,11 @@
 package main
 
 import (
+	"net"
+	"time"
+	"encoding/base64"	
+	"errors"
+	"strings" 
 	"net/http"
 	"fmt"
 	"math/rand"
@@ -10,7 +15,7 @@ import (
 	"crypto/sha1"
 	ds "shock/datastore"
 	conf "shock/conf"
-	"goweb"
+	user "shock/user"
 )
 
 type streamer struct {
@@ -71,10 +76,42 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files ds.For
 	return
 }
 
-func logReq(cx *goweb.Context) () {
-	if cx.Request.URL.RawQuery != "" {
-		fmt.Printf("%s: %s?%s\n", cx.Request.Method, cx.Request.URL.Path, cx.Request.URL.RawQuery)
-	} else {
-		fmt.Printf("%s: %s\n", cx.Request.Method, cx.Request.URL.Path)
+func LogRequest(req *http.Request) () {
+	host, _, _ := net.SplitHostPort(req.RemoteAddr)
+	// failed attempt to get the host in ipv4
+	//addrs, _ := net.LookupIP(host)	
+	//fmt.Println(addrs)
+	prefix := fmt.Sprintf("%s [%s]", host, time.Now().Format(time.RFC1123))
+	suffix := ""
+	if _, auth := req.Header["Authorization"]; auth {
+		suffix = "AUTH"
 	}
+	url := ""
+	if req.URL.RawQuery != "" {
+		url = fmt.Sprintf("%s %s?%s", req.Method, req.URL.Path, req.URL.RawQuery)
+	} else {
+		url = fmt.Sprintf("%s %s", req.Method, req.URL.Path)
+	}
+	fmt.Printf("%s %q %s\n", prefix, url, suffix)
+}
+
+func AuthenticateRequest(req *http.Request) (u *user.User, err error) {	
+	if _, ok := req.Header["Authorization"]; !ok {
+		err = errors.New("No Authorization")
+		return
+	}	
+	header := req.Header.Get("Authorization")
+	tmpAuthArray := strings.Split(header, " ")
+
+	authValues, err := base64.URLEncoding.DecodeString(tmpAuthArray[1])
+	if err != nil {
+		err = errors.New("Failed to decode encoded auth settings in http request.")
+		return
+	}
+
+	authValuesArray := strings.Split(string(authValues), ":")
+	name := authValuesArray[0]
+	passwd := authValuesArray[1]
+	u, err = user.Authenticate(name,passwd)
+	return
 }
