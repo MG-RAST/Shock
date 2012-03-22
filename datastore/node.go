@@ -16,11 +16,13 @@ import (
 )
 
 type Node struct {
-	Id         string            `bson:"id" json:"id"`
-	File       nodeFile          `bson:"file" json:"file"`
-	Attributes interface{}       `bson:"attributes" json:"attributes"`
-	Indexes    map[string]string `bson:"indexes" json:"indexes"`
-	Acl        acl               `bson:"acl" json:"acl"`
+	Id           string            `bson:"id" json:"id"`
+	Version      string            `bson:"version" json:"version"`
+	File         nodeFile          `bson:"file" json:"file"`
+	Attributes   interface{}       `bson:"attributes" json:"attributes"`
+	Indexes      map[string]string `bson:"indexes" json:"indexes"`
+	Acl          acl               `bson:"acl" json:"acl"`
+	VersionParts map[string]string `bson:"version_parts" json:"version_parts"`
 }
 
 type nodeFile struct {
@@ -224,17 +226,13 @@ func (node *Node) ToJson() (s string, err error) {
 }
 
 func (node *Node) Save() (err error) {
-	//jsonPath := fmt.Sprintf("%s/%s.json", node.Path(), node.Id)
-	//os.Remove(jsonPath)
-	//n, err := node.ToJson(); if err != nil { return }	
-	//err = ioutil.WriteFile(jsonPath, []byte(n), 0644); if err != nil { return }
-
 	db, err := DBConnect()
 	if err != nil {
 		return
 	}
 	defer db.Close()
 
+	node.UpdateVersion()
 	bsonPath := fmt.Sprintf("%s/%s.bson", node.Path(), node.Id)
 	os.Remove(bsonPath)
 	nbson, err := bson.Marshal(node)
@@ -249,6 +247,52 @@ func (node *Node) Save() (err error) {
 	if err != nil {
 		return
 	}
+	return
+}
+
+func (node *Node) UpdateVersion() (err error) {
+	var fsum, attrsum, aclsum, versum []byte
+	parts := make(map[string]string)
+	h := md5.New()
+
+	// checksum file
+	m, err := json.Marshal(node.File)
+	if err != nil {
+		return
+	}
+	fmt.Println(string(m))
+	h.Write(m)
+	fsum = h.Sum(fsum)
+	parts["file_ver"] = fmt.Sprintf("%x", fsum)
+	h.Reset()
+
+	// checksum attributes
+	m, err = json.Marshal(node.Attributes)
+	if err != nil {
+		return
+	}
+	fmt.Println(string(m))
+	h.Write(m)
+	attrsum = h.Sum(attrsum)
+	parts["attributes_ver"] = fmt.Sprintf("%x", attrsum)
+	h.Reset()
+
+	// checksum acl
+	m, err = json.Marshal(node.Acl)
+	if err != nil {
+		return
+	}
+	fmt.Println(string(m))
+	h.Write(m)
+	aclsum = h.Sum(aclsum)
+	parts["acl_ver"] = fmt.Sprintf("%x", aclsum)
+	h.Reset()
+
+	// node version
+	h.Write([]byte(fmt.Sprintf("%s:%s:%s:%s", node.Id, parts["file_ver"], parts["attributes_ver"], parts["acl_ver"])))
+	versum = h.Sum(versum)
+	node.Version = fmt.Sprintf("%x", versum)
+	node.VersionParts = parts
 	return
 }
 
