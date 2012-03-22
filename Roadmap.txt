@@ -1,5 +1,5 @@
-Release 0.2 (3/19/12)
- - Client command (shell script)
+Release 0.2 (3/22/12)
+ - Client command (github.com/MG-RAST/ShockClient): Done
  - basic auth: Done
  - indices
  - node ACLs: Done

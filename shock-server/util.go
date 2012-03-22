@@ -26,11 +26,32 @@ type streamer struct {
 	size        int64
 }
 
+type partStreamer struct {
+	rs          []*io.SectionReader
+	ws          http.ResponseWriter
+	contentType string
+	filename    string
+	size        int64
+}
+
 func (s *streamer) stream() (err error) {
 	s.ws.Header().Set("Content-Type", s.contentType)
 	s.ws.Header().Set("Content-Disposition", fmt.Sprintf(":attachment;filename=%s", s.filename))
 	s.ws.Header().Set("Content-Length", fmt.Sprint(s.size))
 	_, err = io.Copy(s.ws, s.rs)
+	return
+}
+
+func (s *partStreamer) stream() (err error) {
+	s.ws.Header().Set("Content-Type", s.contentType)
+	s.ws.Header().Set("Content-Disposition", fmt.Sprintf(":attachment;filename=%s", s.filename))
+	s.ws.Header().Set("Content-Length", fmt.Sprint(s.size))
+	for _, sr := range s.rs {
+		_, err = io.Copy(s.ws, sr)
+		if err != nil {
+			return
+		}
+	}
 	return
 }
 
