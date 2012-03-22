@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"	
 	"crypto/md5"
+	"crypto/sha1"
 	"math/rand"
 	"os"
 	"errors"
@@ -11,30 +12,9 @@ import (
 	"io/ioutil"
 	"strconv"
 	bson "launchpad.net/mgo/bson"
-	conf "shock/conf"
-	user "shock/user"
+	e "shock/errors"
 )
 
-func init() {}
-
-// Node array type
-type Nodes []Node
-
-func (n *Nodes) GetAll(q bson.M) (err error) {
-	db, err := DBConnect(); if err != nil { return }
-	defer db.Close()
-	err = db.GetAll(q, n)
-	return
-} 
-
-func (n *Nodes) GetAllLimitOffset(q bson.M, limit int, offset int) (err error) {
-	db, err := DBConnect(); if err != nil { return }
-	defer db.Close()	
-	err = db.GetAllLimitOffset(q, n, limit, offset)
-	return
-}
-
-// Node struct
 type Node struct {
 	Id         string            `bson:"id" json:"id"`
 	File       nodeFile          `bson:"file" json:"file"`	
@@ -43,48 +23,20 @@ type Node struct {
 	Acl        acl               `bson:"acl" json:"acl"`
 }
 
-// Node.nodefile struct
 type nodeFile struct {
 	Name     string            `bson:"name" json:"name"`
 	Size     int64             `bson:"size" json:"size"`
 	Checksum map[string]string `bson:"checksum" json:"checksum"`
 }
 
-// Node.acl struct
-type acl struct {
-	Read   []string `bson:"read" json:"read"`
-	Write  []string `bson:"write" json:"write"`
-	Delete []string `bson:"delete" json:"delete"`
+type partsList struct {
+	Count int 			`json:"count"`
+	Length int 			`json:"length"`
+	Parts []partsFile   `json:"parts"`
 }
 
-type rights map[string]bool
+type partsFile []string
 
-func (a *acl) set(uuid string, r rights) {	
-	if r["read"] { a.Read = append(a.Read, uuid) } 
-	if r["write"] { a.Write = append(a.Write, uuid) } 
-	if r["delete"] { a.Delete = append(a.Delete, uuid) }
-	return
-}
-
-func (a *acl) check(uuid string) (r rights) {
-	r = rights{"read":false, "write":false, "delete":false}
-	acls := map[string][]string{"read":a.Read, "write":a.Write, "delete":a.Delete}
-	for k, v := range acls {
-		if len(v) == 0 {
-			r[k] = true
-		} else {
-			for _, id := range a.Read {
-				if uuid == id {
-					r[k] = true
-					break
-				}
-			}
-		}
-	}
-	return
-}
-
-// FormFiles struct
 type FormFiles map[string]FormFile
 
 type FormFile struct {
@@ -100,110 +52,36 @@ func (n *nodeFile) Empty() (bool){
 	return false
 }
 
-func LoadNode(id string, uuid string) (node *Node, err error) {
-	db, err := DBConnect(); if err != nil { return }
-	defer db.Close()
-	
-	node = new(Node)
-	err = db.FindByIdAuth(id, uuid, node); if err != nil { node = nil }
-	return
-}
-
-func LoadNodeFromDisk(id string) (node *Node, err error) {
-	path := getPath(id)
-	nbson, err := ioutil.ReadFile(fmt.Sprintf("%s/%s.bson", path, id)); if err != nil {	return }
-	node = new(Node)
-	err = bson.Unmarshal(nbson, &node);	if err != nil {	node = nil }
-	return
-}
-
-/*
-func CreateNode(filePath string, attrPath string) (node *Node, error) {
-	var (
-		attrStat *os.FileInfo
-		in       *os.File
-		out      *os.File
-	)
-	node = new(Node)
-	node.Indexes = make(map[string]string)
-	node.File.Checksum = make(map[string]string)
-	node.setId()
-
-	err = node.Mkdir(); if err != nil {	return }
-	if filePath != "" {
-		fileStat, err := os.Stat(filePath); if err != nil {	return }
-
-		if fileStat.IsDirectory() {
-			err = errors.New("directory found: wft?")
-			return
-		}
-		var bytesRead int = 1
-		md5h := md5.New()
-		sha1h := sha1.New()
-		in, err = os.Open(filePath)
-		if err != nil {
-			return
-		}
-		defer in.Close()
-		out, err = os.Create(node.DataPath())
-		if err != nil {
-			return
-		}
-		defer out.Close()
-		for bytesRead > 0 {
-			buffer := make([]byte, 10240)
-			bytesRead, err = in.Read(buffer)
-			if err != nil && err.String() == "EOF" {
-				err = nil
-			} else if err != nil {
-				return
-			}
-			md5h.Write(buffer[0:bytesRead])
-			sha1h.Write(buffer[0:bytesRead])
-			out.Write(buffer[0:bytesRead])
-		}
-		// set file struct
-		node.File.Name = filepath.Base(filePath)
-		node.File.Size = fileStat.Size
-		node.File.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum())
-		node.File.Checksum["sha1"] = fmt.Sprintf("%x", sha1h.Sum())
+func (n *nodeFile) SizeIndex(chunkSize int64) (idx *Index) {
+	var i int64 
+	idx = NewIndex()
+	idx.Type = "size"
+	idx.CType = "none"
+	idx.Version = 1
+	for i = 0; i < n.Size; i+= chunkSize {
+		idx.Idx = append(idx.Idx, Record{i,(i+chunkSize)})
 	}
-	if attrPath != "" {
-		attrStat, err = os.Stat(attrPath)
-		if err != nil {
-			return
-		}
-		if attrStat.IsDirectory() {
-			err = errors.New("directory found: wft?")
-			return
+	return
+}
+
+func (n *nodeFile) SizeOffset(part int64, chunkSize int64) (position int64, length int64, err error) {
+	if part < 1 {
+		err = errors.New(e.InvalidIndex)
+	} else if n.Size > ((part-1) * chunkSize) {
+		position = ((part-1) * chunkSize)
+		if n.Size < (part * chunkSize) {
+			length = n.Size - position
 		} else {
-			var attributes []byte
-			attributes, err = ioutil.ReadFile(attrPath)
-			if err != nil {
-				return
-			}
-			err = json.Unmarshal(attributes, &node.Attributes)
-			if err != nil {
-				return
-			}
+			length = chunkSize
 		}
+	} else {
+		if part == int64(1) {
+			position = 0
+			length = n.Size
+		} else {
+			err = errors.New(e.InvalidIndex)
+		}	
 	}
-	err = node.Save()
-	return
-}
-*/
-
-func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (node *Node, err error) {
-	node = new(Node)
-	node.Indexes = make(map[string]string)
-	node.File.Checksum = make(map[string]string)
-	node.setId()
-	if u.Uuid != "" {
-		node.Acl.set(u.Uuid, rights{"read":true, "write": true, "delete": true})
-	}
-	err = node.Mkdir(); if err != nil { return }
-	err = node.Update(params, files); if err != nil { return }
-	err = node.Save()
 	return
 }
 
@@ -277,10 +155,6 @@ func (node *Node) setId() {
 	return
 }
 
-func getPath(id string) (string) {
-	return fmt.Sprintf("%s/%s/%s/%s/%s", *conf.DATAROOT, id[0:2], id[2:4], id[4:6], id)
-}
-
 func (node *Node) Path() (string) {
 	return getPath(node.Id)
 }
@@ -315,4 +189,88 @@ func (node *Node) Save() (err error) {
 	err = ioutil.WriteFile(bsonPath, nbson, 0644); if err != nil { return }
 	err = db.Upsert(node); if err != nil { return }
 	return
+}
+
+func (node *Node) loadParts() (p *partsList, err error){
+	pf, err := ioutil.ReadFile(node.partsListPath()); if err != nil { return }
+	p = &partsList{}
+	err = json.Unmarshal(pf, &p); if err != nil { return }
+	return
+}
+
+func (node *Node) writeParts(p *partsList) (err error){
+	pm, _ := json.Marshal(p)
+	os.Remove(node.partsListPath())
+	err = ioutil.WriteFile(node.partsListPath(), []byte(pm), 0644)
+	return
+} 
+
+func (node *Node) partsCount() (int){
+	p, err := node.loadParts(); if err != nil { return -1 } 
+	return p.Count
+}
+
+func (node *Node) initParts(count int) (err error){
+	err = os.MkdirAll(fmt.Sprintf("%s/parts", node.Path()), 0777)
+	p := &partsList{Count : count, Length : 0, Parts: make([]partsFile, count)}
+	err = node.writeParts(p)
+	return
+}
+
+func (node *Node) addPart(n int, file *FormFile) (err error){
+	// load
+	p, err := node.loadParts(); if err != nil { return } 
+	
+	// modify
+	if len(p.Parts[n]) > 0 {
+		err = errors.New("node part already exists and is immutable")
+		return
+	}
+	part := partsFile{file.Name, file.Checksum["md5"]}
+	p.Parts[n] = part
+	p.Length = p.Length + 1 
+	os.Rename(file.Path, fmt.Sprintf("%s/parts/%d", node.Path(), n))
+
+	// rewrite	
+	err = node.writeParts(p); if err != nil { return }		
+
+	// create file if done
+	if p.Length == p.Count {
+		err = node.SetFileFromParts(p); if err != nil { return }
+	}
+	return
+}
+
+func (node *Node) SetFileFromParts(p *partsList) (err error){
+	out, err := os.Create(fmt.Sprintf("%s/%s.data", node.Path(), node.Id)); if err != nil { return }
+	defer out.Close()
+	md5h := md5.New()
+	sha1h := sha1.New()	
+	for i := 0; i < p.Count; i++ {
+		part, err := os.Open(fmt.Sprintf("%s/parts/%d", node.Path(), i)); if err != nil { return err}
+		for {
+			buffer := make([]byte, 10240)
+			n, err := part.Read(buffer)
+			if n == 0 || err != nil { break }
+			out.Write(buffer[0:n])
+			md5h.Write(buffer[0:n])
+			sha1h.Write(buffer[0:n]) 
+		}
+		part.Close()		
+	}
+	fileStat, err := os.Stat(fmt.Sprintf("%s/%s.data", node.Path(), node.Id)); if err != nil { return }		
+	node.File.Name = node.Id
+	node.File.Size = fileStat.Size()
+
+	var md5s, sha1s []byte
+	md5h.Sum(md5s)
+	node.File.Checksum["md5"] = fmt.Sprintf("%x", md5s)	
+	sha1h.Sum(sha1s)	
+	node.File.Checksum["sha1"] = fmt.Sprintf("%x", sha1s)	
+	err = node.Save()
+	return
+}
+
+func (node *Node) partsListPath() (string){
+	return fmt.Sprintf("%s/parts/parts.json", node.Path())	
 }

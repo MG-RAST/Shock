@@ -12,4 +12,5 @@ const (
 	MongoDocNotFound = "Document not found"
 	UnAuth = "User Unauthorized"
 	NoAuth = "No Authorization"
+	InvalidIndex = "Invalid Index"
 )
