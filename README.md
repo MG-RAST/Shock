@@ -34,7 +34,10 @@ To build Shock:
   
 To run (additional requires mongodb=>2.0.3):
   
-    shock-server -port=<port to listen on> -data=<data directory to store on disk files> -mongo=<hostname(s) of mongodb> -secretkey=<secret key>
+    shock-server -port=<port to listen on> \
+                 -data=<data directory to store on disk files> \
+                 -mongo=<hostname(s) of mongodb> \
+                 -secretkey=<secret key>
 
 Command-line client:
 -------------------
