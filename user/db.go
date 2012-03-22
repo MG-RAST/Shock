@@ -1,10 +1,11 @@
 package user
 
 import (
-	"errors"
+	"fmt"
 	"github.com/MG-RAST/Shock/conf"
 	"launchpad.net/mgo"
 	"launchpad.net/mgo/bson"
+	"os"
 	"time"
 )
 
@@ -15,17 +16,20 @@ const (
 func init() {
 	d, err := DBConnect()
 	if err != nil {
-		panic(errors.New("No reachable mongodb servers."))
+		fmt.Fprintln(os.Stderr, "user: no reachable mongodb server")
+		os.Exit(1)
 	}
 	uuidIdx := mgo.Index{Key: []string{"uuid"}, Unique: true}
 	nameIdx := mgo.Index{Key: []string{"name"}, Unique: true}
 	err = d.User.EnsureIndex(uuidIdx)
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "user: fatal initialization error: %v", err)
+		os.Exit(1)
 	}
 	err = d.User.EnsureIndex(nameIdx)
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "user: fatal initialization error: %v", err)
+		os.Exit(1)
 	}
 }
 
