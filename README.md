@@ -14,11 +14,6 @@ Shock is an active storage layer. Annotate, anonymize, convert, filter, quality 
 
 **Most importantly Shock is still very much in development. Be patient and contribute.**
 
-Road Map:
----------
-
-Coming soon
-
 To build:
 ---------
 
