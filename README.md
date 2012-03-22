@@ -135,6 +135,39 @@ Data Types
         "E": null, 
         "S": 200
     }
+
+### Index:
+
+Currently there is support for two types of indices: virtual and file. 
+
+##### virtual index:
+
+A virtual index is one that can be generated on the fly without support of precalculated data. The current working example of this 
+is the size virtual index. Based on the file size and desired chunksize the partitions become individually addressable. 
+
+##### file index:
+
+Currently in early development the file index is a json file stored on disk in the node's directory.  
+
+    # abstract form
+    {
+    	index_type : <type>,
+    	filename : <filename>,
+    	checksum_type : <type>,
+    	version : <version>,
+    	index : [
+    		[<position>,<length>,<optional_checksum>]...
+    	]
+    }
+    
+    # example
+    {
+    	"index_type" : "fasta",
+    	"filename" : "none",
+    	"checksum_type" : "none",
+    	"version" : 1,
+    	"index" : [[0,1861]]
+    }
     
 API
 ---

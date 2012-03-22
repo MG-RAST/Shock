@@ -1,7 +1,7 @@
 Release 0.2 (3/22/12)
  - Client command (github.com/MG-RAST/ShockClient): Done
  - basic auth: Done
- - indices (size vitual indexes): Done
+ - indices (size virtual index + basic file index): Done
  - node ACLs: Done
  - basic user management: Done
  
@@ -15,7 +15,7 @@ Release 0.3 (4/1/12)
 Release 0.4 (4/25/12)
 
 Unfiled:
- - generic indices
+ - fleshout indices
  - testing
  - OAuth
  - client command (go version)
