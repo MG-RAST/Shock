@@ -43,26 +43,21 @@ To build Shock:
 To run (additional requires mongodb=>2.0.3):
   
     ./bin/shock-server -port=<port to listen on> -data=<data directory to store on disk files> -mongo=<hostname(s) of mongodb>
-  
+
+Command-line client:
+-------------------
+
+Alpha version available @ [github.com/MG-RAST/ShockClient](http://github.com/MG-RAST/ShockClient)  
+
 Data Types
 ----------
 
 ### Node:
 
-##### id
-unique identifier
-
-##### file 
-
- - file name 
- - file size
- - file checksum(s) 
-
-##### attributes
-arbitrary json
-
-##### acl
-access control (in development)
+- id: unique identifier
+- file: name, size, checksum(s).
+- attributes: arbitrary json. Queriable.
+- acl: arrays of user uuids corresponding to read, write, delete access controls
 
 ##### node example (metagenome from MG-RAST):
 
@@ -127,6 +122,13 @@ access control (in development)
         "E": null, 
         "S": 200
     }
+
+### User:
+
+- uuid: unique identifier
+- name: username
+- passwd: all responds are masked "**********" 
+- admin: boolean
 
 API
 ---
