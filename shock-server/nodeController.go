@@ -163,7 +163,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 						}
 					}
 					var size int64 = 0
-					s := &partStreamer{rs: []*io.SectionReader{}, ws: cx.ResponseWriter, contentType: "text", filename: node.Id}
+					s := &partStreamer{rs: []*io.SectionReader{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id}
 					r, err := os.Open(node.DataPath())
 					if err != nil {
 						fmt.Println("Err@node_Read:Open:", err.Error())

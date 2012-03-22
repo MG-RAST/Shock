@@ -14,35 +14,27 @@ Shock is an active storage layer. Annotate, anonymize, convert, filter, quality 
 
 **Most importantly Shock is still very much in development. Be patient and contribute.**
 
-Road Map:
----------
-
-Coming soon
-
 To build:
 ---------
 
 Unix/Macintosh 
 
-To install go weekly.2012-01-20 ([weekly.golang.org/doc/install/source](http://weekly.golang.org/doc/install/source)):
+To install go weekly.2012-03-13 ([weekly.golang.org/doc/install/source](http://weekly.golang.org/doc/install/source)):
     
     hg clone -u release https://code.google.com/p/go
     hg pull
-    hg update weekly.2012-01-20
+    hg update weekly.2012-03-13
     cd go/src
     ./all.bash
     <add ../bin to $PATH>
 
 To build Shock:
 
-    git clone <this repo>
-    cd Shock
-    export GOPATH=`pwd`
-    go install shock/shock-server
+    go get github.com/MG-RAST/Shock/shock-server
   
 To run (additional requires mongodb=>2.0.3):
   
-    ./bin/shock-server -port=<port to listen on> -data=<data directory to store on disk files> -mongo=<hostname(s) of mongodb>
+    shock-server -port=<port to listen on> -data=<data directory to store on disk files> -mongo=<hostname(s) of mongodb> -secretkey=<secret key>
 
 Command-line client:
 -------------------
@@ -160,12 +152,13 @@ All responses from Shock currently are in the following encoding.
 ### Create node:
 POST /node (multipart/form-data encoded)
 
+ - optionally takes user/password via Basic Auth. If set only that user with have access to the node
  - to set attributes include file field named "attributes" containing a json file of attributes
  - to set file include file field named "file" containing any file
 
 ##### example
 	
-	curl -X POST [ -F "attributes=@<path_to_json>" -F "file=@<path_to_data_file>" ] http://<shock_host>[:<port>]/node
+	curl -X POST [ --user user:password ] [ -F "attributes=@<path_to_json>" -F "file=@<path_to_data_file>" ] http://<shock_host>[:<port>]/node
 	
 ##### returns
 
@@ -176,10 +169,10 @@ POST /node (multipart/form-data encoded)
         "S": <http status of request>
     } 
 
-<br/>
 ### List nodes:
 GET /node
 
+ - optionally takes user/password via Basic Auth. Grants access to non-public data
  - by adding ?skip=N you get the nodes starting at N+1 
  - by adding ?limit=N you get a maximum of N nodes returned 
 
@@ -200,7 +193,7 @@ Multiple attributes can be selected in a single query and are treated as AND ope
 
 ##### example
 	
-	curl -X GET http://<shock_host>[:<port>]/node/[?skip=<skip>&limit=<count>][&query&<tag>=<value>]
+	curl -X GET [ --user user:password ] http://<shock_host>[:<port>]/node/[?skip=<skip>&limit=<count>][&query&<tag>=<value>]
 		
 ##### returns
 
@@ -211,21 +204,80 @@ Multiple attributes can be selected in a single query and are treated as AND ope
         "S": <http status of request>
     }
 
-<br/>	
 ### Get node:
 GET /node/:nodeid
-	
+
+ - optionally takes user/password via Basic Auth
  - ?download - complete file download
-	
+ - ?download&index=size&part=1\[&part=2...\]\[chunksize=inbytes\] - download portion of the file via the size virtual index. Chunksize defaults to 1MB (1048576 bytes).
+
 ##### example	
 
-	curl -X GET http://<shock_host>[:<port>]/node/:nodeid
-	
+	curl -X GET [ --user user:password ] http://<shock_host>[:<port>]/node/:nodeid
+
 ##### returns
 
     {
         "C":"",
         "D": {<node>},
+        "E": <error message or null>, 
+        "S": <http status of request>
+    }
+
+### Create user:
+POST /user
+
+Requires Basic Auth encoded username:password. To create an admin user include :secret_key specified at server start.
+	
+##### example	
+
+    # regular user 
+    curl -X POST --user joeuser:1234 http://<shock_host>[:<port>]/user
+    
+    # admin user
+    curl -X POST --user joeuser:1234:supersupersecret http://<shock_host>[:<port>]/user
+	
+##### returns
+
+    {
+        "C":"",
+        "D": {<user>},
+        "E": <error message or null>, 
+        "S": <http status of request>
+    }
+
+### Get user:
+GET /user/:uuid
+
+Requires Basic Auth encoded username:password. Regular user are able to see their own information while Admin user are able to access all. 
+
+##### example	
+
+    curl -X GET --user joeuser:1234 http://<shock_host>[:<port>]/user/:uuid
+
+##### returns
+
+    {
+        "C":"",
+        "D": {<user>},
+        "E": <error message or null>, 
+        "S": <http status of request>
+    }
+
+### List users:
+GET /user
+
+Requires Basic Auth encoded username:password. Restricted to Admin users.
+
+##### example	
+
+    curl -X GET --user joeadmin:12345 http://<shock_host>[:<port>]/user
+
+##### returns
+
+    {
+        "C":"",
+        "D": {[<user>,...]},
         "E": <error message or null>, 
         "S": <http status of request>
     }
