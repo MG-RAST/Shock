@@ -61,6 +61,11 @@ func getPath(id string) string {
 	return fmt.Sprintf("%s/%s/%s/%s/%s", *conf.DATAROOT, id[0:2], id[2:4], id[4:6], id)
 }
 
+func getIndexPath(id string) string {
+	return fmt.Sprintf("%s/idx", getPath(id))
+}
+
+
 /*
 func CreateNode(filePath string, attrPath string) (node *Node, error) {
 	var (

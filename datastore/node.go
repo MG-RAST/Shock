@@ -52,6 +52,18 @@ func (n *nodeFile) Empty() bool {
 	return false
 }
 
+func (node *Node) HasIndex(index string) bool {
+	if node.File.Empty() {
+		return false
+	} else {
+		_, err := os.Stat(fmt.Sprintf("%s/%s", node.IndexPath(), index))
+		if err != nil { 
+			return false
+		}		
+	}
+	return true
+}
+
 func (n *nodeFile) SizeIndex(chunkSize int64) (idx *Index) {
 	var i int64
 	idx = NewIndex()
@@ -103,7 +115,6 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			return err
 		}
 	}
-
 	_, hasFile := files["file"]
 	if hasFile && node.File.Empty() {
 		err = node.SetFile(files["file"])
@@ -125,7 +136,6 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	} else if hasAttr {
 		return errors.New("node attributes immutable")
 	}
-
 	pc := node.partsCount()
 	if pc > 1 {
 		for key, file := range files {
@@ -187,12 +197,23 @@ func (node *Node) Path() string {
 	return getPath(node.Id)
 }
 
+func (node *Node) IndexPath() string {
+	return getIndexPath(node.Id)
+}
+
 func (node *Node) DataPath() string {
 	return fmt.Sprintf("%s/%s.data", getPath(node.Id), node.Id)
 }
 
 func (node *Node) Mkdir() (err error) {
 	err = os.MkdirAll(node.Path(), 0777)
+	if err != nil {
+		return
+	}
+	err = os.MkdirAll(node.IndexPath(), 0777)
+	if err != nil {
+		return
+	}
 	return
 }
 
@@ -272,7 +293,7 @@ func (node *Node) addPart(n int, file *FormFile) (err error) {
 	if err != nil {
 		return
 	}
-
+	
 	// modify
 	if len(p.Parts[n]) > 0 {
 		err = errors.New("node part already exists and is immutable")
