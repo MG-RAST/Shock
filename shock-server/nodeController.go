@@ -183,7 +183,6 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 							return
 						}
 						size += length
-						fmt.Println(pos, "-", length)
 						s.rs = append(s.rs, io.NewSectionReader(r, pos, length))
 					}
 					s.size = size
@@ -196,9 +195,51 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 					return
 				}
 			} else {
-				cx.RespondWithError(http.StatusNotImplemented)
+				if node.HasIndex(query["index"][0]) {
+					idx := ds.NewIndex()
+					err = idx.Load(fmt.Sprintf("%s/%s", node.IndexPath(), query["index"][0]))
+					if err != nil {
+						fmt.Println(err.Error())
+						cx.RespondWithErrorMessage("Error loading index", http.StatusBadRequest)
+						return
+					}
+					var size int64 = 0
+					s := &partStreamer{rs: []*io.SectionReader{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id}
+					r, err := os.Open(node.DataPath())
+					if err != nil {
+						fmt.Println("Err@node_Read:Open:", err.Error())
+						cx.RespondWithError(http.StatusInternalServerError)
+						return
+					}
+					defer r.Close()
+					for _, p := range query["part"] {
+						pInt, err := strconv.ParseInt(p, 10, 64)
+						if err != nil {
+							cx.RespondWithErrorMessage("Invalid index part", http.StatusBadRequest)
+							return
+						}
+						p, ok1 := idx.Idx[(pInt - 1)][0].(float64)
+						l, ok2 := idx.Idx[(pInt - 1)][1].(float64)
+						if !ok1 || !ok2 {
+							cx.RespondWithErrorMessage("Malformed index", http.StatusBadRequest)
+							return
+						}
+						pos := int64(p)
+						length := int64(l)
+						size += length
+						s.rs = append(s.rs, io.NewSectionReader(r, pos, length))
+					}
+					s.size = size
+					err = s.stream()
+					if err != nil {
+						fmt.Println("err", err.Error())
+					}
+				} else {
+					cx.RespondWithErrorMessage("Index not found", http.StatusBadRequest)
+					return
+				}
 			}
-		} else { //{"v ers ion		
+		} else {
 			nf, err := os.Open(node.DataPath())
 			if err != nil {
 				// File not found or some sort of file read error. 

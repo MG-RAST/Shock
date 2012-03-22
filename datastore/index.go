@@ -51,12 +51,12 @@ Shock Index format:
 
 Json representation:
 {
-	index_type = <type>,
-	filename = <filename>,
-	checksum_type = <type>,
-	version = <version>,
-	index = [
-		[<position>,<length>,<checksum>]...
+	index_type : <type>,
+	filename : <filename>,
+	checksum_type : <type>,
+	version : <version>,
+	index : [
+		[<position>,<length>,<optional_checksum>]...
 	]
 }
 */
