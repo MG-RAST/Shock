@@ -57,9 +57,9 @@ func (node *Node) HasIndex(index string) bool {
 		return false
 	} else {
 		_, err := os.Stat(fmt.Sprintf("%s/%s", node.IndexPath(), index))
-		if err != nil { 
+		if err != nil {
 			return false
-		}		
+		}
 	}
 	return true
 }
@@ -293,7 +293,7 @@ func (node *Node) addPart(n int, file *FormFile) (err error) {
 	if err != nil {
 		return
 	}
-	
+
 	// modify
 	if len(p.Parts[n]) > 0 {
 		err = errors.New("node part already exists and is immutable")

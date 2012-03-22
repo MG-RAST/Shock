@@ -201,7 +201,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 					if err != nil {
 						fmt.Println(err.Error())
 						cx.RespondWithErrorMessage("Error loading index", http.StatusBadRequest)
-						return						
+						return
 					}
 					var size int64 = 0
 					s := &partStreamer{rs: []*io.SectionReader{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id}
@@ -218,12 +218,12 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 							cx.RespondWithErrorMessage("Invalid index part", http.StatusBadRequest)
 							return
 						}
-						p, ok1 := idx.Idx[(pInt-1)][0].(float64)
-						l, ok2 := idx.Idx[(pInt-1)][1].(float64)
+						p, ok1 := idx.Idx[(pInt - 1)][0].(float64)
+						l, ok2 := idx.Idx[(pInt - 1)][1].(float64)
 						if !ok1 || !ok2 {
 							cx.RespondWithErrorMessage("Malformed index", http.StatusBadRequest)
-							return						
-						} 
+							return
+						}
 						pos := int64(p)
 						length := int64(l)
 						size += length
@@ -233,13 +233,13 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 					err = s.stream()
 					if err != nil {
 						fmt.Println("err", err.Error())
-					}					
+					}
 				} else {
 					cx.RespondWithErrorMessage("Index not found", http.StatusBadRequest)
 					return
-				}				
+				}
 			}
-		} else { 
+		} else {
 			nf, err := os.Open(node.DataPath())
 			if err != nil {
 				// File not found or some sort of file read error. 

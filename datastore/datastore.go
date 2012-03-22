@@ -65,7 +65,6 @@ func getIndexPath(id string) string {
 	return fmt.Sprintf("%s/idx", getPath(id))
 }
 
-
 /*
 func CreateNode(filePath string, attrPath string) (node *Node, error) {
 	var (
