@@ -6,6 +6,7 @@ import (
 	e "github.com/MG-RAST/Shock/errors"
 	"github.com/MG-RAST/Shock/goweb"
 	"github.com/MG-RAST/Shock/user"
+	"io"
 	"launchpad.net/mgo/bson"
 	"net/http"
 	"os"
@@ -143,18 +144,74 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 
 	// Switch though param flags
 	if download {
-		nf, err := os.Open(node.DataPath())
-		if err != nil {
-			// File not found or some sort of file read error. 
-			// Probably deserves more checking
-			fmt.Println("err", err.Error())
-			cx.RespondWithError(http.StatusBadRequest)
+		if node.File.Empty() {
+			cx.RespondWithErrorMessage("node file not found", http.StatusBadRequest)
 			return
 		}
-		s := &streamer{rs: nf, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, size: node.File.Size}
-		err = s.stream()
-		if err != nil {
-			fmt.Println("err", err.Error())
+		_, index := query["index"]
+		_, part := query["part"]
+		_, chunksize := query["chunksize"]
+		if index {
+			if query["index"][0] == "size" {
+				if part {
+					var csize int64 = 1048576
+					if chunksize {
+						csize, err = strconv.ParseInt(query["chunksize"][0], 10, 64)
+						if err != nil {
+							cx.RespondWithErrorMessage("Invalid chunksize", http.StatusBadRequest)
+							return
+						}
+					}
+					var size int64 = 0
+					s := &partStreamer{rs: []*io.SectionReader{}, ws: cx.ResponseWriter, contentType: "text", filename: node.Id}
+					r, err := os.Open(node.DataPath())
+					if err != nil {
+						fmt.Println("Err@node_Read:Open:", err.Error())
+						cx.RespondWithError(http.StatusInternalServerError)
+						return
+					}
+					defer r.Close()
+					for _, p := range query["part"] {
+						pInt, err := strconv.ParseInt(p, 10, 64)
+						if err != nil {
+							cx.RespondWithErrorMessage("Invalid index part", http.StatusBadRequest)
+							return
+						}
+						pos, length, err := node.File.SizeOffset(pInt, csize)
+						if err != nil {
+							cx.RespondWithErrorMessage("Invalid index part", http.StatusBadRequest)
+							return
+						}
+						size += length
+						fmt.Println(pos, "-", length)
+						s.rs = append(s.rs, io.NewSectionReader(r, pos, length))
+					}
+					s.size = size
+					err = s.stream()
+					if err != nil {
+						fmt.Println("err", err.Error())
+					}
+				} else {
+					cx.RespondWithErrorMessage("Index parameter requires part parameter", http.StatusBadRequest)
+					return
+				}
+			} else {
+				cx.RespondWithError(http.StatusNotImplemented)
+			}
+		} else { //{"v ers ion		
+			nf, err := os.Open(node.DataPath())
+			if err != nil {
+				// File not found or some sort of file read error. 
+				// Probably deserves more checking
+				fmt.Println("err", err.Error())
+				cx.RespondWithError(http.StatusBadRequest)
+				return
+			}
+			s := &streamer{rs: nf, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, size: node.File.Size}
+			err = s.stream()
+			if err != nil {
+				fmt.Println("err", err.Error())
+			}
 		}
 		return
 	} else if pipe {
