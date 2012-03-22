@@ -130,6 +130,20 @@ Data Types
 - passwd: all responds are masked "**********" 
 - admin: boolean
 
+##### user example:
+
+    {
+        "C": "", 
+        "D": {
+            "uuid": "67394386a4acac62fdb851d78691ee48"
+            "name": "joeuser", 
+            "passwd": "**********", 
+            "admin": false, 
+        }, 
+        "E": null, 
+        "S": 200
+    }
+    
 API
 ---
 
