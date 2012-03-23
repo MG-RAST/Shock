@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/MG-RAST/Shock/conf"
 	ds "github.com/MG-RAST/Shock/datastore"
+	"github.com/MG-RAST/Shock/filters/anonymize"
 	"github.com/MG-RAST/Shock/user"
 	"io"
 	"math/rand"
@@ -19,7 +20,7 @@ import (
 )
 
 type streamer struct {
-	rs          io.Reader
+	rs          io.ReadCloser
 	ws          http.ResponseWriter
 	contentType string
 	filename    string
@@ -37,8 +38,10 @@ type partStreamer struct {
 func (s *streamer) stream() (err error) {
 	s.ws.Header().Set("Content-Type", s.contentType)
 	s.ws.Header().Set("Content-Disposition", fmt.Sprintf(":attachment;filename=%s", s.filename))
-	s.ws.Header().Set("Content-Length", fmt.Sprint(s.size))
-	_, err = io.Copy(s.ws, s.rs)
+	//s.ws.Header().Set("Content-Length", fmt.Sprint(s.size))
+	ar := anonymize.NewReader(s.rs)
+	defer ar.Close()
+	_, err = io.Copy(s.ws, ar)
 	return
 }
 

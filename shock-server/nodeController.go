@@ -188,6 +188,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 					s.size = size
 					err = s.stream()
 					if err != nil {
+						// fix
 						fmt.Println("err", err.Error())
 					}
 				} else {
@@ -251,6 +252,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 			s := &streamer{rs: nf, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, size: node.File.Size}
 			err = s.stream()
 			if err != nil {
+				// fix
 				fmt.Println("err", err.Error())
 			}
 		}
