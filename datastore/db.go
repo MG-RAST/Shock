@@ -2,9 +2,11 @@ package datastore
 
 import (
 	"errors"
+	"fmt"
 	"github.com/MG-RAST/Shock/conf"
 	"launchpad.net/mgo"
 	"launchpad.net/mgo/bson"
+	"os"
 	"time"
 )
 
@@ -15,12 +17,14 @@ const (
 func init() {
 	d, err := DBConnect()
 	if err != nil {
-		panic(errors.New("No reachable mongodb servers."))
+		fmt.Fprintln(os.Stderr, "datastore: no reachable mongodb servers")
+		os.Exit(1)
 	}
 	idIdx := mgo.Index{Key: []string{"id"}, Unique: true}
 	err = d.Nodes.EnsureIndex(idIdx)
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "datastore: fatal initialization error: %v", err)
+		os.Exit(1)
 	}
 }
 
