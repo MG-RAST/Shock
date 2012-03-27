@@ -1,67 +1,55 @@
 package anonymize
 
-import (	
-	"io"
-	"errors"
-	e "github.com/MG-RAST/Shock/errors"
-	"github.com/kortschak/BioGo/io/seqio/fasta"
-	"github.com/kortschak/BioGo/io/seqio/fastq"
-	"github.com/kortschak/BioGo/io/seqio"
+import (
 	"fmt"
+	"github.com/MG-RAST/Shock/types/sequence"
+	"io"
 )
 
 type Reader struct {
-	f		io.ReadCloser
-	r		seqio.Reader
-	rfasta	*fasta.Reader
-	rfastq	*fastq.Reader
-	counter	int
+	f        io.ReadCloser
+	r        *sequence.Reader
+	counter  int
+	overflow []byte
 }
 
-func NewReader(f io.ReadCloser) *Reader {
-	return &Reader{ f: f, r: nil, rfasta: fasta.NewReader(f), rfastq: fastq.NewReader(f), counter: 1}
-}
-
-func (r *Reader) determineSeqType() (err error){	
-	_, fastaE := r.rfasta.Read()
-	_, fastqE := r.rfastq.Read()
-	if fastaE != nil && fastqE != nil {
-		err = errors.New(e.InvalidFileTypeForFilter)
-	} else if fastaE != nil {
-		err = r.rfastq.Rewind(); if err != nil {
-			return
-		}
-		r.r = r.rfastq
-	} else {
-		err = r.rfastq.Rewind(); if err != nil {
-			return
-		}
-		r.r = r.rfasta
+func NewReader(f io.ReadCloser) io.ReadCloser {
+	return &Reader{
+		f:        f,
+		r:        sequence.NewReader(f),
+		counter:  1,
+		overflow: nil,
 	}
-	return
 }
 
 func (r *Reader) Read(p []byte) (n int, err error) {
-	if r.r == nil {
-		err = r.determineSeqType(); if err != nil {
-			return
-		}
-	} 
-	seq, err := r.r.Read(); if err != nil {
-		return
+	ln := 0
+	if r.overflow != nil {
+		copy(p[0:len(r.overflow)], r.overflow)
+		ln = len(r.overflow)
 	}
-	seq.ID = fmt.Sprintf("%d", r.counter)
-	r.counter += 1
-	record := []byte(fmt.Sprintf(">%s\n%s\n",seq.ID, seq.Seq))
-	copy(p[0:len(record)],record)
-	n = len(record)
+	for {
+		seq, er := r.r.Read()
+		if er != nil {
+			err = er
+			break
+		}
+		seq.ID = fmt.Sprintf("%d", r.counter)
+		r.counter += 1
+		record := []byte(r.r.Format(seq))
+		if ln+len(record) < cap(p) {
+			copy(p[ln:ln+len(record)], record)
+			ln = ln + len(record)
+		} else {
+			r.overflow = record
+			break
+		}
+	}
+	n = ln
 	return
 }
 
-func (r *Reader) Close() {
-	r.rfasta.Close()
-	r.rfastq.Close()
-	return
+func (r *Reader) Close() error {
+	r.Close()
+	return nil
 }
-
-
