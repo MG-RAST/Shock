@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"github.com/MG-RAST/Shock/conf"
 	ds "github.com/MG-RAST/Shock/datastore"
-	"github.com/MG-RAST/Shock/filters/anonymize"
 	"github.com/MG-RAST/Shock/user"
 	"io"
 	"math/rand"
@@ -19,38 +18,58 @@ import (
 	"time"
 )
 
-type streamer struct {
-	rs          io.ReadCloser
-	ws          http.ResponseWriter
-	contentType string
-	filename    string
-	size        int64
+type SectionReaderCloser struct {
+	f  *os.File
+	sr *io.SectionReader
 }
 
-type partStreamer struct {
-	rs          []*io.SectionReader
+// io.SectionReader doesn't implement close. Why? No one knows.
+func NewSectionReaderCloser(f *os.File, off int64, n int64) *SectionReaderCloser {
+	return &SectionReaderCloser{
+		f:  f,
+		sr: io.NewSectionReader(f, off, n),
+	}
+}
+
+func (s *SectionReaderCloser) Read(p []byte) (n int, err error) {
+	return s.sr.Read(p)
+}
+
+func (s *SectionReaderCloser) Seek(offset int64, whence int) (ret int64, err error) {
+	return s.sr.Seek(offset, whence)
+}
+
+func (s *SectionReaderCloser) ReadAt(p []byte, off int64) (n int, err error) {
+	return s.sr.ReadAt(p, off)
+}
+
+func (s *SectionReaderCloser) Close() error {
+	return s.f.Close()
+}
+
+type streamer struct {
+	rs          []io.ReadCloser
 	ws          http.ResponseWriter
 	contentType string
 	filename    string
 	size        int64
+	filter      func(io.ReadCloser) io.ReadCloser
 }
 
 func (s *streamer) stream() (err error) {
 	s.ws.Header().Set("Content-Type", s.contentType)
 	s.ws.Header().Set("Content-Disposition", fmt.Sprintf(":attachment;filename=%s", s.filename))
-	//s.ws.Header().Set("Content-Length", fmt.Sprint(s.size))
-	ar := anonymize.NewReader(s.rs)
-	defer ar.Close()
-	_, err = io.Copy(s.ws, ar)
-	return
-}
-
-func (s *partStreamer) stream() (err error) {
-	s.ws.Header().Set("Content-Type", s.contentType)
-	s.ws.Header().Set("Content-Disposition", fmt.Sprintf(":attachment;filename=%s", s.filename))
-	s.ws.Header().Set("Content-Length", fmt.Sprint(s.size))
+	if s.size > 0 && s.filter == nil {
+		s.ws.Header().Set("Content-Length", fmt.Sprint(s.size))
+	}
 	for _, sr := range s.rs {
-		_, err = io.Copy(s.ws, sr)
+		var rs io.ReadCloser
+		if s.filter != nil {
+			rs = s.filter(sr)
+		} else {
+			rs = sr
+		}
+		_, err = io.Copy(s.ws, rs)
 		if err != nil {
 			return
 		}
