@@ -1,14 +1,16 @@
 package anonymize
 
 import (
+	"bytes"
 	"fmt"
-	"github.com/MG-RAST/Shock/types/sequence"
+	"github.com/MG-RAST/Shock/types/sequence/seq"
+	"github.com/MG-RAST/Shock/types/sequence/multi"
 	"io"
 )
 
 type Reader struct {
 	f        io.ReadCloser
-	r        *sequence.Reader
+	r        seq.ReadCloser
 	counter  int
 	overflow []byte
 }
@@ -16,36 +18,39 @@ type Reader struct {
 func NewReader(f io.ReadCloser) io.ReadCloser {
 	return &Reader{
 		f:        f,
-		r:        sequence.NewReader(f),
+		r:        multi.NewReader(f),
 		counter:  1,
 		overflow: nil,
 	}
 }
 
 func (r *Reader) Read(p []byte) (n int, err error) {
-	ln := 0
+	n = 0
+	buf := bytes.NewBuffer(nil)
 	if r.overflow != nil {
-		copy(p[0:len(r.overflow)], r.overflow)
-		ln = len(r.overflow)
+		ln, _ := buf.Write(r.overflow)
+		n += ln
 	}
 	for {
 		seq, er := r.r.Read()
 		if er != nil {
+			if er == io.EOF {
+				copy(p[0:n],buf.Bytes()[0:n])
+			} 
 			err = er
 			break
 		}
-		seq.ID = fmt.Sprintf("%d", r.counter)
+		seq.ID = []byte(fmt.Sprint(r.counter))
 		r.counter += 1
-		record := []byte(r.r.Format(seq))
-		if ln+len(record) < cap(p) {
-			copy(p[ln:ln+len(record)], record)
-			ln = ln + len(record)
-		} else {
-			r.overflow = record
+		ln, _ := r.r.Format(seq, buf)
+		if n+ln > cap(p) {
+			copy(p[0:n],buf.Bytes()[0:n])
+			r.overflow = buf.Bytes()[n:]
 			break
-		}
+		} else {			
+			n += ln
+		}	
 	}
-	n = ln
 	return
 }
 
