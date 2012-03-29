@@ -4,6 +4,7 @@ import (
 	"fmt"
 	ds "github.com/MG-RAST/Shock/datastore"
 	e "github.com/MG-RAST/Shock/errors"
+	"github.com/MG-RAST/Shock/filters/anonymize"
 	"github.com/MG-RAST/Shock/goweb"
 	"github.com/MG-RAST/Shock/user"
 	"io"
@@ -93,7 +94,8 @@ func (cr *NodeController) DeleteMany(cx *goweb.Context) {
 	cx.RespondWithError(http.StatusNotImplemented)
 }
 
-// GET: /node/{id}
+// GET: /node/{id}'
+// ToDo: clean up this function. About to get unmanagable
 func (cr *NodeController) Read(id string, cx *goweb.Context) {
 	// Log Request and check for Auth
 	LogRequest(cx.Request)
@@ -122,6 +124,14 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 	_, download := query["download"]
 	_, pipe := query["pipe"]
 	_, list := query["list"]
+	_, filter := query["filter"]
+
+	var filterFunc func(io.ReadCloser) io.ReadCloser = nil
+	if filter {
+		if query["filter"][0] == "anonymize" {
+			filterFunc = anonymize.NewReader
+		}
+	}
 
 	// Load node and handle user unauthorized
 	node, err := ds.LoadNode(id, u.Uuid)
@@ -163,7 +173,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 						}
 					}
 					var size int64 = 0
-					s := &partStreamer{rs: []*io.SectionReader{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id}
+					s := &streamer{rs: []io.ReadCloser{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, filter: filterFunc}
 					r, err := os.Open(node.DataPath())
 					if err != nil {
 						fmt.Println("Err@node_Read:Open:", err.Error())
@@ -183,11 +193,12 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 							return
 						}
 						size += length
-						s.rs = append(s.rs, io.NewSectionReader(r, pos, length))
+						s.rs = append(s.rs, NewSectionReaderCloser(r, pos, length))
 					}
 					s.size = size
 					err = s.stream()
 					if err != nil {
+						// fix
 						fmt.Println("err", err.Error())
 					}
 				} else {
@@ -204,7 +215,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 						return
 					}
 					var size int64 = 0
-					s := &partStreamer{rs: []*io.SectionReader{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id}
+					s := &streamer{rs: []io.ReadCloser{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, filter: filterFunc}
 					r, err := os.Open(node.DataPath())
 					if err != nil {
 						fmt.Println("Err@node_Read:Open:", err.Error())
@@ -227,7 +238,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 						pos := int64(p)
 						length := int64(l)
 						size += length
-						s.rs = append(s.rs, io.NewSectionReader(r, pos, length))
+						s.rs = append(s.rs, NewSectionReaderCloser(r, pos, length))
 					}
 					s.size = size
 					err = s.stream()
@@ -248,9 +259,10 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				cx.RespondWithError(http.StatusBadRequest)
 				return
 			}
-			s := &streamer{rs: nf, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, size: node.File.Size}
+			s := &streamer{rs: []io.ReadCloser{nf}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, size: node.File.Size, filter: filterFunc}
 			err = s.stream()
 			if err != nil {
+				// fix
 				fmt.Println("err", err.Error())
 			}
 		}

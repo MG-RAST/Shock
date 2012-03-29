@@ -6,12 +6,12 @@ Release 0.2 (3/22/12)
  - basic user management: Done
  
 Release 0.3 (4/1/12)
+ - checksums on content: Done
+ - object version checksum: Done
  - data set mirroring
  - virtual nodes
  - filters
- - checksums on content
- - object version checksum
- 
+  
 Release 0.4 (4/25/12)
 
 Unfiled:
