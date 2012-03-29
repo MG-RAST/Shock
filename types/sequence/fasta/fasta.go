@@ -5,7 +5,6 @@ package fasta
 // Dan Kortschak github.com/kortschak/BioGo 
 
 import (
-
 	"bufio"
 	"bytes"
 	"errors"
@@ -16,15 +15,15 @@ import (
 
 // Fasta sequence format reader type.
 type Reader struct {
-	f         io.ReadCloser
-	r         *bufio.Reader
+	f io.ReadCloser
+	r *bufio.Reader
 }
 
 // Returns a new fasta format reader using f.
 func NewReader(f io.ReadCloser) *Reader {
 	return &Reader{
-		f:         f,
-		r:         bufio.NewReader(f),
+		f: f,
+		r: bufio.NewReader(f),
 	}
 }
 
@@ -33,13 +32,13 @@ func (self *Reader) Read() (sequence *seq.Seq, err error) {
 	var label, body []byte
 	for {
 		read, err := self.r.ReadBytes('>')
-		if len(read) > 1 {				
+		if len(read) > 1 {
 			lines := bytes.Split(read, []byte{'\n'})
 			if len(lines) > 1 {
 				label = lines[0]
 				body = bytes.Join(lines[1:len(lines)-1], []byte{})
 			}
-			break 
+			break
 		} else if err != nil {
 			return nil, io.EOF
 		}
@@ -70,15 +69,15 @@ func (self *Reader) Close() (err error) {
 
 // Fasta sequence format writer type.
 type Writer struct {
-	f         io.WriteCloser
-	w         *bufio.Writer
+	f io.WriteCloser
+	w *bufio.Writer
 }
 
 // Returns a new fasta format writer using f.
 func NewWriter(f io.WriteCloser, width int) *Writer {
 	return &Writer{
-		f:         f,
-		w:         bufio.NewWriter(f),
+		f: f,
+		w: bufio.NewWriter(f),
 	}
 }
 

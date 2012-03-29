@@ -1,12 +1,12 @@
 package multi
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
 	e "github.com/MG-RAST/Shock/errors"
-	"github.com/MG-RAST/Shock/types/sequence/seq"
 	"github.com/MG-RAST/Shock/types/sequence/fasta"
 	"github.com/MG-RAST/Shock/types/sequence/fastq"
+	"github.com/MG-RAST/Shock/types/sequence/seq"
 	"io"
 )
 
@@ -29,7 +29,7 @@ func NewReader(f io.ReadCloser) *Reader {
 	}
 }
 
-func (r *Reader) determineFormat() (error) {
+func (r *Reader) determineFormat() error {
 	for f, reader := range r.formats {
 		var er error
 		for i := 0; i < 10; i++ {
@@ -62,7 +62,7 @@ func (r *Reader) Read() (*seq.Seq, error) {
 func (r *Reader) Format(s *seq.Seq, w io.Writer) (n int, err error) {
 	if r.format == "fasta" {
 		return fasta.Format(s, w)
-	} 
+	}
 	return fastq.Format(s, w)
 }
 

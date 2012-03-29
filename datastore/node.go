@@ -260,7 +260,6 @@ func (node *Node) UpdateVersion() (err error) {
 	if err != nil {
 		return
 	}
-	fmt.Println(string(m))
 	h.Write(m)
 	fsum = h.Sum(fsum)
 	parts["file_ver"] = fmt.Sprintf("%x", fsum)
@@ -271,7 +270,6 @@ func (node *Node) UpdateVersion() (err error) {
 	if err != nil {
 		return
 	}
-	fmt.Println(string(m))
 	h.Write(m)
 	attrsum = h.Sum(attrsum)
 	parts["attributes_ver"] = fmt.Sprintf("%x", attrsum)
@@ -282,7 +280,6 @@ func (node *Node) UpdateVersion() (err error) {
 	if err != nil {
 		return
 	}
-	fmt.Println(string(m))
 	h.Write(m)
 	aclsum = h.Sum(aclsum)
 	parts["acl_ver"] = fmt.Sprintf("%x", aclsum)

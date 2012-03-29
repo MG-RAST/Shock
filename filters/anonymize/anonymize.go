@@ -3,8 +3,8 @@ package anonymize
 import (
 	"bytes"
 	"fmt"
-	"github.com/MG-RAST/Shock/types/sequence/seq"
 	"github.com/MG-RAST/Shock/types/sequence/multi"
+	"github.com/MG-RAST/Shock/types/sequence/seq"
 	"io"
 )
 
@@ -35,8 +35,8 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 		seq, er := r.r.Read()
 		if er != nil {
 			if er == io.EOF {
-				copy(p[0:n],buf.Bytes()[0:n])
-			} 
+				copy(p[0:n], buf.Bytes()[0:n])
+			}
 			err = er
 			break
 		}
@@ -44,12 +44,12 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 		r.counter += 1
 		ln, _ := r.r.Format(seq, buf)
 		if n+ln > cap(p) {
-			copy(p[0:n],buf.Bytes()[0:n])
+			copy(p[0:n], buf.Bytes()[0:n])
 			r.overflow = buf.Bytes()[n:]
 			break
-		} else {			
+		} else {
 			n += ln
-		}	
+		}
 	}
 	return
 }

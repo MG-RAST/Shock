@@ -5,9 +5,9 @@ package fastq
 // Dan Kortschak github.com/kortschak/BioGo
 
 import (
-	"errors"
 	"bufio"
 	"bytes"
+	"errors"
 	"github.com/MG-RAST/Shock/types/sequence/seq"
 	"io"
 	"os"
@@ -15,8 +15,8 @@ import (
 
 // Fastq sequence format reader type.
 type Reader struct {
-	f        io.ReadCloser
-	r        *bufio.Reader
+	f io.ReadCloser
+	r *bufio.Reader
 }
 
 // Returns a new fastq format reader using r.
@@ -41,7 +41,7 @@ func NewReaderName(name string) (r *Reader, err error) {
 func (self *Reader) Read() (sequence *seq.Seq, err error) {
 	var line, label, seqBody, qualBody []byte
 	sequence = &seq.Seq{}
-	
+
 	inQual := false
 READ:
 	for {
@@ -105,8 +105,8 @@ func (self *Reader) Close() (err error) {
 
 // Fastq sequence format writer type.
 type Writer struct {
-	f        io.WriteCloser
-	w        *bufio.Writer
+	f io.WriteCloser
+	w *bufio.Writer
 }
 
 // Returns a new fastq format writer using w.

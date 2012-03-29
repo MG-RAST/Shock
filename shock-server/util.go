@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"crypto/md5"
 	"crypto/sha1"
 	"encoding/base64"
@@ -100,15 +101,26 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files ds.For
 			}
 			params[part.FormName()] = fmt.Sprintf("%s", buffer[0:n])
 		} else {
+			var reader io.Reader
 			tmpPath := fmt.Sprintf("%s/temp/%d%d", *conf.DATAROOT, rand.Int(), rand.Int())
-			files[part.FormName()] = ds.FormFile{Name: part.FileName(), Path: tmpPath, Checksum: make(map[string]string)}
+			filename := part.FileName()
+			if filename[len(filename)-3:] == ".gz" {
+				filename = filename[:len(filename)-3]
+				reader, err = gzip.NewReader(part)
+				if err != nil {
+					break
+				}
+			} else {
+				reader = part
+			}
+			files[part.FormName()] = ds.FormFile{Name: filename, Path: tmpPath, Checksum: make(map[string]string)}
 			tmpFile, err := os.Create(tmpPath)
 			if err != nil {
 				break
 			}
 			buffer := make([]byte, 32*1024)
 			for {
-				n, err := part.Read(buffer)
+				n, err := reader.Read(buffer)
 				if n == 0 || err != nil {
 					break
 				}
