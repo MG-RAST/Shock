@@ -18,9 +18,14 @@ func New(id []byte, seq []byte, qual []byte) *Seq {
 	}
 }
 
-type ReadCloser interface {
+type ReadFormatCloser interface {
 	Read() (*Seq, error)
 	Format(*Seq, io.Writer) (int, error)
+	Close() error
+}
+
+type ReadCloser interface {
+	Read() (*Seq, error)
 	Close() error
 }
 

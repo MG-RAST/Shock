@@ -5,6 +5,7 @@ import (
 	ds "github.com/MG-RAST/Shock/datastore"
 	e "github.com/MG-RAST/Shock/errors"
 	"github.com/MG-RAST/Shock/filters/anonymize"
+	"github.com/MG-RAST/Shock/filters/fq2fa"
 	"github.com/MG-RAST/Shock/goweb"
 	"github.com/MG-RAST/Shock/user"
 	"io"
@@ -130,6 +131,8 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 	if filter {
 		if query["filter"][0] == "anonymize" {
 			filterFunc = anonymize.NewReader
+		} else if query["filter"][0] == "fq2fa" {
+			filterFunc = fq2fa.NewReader
 		}
 	}
 
