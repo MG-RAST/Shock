@@ -1,25 +1,23 @@
-package anonymize
+package fq2fa
 
 import (
 	"bytes"
-	"fmt"
-	"github.com/MG-RAST/Shock/types/sequence/multi"
+	"github.com/MG-RAST/Shock/types/sequence/fasta"
+	"github.com/MG-RAST/Shock/types/sequence/fastq"
 	"github.com/MG-RAST/Shock/types/sequence/seq"
 	"io"
 )
 
 type Reader struct {
 	f        io.ReadCloser
-	r        seq.ReadFormatCloser
-	counter  int
+	r        seq.ReadCloser
 	overflow []byte
 }
 
 func NewReader(f io.ReadCloser) io.ReadCloser {
 	return &Reader{
 		f:        f,
-		r:        multi.NewReader(f),
-		counter:  1,
+		r:        fastq.NewReader(f),
 		overflow: nil,
 	}
 }
@@ -40,9 +38,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 			err = er
 			break
 		}
-		seq.ID = []byte(fmt.Sprint(r.counter))
-		r.counter += 1
-		ln, _ := r.r.Format(seq, buf)
+		ln, _ := fasta.Format(seq, buf)
 		if n+ln > cap(p) {
 			copy(p[0:n], buf.Bytes()[0:n])
 			r.overflow = buf.Bytes()[n:]
