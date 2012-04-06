@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/MG-RAST/Shock/conf"
 	ds "github.com/MG-RAST/Shock/datastore"
+	"github.com/MG-RAST/Shock/goweb"
 	"github.com/MG-RAST/Shock/user"
 	"io"
 	"math/rand"
@@ -144,6 +145,21 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files ds.For
 		return
 	}
 	return
+}
+
+func Site(cx *goweb.Context) {
+	LogRequest(cx.Request)
+	http.ServeFile(cx.ResponseWriter, cx.Request, conf.SITEPATH+"/pages/main.html")
+}
+
+func RawDir(cx *goweb.Context) {
+	LogRequest(cx.Request)
+	http.ServeFile(cx.ResponseWriter, cx.Request, fmt.Sprintf("%s%s", *conf.DATAROOT, cx.Request.URL.Path))
+}
+
+func AssetsDir(cx *goweb.Context) {
+	LogRequest(cx.Request)
+	http.ServeFile(cx.ResponseWriter, cx.Request, conf.SITEPATH+cx.Request.URL.Path)
 }
 
 func LogRequest(req *http.Request) {
