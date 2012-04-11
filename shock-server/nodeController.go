@@ -7,6 +7,7 @@ import (
 	"github.com/MG-RAST/Shock/filters/anonymize"
 	"github.com/MG-RAST/Shock/filters/fq2fa"
 	"github.com/MG-RAST/Shock/goweb"
+	"github.com/MG-RAST/Shock/indexer/seqRecord"
 	"github.com/MG-RAST/Shock/user"
 	"io"
 	"launchpad.net/mgo/bson"
@@ -96,7 +97,7 @@ func (cr *NodeController) DeleteMany(cx *goweb.Context) {
 }
 
 // GET: /node/{id}'
-// ToDo: clean up this function. About to get unmanagable
+// ToDo: clean up this function. About to get unmanageable
 func (cr *NodeController) Read(id string, cx *goweb.Context) {
 	// Log Request and check for Auth
 	LogRequest(cx.Request)
@@ -210,8 +211,8 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				}
 			} else {
 				if node.HasIndex(query["index"][0]) {
-					idx := ds.NewIndex()
-					err = idx.Load(fmt.Sprintf("%s/%s", node.IndexPath(), query["index"][0]))
+					idx := ds.NewBinaryIndex()
+					err = idx.Load(node.IndexPath() + "/" + query["index"][0])
 					if err != nil {
 						fmt.Println(err.Error())
 						cx.RespondWithErrorMessage("Error loading index", http.StatusBadRequest)
@@ -227,20 +228,12 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 					}
 					defer r.Close()
 					for _, p := range query["part"] {
-						pInt, err := strconv.ParseInt(p, 10, 64)
+						pos, length, err := idx.Part(p)
 						if err != nil {
 							cx.RespondWithErrorMessage("Invalid index part", http.StatusBadRequest)
 							return
 						}
-						p, ok1 := idx.Idx[(pInt - 1)][0].(float64)
-						l, ok2 := idx.Idx[(pInt - 1)][1].(float64)
-						if !ok1 || !ok2 {
-							cx.RespondWithErrorMessage("Malformed index", http.StatusBadRequest)
-							return
-						}
-						pos := int64(p)
-						length := int64(l)
-						size += length
+						size += int64(length)
 						s.rs = append(s.rs, NewSectionReaderCloser(r, pos, length))
 					}
 					s.size = size
@@ -386,6 +379,9 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 		}
 	}
 
+	query := cx.Request.URL.Query()
+	indextype, index := query["index"]
+
 	// Fake public user 
 	if u == nil {
 		u = &user.User{Uuid: ""}
@@ -409,27 +405,52 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 		}
 	}
 
-	params, files, err := ParseMultipartForm(cx.Request)
-	if err != nil {
-		fmt.Println("err", err.Error())
-		cx.RespondWithError(http.StatusBadRequest)
-		return
-	}
-
-	err = node.Update(params, files)
-	if err != nil {
-		errors := []string{"node file already set and is immutable", "node file immutable", "node attributes immutable", "node part already exists and is immutable"}
-		for e := range errors {
-			if err.Error() == errors[e] {
-				cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
-				return
+	if index {
+		if !node.File.Empty() {
+			if indextype[0] == "record" {
+				f, _ := os.Open(node.DataPath())
+				defer f.Close()
+				idx := seqRecord.NewIndexer(f)
+				err := idx.Create()
+				if err != nil {
+					fmt.Println(err.Error())
+				}
+				err = idx.Index.Dump(node.IndexPath() + "/record")
+				if err != nil {
+					cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
+					return
+				} else {
+					cx.RespondWithOK()
+					return
+				}
 			}
+		} else {
+			cx.RespondWithErrorMessage("node file empty", http.StatusBadRequest)
+			return
 		}
-		fmt.Println("err", err.Error())
-		cx.RespondWithError(http.StatusBadRequest)
-		return
+	} else {
+		params, files, err := ParseMultipartForm(cx.Request)
+		if err != nil {
+			fmt.Println("err", err.Error())
+			cx.RespondWithError(http.StatusBadRequest)
+			return
+		}
+
+		err = node.Update(params, files)
+		if err != nil {
+			errors := []string{"node file already set and is immutable", "node file immutable", "node attributes immutable", "node part already exists and is immutable"}
+			for e := range errors {
+				if err.Error() == errors[e] {
+					cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
+					return
+				}
+			}
+			fmt.Println("err", err.Error())
+			cx.RespondWithError(http.StatusBadRequest)
+			return
+		}
+		cx.RespondWithData(node)
 	}
-	cx.RespondWithData(node)
 	return
 }
 
