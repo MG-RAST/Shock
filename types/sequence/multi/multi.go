@@ -38,13 +38,13 @@ func (r *Reader) determineFormat() error {
 				break
 			}
 		}
+		reader.Rewind()
 		if er == nil {
-			reader.Rewind()
 			r.r = reader
 			r.format = f
 			return nil
 		}
-		reader.Rewind()
+
 	}
 	return errors.New(e.InvalidFileTypeForFilter)
 }
@@ -57,6 +57,16 @@ func (r *Reader) Read() (*seq.Seq, error) {
 		}
 	}
 	return r.r.Read()
+}
+
+func (r *Reader) ReadRaw(p []byte) (n int, err error) {
+	if r.r == nil {
+		err := r.determineFormat()
+		if err != nil {
+			return 0, err
+		}
+	}
+	return r.r.ReadRaw(p)
 }
 
 func (r *Reader) Format(s *seq.Seq, w io.Writer) (n int, err error) {

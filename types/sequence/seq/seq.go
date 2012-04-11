@@ -26,11 +26,13 @@ type ReadFormatCloser interface {
 
 type ReadCloser interface {
 	Read() (*Seq, error)
+	ReadRaw(p []byte) (int, error)
 	Close() error
 }
 
 type ReadRewindCloser interface {
 	Read() (*Seq, error)
+	ReadRaw(p []byte) (int, error)
 	Rewind() error
 	Close() error
 }

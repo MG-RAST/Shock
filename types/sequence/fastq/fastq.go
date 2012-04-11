@@ -87,6 +87,44 @@ READ:
 	return
 }
 
+func (self *Reader) ReadRaw(p []byte) (n int, err error) {
+	curr := 0
+	id, err := self.r.ReadBytes('\n')
+	if err != nil {
+		return 0, err
+	} else if !bytes.HasPrefix(id, []byte{'@'}) {
+		return 0, errors.New("Invalid format: id line does not start with @")
+	}
+	copy(p[curr:len(id)+curr], id)
+	curr += len(id)
+
+	seq, err := self.r.ReadBytes('\n')
+	if err != nil {
+		return 0, err
+	}
+	copy(p[curr:len(seq)+curr], seq)
+	curr += len(seq)
+
+	plus, err := self.r.ReadBytes('\n')
+	if err != nil {
+		return 0, err
+	} else if !bytes.HasPrefix(plus, []byte{'+'}) {
+		return 0, errors.New("Invalid format: plus line does not start with +")
+	}
+	copy(p[curr:len(plus)+curr], plus)
+	curr += len(plus)
+
+	qual, err := self.r.ReadBytes('\n')
+	if err != nil {
+		return 0, err
+	} else if len(seq) != len(qual) {
+		return 0, errors.New("Invalid format: length of sequence and quality lines do not match")
+	}
+	copy(p[curr:len(qual)+curr], qual)
+	n = curr + len(qual)
+	return
+}
+
 // Rewind the reader.
 func (self *Reader) Rewind() (err error) {
 	if s, ok := self.f.(io.Seeker); ok {

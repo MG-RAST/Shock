@@ -51,6 +51,24 @@ func (self *Reader) Read() (sequence *seq.Seq, err error) {
 	return
 }
 
+// Read a single sequence and return it or an error.
+func (self *Reader) ReadRaw(p []byte) (n int, err error) {
+	p[n] = byte('>')
+	n = 1
+	for {
+		read, er := self.r.ReadBytes('>')
+		if len(read) > 1 {
+			copy(p[n:n+len(read)-1], read[0:len(read)-1])
+			n += len(read) - 1
+			break
+		} else if er != nil {
+			err = er
+			break
+		}
+	}
+	return
+}
+
 // Rewind the reader.
 func (self *Reader) Rewind() (err error) {
 	if s, ok := self.f.(io.Seeker); ok {
