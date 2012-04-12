@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 	e "github.com/MG-RAST/Shock/errors"
-	"github.com/MG-RAST/Shock/types/sequence/fasta"
-	"github.com/MG-RAST/Shock/types/sequence/fastq"
-	"github.com/MG-RAST/Shock/types/sequence/seq"
+	"github.com/MG-RAST/Shock/store/type/sequence/fasta"
+	"github.com/MG-RAST/Shock/store/type/sequence/fastq"
+	"github.com/MG-RAST/Shock/store/type/sequence/seq"
 	"io"
 )
 
@@ -32,7 +32,7 @@ func NewReader(f io.ReadCloser) *Reader {
 func (r *Reader) determineFormat() error {
 	for f, reader := range r.formats {
 		var er error
-		for i := 0; i < 10; i++ {
+		for i := 0; i < 1; i++ {
 			_, er = reader.Read()
 			if er != nil {
 				break

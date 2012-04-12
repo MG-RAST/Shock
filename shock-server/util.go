@@ -8,9 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/conf"
-	ds "github.com/MG-RAST/Shock/datastore"
 	"github.com/MG-RAST/Shock/goweb"
-	"github.com/MG-RAST/Shock/user"
+	"github.com/MG-RAST/Shock/store"
+	"github.com/MG-RAST/Shock/store/filter"
+	"github.com/MG-RAST/Shock/store/user"
 	"io"
 	"math/rand"
 	"net"
@@ -55,7 +56,7 @@ type streamer struct {
 	contentType string
 	filename    string
 	size        int64
-	filter      func(io.ReadCloser) io.ReadCloser
+	filter      filter.FilterFunc
 }
 
 func (s *streamer) stream() (err error) {
@@ -67,8 +68,10 @@ func (s *streamer) stream() (err error) {
 	for _, sr := range s.rs {
 		var rs io.ReadCloser
 		if s.filter != nil {
+			print("filter != nil\n")
 			rs = s.filter(sr)
 		} else {
+			print("filter == nil\n")
 			rs = sr
 		}
 		_, err = io.Copy(s.ws, rs)
@@ -80,9 +83,9 @@ func (s *streamer) stream() (err error) {
 }
 
 // helper function for create & update
-func ParseMultipartForm(r *http.Request) (params map[string]string, files ds.FormFiles, err error) {
+func ParseMultipartForm(r *http.Request) (params map[string]string, files store.FormFiles, err error) {
 	params = make(map[string]string)
-	files = make(ds.FormFiles)
+	files = make(store.FormFiles)
 	md5h := md5.New()
 	sha1h := sha1.New()
 	reader, err := r.MultipartReader()
@@ -114,7 +117,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files ds.For
 			} else {
 				reader = part
 			}
-			files[part.FormName()] = ds.FormFile{Name: filename, Path: tmpPath, Checksum: make(map[string]string)}
+			files[part.FormName()] = store.FormFile{Name: filename, Path: tmpPath, Checksum: make(map[string]string)}
 			tmpFile, err := os.Create(tmpPath)
 			if err != nil {
 				break

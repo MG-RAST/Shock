@@ -8,7 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"github.com/MG-RAST/Shock/types/sequence/seq"
+	"github.com/MG-RAST/Shock/store/type/sequence/seq"
 	"io"
 	"os"
 )
