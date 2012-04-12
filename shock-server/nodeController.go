@@ -2,13 +2,12 @@ package main
 
 import (
 	"fmt"
-	ds "github.com/MG-RAST/Shock/datastore"
 	e "github.com/MG-RAST/Shock/errors"
-	"github.com/MG-RAST/Shock/filters/anonymize"
-	"github.com/MG-RAST/Shock/filters/fq2fa"
 	"github.com/MG-RAST/Shock/goweb"
-	"github.com/MG-RAST/Shock/indexer/seqRecord"
-	"github.com/MG-RAST/Shock/user"
+	"github.com/MG-RAST/Shock/store"
+	"github.com/MG-RAST/Shock/store/filter"
+	"github.com/MG-RAST/Shock/store/indexer"
+	"github.com/MG-RAST/Shock/store/user"
 	"io"
 	"launchpad.net/mgo/bson"
 	"net/http"
@@ -49,7 +48,7 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 		// TODO: create another request parser for non-multipart request
 		// to handle this cleaner.		
 		if err.Error() == "request Content-Type isn't multipart/form-data" {
-			node, err := ds.CreateNodeUpload(u, params, files)
+			node, err := store.CreateNodeUpload(u, params, files)
 			if err != nil {
 				fmt.Println("Error at create empty:", err.Error())
 				cx.RespondWithError(http.StatusInternalServerError)
@@ -74,7 +73,7 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 		}
 	}
 	// Create node	
-	node, err := ds.CreateNodeUpload(u, params, files)
+	node, err := store.CreateNodeUpload(u, params, files)
 	if err != nil {
 		fmt.Println("err", err.Error())
 		cx.RespondWithError(http.StatusBadRequest)
@@ -96,7 +95,7 @@ func (cr *NodeController) DeleteMany(cx *goweb.Context) {
 	cx.RespondWithError(http.StatusNotImplemented)
 }
 
-// GET: /node/{id}'
+// GET: /node/{id}
 // ToDo: clean up this function. About to get unmanageable
 func (cr *NodeController) Read(id string, cx *goweb.Context) {
 	// Log Request and check for Auth
@@ -121,24 +120,18 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 		u = &user.User{Uuid: ""}
 	}
 
-	// Gather query params and setup flags
+	// Gather query params
 	query := cx.Request.URL.Query()
-	_, download := query["download"]
-	_, pipe := query["pipe"]
-	_, list := query["list"]
-	_, filter := query["filter"]
 
-	var filterFunc func(io.ReadCloser) io.ReadCloser = nil
-	if filter {
-		if query["filter"][0] == "anonymize" {
-			filterFunc = anonymize.NewReader
-		} else if query["filter"][0] == "fq2fa" {
-			filterFunc = fq2fa.NewReader
+	var fFunc filter.FilterFunc = nil
+	if _, has := query["filter"]; has {
+		if filter.Has(query["filter"][0]) {
+			fFunc = filter.Filter(query["filter"][0])
 		}
 	}
 
 	// Load node and handle user unauthorized
-	node, err := ds.LoadNode(id, u.Uuid)
+	node, err := store.LoadNode(id, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
 			fmt.Println("Unauthorized")
@@ -157,94 +150,62 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 	}
 
 	// Switch though param flags
-	if download {
-		if node.File.Empty() {
+	// ?download=1
+	if _, has := query["download"]; has {
+		if !node.HasFile() {
 			cx.RespondWithErrorMessage("node file not found", http.StatusBadRequest)
 			return
 		}
-		_, index := query["index"]
-		_, part := query["part"]
-		_, chunksize := query["chunksize"]
-		if index {
-			if query["index"][0] == "size" {
-				if part {
-					var csize int64 = 1048576
-					if chunksize {
-						csize, err = strconv.ParseInt(query["chunksize"][0], 10, 64)
-						if err != nil {
-							cx.RespondWithErrorMessage("Invalid chunksize", http.StatusBadRequest)
-							return
-						}
-					}
-					var size int64 = 0
-					s := &streamer{rs: []io.ReadCloser{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, filter: filterFunc}
-					r, err := os.Open(node.DataPath())
+
+		//_, chunksize := 
+		// ?index=foo
+		if _, has = query["index"]; has {
+			// if forgot ?part=N
+			if _, has = query["part"]; !has {
+				cx.RespondWithErrorMessage("Index parameter requires part parameter", http.StatusBadRequest)
+				return
+			}
+			// open file
+			r, err := os.Open(node.DataPath())
+			defer r.Close()
+			if err != nil {
+				fmt.Println("Err@node_Read:Open:", err.Error())
+				cx.RespondWithError(http.StatusInternalServerError)
+				return
+			}
+			// load index
+			idx, err := node.Index(query["index"][0])
+			if err != nil {
+				cx.RespondWithErrorMessage("Invalid index", http.StatusBadRequest)
+				return
+			}
+			if idx.Type() == "virtual" {
+				csize := int64(1048576)
+				if _, has = query["chunksize"]; has {
+					csize, err = strconv.ParseInt(query["chunksize"][0], 10, 64)
 					if err != nil {
-						fmt.Println("Err@node_Read:Open:", err.Error())
-						cx.RespondWithError(http.StatusInternalServerError)
+						cx.RespondWithErrorMessage("Invalid chunksize", http.StatusBadRequest)
 						return
 					}
-					defer r.Close()
-					for _, p := range query["part"] {
-						pInt, err := strconv.ParseInt(p, 10, 64)
-						if err != nil {
-							cx.RespondWithErrorMessage("Invalid index part", http.StatusBadRequest)
-							return
-						}
-						pos, length, err := node.File.SizeOffset(pInt, csize)
-						if err != nil {
-							cx.RespondWithErrorMessage("Invalid index part", http.StatusBadRequest)
-							return
-						}
-						size += length
-						s.rs = append(s.rs, NewSectionReaderCloser(r, pos, length))
-					}
-					s.size = size
-					err = s.stream()
-					if err != nil {
-						// fix
-						fmt.Println("err", err.Error())
-					}
-				} else {
-					cx.RespondWithErrorMessage("Index parameter requires part parameter", http.StatusBadRequest)
+				}
+				idx.Set(map[string]interface{}{"ChunkSize": csize})
+			}
+			var size int64 = 0
+			s := &streamer{rs: []io.ReadCloser{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, filter: fFunc}
+			for _, p := range query["part"] {
+				pos, length, err := idx.Part(p)
+				if err != nil {
+					cx.RespondWithErrorMessage("Invalid index part", http.StatusBadRequest)
 					return
 				}
-			} else {
-				if node.HasIndex(query["index"][0]) {
-					idx := ds.NewBinaryIndex()
-					err = idx.Load(node.IndexPath() + "/" + query["index"][0])
-					if err != nil {
-						fmt.Println(err.Error())
-						cx.RespondWithErrorMessage("Error loading index", http.StatusBadRequest)
-						return
-					}
-					var size int64 = 0
-					s := &streamer{rs: []io.ReadCloser{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, filter: filterFunc}
-					r, err := os.Open(node.DataPath())
-					if err != nil {
-						fmt.Println("Err@node_Read:Open:", err.Error())
-						cx.RespondWithError(http.StatusInternalServerError)
-						return
-					}
-					defer r.Close()
-					for _, p := range query["part"] {
-						pos, length, err := idx.Part(p)
-						if err != nil {
-							cx.RespondWithErrorMessage("Invalid index part", http.StatusBadRequest)
-							return
-						}
-						size += int64(length)
-						s.rs = append(s.rs, NewSectionReaderCloser(r, pos, length))
-					}
-					s.size = size
-					err = s.stream()
-					if err != nil {
-						fmt.Println("err", err.Error())
-					}
-				} else {
-					cx.RespondWithErrorMessage("Index not found", http.StatusBadRequest)
-					return
-				}
+				size += length
+				s.rs = append(s.rs, NewSectionReaderCloser(r, pos, length))
+			}
+			s.size = size
+			err = s.stream()
+			if err != nil {
+				// fix
+				fmt.Println("err", err.Error())
 			}
 		} else {
 			nf, err := os.Open(node.DataPath())
@@ -255,7 +216,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				cx.RespondWithError(http.StatusBadRequest)
 				return
 			}
-			s := &streamer{rs: []io.ReadCloser{nf}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, size: node.File.Size, filter: filterFunc}
+			s := &streamer{rs: []io.ReadCloser{nf}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, size: node.File.Size, filter: fFunc}
 			err = s.stream()
 			if err != nil {
 				// fix
@@ -263,9 +224,9 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 			}
 		}
 		return
-	} else if pipe {
+	} else if _, has := query["pipe"]; has {
 		cx.RespondWithError(http.StatusNotImplemented)
-	} else if list {
+	} else if _, has := query["list"]; has {
 		cx.RespondWithError(http.StatusNotImplemented)
 	} else {
 		// Base case respond with node in json	
@@ -302,7 +263,7 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 
 	// Setup query and nodes objects
 	q := bson.M{}
-	nodes := new(ds.Nodes)
+	nodes := new(store.Nodes)
 
 	if u != nil {
 		// Admin sees all
@@ -380,14 +341,13 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 	}
 
 	query := cx.Request.URL.Query()
-	indextype, index := query["index"]
 
 	// Fake public user 
 	if u == nil {
 		u = &user.User{Uuid: ""}
 	}
 
-	node, err := ds.LoadNode(id, u.Uuid)
+	node, err := store.LoadNode(id, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
 			fmt.Println("Unauthorized")
@@ -405,27 +365,25 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 		}
 	}
 
-	if index {
-		if !node.File.Empty() {
-			if indextype[0] == "record" {
-				f, _ := os.Open(node.DataPath())
-				defer f.Close()
-				idx := seqRecord.NewIndexer(f)
-				err := idx.Create()
-				if err != nil {
-					fmt.Println(err.Error())
-				}
-				err = idx.Index.Dump(node.IndexPath() + "/record")
-				if err != nil {
-					cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
-					return
-				} else {
-					cx.RespondWithOK()
-					return
-				}
-			}
-		} else {
+	if _, has := query["index"]; has {
+		if !node.HasFile() {
 			cx.RespondWithErrorMessage("node file empty", http.StatusBadRequest)
+			return
+		}
+		newIndexer := indexer.Indexer(query["index"][0])
+		f, _ := os.Open(node.DataPath())
+		defer f.Close()
+		idxer := newIndexer(f)
+		err := idxer.Create()
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+		err = idxer.Dump(node.IndexPath() + "/record")
+		if err != nil {
+			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
+			return
+		} else {
+			cx.RespondWithOK()
 			return
 		}
 	} else {

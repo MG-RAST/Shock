@@ -1,9 +1,9 @@
-package datastore
+package store
 
 import (
 	"fmt"
 	"github.com/MG-RAST/Shock/conf"
-	"github.com/MG-RAST/Shock/user"
+	"github.com/MG-RAST/Shock/store/user"
 	"io/ioutil"
 	"launchpad.net/mgo/bson"
 )
