@@ -10,7 +10,7 @@ Release 0.3 (4/1/12)
  - object version checksum: Done
  - data set mirroring
  - virtual nodes
- - filters
+ - filters: Done
   
 Release 0.4 (4/25/12)
 

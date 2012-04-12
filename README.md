@@ -19,18 +19,16 @@ To build:
 
 Unix/Macintosh 
 
-To install go weekly.2012-03-13 ([weekly.golang.org/doc/install/source](http://weekly.golang.org/doc/install/source)):
+To install go release.1 ([golang.org/doc/install/source](http://golang.org/doc/install/source)):
     
     hg clone -u release https://code.google.com/p/go
-    hg pull
-    hg update weekly.2012-03-13
     cd go/src
     ./all.bash
     <add ../bin to $PATH>
 
 To build Shock:
 
-    go get github.com/MG-RAST/Shock/shock-server
+    go get github.com/MG-RAST/Shock/...
   
 To run (additional requires mongodb=>2.0.3):
   
