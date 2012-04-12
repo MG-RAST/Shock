@@ -2,9 +2,9 @@ package fq2fa
 
 import (
 	"bytes"
-	"github.com/MG-RAST/Shock/types/sequence/fasta"
-	"github.com/MG-RAST/Shock/types/sequence/fastq"
-	"github.com/MG-RAST/Shock/types/sequence/seq"
+	"github.com/MG-RAST/Shock/store/type/sequence/fasta"
+	"github.com/MG-RAST/Shock/store/type/sequence/fastq"
+	"github.com/MG-RAST/Shock/store/type/sequence/seq"
 	"io"
 )
 

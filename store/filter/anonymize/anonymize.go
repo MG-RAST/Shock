@@ -3,8 +3,8 @@ package anonymize
 import (
 	"bytes"
 	"fmt"
-	"github.com/MG-RAST/Shock/types/sequence/multi"
-	"github.com/MG-RAST/Shock/types/sequence/seq"
+	"github.com/MG-RAST/Shock/store/type/sequence/multi"
+	"github.com/MG-RAST/Shock/store/type/sequence/seq"
 	"io"
 )
 

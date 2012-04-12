@@ -7,7 +7,7 @@ import (
 	"github.com/MG-RAST/Shock/conf"
 	e "github.com/MG-RAST/Shock/errors"
 	"github.com/MG-RAST/Shock/goweb"
-	"github.com/MG-RAST/Shock/user"
+	"github.com/MG-RAST/Shock/store/user"
 	"net/http"
 	"strings"
 )
