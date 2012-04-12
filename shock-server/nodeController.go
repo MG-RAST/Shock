@@ -121,12 +121,12 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 	}
 
 	// Gather query params
-	query := cx.Request.URL.Query()
+	query := &Query{list: cx.Request.URL.Query()}
 
 	var fFunc filter.FilterFunc = nil
-	if _, has := query["filter"]; has {
-		if filter.Has(query["filter"][0]) {
-			fFunc = filter.Filter(query["filter"][0])
+	if query.Has("filter") {
+		if filter.Has(query.Value("filter")) {
+			fFunc = filter.Filter(query.Value("filter"))
 		}
 	}
 
@@ -151,7 +151,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 
 	// Switch though param flags
 	// ?download=1
-	if _, has := query["download"]; has {
+	if query.Has("download") {
 		if !node.HasFile() {
 			cx.RespondWithErrorMessage("node file not found", http.StatusBadRequest)
 			return
@@ -159,9 +159,9 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 
 		//_, chunksize := 
 		// ?index=foo
-		if _, has = query["index"]; has {
+		if query.Has("index") {
 			// if forgot ?part=N
-			if _, has = query["part"]; !has {
+			if !query.Has("part") {
 				cx.RespondWithErrorMessage("Index parameter requires part parameter", http.StatusBadRequest)
 				return
 			}
@@ -174,15 +174,15 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				return
 			}
 			// load index
-			idx, err := node.Index(query["index"][0])
+			idx, err := node.Index(query.Value("index"))
 			if err != nil {
 				cx.RespondWithErrorMessage("Invalid index", http.StatusBadRequest)
 				return
 			}
 			if idx.Type() == "virtual" {
 				csize := int64(1048576)
-				if _, has = query["chunksize"]; has {
-					csize, err = strconv.ParseInt(query["chunksize"][0], 10, 64)
+				if query.Has("chunksize") {
+					csize, err = strconv.ParseInt(query.Value("chunksize"), 10, 64)
 					if err != nil {
 						cx.RespondWithErrorMessage("Invalid chunksize", http.StatusBadRequest)
 						return
@@ -192,7 +192,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 			}
 			var size int64 = 0
 			s := &streamer{rs: []io.ReadCloser{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, filter: fFunc}
-			for _, p := range query["part"] {
+			for _, p := range query.List("part") {
 				pos, length, err := idx.Part(p)
 				if err != nil {
 					cx.RespondWithErrorMessage("Invalid index part", http.StatusBadRequest)
@@ -224,9 +224,9 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 			}
 		}
 		return
-	} else if _, has := query["pipe"]; has {
+	} else if query.Has("pipe") {
 		cx.RespondWithError(http.StatusNotImplemented)
-	} else if _, has := query["list"]; has {
+	} else if query.Has("list") {
 		cx.RespondWithError(http.StatusNotImplemented)
 	} else {
 		// Base case respond with node in json	
@@ -255,11 +255,8 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 		}
 	}
 
-	// Gather query params and setup flags	
-	query := cx.Request.URL.Query()
-	l, hasLimit := query["limit"]
-	o, hasOffset := query["skip"]
-	_, hasQuery := query["query"]
+	// Gather query params
+	query := &Query{list: cx.Request.URL.Query()}
 
 	// Setup query and nodes objects
 	q := bson.M{}
@@ -278,8 +275,8 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 	// Gather params to make db query. Do not include the
 	// following list.	
 	skip := map[string]int{"limit": 1, "skip": 1, "query": 1}
-	if hasQuery {
-		for key, val := range query {
+	if query.Has("query") {
+		for key, val := range query.All() {
 			_, s := skip[key]
 			if !s {
 				q[fmt.Sprintf("attributes.%s", key)] = val[0]
@@ -288,17 +285,17 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 	}
 
 	// Limit and skip. Set default if both are not specified
-	if hasLimit || hasOffset {
+	if query.Has("limit") || query.Has("skip") {
 		var lim, off int
-		if !hasLimit {
+		if query.Has("limit") {
+			lim, _ = strconv.Atoi(query.Value("limit"))
+		} else {
 			lim = 100
-		} else {
-			lim, _ = strconv.Atoi(l[0])
 		}
-		if !hasOffset {
-			off = 0
+		if query.Has("skip") {
+			off, _ = strconv.Atoi(query.Value("skip"))
 		} else {
-			off, _ = strconv.Atoi(o[0])
+			off = 0
 		}
 		// Get nodes from db
 		err := nodes.GetAllLimitOffset(q, lim, off)
@@ -340,7 +337,8 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 		}
 	}
 
-	query := cx.Request.URL.Query()
+	// Gather query params
+	query := &Query{list: cx.Request.URL.Query()}
 
 	// Fake public user 
 	if u == nil {
@@ -365,12 +363,12 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 		}
 	}
 
-	if _, has := query["index"]; has {
+	if query.Has("index") {
 		if !node.HasFile() {
 			cx.RespondWithErrorMessage("node file empty", http.StatusBadRequest)
 			return
 		}
-		newIndexer := indexer.Indexer(query["index"][0])
+		newIndexer := indexer.Indexer(query.Value("index"))
 		f, _ := os.Open(node.DataPath())
 		defer f.Close()
 		idxer := newIndexer(f)
