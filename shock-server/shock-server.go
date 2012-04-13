@@ -8,6 +8,7 @@ import (
 
 func main() {
 	goweb.ConfigureDefaultFormatters()
+	goweb.MapFunc("/resources", ResourceDescription)
 	goweb.MapFunc("/raw", RawDir)
 	goweb.MapFunc("/assets", AssetsDir)
 	goweb.MapRest("/node", new(NodeController))

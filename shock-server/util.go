@@ -173,6 +173,28 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files store.
 	return
 }
 
+type resource struct {
+	R []string `json:"resources"`
+	U string   `json:"url"`
+	D string   `json:"documentation"`
+	C string   `json:"contact"`
+	I string   `json:"id"`
+	T string   `json:"type"`
+}
+
+func ResourceDescription(cx *goweb.Context) {
+	LogRequest(cx.Request)
+	r := resource{
+		R: []string{"node"},
+		U: "http://shock-dev.kbase.us/",
+		D: "http://shock-dev.kbase.us/",
+		C: "foo@bar.com",
+		I: "Kbase-Shock",
+		T: "Shock",
+	}
+	cx.WriteResponse(r, 200)
+}
+
 func Site(cx *goweb.Context) {
 	LogRequest(cx.Request)
 	http.ServeFile(cx.ResponseWriter, cx.Request, conf.SITEPATH+"/pages/main.html")
