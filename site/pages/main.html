@@ -43,7 +43,7 @@
           <a class="brand" href="#">Shock</a>
           <div class="nav-collapse">
             <ul class="nav">
-              <li class="active"><a href="#">Home</a></li>
+              <li class="active"><a href="#">Doc</a></li>
               <li><a href="#about">About</a></li>
               <li><a href="#contact">Contact</a></li>
             </ul>
@@ -53,13 +53,16 @@
     </div>
 
     <div class="container">
-
-      <!-- Main hero unit for a primary marketing message or call to action -->
+      
+      <!-- Main logo -->
       <div class="span12">
         <img src="../assets/img/shock_logo.png" style="width: 95%; min-width: 300px;"></img>
       </div>
-
-      <!-- Example row of columns -->
+      
+      <div id='documentation' class="span12">        
+      </div>
+      
+      <!-- Example row of columns 
       <div class="row">
         <div class="span4">
           <h2>Heading</h2>
@@ -76,12 +79,12 @@
           <p>Donec sed odio dui. Cras justo odio, dapibus ac facilisis in, egestas eget quam. Vestibulum id ligula porta felis euismod semper. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus.</p>
           <p><a class="btn" href="#">View details &raquo;</a></p>
         </div>
-      </div>
+      </div>-->
 
       <hr>
 
       <footer>
-        <p>&copy; Company 2012</p>
+        <p></p>
       </footer>
 
     </div> <!-- /container -->
@@ -89,8 +92,20 @@
     <!-- Le javascript
     ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
-    <!--<script src="../assets/js/jquery.js"></script>
-    <script src="../assets/js/bootstrap-transition.js"></script>
+    <script src="../assets/js/jquery.js"></script>
+    <script src="../assets/js/showdown.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function() {
+    	    // load and create html from markdown
+    	    var converter = new Showdown.converter();
+    	    var req = $.get("../assets/misc/README.md", function(data) {
+    	      d = data.split("=====", 2)
+      			$("#documentation").append("<div>"+(converter.makeHtml(d[1]))+"</div>");
+      		}, "html");
+      		req.error(function(err) { console.log(err); });    	    
+    	  })  
+    </script>    
+    <!-- <script src="../assets/js/bootstrap-transition.js"></script>
     <script src="../assets/js/bootstrap-alert.js"></script>
     <script src="../assets/js/bootstrap-modal.js"></script>
     <script src="../assets/js/bootstrap-dropdown.js"></script>

@@ -49,6 +49,54 @@ func (manager *RouteManager) MapFunc(path string, contorllerFunction func(*Conte
 
 }
 
+func (manager *RouteManager) MapRest(pathPrefix string, controller RestController) {
+
+	var pathPrefixWithId string = pathPrefix + "/{id}"
+
+	// GET /resource/{id}
+	if rc, ok := controller.(RestReader); ok {
+		manager.MapFunc(pathPrefixWithId, func(c *Context) {
+			rc.Read(c.PathParams["id"], c)
+		}, GetMethod)
+	}
+	// GET /resource
+	if rc, ok := controller.(RestManyReader); ok {
+		manager.MapFunc(pathPrefix, func(c *Context) {
+			rc.ReadMany(c)
+		}, GetMethod)
+	}
+	// PUT /resource/{id}
+	if rc, ok := controller.(RestUpdater); ok {
+		manager.MapFunc(pathPrefixWithId, func(c *Context) {
+			rc.Update(c.PathParams["id"], c)
+		}, PutMethod)
+	}
+	// PUT /resource
+	if rc, ok := controller.(RestManyUpdater); ok {
+		manager.MapFunc(pathPrefix, func(c *Context) {
+			rc.UpdateMany(c)
+		}, PutMethod)
+	}
+	// DELETE /resource/{id}
+	if rc, ok := controller.(RestDeleter); ok {
+		manager.MapFunc(pathPrefixWithId, func(c *Context) {
+			rc.Delete(c.PathParams["id"], c)
+		}, DeleteMethod)
+	}
+	// DELETE /resource
+	if rc, ok := controller.(RestManyDeleter); ok {
+		manager.MapFunc(pathPrefix, func(c *Context) {
+			rc.DeleteMany(c)
+		}, DeleteMethod)
+	}
+	// CREATE /resource
+	if rc, ok := controller.(RestCreator); ok {
+		manager.MapFunc(pathPrefix, func(c *Context) {
+			rc.Create(c)
+		}, PostMethod)
+	}
+}
+
 // Adds a route to the manager
 func (manager *RouteManager) AddRoute(route *Route) {
 	manager.routes = append(manager.routes, route)

@@ -97,9 +97,7 @@ func (route *Route) DoesMatchPath(path string) bool {
 			}
 
 		} else {
-
 			return false
-
 		}
 
 	}

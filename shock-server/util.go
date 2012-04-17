@@ -21,6 +21,44 @@ import (
 	"time"
 )
 
+var (
+	logo = "\n" +
+		" +-------------+  +----+    +----+  +--------------+  +--------------+  +----+      +----+\n" +
+		" |             |  |    |    |    |  |              |  |              |  |    |      |    |\n" +
+		" |    +--------+  |    |    |    |  |    +----+    |  |    +---------+  |    |      |    |\n" +
+		" |    |           |    +----+    |  |    |    |    |  |    |            |    |     |    |\n" +
+		" |    +--------+  |              |  |    |    |    |  |    |            |    |    |    |\n" +
+		" |             |  |    +----+    |  |    |    |    |  |    |            |    |   |    |\n" +
+		" +--------+    |  |    |    |    |  |    |    |    |  |    |            |    +---+    +-+\n" +
+		"          |    |  |    |    |    |  |    |    |    |  |    |            |               |\n" +
+		" +--------+    |  |    |    |    |  |    +----+    |  |    +---------+  |    +-----+    |\n" +
+		" |             |  |    |    |    |  |              |  |              |  |    |     |    |\n" +
+		" +-------------+  +----+    +----+  +--------------+  +--------------+  +----+     +----+\n"
+)
+
+type Query struct {
+	list map[string][]string
+}
+
+func (q *Query) Has(key string) bool {
+	if _, has := q.list[key]; has {
+		return true
+	}
+	return false
+}
+
+func (q *Query) Value(key string) string {
+	return q.list[key][0]
+}
+
+func (q *Query) List(key string) []string {
+	return q.list[key]
+}
+
+func (q *Query) All() map[string][]string {
+	return q.list
+}
+
 type SectionReaderCloser struct {
 	f  *os.File
 	sr *io.SectionReader
@@ -106,7 +144,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files store.
 			params[part.FormName()] = fmt.Sprintf("%s", buffer[0:n])
 		} else {
 			var reader io.Reader
-			tmpPath := fmt.Sprintf("%s/temp/%d%d", *conf.DATAROOT, rand.Int(), rand.Int())
+			tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.DATAROOT, rand.Int(), rand.Int())
 			filename := part.FileName()
 			if filename[len(filename)-3:] == ".gz" {
 				filename = filename[:len(filename)-3]
@@ -148,6 +186,28 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files store.
 		return
 	}
 	return
+}
+
+type resource struct {
+	R []string `json:"resources"`
+	U string   `json:"url"`
+	D string   `json:"documentation"`
+	C string   `json:"contact"`
+	I string   `json:"id"`
+	T string   `json:"type"`
+}
+
+func ResourceDescription(cx *goweb.Context) {
+	LogRequest(cx.Request)
+	r := resource{
+		R: []string{"node"},
+		U: "http://" + cx.Request.Host + "/",
+		D: "http://" + cx.Request.Host + "/",
+		C: *conf.ADMINEMAIL,
+		I: "Shock",
+		T: "Shock",
+	}
+	cx.WriteResponse(r, 200)
 }
 
 func Site(cx *goweb.Context) {
