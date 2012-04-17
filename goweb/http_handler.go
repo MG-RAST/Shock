@@ -29,7 +29,6 @@ func (handler *HttpHandler) ServeHTTP(responseWriter http.ResponseWriter, reques
 	found, route, context = handler.GetMathingRoute(responseWriter, request)
 
 	if !found {
-
 		// no route found - this is an error
 
 		// create the request context (with no parameter keys obviously)
@@ -39,13 +38,11 @@ func (handler *HttpHandler) ServeHTTP(responseWriter http.ResponseWriter, reques
 		handler.HandleError(context, error)
 
 	} else {
-
 		// tell the controller to handle the route
 		var controller Controller = route.Controller
 
 		// make sure we have a controller
 		if controller == nil {
-
 			error := errors.New(ERR_NO_CONTROLLER)
 			handler.HandleError(context, error)
 
@@ -61,7 +58,6 @@ func (handler *HttpHandler) ServeHTTP(responseWriter http.ResponseWriter, reques
 // along with a boolean describing whether any routes were found or not, and the 
 // Context object built while searching for routes
 func (h *HttpHandler) GetMathingRoute(responseWriter http.ResponseWriter, request *http.Request) (bool, *Route, *Context) {
-
 	var route *Route
 	var found bool = false
 	var context *Context
