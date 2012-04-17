@@ -21,6 +21,21 @@ import (
 	"time"
 )
 
+var (
+	logo = "\n" +
+		" +-------------+  +----+    +----+  +--------------+  +--------------+  +----+      +----+\n" +
+		" |             |  |    |    |    |  |              |  |              |  |    |      |    |\n" +
+		" |    +--------+  |    |    |    |  |    +----+    |  |    +---------+  |    |      |    |\n" +
+		" |    |           |    +----+    |  |    |    |    |  |    |            |    |     |    |\n" +
+		" |    +--------+  |              |  |    |    |    |  |    |            |    |    |    |\n" +
+		" |             |  |    +----+    |  |    |    |    |  |    |            |    |   |    |\n" +
+		" +--------+    |  |    |    |    |  |    |    |    |  |    |            |    +---+    +-+\n" +
+		"          |    |  |    |    |    |  |    |    |    |  |    |            |               |\n" +
+		" +--------+    |  |    |    |    |  |    +----+    |  |    +---------+  |    +-----+    |\n" +
+		" |             |  |    |    |    |  |              |  |              |  |    |     |    |\n" +
+		" +-------------+  +----+    +----+  +--------------+  +--------------+  +----+     +----+\n"
+)
+
 type Query struct {
 	list map[string][]string
 }
@@ -202,7 +217,7 @@ func Site(cx *goweb.Context) {
 
 func RawDir(cx *goweb.Context) {
 	LogRequest(cx.Request)
-	http.ServeFile(cx.ResponseWriter, cx.Request, fmt.Sprintf("%s%s", conf.DATAROOT, cx.Request.URL.Path))
+	http.ServeFile(cx.ResponseWriter, cx.Request, fmt.Sprintf("%s%s", *conf.DATAROOT, cx.Request.URL.Path))
 }
 
 func AssetsDir(cx *goweb.Context) {
