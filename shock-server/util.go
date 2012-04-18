@@ -199,10 +199,17 @@ type resource struct {
 
 func ResourceDescription(cx *goweb.Context) {
 	LogRequest(cx.Request)
+	host := ""
+	if strings.Contains(cx.Request.Host, ":") {
+		split := strings.Split(cx.Request.Host, ":")
+		host = split[0]
+	} else {
+		host = cx.Request.Host
+	}
 	r := resource{
-		R: []string{"node"},
-		U: "http://" + cx.Request.Host + "/",
-		D: "http://" + cx.Request.Host + "/",
+		R: []string{"node", "user"},
+		U: "http://" + host + ":" + fmt.Sprint(*conf.PORT) + "/",
+		D: "http://" + host + "/",
 		C: *conf.ADMINEMAIL,
 		I: "Shock",
 		T: "Shock",
