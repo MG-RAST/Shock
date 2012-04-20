@@ -1,8 +1,8 @@
 package indexer
 
 import (
-	"github.com/MG-RAST/Shock/store/index"
 	"github.com/MG-RAST/Shock/store/indexer/record"
+	"github.com/MG-RAST/Shock/store/type/index"
 	"io"
 )
 
