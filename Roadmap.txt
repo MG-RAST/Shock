@@ -5,21 +5,21 @@ Release 0.2 (3/22/12)
  - node ACLs: Done
  - basic user management: Done
  
-Release 0.3 (4/1/12)
+Release 0.3 (4/17/12)
  - checksums on content: Done
  - object version checksum: Done
- - data set mirroring
- - virtual nodes
  - filters: Done
-  
+ - fleshout indices: Done
+ - initial web UI (bootstrap base with documentation): Done
+ - server info: Done
+
 Release 0.4 (4/25/12)
+ - virtual nodes
+ - data set mirroring
 
 Unfiled:
- - fleshout indices
  - testing
  - OAuth
  - client command (go version)
  - server side processing
- - web UI
  - logging
- - server info?

@@ -10,10 +10,14 @@ Shock is RESTful. Accessible from desktops, HPC systems, exotic hardware, the cl
 
 Shock is for scientific data. One of the challenges of large volume scientific data is that without often complex metadata it is of little to no value. Store and query(in development) complex metadata.   
 
-Shock is an active storage layer. Annotate, anonymize, convert, filter, quality control, statically subsample at line speed bioinformatics sequence data. Extensible plug-in architecture(in development).
+Shock is an data management system. Annotate, anonymize, convert, filter, quality control, statically subsample at line speed bioinformatics sequence data. Extensible plug-in architecture(in development).
 
 **Most importantly Shock is still very much in development. Be patient and contribute.**
 
+
+Shock is actively being developed at [github.com/MG-RAST/Shock](http://github.com/MG-RAST/Shock).
+
+<br>
 To build:
 ---------
 
@@ -37,11 +41,43 @@ To run (additional requires mongodb=>2.0.3):
                  -mongo=<hostname(s) of mongodb> \
                  -secretkey=<secret key>
 
+<br>
 Command-line client:
 -------------------
 
-Alpha version available @ [github.com/MG-RAST/ShockClient](http://github.com/MG-RAST/ShockClient)  
+Alpha version available at [github.com/MG-RAST/ShockClient](http://github.com/MG-RAST/ShockClient).
 
+<br>
+Routes Overview
+---------------
+    
+### Implemented API Routes (default port 8000):
+
+#####GET
+
+- [/](#get_slash)  resource listing
+- [/node](#get_nodes)  list nodes, query
+- [/node/{id}](#get_node)  view node, download file (full or partial)
+- [/user](#get_users)  list users (admin users only)
+- [/user/{id}](#get_user)  view user
+
+#####PUT
+
+- [/node/{id}](#put_node)  modify node, create index
+
+#####POST
+ 
+- [/node](#post_node)  create node
+- [/user](#post_user)  create user
+
+<br>
+### Site Routes (default port 80):
+
+    GET  /    
+    GET  /raw    # listing of data dir
+    GET  /assets # js, img, css, README.md
+
+<br>
 Data Types
 ----------
 
@@ -56,66 +92,72 @@ Data Types
 
     {
         "D": {
-            "id": "75ccb7e590c8fc8df90f3759847e8947", 
+            "id": "4a6299ccb2cc44c2cd4b702cb98f2d9e", 
             "file": {
-                "checksum": {}, 
-                "name": "", 
-                "size": 0
+                "checksum": {
+                    "md5": "05306fcb6f510ef7880863256797a486", 
+                    "sha1": "10c97a28985623ca82cdf5337547406e7e48b1ed"
+                }, 
+                "name": "mgm4440286.3.json", 
+                "size": 1861
             }, 
             "attributes": {
                 "about": "metagenome", 
-                "created": "2011-05-19 11:08:48", 
-                "id": "mgm4456668.3", 
-                "library": "mgl1812", 
+                "created": "2007-11-05 13:10:13", 
+                "id": "mgm4440286.3", 
+                "library": null, 
                 "metadata": {
-                    "ANONYMIZED_NAME": "sample499", 
-                    "COMMON_NAME": "M14Fcsw", 
-                    "DESCRIPTION": "Bacterial Community Variation in Human Body Habitats Across Space and Time", 
-                    "TAXON_ID": "9606", 
-                    "TITLE": "Bacterial Community Variation in Human Body Habitats Across Space and Time", 
-                    "altitude": "0.0", 
-                    "anatomical_sample_site": "FMA:Feces", 
-                    "assigned_from_geo": "n", 
-                    "biological_specimen": "M14Fcsw", 
-                    "body_habitat": "UBERON:feces", 
-                    "body_site": "UBERON:feces", 
-                    "collection_date": "2008-2009", 
-                    "common_sample_site": "stool", 
-                    "country": "GAZ:United States of America", 
-                    "depth": "0", 
-                    "elevation": "1624.097656", 
-                    "env_biome": "ENVO:human-associated habitat", 
-                    "env_feature": "ENVO:human-associated habitat", 
-                    "env_matter": "ENVO:human-associated habitat", 
-                    "host_individual": "M1", 
-                    "latitude": "40.0149856", 
-                    "longitude": "-105.2705456", 
-                    "original_sample_site": "stool", 
-                    "public": "y", 
-                    "samp_collect_device": "swab with sterile saline", 
-                    "samp_size": "1 swab", 
-                    "sample_id": "qiime:145415", 
-                    "sample_name": "M14Fcsw", 
-                    "sex": "male", 
-                    "study_id": "qiime:449"
+                    "biome-information_envo_lite": "animal-associated habitat", 
+                    "external-ids_gold_id": "Gm00130", 
+                    "external-ids_project_id": "28959, 28599", 
+                    "external-ids_pubmed_id": "18698407, 18337718", 
+                    "host-associated_age": "years/months/28/hh/mm/ss", 
+                    "host-associated_body_site": "cecum", 
+                    "host-associated_diet": "commercial chicken feed (Eagle Milling, AZ)", 
+                    "host-associated_host_common_name": "Chicken", 
+                    "host-associated_host_subject_id": "B", 
+                    "host-associated_host_taxid": "9031", 
+                    "host-associated_life_stage": "Adult", 
+                    "host-associated_perturbation": "chicks were challenged via oral gavage with 1\u00d7105 CFU C. jejuni NCTC11168", 
+                    "host-associated_samp_store_temp": "-80", 
+                    "project-description_metagenome_name": "Chicken Cecum B Contigs", 
+                    "sample-isolation-and-treatment_biomaterial_treatment": "DNA extraction", 
+                    "sample-isolation-and-treatment_sample_isolation_description": "Fourteen days post challenge, birds from two pens (A&B) were euthanized and ceca collected for further analysis. Fresh cecal samples from two (C. jejuni-inoculated and C. jejuni-uninoculated) 28-day old chickens were analyzed. Cecal contents were collected using aseptic techniques. Samples were stored at &#8722;80\u00b0C until DNA extraction.", 
+                    "sample-isolation-and-treatment_sample_isolation_reference": "18698407", 
+                    "sample-origin_continent": "north_america", 
+                    "sample-origin_country": "US", 
+                    "sample-origin_geodetic_system": "wgs_84", 
+                    "sample-origin_latitude": "40.1106", 
+                    "sample-origin_location": "Urbana, IL", 
+                    "sample-origin_longitude": "-88.2073", 
+                    "sample-origin_sampling_timezone": "UTC", 
+                    "sequencing_sequencing_center": "454 Life Sciences, Inc, Branford, CT", 
+                    "sequencing_sequencing_method": "454"
                 }, 
-                "name": "1812", 
-                "project": "mgp81", 
-                "sample": "mgs1812", 
-                "url": "http://api.metagenomics.anl.gov/metagenome/mgm4456668.3", 
+                "name": "Chicken Cecum B Contigs", 
+                "project": "mgp101", 
+                "sample": null, 
+                "url": "http://api.metagenomics.anl.gov/metagenome/mgm4440286.3", 
                 "version": 1
             }, 
-            "indexes": {},
             "acl": {
                 "delete": [], 
                 "read": [], 
                 "write": []
-            } 
+            }, 
+            "indexes": {}, 
+            "version": "eeb8a92f954cc1691900497e537162fb", 
+            "version_parts": {
+                "acl_ver": "15251b8a2ba46ff4c6ce5baea5cd8b2a", 
+                "attributes_ver": "8f0534ac82552d55420b82e7131f91f3", 
+                "file_ver": "26c85f331645d98bf3f35d754c7ec352"
+            }
         }, 
         "E": null, 
         "S": 200
     }
 
+<br>
 ### User:
 
 - uuid: unique identifier
@@ -125,8 +167,7 @@ Data Types
 
 ##### user example:
 
-    {
-        "C": "", 
+    { 
         "D": {
             "uuid": "67394386a4acac62fdb851d78691ee48"
             "name": "joeuser", 
@@ -137,6 +178,7 @@ Data Types
         "S": 200
     }
 
+<br>
 ### Index:
 
 Currently there is support for two types of indices: virtual and file. 
@@ -169,7 +211,8 @@ Currently in early development the file index is a json file stored on disk in t
     	"version" : 1,
     	"index" : [[0,1861]]
     }
-    
+
+<br><br>
 API
 ---
 
@@ -177,34 +220,53 @@ API
 All responses from Shock currently are in the following encoding. 
 
     {
-        "C":"",
         "D": <data in json or null>,
         "E": <error message or null>, 
         "S": <http status of request>
     }
 
-### Create node:
-POST /node (multipart/form-data encoded)
+<a name="get_slash"/>
+<br>
+### GET /
+
+Description of resources available through this api
+
+##### example
+	
+    curl -X GET http://<host>[:<port>]/
+	
+##### returns
+
+    {"resources":["node", "user"],"url":"http://localhost:8000/","documentation":"http://localhost/","contact":"admin@host.com","id":"Shock","type":"Shock"}
+
+<a name="post_node"/>
+<br>
+### POST /node
+
+Create node
 
  - optionally takes user/password via Basic Auth. If set only that user with have access to the node
+ - accepts multipart/form-data encoded 
  - to set attributes include file field named "attributes" containing a json file of attributes
  - to set file include file field named "file" containing any file
 
 ##### example
 	
-	curl -X POST [ --user user:password ] [ -F "attributes=@<path_to_json>" -F "file=@<path_to_data_file>" ] http://<shock_host>[:<port>]/node
+	curl -X POST [ --user user:password ] [ -F "attributes=@<path_to_json>" -F "file=@<path_to_data_file>" ] http://<host>[:<port>]/node
 	
 ##### returns
 
     {
-        "C":"",
         "D": {<node>},
         "E": <error message or null>, 
-        "S": <http status of request>
+        "S": <http status of response (also set in headers)>
     } 
 
-### List nodes:
-GET /node
+<a name="get_nodes"/>
+<br>
+### GET /node
+
+List nodes
 
  - optionally takes user/password via Basic Auth. Grants access to non-public data
  - by adding ?skip=N you get the nodes starting at N+1 
@@ -227,19 +289,21 @@ Multiple attributes can be selected in a single query and are treated as AND ope
 
 ##### example
 	
-	curl -X GET [ --user user:password ] http://<shock_host>[:<port>]/node/[?skip=<skip>&limit=<count>][&query&<tag>=<value>]
+	curl -X GET [ --user user:password ] http://<host>[:<port>]/node/[?skip=<skip>&limit=<count>][&query&<tag>=<value>]
 		
 ##### returns
 
   	{
-        "C":"",
         "D": {[<array of nodes>]},
         "E": <error message or null>, 
         "S": <http status of request>
     }
 
-### Get node:
-GET /node/:nodeid
+<a name="get_node"/>
+<br>
+### GET /node/{id}
+
+View node, download file (full or partial)
 
  - optionally takes user/password via Basic Auth
  - ?download - complete file download
@@ -247,70 +311,120 @@ GET /node/:nodeid
 
 ##### example	
 
-	curl -X GET [ --user user:password ] http://<shock_host>[:<port>]/node/:nodeid
+	curl -X GET [ --user user:password ] http://<host>[:<port>]/node/{id}
 
 ##### returns
 
     {
-        "C":"",
         "D": {<node>},
         "E": <error message or null>, 
         "S": <http status of request>
     }
 
-### Create user:
-POST /user
+<a name="put_node"/>
+<br>
+### PUT /node/{id}
+
+Modify node, create index
+
+ - optionally takes user/password via Basic Auth
+ 
+**Modify:** 
+
+ - **Once the file or attributes of a node are set they are immutiable.**
+ - accepts multipart/form-data encoded 
+ - to set attributes include file field named "attributes" containing a json file of attributes
+ - to set file include file field named "file" containing any file
+ 
+##### example	
+  
+	curl -X PUT [ --user user:password ] [ -F "attributes=@<path_to_json>" -F "file=@<path_to_data_file>" ] http://<host>[:<port>]/node/{id}
+
+  
+##### returns
+
+    {
+        "D": {<node>},
+        "E": <error message or null>, 
+        "S": <http status of request>
+    }
+
+<br>
+**Create index:**
+
+ - currently available index types: size, record (for sequence file types)
+
+##### example	
+
+	curl -X PUT [ --user user:password ] http://<host>[:<port>]/node/{id}?index=<type>
+
+##### returns
+
+    {
+        "D": null,
+        "E": <error message or null>, 
+        "S": <http status of request>
+    }
+
+<a name="post_user"/>
+<br>
+### POST /user
+
+Create user
 
 Requires Basic Auth encoded username:password. To create an admin user include :secret_key specified at server start.
 	
 ##### example	
 
     # regular user 
-    curl -X POST --user joeuser:1234 http://<shock_host>[:<port>]/user
+    curl -X POST --user joeuser:1234 http://<host>[:<port>]/user
     
     # admin user
-    curl -X POST --user joeuser:1234:supersupersecret http://<shock_host>[:<port>]/user
+    curl -X POST --user joeuser:1234:supersupersecret http://<host>[:<port>]/user
 	
 ##### returns
 
     {
-        "C":"",
         "D": {<user>},
         "E": <error message or null>, 
         "S": <http status of request>
     }
 
-### Get user:
-GET /user/:uuid
+<a name="get_user"/>
+<br>
+### GET /user/{id}
+
+View user
 
 Requires Basic Auth encoded username:password. Regular user are able to see their own information while Admin user are able to access all. 
 
 ##### example	
 
-    curl -X GET --user joeuser:1234 http://<shock_host>[:<port>]/user/:uuid
+    curl -X GET --user joeuser:1234 http://<host>[:<port>]/user/{id}
 
 ##### returns
 
     {
-        "C":"",
         "D": {<user>},
         "E": <error message or null>, 
         "S": <http status of request>
     }
 
-### List users:
-GET /user
+<a name="get_users"/>
+<br>
+### GET /user
+
+List users
 
 Requires Basic Auth encoded username:password. Restricted to Admin users.
 
 ##### example	
 
-    curl -X GET --user joeadmin:12345 http://<shock_host>[:<port>]/user
+    curl -X GET --user joeadmin:12345 http://<host>[:<port>]/user
 
 ##### returns
 
     {
-        "C":"",
         "D": {[<user>,...]},
         "E": <error message or null>, 
         "S": <http status of request>

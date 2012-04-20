@@ -1,7 +1,7 @@
 package record
 
 import (
-	"github.com/MG-RAST/Shock/store/index"
+	"github.com/MG-RAST/Shock/store/type/index"
 	"github.com/MG-RAST/Shock/store/type/sequence/multi"
 	"github.com/MG-RAST/Shock/store/type/sequence/seq"
 	"io"
