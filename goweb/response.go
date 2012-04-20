@@ -86,7 +86,7 @@ func (c *Context) Respond(data interface{}, statusCode int, errors []string, con
 	obj.E = errors
 	obj.D = data
 	obj.S = statusCode
-	obj.C = c.GetRequestContext()
+	//obj.C = c.GetRequestContext()
 
 	return c.WriteResponse(obj, statusCode)
 

@@ -6,7 +6,7 @@ import "net/http"
 type standardResponse struct {
 
 	// The context of the request that initiated this response
-	C string
+	//C string
 
 	// The HTTP Status code of this response
 	S int
@@ -22,7 +22,7 @@ type standardResponse struct {
 // Makes a standardResponse object with the specified settings
 func makeStandardResponse() *standardResponse {
 	response := new(standardResponse)
-	response.C = ""
+	//response.C = ""
 	response.S = 200
 	response.E = nil
 	return response
@@ -31,7 +31,7 @@ func makeStandardResponse() *standardResponse {
 // Makes a successful standardResponse object with the specified settings
 func makeSuccessfulStandardResponse(context string, statusCode int, data interface{}) *standardResponse {
 	response := makeStandardResponse()
-	response.C = context
+	//response.C = context
 	response.S = statusCode
 	response.D = data
 	return response
@@ -40,7 +40,7 @@ func makeSuccessfulStandardResponse(context string, statusCode int, data interfa
 // Makes an unsuccessful standardResponse object with the specified settings
 func makeFailureStandardResponse(context string, statusCode int) *standardResponse {
 	response := makeStandardResponse()
-	response.C = context
+	//response.C = context
 	response.S = statusCode
 	response.E = []string{http.StatusText(statusCode)}
 	return response

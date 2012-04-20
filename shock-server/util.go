@@ -144,7 +144,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files store.
 			params[part.FormName()] = fmt.Sprintf("%s", buffer[0:n])
 		} else {
 			var reader io.Reader
-			tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.DATAROOT, rand.Int(), rand.Int())
+			tmpPath := fmt.Sprintf("%s/temp/%d%d", *conf.DATAROOT, rand.Int(), rand.Int())
 			filename := part.FileName()
 			if filename[len(filename)-3:] == ".gz" {
 				filename = filename[:len(filename)-3]
@@ -199,10 +199,17 @@ type resource struct {
 
 func ResourceDescription(cx *goweb.Context) {
 	LogRequest(cx.Request)
+	host := ""
+	if strings.Contains(cx.Request.Host, ":") {
+		split := strings.Split(cx.Request.Host, ":")
+		host = split[0]
+	} else {
+		host = cx.Request.Host
+	}
 	r := resource{
-		R: []string{"node"},
-		U: "http://" + cx.Request.Host + "/",
-		D: "http://" + cx.Request.Host + "/",
+		R: []string{"node", "user"},
+		U: "http://" + host + ":" + fmt.Sprint(*conf.PORT) + "/",
+		D: "http://" + host + "/",
 		C: *conf.ADMINEMAIL,
 		I: "Shock",
 		T: "Shock",
