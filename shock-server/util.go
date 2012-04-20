@@ -144,7 +144,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files store.
 			params[part.FormName()] = fmt.Sprintf("%s", buffer[0:n])
 		} else {
 			var reader io.Reader
-			tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.DATAROOT, rand.Int(), rand.Int())
+			tmpPath := fmt.Sprintf("%s/temp/%d%d", *conf.DATAROOT, rand.Int(), rand.Int())
 			filename := part.FileName()
 			if filename[len(filename)-3:] == ".gz" {
 				filename = filename[:len(filename)-3]
