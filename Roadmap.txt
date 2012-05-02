@@ -1,9 +1,14 @@
-Release 0.2 (3/22/12)
- - Client command (github.com/MG-RAST/ShockClient): Done
- - basic auth: Done
- - indices (size virtual index + basic file index): Done
- - node ACLs: Done
- - basic user management: Done
+# Shock roadmap
+# Current stable release: 0.3
+
+Release 0.4 (4/27/12)
+ - virtual nodes
+ - data set mirroring
+ - config file
+ - install script
+ - logging
+ - feature file format: Done
+ - web UI (upload, view, download)
  
 Release 0.3 (4/17/12)
  - checksums on content: Done
@@ -12,14 +17,16 @@ Release 0.3 (4/17/12)
  - fleshout indices: Done
  - initial web UI (bootstrap base with documentation): Done
  - server info: Done
+ 
+Release 0.2 (3/22/12)
+ - Client command (github.com/MG-RAST/ShockClient): Done
+ - basic auth: Done
+ - indices (size virtual index + basic file index): Done
+ - node ACLs: Done
+ - basic user management: Done
 
-Release 0.4 (4/25/12)
- - virtual nodes
- - data set mirroring
-
+# Feature list
 Unfiled:
  - testing
  - OAuth
  - client command (go version)
- - server side processing
- - logging
