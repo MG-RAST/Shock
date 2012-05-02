@@ -7,7 +7,14 @@ import (
 )
 
 func main() {
-	fmt.Printf("%s\n######### Conf #########\ndata-root:\t%s\nmongodb:\t%s\nsecretkey:\t%s\nsite-port:\t80\napi-port:\t%d\n\n####### Starting #######\n", logo, *conf.DATAROOT, *conf.MONGODB, *conf.SECRETKEY, *conf.PORT)
+	fmt.Printf("%s\n######### Conf #########\ndata-root:\t%s\nmongodb:\t%s\nsecretkey:\t%s\nsite-port:\t%d\napi-port:\t%d\n\n####### Starting #######\n",
+		logo,
+		conf.DATAPATH,
+		conf.MONGODB,
+		conf.SECRETKEY,
+		conf.SITEPORT,
+		conf.APIPORT,
+	)
 
 	c := make(chan int)
 	goweb.ConfigureDefaultFormatters()
@@ -18,11 +25,11 @@ func main() {
 		r.MapFunc("/assets", AssetsDir)
 		r.MapFunc("*", Site)
 		c <- 1
-		goweb.ListenAndServeRoutes(":80", r)
+		goweb.ListenAndServeRoutes(fmt.Sprintf(":%d", conf.SITEPORT), r)
 		c <- 1
 	}()
 	<-c
-	fmt.Printf("site :80... running\n")
+	fmt.Printf("site :%d... running\n", conf.SITEPORT)
 
 	// start api
 	go func() {
@@ -31,11 +38,11 @@ func main() {
 		r.MapRest("/user", new(UserController))
 		r.MapFunc("*", ResourceDescription, goweb.GetMethod)
 		c <- 1
-		goweb.ListenAndServeRoutes(fmt.Sprintf(":%d", *conf.PORT), r)
+		goweb.ListenAndServeRoutes(fmt.Sprintf(":%d", conf.APIPORT), r)
 		c <- 1
 	}()
 	<-c
-	fmt.Printf("api  :%d... running\n", *conf.PORT)
+	fmt.Printf("api  :%d... running\n", conf.APIPORT)
 	fmt.Printf("\n######### Log  #########\n")
 	<-c
 }
