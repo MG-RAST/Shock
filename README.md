@@ -23,23 +23,15 @@ To build:
 
 Unix/Macintosh 
 
-To install go release.1 ([golang.org/doc/install/source](http://golang.org/doc/install/source)):
-    
-    hg clone -u release https://code.google.com/p/go
-    cd go/src
-    ./all.bash
-    <add ../bin to $PATH>
-
-To build Shock:
+Shock (requires go release.1 [golang.org/doc/install/source](http://golang.org/doc/install/source)):
 
     go get github.com/MG-RAST/Shock/...
   
 To run (additional requires mongodb=>2.0.3):
   
-    shock-server -port=<port to listen on> \
-                 -data=<data directory to store on disk files> \
-                 -mongo=<hostname(s) of mongodb> \
-                 -secretkey=<secret key>
+    shock-server -conf <path_to_config_file>
+    
+The Shock configuration file is in INI file format. This file is documented in the shock.cfg.template file at the root level of the repository.
 
 <br>
 Command-line client:
@@ -190,7 +182,7 @@ is the size virtual index. Based on the file size and desired chunksize the part
 
 ##### file index:
 
-Currently in early development the file index is a json file stored on disk in the node's directory.  
+Currently in early development the file index is a json file stored on disk in the node's directory.
 
     # abstract form
     {
