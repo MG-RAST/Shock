@@ -1,0 +1,23 @@
+[Shock]
+site-port=80
+api-port=8000
+
+[Admin]
+email=admin@host.com
+secretkey=supersecretkey
+
+[Directories]
+site=/local/shock/site
+data=/local/shock
+logs=/var/log/shock
+
+[Mongodb]
+# Pattern:
+#    hosts=host1[,host2,...,hostN]
+hosts=localhost
+
+[Node-Indices]
+# See http://www.mongodb.org/display/DOCS/Indexes#Indexes-CreationOptions for more info on mongodb index options.
+# Pattern:
+#    key=unique:true/false[,dropDups:true/false][,sparse:true/false]
+id=unique:true
