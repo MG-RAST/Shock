@@ -144,7 +144,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files store.
 			params[part.FormName()] = fmt.Sprintf("%s", buffer[0:n])
 		} else {
 			var reader io.Reader
-			tmpPath := fmt.Sprintf("%s/temp/%d%d", *conf.DATAROOT, rand.Int(), rand.Int())
+			tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.DATAPATH, rand.Int(), rand.Int())
 			filename := part.FileName()
 			if filename[len(filename)-3:] == ".gz" {
 				filename = filename[:len(filename)-3]
@@ -208,9 +208,9 @@ func ResourceDescription(cx *goweb.Context) {
 	}
 	r := resource{
 		R: []string{"node", "user"},
-		U: "http://" + host + ":" + fmt.Sprint(*conf.PORT) + "/",
-		D: "http://" + host + "/",
-		C: *conf.ADMINEMAIL,
+		U: "http://" + host + ":" + fmt.Sprint(conf.APIPORT) + "/",
+		D: "http://" + host + ":" + fmt.Sprint(conf.SITEPORT) + "/",
+		C: conf.ADMINEMAIL,
 		I: "Shock",
 		T: "Shock",
 	}
@@ -224,7 +224,7 @@ func Site(cx *goweb.Context) {
 
 func RawDir(cx *goweb.Context) {
 	LogRequest(cx.Request)
-	http.ServeFile(cx.ResponseWriter, cx.Request, fmt.Sprintf("%s%s", *conf.DATAROOT, cx.Request.URL.Path))
+	http.ServeFile(cx.ResponseWriter, cx.Request, fmt.Sprintf("%s%s", conf.DATAPATH, cx.Request.URL.Path))
 }
 
 func AssetsDir(cx *goweb.Context) {

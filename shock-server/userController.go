@@ -38,7 +38,7 @@ func (cr *UserController) Create(cx *goweb.Context) {
 	name := authValuesArray[0]
 	passwd := authValuesArray[1]
 	admin := false
-	if len(authValuesArray) > 2 && authValuesArray[2] == fmt.Sprint(*conf.SECRETKEY) {
+	if len(authValuesArray) > 2 && authValuesArray[2] == fmt.Sprint(conf.SECRETKEY) {
 		admin = true
 	}
 	u, err := user.New(name, passwd, admin)

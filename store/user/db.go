@@ -34,7 +34,7 @@ func init() {
 }
 
 func DBConnect() (d *db, err error) {
-	session, err := mgo.DialWithTimeout(*conf.MONGODB, DbTimeout)
+	session, err := mgo.DialWithTimeout(conf.MONGODB, DbTimeout)
 	if err != nil {
 		return
 	}
