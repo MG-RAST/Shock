@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 	e "github.com/MG-RAST/Shock/errors"
-	"github.com/MG-RAST/Shock/goweb"
 	"github.com/MG-RAST/Shock/store"
 	"github.com/MG-RAST/Shock/store/filter"
 	"github.com/MG-RAST/Shock/store/indexer"
 	"github.com/MG-RAST/Shock/store/user"
+	"github.com/jaredwilkening/goweb"
 	"io"
 	"launchpad.net/mgo/bson"
 	"net/http"

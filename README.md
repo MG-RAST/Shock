@@ -81,7 +81,7 @@ Data Types
 - acl: arrays of user uuids corresponding to read, write, delete access controls
 
 ##### node example (metagenome from MG-RAST):
-
+    
     {
         "D": {
             "id": "4a6299ccb2cc44c2cd4b702cb98f2d9e", 

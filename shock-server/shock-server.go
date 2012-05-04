@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/MG-RAST/Shock/conf"
-	"github.com/MG-RAST/Shock/goweb"
+	"github.com/jaredwilkening/goweb"
 )
 
 func main() {
