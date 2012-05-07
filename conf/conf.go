@@ -2,7 +2,9 @@ package conf
 
 import (
 	"flag"
+	"fmt"
 	"github.com/kless/goconfig/config"
+	"os"
 	"strings"
 )
 
@@ -14,6 +16,9 @@ type idxOpts struct {
 
 // Setup conf variables
 var (
+	// Reload
+	RELOAD = ""
+
 	// Config File
 	CONFIGFILE = ""
 
@@ -39,8 +44,14 @@ var (
 
 func init() {
 	flag.StringVar(&CONFIGFILE, "conf", "/usr/local/shock/conf/shock.cfg", "path to config file")
+	flag.StringVar(&RELOAD, "reload", "", "path or url to shock data. WARNING this will drop all current data.")
 	flag.Parse()
-	c, _ := config.ReadDefault(CONFIGFILE)
+	c, err := config.ReadDefault(CONFIGFILE)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: error reading conf file: %v\n", err)
+		os.Exit(1)
+	}
+
 	// Shock
 	SITEPORT, _ = c.Int("Shock", "site-port")
 	APIPORT, _ = c.Int("Shock", "api-port")
@@ -87,4 +98,5 @@ func init() {
 		}
 		NODEIDXS[opt] = opts
 	}
+
 }

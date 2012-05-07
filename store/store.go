@@ -6,6 +6,7 @@ import (
 	"github.com/MG-RAST/Shock/store/user"
 	"io/ioutil"
 	"launchpad.net/mgo/bson"
+	"path/filepath"
 )
 
 func LoadNode(id string, uuid string) (node *Node, err error) {
@@ -25,7 +26,7 @@ func LoadNode(id string, uuid string) (node *Node, err error) {
 
 func LoadNodeFromDisk(id string) (node *Node, err error) {
 	path := getPath(id)
-	nbson, err := ioutil.ReadFile(fmt.Sprintf("%s/%s.bson", path, id))
+	nbson, err := ioutil.ReadFile(path + "/" + id + ".bson")
 	if err != nil {
 		return
 	}
@@ -33,6 +34,28 @@ func LoadNodeFromDisk(id string) (node *Node, err error) {
 	err = bson.Unmarshal(nbson, &node)
 	if err != nil {
 		node = nil
+	}
+	return
+}
+
+func ReloadFromDisk(path string) (err error) {
+	id := filepath.Base(path)
+	nbson, err := ioutil.ReadFile(path + "/" + id + ".bson")
+	if err != nil {
+		return
+	}
+	node := new(Node)
+	err = bson.Unmarshal(nbson, &node)
+	if err == nil {
+		db, er := DBConnect()
+		if er != nil {
+			err = er
+		}
+		defer db.Close()
+		err = db.Upsert(node)
+		if err != nil {
+			err = er
+		}
 	}
 	return
 }
