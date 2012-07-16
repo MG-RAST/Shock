@@ -18,7 +18,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 )
 
 var (
@@ -237,10 +236,9 @@ func LogRequest(req *http.Request) {
 	// failed attempt to get the host in ipv4
 	//addrs, _ := net.LookupIP(host)	
 	//fmt.Println(addrs)
-	prefix := fmt.Sprintf("%s [%s]", host, time.Now().Format(time.RFC1123))
 	suffix := ""
 	if _, auth := req.Header["Authorization"]; auth {
-		suffix = "AUTH"
+		suffix = " AUTH"
 	}
 	url := ""
 	if req.URL.RawQuery != "" {
@@ -248,7 +246,7 @@ func LogRequest(req *http.Request) {
 	} else {
 		url = fmt.Sprintf("%s %s", req.Method, req.URL.Path)
 	}
-	fmt.Printf("%s %q %s\n", prefix, url, suffix)
+	log.Info("access", host+" \""+url+suffix+"\"")
 }
 
 func AuthenticateRequest(req *http.Request) (u *user.User, err error) {
