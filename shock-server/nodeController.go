@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/MG-RAST/Shock/conf"
 	e "github.com/MG-RAST/Shock/errors"
 	"github.com/MG-RAST/Shock/store"
 	"github.com/MG-RAST/Shock/store/filter"
@@ -38,7 +39,12 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 
 	// Fake public user 
 	if u == nil {
-		u = &user.User{Uuid: ""}
+		if conf.ANONWRITE {
+			u = &user.User{Uuid: ""}
+		} else {
+			cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
+			return
+		}
 	}
 
 	// Parse uploaded form 
@@ -117,7 +123,12 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 
 	// Fake public user 
 	if u == nil {
-		u = &user.User{Uuid: ""}
+		if conf.ANONREAD {
+			u = &user.User{Uuid: ""}
+		} else {
+			cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
+			return
+		}
 	}
 
 	// Gather query params
@@ -268,8 +279,13 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 			q["$or"] = []bson.M{bson.M{"acl.read": []string{}}, bson.M{"acl.read": u.Uuid}}
 		}
 	} else {
-		// select on only nodes with no read rights set
-		q["acl.read"] = []string{}
+		if conf.ANONREAD {
+			// select on only nodes with no read rights set
+			q["acl.read"] = []string{}
+		} else {
+			cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
+			return
+		}
 	}
 
 	// Gather params to make db query. Do not include the

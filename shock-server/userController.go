@@ -35,11 +35,25 @@ func (cr *UserController) Create(cx *goweb.Context) {
 	}
 
 	authValuesArray := strings.Split(string(authValues), ":")
+	if conf.ANONCREATEUSER == false && len(authValuesArray) != 4 {
+		if len(authValuesArray) == 2 {
+			cx.RespondWithErrorMessage(e.UnAuth, http.StatusUnauthorized)
+			return
+		} else {
+			cx.RespondWithError(http.StatusBadRequest)
+			return
+		}
+	}
 	name := authValuesArray[0]
 	passwd := authValuesArray[1]
 	admin := false
-	if len(authValuesArray) > 2 && authValuesArray[2] == fmt.Sprint(conf.SECRETKEY) {
-		admin = true
+	if len(authValuesArray) == 4 {
+		if authValuesArray[2] != fmt.Sprint(conf.SECRETKEY) {
+			cx.RespondWithErrorMessage(e.UnAuth, http.StatusUnauthorized)
+			return
+		} else if authValuesArray[3] == "true" {
+			admin = true
+		}
 	}
 	u, err := user.New(name, passwd, admin)
 	if err != nil {

@@ -22,9 +22,14 @@ var (
 	// Config File
 	CONFIGFILE = ""
 
-	// Shock 
+	// Ports
 	SITEPORT = 0
 	APIPORT  = 0
+
+	// Anonymous-Access-Control 
+	ANONWRITE      = false
+	ANONREAD       = true
+	ANONCREATEUSER = false
 
 	// Admin
 	ADMINEMAIL = ""
@@ -52,9 +57,14 @@ func init() {
 		os.Exit(1)
 	}
 
-	// Shock
-	SITEPORT, _ = c.Int("Shock", "site-port")
-	APIPORT, _ = c.Int("Shock", "api-port")
+	// Ports
+	SITEPORT, _ = c.Int("Ports", "site-port")
+	APIPORT, _ = c.Int("Ports", "api-port")
+
+	// Access-Control 
+	ANONWRITE, _ = c.Bool("Anonymous", "write")
+	ANONREAD, _ = c.Bool("Anonymous", "read")
+	ANONCREATEUSER, _ = c.Bool("Anonymous", "create-user")
 
 	// Admin
 	ADMINEMAIL, _ = c.String("Admin", "email")
