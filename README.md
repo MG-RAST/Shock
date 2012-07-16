@@ -364,15 +364,18 @@ Modify node, create index
 
 Create user
 
-Requires Basic Auth encoded username:password. To create an admin user include :secret_key specified at server start.
+Requires Basic Auth encoded as 'username:password'. To create an admin user 'username:password:secret-key:true' where secret-key was specified at server start.
 	
 ##### example	
 
-    # regular user 
+    # regular user (when config Anonymous:create-user=true)
     curl -X POST --user joeuser:1234 http://<host>[:<port>]/user
-    
+
+    # regular user (when config Anonymous:create-user=false)
+    curl -X POST --user joeuser:1234:supersupersecret:false http://<host>[:<port>]/user    
+
     # admin user
-    curl -X POST --user joeuser:1234:supersupersecret http://<host>[:<port>]/user
+    curl -X POST --user joeuser:1234:supersupersecret:true http://<host>[:<port>]/user
 	
 ##### returns
 
