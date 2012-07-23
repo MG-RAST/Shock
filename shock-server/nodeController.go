@@ -177,7 +177,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				return
 			}
 			// open file
-			r, err := os.Open(node.DataPath())
+			r, err := os.Open(node.FilePath())
 			defer r.Close()
 			if err != nil {
 				fmt.Println("Err@node_Read:Open:", err.Error())
@@ -219,7 +219,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				fmt.Println("err", err.Error())
 			}
 		} else {
-			nf, err := os.Open(node.DataPath())
+			nf, err := os.Open(node.FilePath())
 			if err != nil {
 				// File not found or some sort of file read error. 
 				// Probably deserves more checking
@@ -385,7 +385,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 			return
 		}
 		newIndexer := indexer.Indexer(query.Value("index"))
-		f, _ := os.Open(node.DataPath())
+		f, _ := os.Open(node.FilePath())
 		defer f.Close()
 		idxer := newIndexer(f)
 		err := idxer.Create()
@@ -410,7 +410,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 
 		err = node.Update(params, files)
 		if err != nil {
-			errors := []string{"node file already set and is immutable", "node file immutable", "node attributes immutable", "node part already exists and is immutable"}
+			errors := []string{e.FileImut, e.AttrImut, "parts cannot be less than 1"}
 			for e := range errors {
 				if err.Error() == errors[e] {
 					cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
