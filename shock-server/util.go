@@ -105,10 +105,8 @@ func (s *streamer) stream() (err error) {
 	for _, sr := range s.rs {
 		var rs io.ReadCloser
 		if s.filter != nil {
-			print("filter != nil\n")
 			rs = s.filter(sr)
 		} else {
-			print("filter == nil\n")
 			rs = sr
 		}
 		_, err = io.Copy(s.ws, rs)
