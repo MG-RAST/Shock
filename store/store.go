@@ -60,11 +60,16 @@ func ReloadFromDisk(path string) (err error) {
 	return
 }
 
-func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (node *Node, err error) {
+func NewNode() (node *Node) {
 	node = new(Node)
 	node.Indexes = make(map[string]string)
 	node.File.Checksum = make(map[string]string)
 	node.setId()
+	return
+}
+
+func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (node *Node, err error) {
+	node = NewNode()
 	if u.Uuid != "" {
 		node.Acl.set(u.Uuid, rights{"read": true, "write": true, "delete": true})
 	} else {
