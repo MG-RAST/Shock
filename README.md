@@ -240,11 +240,11 @@ Create node
  - optionally takes user/password via Basic Auth. If set only that user with have access to the node
  - accepts multipart/form-data encoded 
  - to set attributes include file field named "attributes" containing a json file of attributes
- - to set file include file field named "file" containing any file
+ - to set file include file field named "upload" containing any file **or** include field named "path" containing the file system path to the file accessible from the Shock server
 
 ##### example
 	
-	curl -X POST [ --user user:password ] [ -F "attributes=@<path_to_json>" -F "file=@<path_to_data_file>" ] http://<host>[:<port>]/node
+	curl -X POST [ --user user:password ] [ -F "attributes=@<path_to_json>" ( -F "upload=@<path_to_data_file>" || -F "path=<path_to_file>") ] http://<host>[:<port>]/node
 	
 ##### returns
 
@@ -326,11 +326,11 @@ Modify node, create index
  - **Once the file or attributes of a node are set they are immutiable.**
  - accepts multipart/form-data encoded 
  - to set attributes include file field named "attributes" containing a json file of attributes
- - to set file include file field named "file" containing any file
- 
+ - to set file include file field named "upload" containing any file **or** include field named "path" containing the file system path to the file accessible from the Shock server
+   
 ##### example	
   
-	curl -X PUT [ --user user:password ] [ -F "attributes=@<path_to_json>" -F "file=@<path_to_data_file>" ] http://<host>[:<port>]/node/{id}
+	curl -X PUT [ --user user:password ] [ -F "attributes=@<path_to_json>" ( -F "upload=@<path_to_data_file>" || -F "path=<path_to_file>") ] http://<host>[:<port>]/node/{id}
 
   
 ##### returns
