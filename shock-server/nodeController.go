@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
+	"github.com/MG-RAST/Shock/conf"
 	e "github.com/MG-RAST/Shock/errors"
-	"github.com/MG-RAST/Shock/goweb"
 	"github.com/MG-RAST/Shock/store"
 	"github.com/MG-RAST/Shock/store/filter"
 	"github.com/MG-RAST/Shock/store/indexer"
 	"github.com/MG-RAST/Shock/store/user"
+	"github.com/jaredwilkening/goweb"
 	"io"
 	"launchpad.net/mgo/bson"
 	"net/http"
@@ -38,7 +39,12 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 
 	// Fake public user 
 	if u == nil {
-		u = &user.User{Uuid: ""}
+		if conf.ANONWRITE {
+			u = &user.User{Uuid: ""}
+		} else {
+			cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
+			return
+		}
 	}
 
 	// Parse uploaded form 
@@ -117,7 +123,12 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 
 	// Fake public user 
 	if u == nil {
-		u = &user.User{Uuid: ""}
+		if conf.ANONREAD {
+			u = &user.User{Uuid: ""}
+		} else {
+			cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
+			return
+		}
 	}
 
 	// Gather query params
@@ -166,7 +177,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				return
 			}
 			// open file
-			r, err := os.Open(node.DataPath())
+			r, err := os.Open(node.FilePath())
 			defer r.Close()
 			if err != nil {
 				fmt.Println("Err@node_Read:Open:", err.Error())
@@ -208,7 +219,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				fmt.Println("err", err.Error())
 			}
 		} else {
-			nf, err := os.Open(node.DataPath())
+			nf, err := os.Open(node.FilePath())
 			if err != nil {
 				// File not found or some sort of file read error. 
 				// Probably deserves more checking
@@ -268,8 +279,13 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 			q["$or"] = []bson.M{bson.M{"acl.read": []string{}}, bson.M{"acl.read": u.Uuid}}
 		}
 	} else {
-		// select on only nodes with no read rights set
-		q["acl.read"] = []string{}
+		if conf.ANONREAD {
+			// select on only nodes with no read rights set
+			q["acl.read"] = []string{}
+		} else {
+			cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
+			return
+		}
 	}
 
 	// Gather params to make db query. Do not include the
@@ -369,7 +385,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 			return
 		}
 		newIndexer := indexer.Indexer(query.Value("index"))
-		f, _ := os.Open(node.DataPath())
+		f, _ := os.Open(node.FilePath())
 		defer f.Close()
 		idxer := newIndexer(f)
 		err := idxer.Create()
@@ -394,7 +410,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 
 		err = node.Update(params, files)
 		if err != nil {
-			errors := []string{"node file already set and is immutable", "node file immutable", "node attributes immutable", "node part already exists and is immutable"}
+			errors := []string{e.FileImut, e.AttrImut, "parts cannot be less than 1"}
 			for e := range errors {
 				if err.Error() == errors[e] {
 					cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)

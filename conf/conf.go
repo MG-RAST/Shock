@@ -2,7 +2,9 @@ package conf
 
 import (
 	"flag"
+	"fmt"
 	"github.com/kless/goconfig/config"
+	"os"
 	"strings"
 )
 
@@ -14,12 +16,20 @@ type idxOpts struct {
 
 // Setup conf variables
 var (
+	// Reload
+	RELOAD = ""
+
 	// Config File
 	CONFIGFILE = ""
 
-	// Shock 
+	// Ports
 	SITEPORT = 0
 	APIPORT  = 0
+
+	// Anonymous-Access-Control 
+	ANONWRITE      = false
+	ANONREAD       = true
+	ANONCREATEUSER = false
 
 	// Admin
 	ADMINEMAIL = ""
@@ -39,11 +49,22 @@ var (
 
 func init() {
 	flag.StringVar(&CONFIGFILE, "conf", "/usr/local/shock/conf/shock.cfg", "path to config file")
+	flag.StringVar(&RELOAD, "reload", "", "path or url to shock data. WARNING this will drop all current data.")
 	flag.Parse()
-	c, _ := config.ReadDefault(CONFIGFILE)
-	// Shock
-	SITEPORT, _ = c.Int("Shock", "site-port")
-	APIPORT, _ = c.Int("Shock", "api-port")
+	c, err := config.ReadDefault(CONFIGFILE)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: error reading conf file: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Ports
+	SITEPORT, _ = c.Int("Ports", "site-port")
+	APIPORT, _ = c.Int("Ports", "api-port")
+
+	// Access-Control 
+	ANONWRITE, _ = c.Bool("Anonymous", "write")
+	ANONREAD, _ = c.Bool("Anonymous", "read")
+	ANONCREATEUSER, _ = c.Bool("Anonymous", "create-user")
 
 	// Admin
 	ADMINEMAIL, _ = c.String("Admin", "email")
@@ -87,4 +108,5 @@ func init() {
 		}
 		NODEIDXS[opt] = opts
 	}
+
 }

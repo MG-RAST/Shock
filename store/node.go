@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	e "github.com/MG-RAST/Shock/errors"
 	"github.com/MG-RAST/Shock/store/type/index"
 	"github.com/MG-RAST/Shock/store/type/index/virtual"
 	"io/ioutil"
@@ -36,6 +37,7 @@ type file struct {
 	Name     string            `bson:"name" json:"name"`
 	Size     int64             `bson:"size" json:"size"`
 	Checksum map[string]string `bson:"checksum" json:"checksum"`
+	Path     string            `bson:"path" json:"path"`
 }
 
 type partsList struct {
@@ -56,7 +58,7 @@ type FormFile struct {
 
 // HasFoo functions
 func (node *Node) HasFile() bool {
-	if node.File.Name == "" && node.File.Size == 0 && len(node.File.Checksum) == 0 {
+	if node.File.Name == "" && node.File.Size == 0 && len(node.File.Checksum) == 0 && node.File.Path == "" {
 		return false
 	}
 	return true
@@ -84,14 +86,17 @@ func (node *Node) IndexPath() string {
 	return getIndexPath(node.Id)
 }
 
-func (node *Node) DataPath() string {
+func (node *Node) FilePath() string {
+	if node.File.Path != "" {
+		return node.File.Path
+	}
 	return getPath(node.Id) + "/" + node.Id + ".data"
 }
 
 // Index functions
 func (node *Node) Index(name string) (idx index.Index, err error) {
 	if virtual.Has(name) {
-		idx = virtual.New(name, node.DataPath(), node.File.Size, 10240)
+		idx = virtual.New(name, node.FilePath(), node.File.Size, 10240)
 	} else {
 		idx = index.New()
 		err = idx.Load(node.IndexPath() + "/" + name)
@@ -144,7 +149,7 @@ func (node *Node) addPart(n int, file *FormFile) (err error) {
 
 	// modify
 	if len(p.Parts[n]) > 0 {
-		err = errors.New("node part already exists and is immutable")
+		err = errors.New(e.FileImut)
 		return
 	}
 	part := partsFile{file.Name, file.Checksum["md5"]}
@@ -170,6 +175,37 @@ func (node *Node) addPart(n int, file *FormFile) (err error) {
 
 func (node *Node) partsListPath() string {
 	return node.Path() + "/parts/parts.json"
+}
+
+func (node *Node) SetFileFromPath(path string) (err error) {
+	fileStat, err := os.Stat(path)
+	if err != nil {
+		return
+	}
+	node.File.Name = fileStat.Name()
+	node.File.Size = fileStat.Size()
+	node.File.Path = path
+
+	md5h := md5.New()
+	sha1h := sha1.New()
+	f, err := os.Open(path)
+	defer f.Close()
+	if err != nil {
+		return err
+	}
+	for {
+		buffer := make([]byte, 10240)
+		n, err := f.Read(buffer)
+		if n == 0 || err != nil {
+			break
+		}
+		md5h.Write(buffer[0:n])
+		sha1h.Write(buffer[0:n])
+	}
+	node.File.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
+	node.File.Checksum["sha1"] = fmt.Sprintf("%x", sha1h.Sum(nil))
+	err = node.Save()
+	return
 }
 
 func (node *Node) SetFileFromParts(p *partsList) (err error) {
@@ -203,22 +239,18 @@ func (node *Node) SetFileFromParts(p *partsList) (err error) {
 	}
 	node.File.Name = node.Id
 	node.File.Size = fileStat.Size()
-
-	var md5s, sha1s []byte
-	md5h.Sum(md5s)
-	node.File.Checksum["md5"] = fmt.Sprintf("%x", md5s)
-	sha1h.Sum(sha1s)
-	node.File.Checksum["sha1"] = fmt.Sprintf("%x", sha1s)
+	node.File.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
+	node.File.Checksum["sha1"] = fmt.Sprintf("%x", sha1h.Sum(nil))
 	err = node.Save()
 	return
 }
 
 //Modification functions
 func (node *Node) Update(params map[string]string, files FormFiles) (err error) {
-	_, hasParts := params["parts"]
-	if hasParts && node.partsCount() < 0 {
+	// set parts count. No upload allowed with this operation
+	if _, hasParts := params["parts"]; hasParts && node.partsCount() < 0 {
 		if node.HasFile() {
-			return errors.New("file alreay set and is immutable")
+			return errors.New(e.FileImut)
 		}
 		n, err := strconv.Atoi(params["parts"])
 		if err != nil {
@@ -227,40 +259,60 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		if n < 1 {
 			return errors.New("parts cannot be less than 1")
 		}
-		err = node.initParts(n)
-		if err != nil {
+		if err = node.initParts(n); err != nil {
 			return err
 		}
-	}
-	_, hasFile := files["file"]
-	if hasFile && !node.HasFile() {
-		err = node.SetFile(files["file"])
-		if err != nil {
-			return err
+	} else { // process upload
+		file := ""
+		// handle file parameter names "upload" & "file"
+		if _, hasUpload := files["upload"]; hasUpload {
+			file = "upload"
+		} else if _, hasFile := files["file"]; hasFile {
+			file = "file"
 		}
-		delete(files, "file")
-	} else if hasFile {
-		return errors.New("node file immutable")
-	}
-	_, hasAttr := files["attributes"]
-	if hasAttr && node.Attributes == nil {
-		err = node.SetAttributes(files["attributes"])
-		if err != nil {
-			return err
+		if file != "" { // process uploaded file
+			if node.HasFile() == false {
+				if err = node.SetFile(files[file]); err != nil {
+					return err
+				}
+				delete(files, file)
+			} else {
+				return errors.New(e.FileImut)
+			}
+		} else { // no upload. set file from system path
+			if _, hasPath := params["path"]; hasPath {
+				if node.HasFile() == false {
+					if err = node.SetFileFromPath(params["path"]); err != nil {
+						return err
+					}
+				} else {
+					return errors.New(e.FileImut)
+				}
+			}
 		}
-		os.Remove(files["attributes"].Path)
-		delete(files, "attributes")
-	} else if hasAttr {
-		return errors.New("node attributes immutable")
 	}
-	pc := node.partsCount()
-	if pc > 1 {
+
+	// set attributes from file
+	if _, hasAttr := files["attributes"]; hasAttr {
+		if node.Attributes == nil {
+			if err = node.SetAttributes(files["attributes"]); err != nil {
+				return err
+			}
+			os.Remove(files["attributes"].Path)
+			delete(files, "attributes")
+		} else {
+			return errors.New(e.AttrImut)
+		}
+	}
+
+	// handle part file
+	if node.partsCount() > 1 {
 		for key, file := range files {
 			if node.HasFile() {
-				return errors.New("node file already set and is immutable")
+				return errors.New(e.FileImut)
 			}
 			keyn, errf := strconv.Atoi(key)
-			if errf == nil && keyn <= pc {
+			if errf == nil && keyn <= node.partsCount() {
 				err = node.addPart(keyn-1, &file)
 				if err != nil {
 					return
@@ -309,54 +361,30 @@ func (node *Node) Mkdir() (err error) {
 }
 
 func (node *Node) UpdateVersion() (err error) {
-	var fsum, attrsum, aclsum, versum []byte
 	parts := make(map[string]string)
 	h := md5.New()
-
-	// checksum file
-	m, err := json.Marshal(node.File)
-	if err != nil {
-		return
+	version := node.Id
+	for name, value := range map[string]interface{}{"file_ver": node.File, "attributes_ver": node.Attributes, "acl_ver": node.Acl} {
+		m, er := json.Marshal(value)
+		if er != nil {
+			return
+		}
+		h.Write(m)
+		sum := fmt.Sprintf("%x", h.Sum(nil))
+		parts[name] = sum
+		version = version + ":" + sum
+		h.Reset()
 	}
-	h.Write(m)
-	fsum = h.Sum(fsum)
-	parts["file_ver"] = fmt.Sprintf("%x", fsum)
-	h.Reset()
-
-	// checksum attributes
-	m, err = json.Marshal(node.Attributes)
-	if err != nil {
-		return
-	}
-	h.Write(m)
-	attrsum = h.Sum(attrsum)
-	parts["attributes_ver"] = fmt.Sprintf("%x", attrsum)
-	h.Reset()
-
-	// checksum acl
-	m, err = json.Marshal(node.Acl)
-	if err != nil {
-		return
-	}
-	h.Write(m)
-	aclsum = h.Sum(aclsum)
-	parts["acl_ver"] = fmt.Sprintf("%x", aclsum)
-	h.Reset()
-
-	// node version
-	h.Write([]byte(fmt.Sprintf("%s:%s:%s:%s", node.Id, parts["file_ver"], parts["attributes_ver"], parts["acl_ver"])))
-	versum = h.Sum(versum)
-	node.Version = fmt.Sprintf("%x", versum)
+	h.Write([]byte(version))
+	node.Version = fmt.Sprintf("%x", h.Sum(nil))
 	node.VersionParts = parts
 	return
 }
 
 func (node *Node) setId() {
-	var s []byte
 	h := md5.New()
 	h.Write([]byte(fmt.Sprint(time.Now().String(), rand.Float64())))
-	s = h.Sum(s)
-	node.Id = fmt.Sprintf("%x", s)
+	node.Id = fmt.Sprintf("%x", h.Sum(nil))
 	/*
 		id, _ := uuid.NewV5(uuid.NamespaceURL, []byte("shock"))	
 		node.Id = id.String()
@@ -369,7 +397,7 @@ func (node *Node) SetFile(file FormFile) (err error) {
 	if err != nil {
 		return
 	}
-	os.Rename(file.Path, node.DataPath())
+	os.Rename(file.Path, node.FilePath())
 	node.File.Name = file.Name
 	node.File.Size = fileStat.Size()
 	node.File.Checksum = file.Checksum

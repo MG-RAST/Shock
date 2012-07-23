@@ -6,6 +6,7 @@ import (
 	"github.com/MG-RAST/Shock/store/user"
 	"io/ioutil"
 	"launchpad.net/mgo/bson"
+	"path/filepath"
 )
 
 func LoadNode(id string, uuid string) (node *Node, err error) {
@@ -25,7 +26,7 @@ func LoadNode(id string, uuid string) (node *Node, err error) {
 
 func LoadNodeFromDisk(id string) (node *Node, err error) {
 	path := getPath(id)
-	nbson, err := ioutil.ReadFile(fmt.Sprintf("%s/%s.bson", path, id))
+	nbson, err := ioutil.ReadFile(path + "/" + id + ".bson")
 	if err != nil {
 		return
 	}
@@ -37,11 +38,38 @@ func LoadNodeFromDisk(id string) (node *Node, err error) {
 	return
 }
 
-func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (node *Node, err error) {
+func ReloadFromDisk(path string) (err error) {
+	id := filepath.Base(path)
+	nbson, err := ioutil.ReadFile(path + "/" + id + ".bson")
+	if err != nil {
+		return
+	}
+	node := new(Node)
+	err = bson.Unmarshal(nbson, &node)
+	if err == nil {
+		db, er := DBConnect()
+		if er != nil {
+			err = er
+		}
+		defer db.Close()
+		err = db.Upsert(node)
+		if err != nil {
+			err = er
+		}
+	}
+	return
+}
+
+func NewNode() (node *Node) {
 	node = new(Node)
 	node.Indexes = make(map[string]string)
 	node.File.Checksum = make(map[string]string)
 	node.setId()
+	return
+}
+
+func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (node *Node, err error) {
+	node = NewNode()
 	if u.Uuid != "" {
 		node.Acl.set(u.Uuid, rights{"read": true, "write": true, "delete": true})
 	} else {
