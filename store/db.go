@@ -15,22 +15,27 @@ const (
 )
 
 func init() {
-	d, err := DBConnect()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "datastore: no reachable mongodb servers")
-		os.Exit(1)
-	}
-	idIdx := mgo.Index{Key: []string{"id"}, Unique: true}
-	err = d.Nodes.EnsureIndex(idIdx)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "datastore: fatal initialization error: %v", err)
-		os.Exit(1)
-	}
+	InitDB()
 }
 
 type db struct {
 	Nodes   *mgo.Collection
 	Session *mgo.Session
+}
+
+func InitDB() {
+	d, err := DBConnect()
+	defer d.Close()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "ERROR: no reachable mongodb servers")
+		os.Exit(1)
+	}
+	idIdx := mgo.Index{Key: []string{"id"}, Unique: true}
+	err = d.Nodes.EnsureIndex(idIdx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: fatal mongodb initialization error: %v", err)
+		os.Exit(1)
+	}
 }
 
 func DBConnect() (d *db, err error) {
@@ -40,6 +45,15 @@ func DBConnect() (d *db, err error) {
 	}
 	d = &db{Nodes: session.DB("ShockDB").C("Nodes"), Session: session}
 	return
+}
+
+func DropDB() (err error) {
+	d, err := DBConnect()
+	defer d.Close()
+	if err != nil {
+		return err
+	}
+	return d.Nodes.DropCollection()
 }
 
 func (d *db) Upsert(node *Node) (err error) {

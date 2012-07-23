@@ -84,7 +84,7 @@ Data Types
 - version_parts: version stamps for specific parts of the node, such as acl, attributes and file.
 
 ##### node example (metagenome from MG-RAST):
-
+    
     {
         "D": {
             "id": "4a6299ccb2cc44c2cd4b702cb98f2d9e", 
@@ -243,11 +243,11 @@ Create node
  - optionally takes user/password via Basic Auth. If set only that user with have access to the node
  - accepts multipart/form-data encoded 
  - to set attributes include file field named "attributes" containing a json file of attributes
- - to set file include file field named "file" containing any file
+ - to set file include file field named "upload" containing any file **or** include field named "path" containing the file system path to the file accessible from the Shock server
 
 ##### example
 	
-	curl -X POST [ --user user:password ] [ -F "attributes=@<path_to_json>" -F "file=@<path_to_data_file>" ] http://<host>[:<port>]/node
+	curl -X POST [ --user user:password ] [ -F "attributes=@<path_to_json>" ( -F "upload=@<path_to_data_file>" || -F "path=<path_to_file>") ] http://<host>[:<port>]/node
 	
 ##### returns
 
@@ -329,11 +329,11 @@ Modify node, create index
  - **Once the file or attributes of a node are set they are immutiable.**
  - accepts multipart/form-data encoded 
  - to set attributes include file field named "attributes" containing a json file of attributes
- - to set file include file field named "file" containing any file
- 
+ - to set file include file field named "upload" containing any file **or** include field named "path" containing the file system path to the file accessible from the Shock server
+   
 ##### example	
   
-	curl -X PUT [ --user user:password ] [ -F "attributes=@<path_to_json>" -F "file=@<path_to_data_file>" ] http://<host>[:<port>]/node/{id}
+	curl -X PUT [ --user user:password ] [ -F "attributes=@<path_to_json>" ( -F "upload=@<path_to_data_file>" || -F "path=<path_to_file>") ] http://<host>[:<port>]/node/{id}
 
   
 ##### returns
@@ -367,15 +367,18 @@ Modify node, create index
 
 Create user
 
-Requires Basic Auth encoded username:password. To create an admin user include :secret_key specified at server start.
+Requires Basic Auth encoded as 'username:password'. To create an admin user 'username:password:secret-key:true' where secret-key was specified at server start.
 	
 ##### example	
 
-    # regular user 
+    # regular user (when config Anonymous:create-user=true)
     curl -X POST --user joeuser:1234 http://<host>[:<port>]/user
-    
+
+    # regular user (when config Anonymous:create-user=false)
+    curl -X POST --user joeuser:1234:supersupersecret:false http://<host>[:<port>]/user    
+
     # admin user
-    curl -X POST --user joeuser:1234:supersupersecret http://<host>[:<port>]/user
+    curl -X POST --user joeuser:1234:supersupersecret:true http://<host>[:<port>]/user
 	
 ##### returns
 

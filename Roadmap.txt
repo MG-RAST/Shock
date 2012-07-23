@@ -4,8 +4,7 @@
 Release 0.4 (4/27/12)
  - virtual nodes
  - data set mirroring
- - config file
- - install script
+ - config file: Done
  - logging
  - feature file format: Done
  - web UI (upload, view, download)

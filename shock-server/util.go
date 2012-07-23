@@ -8,17 +8,16 @@ import (
 	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/conf"
-	"github.com/MG-RAST/Shock/goweb"
 	"github.com/MG-RAST/Shock/store"
 	"github.com/MG-RAST/Shock/store/filter"
 	"github.com/MG-RAST/Shock/store/user"
+	"github.com/jaredwilkening/goweb"
 	"io"
 	"math/rand"
 	"net"
 	"net/http"
 	"os"
 	"strings"
-	"time"
 )
 
 var (
@@ -106,10 +105,8 @@ func (s *streamer) stream() (err error) {
 	for _, sr := range s.rs {
 		var rs io.ReadCloser
 		if s.filter != nil {
-			print("filter != nil\n")
 			rs = s.filter(sr)
 		} else {
-			print("filter == nil\n")
 			rs = sr
 		}
 		_, err = io.Copy(s.ws, rs)
@@ -237,10 +234,9 @@ func LogRequest(req *http.Request) {
 	// failed attempt to get the host in ipv4
 	//addrs, _ := net.LookupIP(host)	
 	//fmt.Println(addrs)
-	prefix := fmt.Sprintf("%s [%s]", host, time.Now().Format(time.RFC1123))
 	suffix := ""
 	if _, auth := req.Header["Authorization"]; auth {
-		suffix = "AUTH"
+		suffix = " AUTH"
 	}
 	url := ""
 	if req.URL.RawQuery != "" {
@@ -248,7 +244,7 @@ func LogRequest(req *http.Request) {
 	} else {
 		url = fmt.Sprintf("%s %s", req.Method, req.URL.Path)
 	}
-	fmt.Printf("%s %q %s\n", prefix, url, suffix)
+	log.Info("access", host+" \""+url+suffix+"\"")
 }
 
 func AuthenticateRequest(req *http.Request) (u *user.User, err error) {
