@@ -5,7 +5,7 @@ import (
 	"github.com/MG-RAST/Shock/conf"
 	"github.com/MG-RAST/Shock/store/user"
 	"io/ioutil"
-	"launchpad.net/mgo/bson"
+	"labix.org/v2/mgo/bson"
 	"path/filepath"
 )
 

@@ -10,7 +10,7 @@ import (
 	"github.com/MG-RAST/Shock/store/user"
 	"github.com/jaredwilkening/goweb"
 	"io"
-	"launchpad.net/mgo/bson"
+	"labix.org/v2/mgo/bson"
 	"net/http"
 	"os"
 	"strconv"

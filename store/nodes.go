@@ -1,7 +1,7 @@
 package store
 
 import (
-	"launchpad.net/mgo/bson"
+	"labix.org/v2/mgo/bson"
 )
 
 // Node array type

@@ -10,7 +10,7 @@ import (
 	"github.com/MG-RAST/Shock/store/type/index"
 	"github.com/MG-RAST/Shock/store/type/index/virtual"
 	"io/ioutil"
-	"launchpad.net/mgo/bson"
+	"labix.org/v2/mgo/bson"
 	"math/rand"
 	"os"
 	"strconv"
