@@ -78,7 +78,10 @@ Data Types
 - id: unique identifier
 - file: name, size, checksum(s).
 - attributes: arbitrary json. Queriable.
-- acl: arrays of user uuids corresponding to read, write, delete access controls
+- acl: arrays of user uuids corresponding to read, write, delete access controls.
+- indexes: A set of indexes to use.
+- version: a version stamp for this node.
+- version_parts: version stamps for specific parts of the node, such as acl, attributes and file.
 
 ##### node example (metagenome from MG-RAST):
     
