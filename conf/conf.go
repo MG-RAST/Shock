@@ -20,66 +20,88 @@ var (
 	RELOAD = ""
 
 	// Config File
-	CONFIGFILE = ""
+	CONFIG_FILE = ""
 
 	// Ports
-	SITEPORT = 0
-	APIPORT  = 0
+	SITE_PORT = 0
+	API_PORT  = 0
 
 	// Anonymous-Access-Control 
-	ANONWRITE      = false
-	ANONREAD       = true
-	ANONCREATEUSER = false
+	ANON_WRITE      = false
+	ANON_READ       = true
+	ANON_CREATEUSER = false
+
+	// Auth
+	AUTH_TYPE               = "" //globus, oauth, basic
+	GLOBUS_TOKEN_URL        = ""
+	GLOBUS_PROFILE_URL      = ""
+	OAUTH_REQUEST_TOKEN_URL = ""
+	OAUTH_AUTH_TOKEN_URL    = ""
+	OAUTH_ACCESS_TOKEN_URL  = ""
 
 	// Admin
-	ADMINEMAIL = ""
-	SECRETKEY  = ""
+	ADMIN_EMAIL = ""
+	SECRET_KEY  = ""
 
 	// Directories
-	DATAPATH = ""
-	SITEPATH = ""
-	LOGSPATH = ""
+	DATA_PATH = ""
+	SITE_PATH = ""
+	LOGS_PATH = ""
 
 	// Mongodb 
 	MONGODB = ""
 
 	// Node Indices
-	NODEIDXS map[string]idxOpts = nil
+	NODE_IDXS map[string]idxOpts = nil
 )
 
 func init() {
-	flag.StringVar(&CONFIGFILE, "conf", "/usr/local/shock/conf/shock.cfg", "path to config file")
+	flag.StringVar(&CONFIG_FILE, "conf", "/usr/local/shock/conf/shock.cfg", "path to config file")
 	flag.StringVar(&RELOAD, "reload", "", "path or url to shock data. WARNING this will drop all current data.")
 	flag.Parse()
-	c, err := config.ReadDefault(CONFIGFILE)
+	c, err := config.ReadDefault(CONFIG_FILE)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: error reading conf file: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Ports
-	SITEPORT, _ = c.Int("Ports", "site-port")
-	APIPORT, _ = c.Int("Ports", "api-port")
+	SITE_PORT, _ = c.Int("Ports", "site-port")
+	API_PORT, _ = c.Int("Ports", "api-port")
 
 	// Access-Control 
-	ANONWRITE, _ = c.Bool("Anonymous", "write")
-	ANONREAD, _ = c.Bool("Anonymous", "read")
-	ANONCREATEUSER, _ = c.Bool("Anonymous", "create-user")
+	ANON_WRITE, _ = c.Bool("Anonymous", "write")
+	ANON_READ, _ = c.Bool("Anonymous", "read")
+	ANON_CREATEUSER, _ = c.Bool("Anonymous", "create-user")
+
+	// Auth
+	AUTH_TYPE, _ = c.String("Auth", "type")
+	switch AUTH_TYPE {
+	case "globus":
+		GLOBUS_TOKEN_URL, _ = c.String("Auth", "globus_token_url")
+		GLOBUS_PROFILE_URL, _ = c.String("Auth", "globus_profile_url")
+	case "oauth":
+		OAUTH_REQUEST_TOKEN_URL, _ = c.String("Auth", "oauth_request_token_url")
+		OAUTH_AUTH_TOKEN_URL, _ = c.String("Auth", "oauth_auth_token_url")
+		OAUTH_ACCESS_TOKEN_URL, _ = c.String("Auth", "oauth_access_token_url")
+	case "basic":
+		// nothing yet
+	}
 
 	// Admin
-	ADMINEMAIL, _ = c.String("Admin", "email")
-	SECRETKEY, _ = c.String("Admin", "secretkey")
+	ADMIN_EMAIL, _ = c.String("Admin", "email")
+	SECRET_KEY, _ = c.String("Admin", "secretkey")
 
 	// Directories
-	SITEPATH, _ = c.String("Directories", "site")
-	DATAPATH, _ = c.String("Directories", "data")
-	LOGSPATH, _ = c.String("Directories", "logs")
+	SITE_PATH, _ = c.String("Directories", "site")
+	DATA_PATH, _ = c.String("Directories", "data")
+	LOGS_PATH, _ = c.String("Directories", "logs")
 
 	// Mongodb
 	MONGODB, _ = c.String("Mongodb", "hosts")
 
 	// parse Node-Indices
-	NODEIDXS = map[string]idxOpts{}
+	NODE_IDXS = map[string]idxOpts{}
 	nodeIdx, _ := c.Options("Node-Indices")
 	for _, opt := range nodeIdx {
 		val, _ := c.String("Node-Indices", opt)
@@ -106,7 +128,7 @@ func init() {
 				}
 			}
 		}
-		NODEIDXS[opt] = opts
+		NODE_IDXS[opt] = opts
 	}
 
 }

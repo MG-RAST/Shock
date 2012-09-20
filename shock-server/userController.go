@@ -35,7 +35,7 @@ func (cr *UserController) Create(cx *goweb.Context) {
 	}
 
 	authValuesArray := strings.Split(string(authValues), ":")
-	if conf.ANONCREATEUSER == false && len(authValuesArray) != 4 {
+	if conf.ANON_CREATEUSER == false && len(authValuesArray) != 4 {
 		if len(authValuesArray) == 2 {
 			cx.RespondWithErrorMessage(e.UnAuth, http.StatusUnauthorized)
 			return
@@ -48,7 +48,7 @@ func (cr *UserController) Create(cx *goweb.Context) {
 	passwd := authValuesArray[1]
 	admin := false
 	if len(authValuesArray) == 4 {
-		if authValuesArray[2] != fmt.Sprint(conf.SECRETKEY) {
+		if authValuesArray[2] != fmt.Sprint(conf.SECRET_KEY) {
 			cx.RespondWithErrorMessage(e.UnAuth, http.StatusUnauthorized)
 			return
 		} else if authValuesArray[3] == "true" {
@@ -68,7 +68,7 @@ func (cr *UserController) Create(cx *goweb.Context) {
 			return
 		}
 	}
-	cx.RespondWithData(u.RemovePasswd())
+	cx.RespondWithData(u)
 	return
 }
 
@@ -102,7 +102,7 @@ func (cr *UserController) Read(id string, cx *goweb.Context) {
 	// Any user can access their own user info. Only admins can
 	// access other's info	
 	if u.Uuid == id {
-		cx.RespondWithData(u.RemovePasswd())
+		cx.RespondWithData(u)
 		return
 	} else if u.Admin {
 		nu, err := user.FindByUuid(id)
@@ -116,7 +116,7 @@ func (cr *UserController) Read(id string, cx *goweb.Context) {
 				return
 			}
 		}
-		cx.RespondWithData(nu.RemovePasswd())
+		cx.RespondWithData(nu)
 		return
 	} else {
 		// Not sure how we could end up here but its probably the

@@ -9,12 +9,11 @@ import (
 	e "github.com/MG-RAST/Shock/errors"
 	"github.com/MG-RAST/Shock/store/type/index"
 	"github.com/MG-RAST/Shock/store/type/index/virtual"
+	"github.com/MG-RAST/Shock/store/uuid"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
-	"math/rand"
 	"os"
 	"strconv"
-	"time"
 )
 
 var (
@@ -30,14 +29,15 @@ type Node struct {
 	Attributes   interface{}       `bson:"attributes" json:"attributes"`
 	Indexes      map[string]string `bson:"indexes" json:"indexes"`
 	Acl          acl               `bson:"acl" json:"acl"`
-	VersionParts map[string]string `bson:"version_parts" json:"version_parts"`
+	VersionParts map[string]string `bson:"version_parts" json:"-"`
 }
 
 type file struct {
 	Name     string            `bson:"name" json:"name"`
 	Size     int64             `bson:"size" json:"size"`
 	Checksum map[string]string `bson:"checksum" json:"checksum"`
-	Path     string            `bson:"path" json:"path"`
+	Format   string            `bson:"format" json:"format"`
+	Path     string            `bson:"path" json:"-"`
 }
 
 type partsList struct {
@@ -382,13 +382,7 @@ func (node *Node) UpdateVersion() (err error) {
 }
 
 func (node *Node) setId() {
-	h := md5.New()
-	h.Write([]byte(fmt.Sprint(time.Now().String(), rand.Float64())))
-	node.Id = fmt.Sprintf("%x", h.Sum(nil))
-	/*
-		id, _ := uuid.NewV5(uuid.NamespaceURL, []byte("shock"))	
-		node.Id = id.String()
-	*/
+	node.Id = uuid.New()
 	return
 }
 

@@ -14,30 +14,87 @@ Shock is an data management system. Annotate, anonymize, convert, filter, qualit
 
 **Most importantly Shock is still very much in development. Be patient and contribute.**
 
-
 Shock is actively being developed at [github.com/MG-RAST/Shock](http://github.com/MG-RAST/Shock).
 
 <br>
 To build:
 ---------
-
 Unix/Macintosh 
 
-Shock (requires go release.1 [golang.org/doc/install/source](http://golang.org/doc/install/source)):
+Shock (requires go=>1.0.0 [golang.org/doc/install/source](http://golang.org/doc/install/source), git, mercurial, bazaar):
 
     go get github.com/MG-RAST/Shock/...
   
 To run (additional requires mongodb=>2.0.3):
   
     shock-server -conf <path_to_config_file>
-    
-The Shock configuration file is in INI file format. This file is documented in the shock.cfg.template file at the root level of the repository.
+  
+<br>
+Configuration:
+--------------
+The Shock configuration file is in INI file format. There is a template of the config file located at the root level of the repository.
+
+    [Anonymous]
+    # Controls an anonymous user's ability to read/write
+    # values: true/false
+    read=true
+    write=false
+    create-user=false
+
+    [Ports]
+    # Ports for site/api
+    # Note: use of port 80 may require root access
+    site-port=80
+    api-port=8000
+
+    [Auth]
+    # options: globus (requires globus_token_url, globus_profile_url), basic (require no further configuration)
+    type=basic
+    #globus_token_url=<url_to_retrieve_tokens>
+    #globus_profile_url=<url_to_retrieve_user_profile>
+
+    [Admin]
+    email=admin@host.com
+    secretkey=supersecretkey
+
+    [Directories]
+    # See documentation for details of deploying Shock
+    site=/usr/local/shock/site
+    data=/usr/local/shock/data
+    logs=/var/log/shock
+
+    [Mongodb]
+    # Mongodb configuration:
+    # Hostnames and ports hosts=host1[,host2:port,...,hostN]
+    hosts=localhost
+
+    [Mongodb-Node-Indices]
+    # See http://www.mongodb.org/display/DOCS/Indexes#Indexes-CreationOptions for more info on mongodb index options.
+    # key=unique:true/false[,dropDups:true/false][,sparse:true/false]
+    id=unique:true
 
 <br>
-Command-line client:
--------------------
+Authentication:
+---------------
+Shock currently supports two forms of Authentication. Http Basic Auth with local user support and Globus Online Nexus oauth implementation. 
 
-Alpha version available at [github.com/MG-RAST/ShockClient](http://github.com/MG-RAST/ShockClient).
+Basic Auth:
+
+- configure shock with Auth.type = basic
+- create user via api [/user](#post_user)
+- set headers in api requests (curl --user username:password)
+
+<br>
+Globus Online:
+
+shock.conf 
+
+    type=basic
+    globus_token_url=<url_to_retrieve_tokens>
+    globus_profile_url=<url_to_retrieve_user_profile>
+
+- use globus online username & password in api requests (curl --user username:password ...)
+- use globus online token in api requests (curl -H "Authorization: Globus-Goauthtoken TOKEN" ...)
 
 <br>
 Routes Overview
@@ -247,7 +304,7 @@ Create node
 
 ##### example
 	
-	curl -X POST [ --user user:password ] [ -F "attributes=@<path_to_json>" ( -F "upload=@<path_to_data_file>" || -F "path=<path_to_file>") ] http://<host>[:<port>]/node
+	curl -X POST [ see Authentication ] [ -F "attributes=@<path_to_json>" ( -F "upload=@<path_to_data_file>" || -F "path=<path_to_file>") ] http://<host>[:<port>]/node
 	
 ##### returns
 
@@ -284,7 +341,7 @@ Multiple attributes can be selected in a single query and are treated as AND ope
 
 ##### example
 	
-	curl -X GET [ --user user:password ] http://<host>[:<port>]/node/[?skip=<skip>&limit=<count>][&query&<tag>=<value>]
+	curl -X GET [ see Authentication ] http://<host>[:<port>]/node/[?skip=<skip>&limit=<count>][&query&<tag>=<value>]
 		
 ##### returns
 
@@ -306,7 +363,7 @@ View node, download file (full or partial)
 
 ##### example	
 
-	curl -X GET [ --user user:password ] http://<host>[:<port>]/node/{id}
+	curl -X GET [ see Authentication ] http://<host>[:<port>]/node/{id}
 
 ##### returns
 
@@ -333,7 +390,7 @@ Modify node, create index
    
 ##### example	
   
-	curl -X PUT [ --user user:password ] [ -F "attributes=@<path_to_json>" ( -F "upload=@<path_to_data_file>" || -F "path=<path_to_file>") ] http://<host>[:<port>]/node/{id}
+	curl -X PUT [ see Authentication ] [ -F "attributes=@<path_to_json>" ( -F "upload=@<path_to_data_file>" || -F "path=<path_to_file>") ] http://<host>[:<port>]/node/{id}
 
   
 ##### returns
@@ -351,7 +408,7 @@ Modify node, create index
 
 ##### example	
 
-	curl -X PUT [ --user user:password ] http://<host>[:<port>]/node/{id}?index=<type>
+	curl -X PUT [ see Authentication ] http://<host>[:<port>]/node/{id}?index=<type>
 
 ##### returns
 
@@ -365,7 +422,7 @@ Modify node, create index
 <br>
 ### POST /user
 
-Create user
+Create user (basic auth only)
 
 Requires Basic Auth encoded as 'username:password'. To create an admin user 'username:password:secret-key:true' where secret-key was specified at server start.
 	
@@ -392,7 +449,7 @@ Requires Basic Auth encoded as 'username:password'. To create an admin user 'use
 <br>
 ### GET /user/{id}
 
-View user
+View user (basic auth only)
 
 Requires Basic Auth encoded username:password. Regular user are able to see their own information while Admin user are able to access all. 
 
@@ -412,7 +469,7 @@ Requires Basic Auth encoded username:password. Regular user are able to see thei
 <br>
 ### GET /user
 
-List users
+List users (basic auth only)
 
 Requires Basic Auth encoded username:password. Restricted to Admin users.
 
