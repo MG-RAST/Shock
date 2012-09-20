@@ -20,7 +20,7 @@ func init() {
 		os.Exit(1)
 	}
 	uuidIdx := mgo.Index{Key: []string{"uuid"}, Unique: true}
-	nameIdx := mgo.Index{Key: []string{"name"}, Unique: true}
+	nameIdx := mgo.Index{Key: []string{"username"}, Unique: true}
 	err = d.User.EnsureIndex(uuidIdx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "user: fatal initialization error: %v", err)
@@ -52,11 +52,20 @@ func (d *db) AdminGet(u *Users) (err error) {
 	return
 }
 
+func (d *db) GetUuid(username string) (uuid string, err error) {
+	u := User{}
+	err = d.User.Find(bson.M{"username": username}).One(&u)
+	if err == nil {
+		return u.Uuid, nil
+	}
+	return "", err
+}
+
 func (d *db) GetUser(u *User) (err error) {
 	if u.Uuid != "" {
 		err = d.User.Find(bson.M{"uuid": u.Uuid}).One(&u)
 	} else {
-		err = d.User.Find(bson.M{"name": u.Name, "passwd": u.Passwd}).One(&u)
+		err = d.User.Find(bson.M{"username": u.Username, "password": u.Password}).One(&u)
 	}
 	return
 }

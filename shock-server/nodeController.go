@@ -18,28 +18,33 @@ import (
 
 type NodeController struct{}
 
+func handleAuthError(err error, cx *goweb.Context) {
+	switch err.Error() {
+	case e.MongoDocNotFound:
+		cx.RespondWithErrorMessage("Invalid username or password", http.StatusBadRequest)
+		return
+	case e.InvalidAuth:
+		cx.RespondWithErrorMessage("Invalid Authorization header", http.StatusBadRequest)
+		return
+	}
+	fmt.Println("Error at Auth:", err.Error())
+	cx.RespondWithError(http.StatusInternalServerError)
+	return
+}
+
 // POST: /node
 func (cr *NodeController) Create(cx *goweb.Context) {
 	// Log Request and check for Auth
 	LogRequest(cx.Request)
 	u, err := AuthenticateRequest(cx.Request)
-	if err != nil {
-		// No Auth is not damning. Other errors are probably a dead db connection
-		if err.Error() != e.NoAuth {
-			if err.Error() == e.MongoDocNotFound {
-				cx.RespondWithErrorMessage("Invalid username or password", http.StatusBadRequest)
-				return
-			} else {
-				fmt.Println("Error at Auth:", err.Error())
-				cx.RespondWithError(http.StatusInternalServerError)
-				return
-			}
-		}
+	if err != nil && err.Error() != e.NoAuth {
+		handleAuthError(err, cx)
+		return
 	}
 
 	// Fake public user 
 	if u == nil {
-		if conf.ANONWRITE {
+		if conf.ANON_WRITE {
 			u = &user.User{Uuid: ""}
 		} else {
 			cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
@@ -107,23 +112,14 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 	// Log Request and check for Auth
 	LogRequest(cx.Request)
 	u, err := AuthenticateRequest(cx.Request)
-	if err != nil {
-		// No Auth is not damning. Other errors are probably a dead db connection
-		if err.Error() != e.NoAuth {
-			if err.Error() == e.MongoDocNotFound {
-				cx.RespondWithErrorMessage("Invalid username or password", http.StatusBadRequest)
-				return
-			} else {
-				fmt.Println("Error at Auth:", err.Error())
-				cx.RespondWithError(http.StatusInternalServerError)
-				return
-			}
-		}
+	if err != nil && err.Error() != e.NoAuth {
+		handleAuthError(err, cx)
+		return
 	}
 
 	// Fake public user 
 	if u == nil {
-		if conf.ANONREAD {
+		if conf.ANON_READ {
 			u = &user.User{Uuid: ""}
 		} else {
 			cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
@@ -252,18 +248,9 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 	// Log Request and check for Auth
 	LogRequest(cx.Request)
 	u, err := AuthenticateRequest(cx.Request)
-	if err != nil {
-		// No Auth is not damning. Other errors are probably a dead db connection
-		if err.Error() != e.NoAuth {
-			if err.Error() == e.MongoDocNotFound {
-				cx.RespondWithErrorMessage("Invalid username or password", http.StatusBadRequest)
-				return
-			} else {
-				fmt.Println("Error at Auth:", err.Error())
-				cx.RespondWithError(http.StatusInternalServerError)
-				return
-			}
-		}
+	if err != nil && err.Error() != e.NoAuth {
+		handleAuthError(err, cx)
+		return
 	}
 
 	// Gather query params
@@ -279,7 +266,7 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 			q["$or"] = []bson.M{bson.M{"acl.read": []string{}}, bson.M{"acl.read": u.Uuid}}
 		}
 	} else {
-		if conf.ANONREAD {
+		if conf.ANON_READ {
 			// select on only nodes with no read rights set
 			q["acl.read"] = []string{}
 		} else {
@@ -339,18 +326,9 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 	// Log Request and check for Auth
 	LogRequest(cx.Request)
 	u, err := AuthenticateRequest(cx.Request)
-	if err != nil {
-		// No Auth is not damning. Other errors are probably a dead db connection
-		if err.Error() != e.NoAuth {
-			if err.Error() == e.MongoDocNotFound {
-				cx.RespondWithErrorMessage("Invalid username or password", http.StatusBadRequest)
-				return
-			} else {
-				fmt.Println("Error at Auth:", err.Error())
-				cx.RespondWithError(http.StatusInternalServerError)
-				return
-			}
-		}
+	if err != nil && err.Error() != e.NoAuth {
+		handleAuthError(err, cx)
+		return
 	}
 
 	// Gather query params
