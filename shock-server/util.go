@@ -4,16 +4,18 @@ import (
 	"compress/gzip"
 	"crypto/md5"
 	"crypto/sha1"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/conf"
+	e "github.com/MG-RAST/Shock/errors"
 	"github.com/MG-RAST/Shock/store"
 	"github.com/MG-RAST/Shock/store/filter"
 	"github.com/MG-RAST/Shock/store/user"
+	"github.com/MG-RAST/Shock/store/user/auth"
 	"github.com/jaredwilkening/goweb"
 	"io"
 	"math/rand"
+	"mime/multipart"
 	"net"
 	"net/http"
 	"os"
@@ -121,6 +123,7 @@ func (s *streamer) stream() (err error) {
 func ParseMultipartForm(r *http.Request) (params map[string]string, files store.FormFiles, err error) {
 	params = make(map[string]string)
 	files = make(store.FormFiles)
+	tmpFiles := make(map[string]multipart.Part)
 	md5h := md5.New()
 	sha1h := sha1.New()
 	reader, err := r.MultipartReader()
@@ -128,35 +131,38 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files store.
 		return
 	}
 	for {
-		part, err := reader.NextPart()
-		if err != nil {
-			break
-		}
-		if part.FileName() == "" {
-			buffer := make([]byte, 32*1024)
-			n, err := part.Read(buffer)
-			if n == 0 || err != nil {
-				break
-			}
-			params[part.FormName()] = fmt.Sprintf("%s", buffer[0:n])
-		} else {
-			var reader io.Reader
-			tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.DATAPATH, rand.Int(), rand.Int())
-			filename := part.FileName()
-			if filename[len(filename)-3:] == ".gz" {
-				filename = filename[:len(filename)-3]
-				reader, err = gzip.NewReader(part)
-				if err != nil {
+		if part, err := reader.NextPart(); err == nil {
+			if part.FileName() == "" {
+				// read field
+				buffer := make([]byte, 32*1024)
+				n, err := part.Read(buffer)
+				if n == 0 || err != nil {
 					break
 				}
+				params[part.FormName()] = fmt.Sprintf("%s", buffer[0:n])
 			} else {
-				reader = part
+				tmpFiles[part.FileName()] = *part
 			}
-			files[part.FormName()] = store.FormFile{Name: filename, Path: tmpPath, Checksum: make(map[string]string)}
-			tmpFile, err := os.Create(tmpPath)
+		} else {
+			return nil, nil, err
+		}
+	}
+	fmt.Printf("%#v\n", tmpFiles)
+	for fname, part := range tmpFiles {
+		// read in file
+		var reader io.Reader
+		tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.DATA_PATH, rand.Int(), rand.Int())
+		if fname[len(fname)-3:] == ".gz" && params["decompress"] == "true" {
+			fname = fname[:len(fname)-3]
+			reader, err = gzip.NewReader(&part)
 			if err != nil {
 				break
 			}
+		} else {
+			reader = &part
+		}
+		files[part.FormName()] = store.FormFile{Name: fname, Path: tmpPath, Checksum: make(map[string]string)}
+		if tmpFile, err := os.Create(tmpPath); err == nil {
 			buffer := make([]byte, 32*1024)
 			for {
 				n, err := reader.Read(buffer)
@@ -174,14 +180,14 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files store.
 			files[part.FormName()].Checksum["md5"] = fmt.Sprintf("%x", md5s)
 			files[part.FormName()].Checksum["sha1"] = fmt.Sprintf("%x", sha1s)
 
-			tmpFile.Close()
 			md5h.Reset()
 			sha1h.Reset()
+			tmpFile.Close()
+		} else {
+			return nil, nil, err
 		}
 	}
-	if err != nil {
-		return
-	}
+	fmt.Printf("%#v\n\n%#v\n", params, files)
 	return
 }
 
@@ -205,9 +211,9 @@ func ResourceDescription(cx *goweb.Context) {
 	}
 	r := resource{
 		R: []string{"node", "user"},
-		U: "http://" + host + ":" + fmt.Sprint(conf.APIPORT) + "/",
-		D: "http://" + host + ":" + fmt.Sprint(conf.SITEPORT) + "/",
-		C: conf.ADMINEMAIL,
+		U: "http://" + host + ":" + fmt.Sprint(conf.API_PORT) + "/",
+		D: "http://" + host + ":" + fmt.Sprint(conf.SITE_PORT) + "/",
+		C: conf.ADMIN_EMAIL,
 		I: "Shock",
 		T: "Shock",
 	}
@@ -216,17 +222,17 @@ func ResourceDescription(cx *goweb.Context) {
 
 func Site(cx *goweb.Context) {
 	LogRequest(cx.Request)
-	http.ServeFile(cx.ResponseWriter, cx.Request, conf.SITEPATH+"/pages/main.html")
+	http.ServeFile(cx.ResponseWriter, cx.Request, conf.SITE_PATH+"/pages/main.html")
 }
 
 func RawDir(cx *goweb.Context) {
 	LogRequest(cx.Request)
-	http.ServeFile(cx.ResponseWriter, cx.Request, fmt.Sprintf("%s%s", conf.DATAPATH, cx.Request.URL.Path))
+	http.ServeFile(cx.ResponseWriter, cx.Request, fmt.Sprintf("%s%s", conf.DATA_PATH, cx.Request.URL.Path))
 }
 
 func AssetsDir(cx *goweb.Context) {
 	LogRequest(cx.Request)
-	http.ServeFile(cx.ResponseWriter, cx.Request, conf.SITEPATH+cx.Request.URL.Path)
+	http.ServeFile(cx.ResponseWriter, cx.Request, conf.SITE_PATH+cx.Request.URL.Path)
 }
 
 func LogRequest(req *http.Request) {
@@ -249,21 +255,10 @@ func LogRequest(req *http.Request) {
 
 func AuthenticateRequest(req *http.Request) (u *user.User, err error) {
 	if _, ok := req.Header["Authorization"]; !ok {
-		err = errors.New("No Authorization")
+		err = errors.New(e.NoAuth)
 		return
 	}
 	header := req.Header.Get("Authorization")
-	tmpAuthArray := strings.Split(header, " ")
-
-	authValues, err := base64.URLEncoding.DecodeString(tmpAuthArray[1])
-	if err != nil {
-		err = errors.New("Failed to decode encoded auth settings in http request.")
-		return
-	}
-
-	authValuesArray := strings.Split(string(authValues), ":")
-	name := authValuesArray[0]
-	passwd := authValuesArray[1]
-	u, err = user.Authenticate(name, passwd)
+	u, err = auth.Authenticate(header)
 	return
 }

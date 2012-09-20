@@ -1,5 +1,5 @@
 [Anonymous]
-# Controls weither an anonymous user can read/write
+# Controls an anonymous user's ability to read/write
 # values: true/false
 read=true
 write=false
@@ -11,14 +11,20 @@ create-user=false
 site-port=80
 api-port=8000
 
+[Auth]
+# options: globus (requires globus_token_url, globus_profile_url), basic (require no further configuration)
+type=basic
+#globus_token_url=<url_to_retrieve_tokens>
+#globus_profile_url=<url_to_retrieve_user_profile>
+
 [Admin]
 email=admin@host.com
 secretkey=supersecretkey
 
 [Directories]
 # See documentation for details of deploying Shock
-site=/local/shock/site
-data=/local/shock
+site=/usr/local/shock/site
+data=/usr/local/shock
 logs=/var/log/shock
 
 [Mongodb]

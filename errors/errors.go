@@ -9,7 +9,8 @@ var (
 )
 
 const (
-	MongoDocNotFound         = "Document not found"
+	MongoDocNotFound         = "not found"
+	InvalidAuth              = "Invalid Auth Header"
 	UnAuth                   = "User Unauthorized"
 	NoAuth                   = "No Authorization"
 	AttrImut                 = "node attributes immutable"
