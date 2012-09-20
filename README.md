@@ -48,10 +48,12 @@ The Shock configuration file is in INI file format. There is a template of the c
     api-port=8000
 
     [Auth]
-    # options: globus (requires globus_token_url, globus_profile_url), basic (require no further configuration)
+    # defaults to local user management with basis auth
     type=basic
-    #globus_token_url=<url_to_retrieve_tokens>
-    #globus_profile_url=<url_to_retrieve_user_profile>
+    # comment line about and uncomment below to use Globus Online as auth provider
+    #type=globus 
+    #globus_token_url=https://nexus.api.globusonline.org/goauth/token?grant_type=client_credentials
+    #globus_profile_url=https://nexus.api.globusonline.org/users
 
     [Admin]
     email=admin@host.com

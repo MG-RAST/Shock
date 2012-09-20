@@ -28,8 +28,10 @@ type Token struct {
 func AuthUsernamePassword(u string, p string) (usr *user.User, err error) {
 	if t, err := FetchToken(u, p); err == nil {
 		return FetchProfile(t.AccessToken)
+	} else {
+		return nil, err
 	}
-	return nil, err
+	return
 }
 
 func AuthToken(t string) (*user.User, error) {
@@ -58,6 +60,8 @@ func FetchToken(u string, p string) (t *Token, err error) {
 		} else {
 			return nil, errors.New("Authentication failed: Unexpected response status: " + resp.Status)
 		}
+	} else {
+		return nil, err
 	}
 	return
 }
@@ -87,6 +91,8 @@ func FetchProfile(t string) (u *user.User, err error) {
 		} else {
 			return nil, errors.New("Authentication failed: Unexpected response status: " + resp.Status)
 		}
+	} else {
+		return nil, err
 	}
 	return
 }
