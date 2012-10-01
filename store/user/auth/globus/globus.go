@@ -53,8 +53,6 @@ func FetchToken(u string, p string) (t *Token, err error) {
 			if body, err := ioutil.ReadAll(resp.Body); err == nil {
 				if err = json.Unmarshal(body, &t); err != nil {
 					return nil, err
-				} else {
-					t.AccessToken = "Globus-Goauthtoken " + t.AccessToken
 				}
 			}
 		} else {
