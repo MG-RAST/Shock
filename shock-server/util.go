@@ -121,7 +121,6 @@ func (s *streamer) stream() (err error) {
 
 // helper function for create & update
 func ParseMultipartForm(r *http.Request) (params map[string]string, files store.FormFiles, err error) {
-	fmt.Println("here")
 	params = make(map[string]string)
 	files = make(store.FormFiles)
 	md5h := md5.New()

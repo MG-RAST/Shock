@@ -29,7 +29,7 @@ func Authenticate(header string) (u *user.User, err error) {
 				return nil, err
 			}
 			// cache results
-		case "basic":
+		case "Basic":
 			if username, password, err := basic.DecodeHeader(header); err == nil {
 				if u, err := globus.AuthUsernamePassword(username, password); err == nil {
 					return u, nil
