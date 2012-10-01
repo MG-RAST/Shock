@@ -5,21 +5,31 @@ import (
 	"github.com/MG-RAST/Shock/store/user"
 	"github.com/MG-RAST/Shock/store/user/auth/basic"
 	"github.com/MG-RAST/Shock/store/user/auth/globus"
+	"strings"
 )
+
+func AuthHeaderType(header string) string {
+	tmp := strings.Split(header, " ")
+	if len(tmp) > 1 {
+		return tmp[0]
+	}
+	return ""
+}
 
 func Authenticate(header string) (u *user.User, err error) {
 	switch conf.AUTH_TYPE {
 	case "globus":
-		if globus.ValidToken(header) {
+		switch AuthHeaderType(header) {
+		case "Globus-Goauthtoken", "OAuth":
 			// check cache
 			// auth from server			
-			if u, err = globus.AuthToken(header); err == nil {
+			if u, err = globus.AuthToken(strings.Split(header, " ")[1]); err == nil {
 				return
 			} else {
 				return nil, err
 			}
 			// cache results
-		} else {
+		case "basic":
 			if username, password, err := basic.DecodeHeader(header); err == nil {
 				if u, err := globus.AuthUsernamePassword(username, password); err == nil {
 					return u, nil

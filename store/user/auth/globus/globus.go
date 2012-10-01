@@ -74,7 +74,7 @@ func FetchProfile(t string) (u *user.User, err error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Add("Authorization", t)
+	req.Header.Add("Authorization", "Globus-Goauthtoken "+t)
 	if resp, err := client.Do(req); err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode == http.StatusOK {
@@ -107,5 +107,5 @@ func clientId(t string) string {
 }
 
 func ValidToken(header string) bool {
-	return strings.Contains(header, "Globus-Goauthtoken")
+	return strings.Contains(header, "Globus-Goauthtoken ") || strings.Contains(header, "Oauth ")
 }
