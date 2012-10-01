@@ -78,7 +78,7 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 			// Some error other than request encoding. Theoretically 
 			// could be a lost db connection between user lookup and parsing.
 			// Blame the user, Its probaby their fault anyway.
-			fmt.Println("Error at empty create:", err.Error())
+			fmt.Println("Error parsing form:", err.Error())
 			cx.RespondWithError(http.StatusBadRequest)
 			return
 		}

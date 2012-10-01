@@ -1,7 +1,7 @@
 package main
 
 import (
-	"compress/gzip"
+	//"compress/gzip"
 	"crypto/md5"
 	"crypto/sha1"
 	"errors"
@@ -15,7 +15,7 @@ import (
 	"github.com/jaredwilkening/goweb"
 	"io"
 	"math/rand"
-	"mime/multipart"
+	//"mime/multipart"
 	"net"
 	"net/http"
 	"os"
@@ -121,9 +121,9 @@ func (s *streamer) stream() (err error) {
 
 // helper function for create & update
 func ParseMultipartForm(r *http.Request) (params map[string]string, files store.FormFiles, err error) {
+	fmt.Println("here")
 	params = make(map[string]string)
 	files = make(store.FormFiles)
-	tmpFiles := make(map[string]multipart.Part)
 	md5h := md5.New()
 	sha1h := sha1.New()
 	reader, err := r.MultipartReader()
@@ -133,7 +133,6 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files store.
 	for {
 		if part, err := reader.NextPart(); err == nil {
 			if part.FileName() == "" {
-				// read field
 				buffer := make([]byte, 32*1024)
 				n, err := part.Read(buffer)
 				if n == 0 || err != nil {
@@ -141,53 +140,51 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files store.
 				}
 				params[part.FormName()] = fmt.Sprintf("%s", buffer[0:n])
 			} else {
-				tmpFiles[part.FileName()] = *part
-			}
-		} else {
-			return nil, nil, err
-		}
-	}
-	fmt.Printf("%#v\n", tmpFiles)
-	for fname, part := range tmpFiles {
-		// read in file
-		var reader io.Reader
-		tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.DATA_PATH, rand.Int(), rand.Int())
-		if fname[len(fname)-3:] == ".gz" && params["decompress"] == "true" {
-			fname = fname[:len(fname)-3]
-			reader, err = gzip.NewReader(&part)
-			if err != nil {
-				break
-			}
-		} else {
-			reader = &part
-		}
-		files[part.FormName()] = store.FormFile{Name: fname, Path: tmpPath, Checksum: make(map[string]string)}
-		if tmpFile, err := os.Create(tmpPath); err == nil {
-			buffer := make([]byte, 32*1024)
-			for {
-				n, err := reader.Read(buffer)
-				if n == 0 || err != nil {
-					break
+				tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.DATA_PATH, rand.Int(), rand.Int())
+				/*
+					if fname[len(fname)-3:] == ".gz" && params["decompress"] == "true" {
+						fname = fname[:len(fname)-3]
+						reader, err = gzip.NewReader(&part)
+						if err != nil {
+							break
+						}
+					} else {
+						reader = &part
+					}
+				*/
+				files[part.FormName()] = store.FormFile{Name: part.FileName(), Path: tmpPath, Checksum: make(map[string]string)}
+				if tmpFile, err := os.Create(tmpPath); err == nil {
+					buffer := make([]byte, 32*1024)
+					for {
+						n, err := part.Read(buffer)
+						if n == 0 || err != nil {
+							break
+						}
+						tmpFile.Write(buffer[0:n])
+						md5h.Write(buffer[0:n])
+						sha1h.Write(buffer[0:n])
+					}
+
+					var md5s, sha1s []byte
+					md5s = md5h.Sum(md5s)
+					sha1s = sha1h.Sum(sha1s)
+					files[part.FormName()].Checksum["md5"] = fmt.Sprintf("%x", md5s)
+					files[part.FormName()].Checksum["sha1"] = fmt.Sprintf("%x", sha1s)
+
+					md5h.Reset()
+					sha1h.Reset()
+					tmpFile.Close()
+				} else {
+					return nil, nil, err
 				}
-				tmpFile.Write(buffer[0:n])
-				md5h.Write(buffer[0:n])
-				sha1h.Write(buffer[0:n])
 			}
-
-			var md5s, sha1s []byte
-			md5s = md5h.Sum(md5s)
-			sha1s = sha1h.Sum(sha1s)
-			files[part.FormName()].Checksum["md5"] = fmt.Sprintf("%x", md5s)
-			files[part.FormName()].Checksum["sha1"] = fmt.Sprintf("%x", sha1s)
-
-			md5h.Reset()
-			sha1h.Reset()
-			tmpFile.Close()
-		} else {
+		} else if err.Error() != "EOF" {
+			fmt.Println("err here")
 			return nil, nil, err
+		} else {
+			break
 		}
 	}
-	fmt.Printf("%#v\n\n%#v\n", params, files)
 	return
 }
 

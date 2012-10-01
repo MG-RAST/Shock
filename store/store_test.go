@@ -66,7 +66,7 @@ func TestCreateNodeUpload(t *testing.T) {
 	fmt.Println("params=", params)
 
 	files := make(FormFiles)
-	tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.DATAPATH, rand.Int(), rand.Int())
+	tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.DATA_PATH, rand.Int(), rand.Int())
 	fmt.Println("tmpPath=", tmpPath)
 	formfile1 := FormFile{Name: "tshock", Path: tmpPath, Checksum: make(map[string]string)}
 	files["file1"] = formfile1
