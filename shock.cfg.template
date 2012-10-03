@@ -1,15 +1,13 @@
+[Admin]
+email=admin@host.com
+secretkey=supersecretkey
+
 [Anonymous]
 # Controls an anonymous user's ability to read/write
 # values: true/false
 read=true
 write=false
 create-user=false
-
-[Ports]
-# Ports for site/api
-# Note: use of port 80 may require root access
-site-port=80
-api-port=8000
 
 [Auth]
 # defaults to local user management with basis auth
@@ -18,10 +16,6 @@ type=basic
 #type=globus 
 #globus_token_url=https://nexus.api.globusonline.org/goauth/token?grant_type=client_credentials
 #globus_profile_url=https://nexus.api.globusonline.org/users
-
-[Admin]
-email=admin@host.com
-secretkey=supersecretkey
 
 [Directories]
 # See documentation for details of deploying Shock
@@ -38,3 +32,9 @@ hosts=localhost
 # See http://www.mongodb.org/display/DOCS/Indexes#Indexes-CreationOptions for more info on mongodb index options.
 # key=unique:true/false[,dropDups:true/false][,sparse:true/false]
 id=unique:true
+
+[Ports]
+# Ports for site/api
+# Note: use of port 80 may require root access
+site-port=80
+api-port=8000
