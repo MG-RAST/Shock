@@ -4,12 +4,18 @@ import ()
 
 // Node.acl struct
 type acl struct {
+	Owner  string   `bson:"owner" json:"-"`
 	Read   []string `bson:"read" json:"read"`
 	Write  []string `bson:"write" json:"write"`
 	Delete []string `bson:"delete" json:"delete"`
 }
 
 type rights map[string]bool
+
+func (a *acl) setOwner(uuid string) {
+	a.Owner = uuid
+	return
+}
 
 func (a *acl) set(uuid string, r rights) {
 	if r["read"] {

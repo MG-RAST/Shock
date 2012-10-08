@@ -27,7 +27,7 @@ func handleAuthError(err error, cx *goweb.Context) {
 		cx.RespondWithErrorMessage("Invalid Authorization header", http.StatusBadRequest)
 		return
 	}
-	fmt.Println("Error at Auth:", err.Error())
+	log.Error("Error at Auth: " + err.Error())
 	cx.RespondWithError(http.StatusInternalServerError)
 	return
 }
@@ -61,7 +61,7 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 		if err.Error() == "request Content-Type isn't multipart/form-data" {
 			node, err := store.CreateNodeUpload(u, params, files)
 			if err != nil {
-				fmt.Println("Error at create empty:", err.Error())
+				log.Error("Error at create empty: " + err.Error())
 				cx.RespondWithError(http.StatusInternalServerError)
 				return
 			}
@@ -78,7 +78,7 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 			// Some error other than request encoding. Theoretically 
 			// could be a lost db connection between user lookup and parsing.
 			// Blame the user, Its probaby their fault anyway.
-			fmt.Println("Error parsing form:", err.Error())
+			log.Error("Error parsing form: " + err.Error())
 			cx.RespondWithError(http.StatusBadRequest)
 			return
 		}
@@ -86,7 +86,7 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 	// Create node	
 	node, err := store.CreateNodeUpload(u, params, files)
 	if err != nil {
-		fmt.Println("err", err.Error())
+		log.Error("err " + err.Error())
 		cx.RespondWithError(http.StatusBadRequest)
 		return
 	}
@@ -141,7 +141,6 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 	node, err := store.LoadNode(id, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
-			fmt.Println("Unauthorized")
 			cx.RespondWithError(http.StatusUnauthorized)
 			return
 		} else if err.Error() == e.MongoDocNotFound {
@@ -150,7 +149,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			fmt.Println("Err@node_Read:LoadNode:", err.Error())
+			log.Error("Err@node_Read:LoadNode: " + err.Error())
 			cx.RespondWithError(http.StatusInternalServerError)
 			return
 		}
@@ -176,7 +175,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 			r, err := os.Open(node.FilePath())
 			defer r.Close()
 			if err != nil {
-				fmt.Println("Err@node_Read:Open:", err.Error())
+				log.Error("Err@node_Read:Open: " + err.Error())
 				cx.RespondWithError(http.StatusInternalServerError)
 				return
 			}
@@ -212,14 +211,14 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 			err = s.stream()
 			if err != nil {
 				// fix
-				fmt.Println("err", err.Error())
+				log.Error("err: " + err.Error())
 			}
 		} else {
 			nf, err := os.Open(node.FilePath())
 			if err != nil {
 				// File not found or some sort of file read error. 
 				// Probably deserves more checking
-				fmt.Println("err", err.Error())
+				log.Error("err " + err.Error())
 				cx.RespondWithError(http.StatusBadRequest)
 				return
 			}
@@ -227,7 +226,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 			err = s.stream()
 			if err != nil {
 				// fix
-				fmt.Println("err", err.Error())
+				log.Error("err " + err.Error())
 			}
 		}
 		return
@@ -303,7 +302,7 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 		// Get nodes from db
 		err := nodes.GetAllLimitOffset(q, lim, off)
 		if err != nil {
-			fmt.Println("err", err.Error())
+			log.Error("err " + err.Error())
 			cx.RespondWithError(http.StatusBadRequest)
 			return
 		}
@@ -311,7 +310,7 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 		// Get nodes from db
 		err := nodes.GetAll(q)
 		if err != nil {
-			fmt.Println("err", err.Error())
+			log.Error("err " + err.Error())
 			cx.RespondWithError(http.StatusBadRequest)
 			return
 		}
@@ -342,7 +341,6 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 	node, err := store.LoadNode(id, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
-			fmt.Println("Unauthorized")
 			cx.RespondWithError(http.StatusUnauthorized)
 			return
 		} else if err.Error() == e.MongoDocNotFound {
@@ -351,7 +349,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			fmt.Println("Err@node_Update:LoadNode:", err.Error())
+			log.Error("Err@node_Update:LoadNode: " + err.Error())
 			cx.RespondWithError(http.StatusInternalServerError)
 			return
 		}
@@ -368,7 +366,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 		idxer := newIndexer(f)
 		err := idxer.Create()
 		if err != nil {
-			fmt.Println(err.Error())
+			log.Error("err " + err.Error())
 		}
 		err = idxer.Dump(node.IndexPath() + "/record")
 		if err != nil {
@@ -381,7 +379,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 	} else {
 		params, files, err := ParseMultipartForm(cx.Request)
 		if err != nil {
-			fmt.Println("err", err.Error())
+			log.Error("err " + err.Error())
 			cx.RespondWithError(http.StatusBadRequest)
 			return
 		}
@@ -395,7 +393,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 					return
 				}
 			}
-			fmt.Println("err", err.Error())
+			log.Error("err " + err.Error())
 			cx.RespondWithError(http.StatusBadRequest)
 			return
 		}

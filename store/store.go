@@ -71,9 +71,10 @@ func NewNode() (node *Node) {
 func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (node *Node, err error) {
 	node = NewNode()
 	if u.Uuid != "" {
+		node.Acl.setOwner(u.Uuid)
 		node.Acl.set(u.Uuid, rights{"read": true, "write": true, "delete": true})
 	} else {
-		node.Acl = acl{Read: make([]string, 0), Write: make([]string, 0), Delete: make([]string, 0)}
+		node.Acl = acl{Owner: "", Read: make([]string, 0), Write: make([]string, 0), Delete: make([]string, 0)}
 	}
 	err = node.Mkdir()
 	if err != nil {

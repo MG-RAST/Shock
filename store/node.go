@@ -28,7 +28,7 @@ type Node struct {
 	File         file              `bson:"file" json:"file"`
 	Attributes   interface{}       `bson:"attributes" json:"attributes"`
 	Indexes      map[string]string `bson:"indexes" json:"indexes"`
-	Acl          acl               `bson:"acl" json:"acl"`
+	Acl          acl               `bson:"acl" json:"-"`
 	VersionParts map[string]string `bson:"version_parts" json:"-"`
 }
 
