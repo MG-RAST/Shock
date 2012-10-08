@@ -23,6 +23,11 @@ site=/usr/local/shock/site
 data=/usr/local/shock
 logs=/var/log/shock
 
+[SSL]
+enable=false
+#key=<path_to_key_file>
+#cert=<path_to_cert_file>
+
 [Mongodb]
 # Mongodb configuration:
 # Hostnames and ports hosts=host1[,host2:port,...,hostN]

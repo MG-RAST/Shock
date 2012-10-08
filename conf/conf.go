@@ -26,6 +26,11 @@ var (
 	SITE_PORT = 0
 	API_PORT  = 0
 
+	// SSL
+	SSL_ENABLED   = false
+	SSL_KEY_FILE  = ""
+	SSL_CERT_FILE = ""
+
 	// Anonymous-Access-Control 
 	ANON_WRITE      = false
 	ANON_READ       = true
@@ -68,6 +73,13 @@ func init() {
 	// Ports
 	SITE_PORT, _ = c.Int("Ports", "site-port")
 	API_PORT, _ = c.Int("Ports", "api-port")
+
+	// SSL
+	SSL_ENABLED, _ = c.Bool("SSL", "enable")
+	if SSL_ENABLED {
+		SSL_KEY_FILE, _ = c.String("SSL", "key")
+		SSL_CERT_FILE, _ = c.String("SSL", "cert")
+	}
 
 	// Access-Control 
 	ANON_WRITE, _ = c.Bool("Anonymous", "write")

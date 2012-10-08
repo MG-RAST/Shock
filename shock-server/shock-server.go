@@ -18,10 +18,18 @@ func launchSite(control chan int, port int) {
 	r.MapFunc("/raw", RawDir)
 	r.MapFunc("/assets", AssetsDir)
 	r.MapFunc("*", Site)
-	err := goweb.ListenAndServeRoutes(fmt.Sprintf(":%d", conf.SITE_PORT), r)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: site: %v\n", err)
-		log.Error("ERROR: site: " + err.Error())
+	if conf.SSL_ENABLED {
+		err := goweb.ListenAndServeRoutesTLS(fmt.Sprintf(":%d", conf.SITE_PORT), conf.SSL_CERT_FILE, conf.SSL_KEY_FILE, r)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: site: %v\n", err)
+			log.Error("ERROR: site: " + err.Error())
+		}
+	} else {
+		err := goweb.ListenAndServeRoutes(fmt.Sprintf(":%d", conf.SITE_PORT), r)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: site: %v\n", err)
+			log.Error("ERROR: site: " + err.Error())
+		}
 	}
 	control <- 1 //we are ending
 }
@@ -32,10 +40,19 @@ func launchAPI(control chan int, port int) {
 	r.MapRest("/node", new(NodeController))
 	r.MapRest("/user", new(UserController))
 	r.MapFunc("*", ResourceDescription, goweb.GetMethod)
-	err := goweb.ListenAndServeRoutes(fmt.Sprintf(":%d", port), r)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: api: %v\n", err)
-		log.Error("ERROR: api: " + err.Error())
+	if conf.SSL_ENABLED {
+		println("cert: " + conf.SSL_CERT_FILE + " - key: " + conf.SSL_KEY_FILE)
+		err := goweb.ListenAndServeRoutesTLS(fmt.Sprintf(":%d", conf.API_PORT), conf.SSL_CERT_FILE, conf.SSL_KEY_FILE, r)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: api: %v\n", err)
+			log.Error("ERROR: api: " + err.Error())
+		}
+	} else {
+		err := goweb.ListenAndServeRoutes(fmt.Sprintf(":%d", conf.API_PORT), r)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: api: %v\n", err)
+			log.Error("ERROR: api: " + err.Error())
+		}
 	}
 	control <- 1 //we are ending
 }
