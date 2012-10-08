@@ -41,7 +41,6 @@ func launchAPI(control chan int, port int) {
 	r.MapRest("/user", new(UserController))
 	r.MapFunc("*", ResourceDescription, goweb.GetMethod)
 	if conf.SSL_ENABLED {
-		println("cert: " + conf.SSL_CERT_FILE + " - key: " + conf.SSL_KEY_FILE)
 		err := goweb.ListenAndServeRoutesTLS(fmt.Sprintf(":%d", conf.API_PORT), conf.SSL_CERT_FILE, conf.SSL_KEY_FILE, r)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: api: %v\n", err)
