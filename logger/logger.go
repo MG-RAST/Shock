@@ -67,8 +67,8 @@ func (l *Logger) Info(log string, message string) {
 	return
 }
 
-func (l *Logger) Error(log string, message string) {
-	l.Log(log, l4g.ERROR, message)
+func (l *Logger) Error(message string) {
+	l.Log("error", l4g.ERROR, message)
 	return
 }
 

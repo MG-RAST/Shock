@@ -18,9 +18,18 @@ func launchSite(control chan int, port int) {
 	r.MapFunc("/raw", RawDir)
 	r.MapFunc("/assets", AssetsDir)
 	r.MapFunc("*", Site)
-	err := goweb.ListenAndServeRoutes(fmt.Sprintf(":%d", conf.SITE_PORT), r)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: site: %v\n", err)
+	if conf.SSL_ENABLED {
+		err := goweb.ListenAndServeRoutesTLS(fmt.Sprintf(":%d", conf.SITE_PORT), conf.SSL_CERT_FILE, conf.SSL_KEY_FILE, r)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: site: %v\n", err)
+			log.Error("ERROR: site: " + err.Error())
+		}
+	} else {
+		err := goweb.ListenAndServeRoutes(fmt.Sprintf(":%d", conf.SITE_PORT), r)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: site: %v\n", err)
+			log.Error("ERROR: site: " + err.Error())
+		}
 	}
 	control <- 1 //we are ending
 }
@@ -31,31 +40,30 @@ func launchAPI(control chan int, port int) {
 	r.MapRest("/node", new(NodeController))
 	r.MapRest("/user", new(UserController))
 	r.MapFunc("*", ResourceDescription, goweb.GetMethod)
-	err := goweb.ListenAndServeRoutes(fmt.Sprintf(":%d", port), r)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: api: %v\n", err)
+	if conf.SSL_ENABLED {
+		err := goweb.ListenAndServeRoutesTLS(fmt.Sprintf(":%d", conf.API_PORT), conf.SSL_CERT_FILE, conf.SSL_KEY_FILE, r)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: api: %v\n", err)
+			log.Error("ERROR: api: " + err.Error())
+		}
+	} else {
+		err := goweb.ListenAndServeRoutes(fmt.Sprintf(":%d", conf.API_PORT), r)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: api: %v\n", err)
+			log.Error("ERROR: api: " + err.Error())
+		}
 	}
 	control <- 1 //we are ending
 }
 
 func main() {
-	fmt.Printf("%s\n######### Conf #########\ndata-root:\t%s\naccess-log:\t%s\nerror-log:\t%s\nmongodb:\t%s\nsecretkey:\t%s\nsite-port:\t%d\napi-port:\t%d\n\n####### Anonymous ######\nread:\t%t\nwrite:\t%t\ncreate-user:\t%t\n\n",
-		logo,
-		conf.DATA_PATH,
-		conf.LOGS_PATH+"/access.log",
-		conf.LOGS_PATH+"/error.log",
-		conf.MONGODB,
-		conf.SECRET_KEY,
-		conf.SITE_PORT,
-		conf.API_PORT,
-		conf.ANON_READ,
-		conf.ANON_WRITE,
-		conf.ANON_CREATEUSER,
-	)
+	printLogo()
+	printConf()
 
 	if _, err := os.Stat(conf.DATA_PATH + "/temp"); err != nil && os.IsNotExist(err) {
 		if err := os.Mkdir(conf.DATA_PATH+"/temp", 0777); err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
+			log.Error("ERROR: " + err.Error())
 		}
 	}
 
@@ -65,6 +73,7 @@ func main() {
 		err := reload(conf.RELOAD)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
+			log.Error("ERROR: " + err.Error())
 		}
 		fmt.Println("Done")
 	}

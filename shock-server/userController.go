@@ -59,11 +59,11 @@ func (cr *UserController) Create(cx *goweb.Context) {
 	if err != nil {
 		// Duplicate key check
 		if e.MongoDupKeyRegex.MatchString(err.Error()) {
-			fmt.Println("Err@user_Create: duplicate key error")
+			log.Error("Err@user_Create: duplicate key error")
 			cx.RespondWithErrorMessage("Username not available", http.StatusBadRequest)
 			return
 		} else {
-			fmt.Println("Err@user_Create:", err.Error())
+			log.Error("Err@user_Create: " + err.Error())
 			cx.RespondWithError(http.StatusInternalServerError)
 			return
 		}
@@ -94,7 +94,7 @@ func (cr *UserController) Read(id string, cx *goweb.Context) {
 			cx.RespondWithError(http.StatusUnauthorized)
 			return
 		} else {
-			fmt.Println("Err@user_Read:", err.Error())
+			log.Error("Err@user_Read: " + err.Error())
 			cx.RespondWithError(http.StatusInternalServerError)
 			return
 		}
@@ -111,7 +111,7 @@ func (cr *UserController) Read(id string, cx *goweb.Context) {
 				cx.RespondWithNotFound()
 				return
 			} else {
-				fmt.Println("Err@user_Read:Admin:", err.Error())
+				log.Error("Err@user_Read:Admin: " + err.Error())
 				cx.RespondWithError(http.StatusInternalServerError)
 				return
 			}
@@ -136,7 +136,7 @@ func (cr *UserController) ReadMany(cx *goweb.Context) {
 			cx.RespondWithError(http.StatusUnauthorized)
 			return
 		} else {
-			fmt.Println("Err@user_Read:", err.Error())
+			log.Error("Err@user_Read: " + err.Error())
 			cx.RespondWithError(http.StatusInternalServerError)
 			return
 		}
