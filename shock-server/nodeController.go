@@ -159,7 +159,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 	// ?download=1
 	if query.Has("download") {
 		if !node.HasFile() {
-			cx.RespondWithErrorMessage("node file not found", http.StatusBadRequest)
+			cx.RespondWithErrorMessage("File not found", http.StatusBadRequest)
 			return
 		}
 
