@@ -144,3 +144,21 @@ func init() {
 	}
 
 }
+
+func Print() {
+	fmt.Printf("##### Admin #####\nemail:\t%s\nsecretkey:\t%s\n\n", ADMIN_EMAIL, SECRET_KEY)
+	fmt.Printf("####### Anonymous ######\nread:\t%t\nwrite:\t%t\ncreate-user:\t%t\n\n", ANON_READ, ANON_WRITE, ANON_CREATEUSER)
+	if AUTH_TYPE == "basic" {
+		fmt.Printf("##### Auth #####\ntype:\tbasic\n\n")
+	} else if AUTH_TYPE == "globus" {
+		fmt.Printf("##### Auth #####\ntype:\tglobus\ntoken_url:\t%s\nprofile_url:\t%s\n\n", GLOBUS_TOKEN_URL, GLOBUS_PROFILE_URL)
+	}
+	fmt.Printf("##### Directories #####\nsite:\t%s\ndata:\t%s\nlogs:\t%s\n\n", SITE_PATH, DATA_PATH, LOGS_PATH)
+	if SSL_ENABLED {
+		fmt.Printf("##### SSL #####\nenabled:\t%t\nkey:\t%s\ncert:\t%s\n\n", SSL_ENABLED, SSL_KEY_FILE, SSL_CERT_FILE)
+	} else {
+		fmt.Printf("##### SSL #####\nenabled:\t%t\n\n", SSL_ENABLED)
+	}
+	fmt.Printf("##### Mongodb #####\nhost(s):\t%s\n\n", MONGODB)
+	fmt.Printf("##### Ports #####\nsite:\t%d\napi:\t%d\n\n", SITE_PORT, API_PORT)
+}

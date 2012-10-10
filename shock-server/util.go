@@ -42,19 +42,6 @@ func printLogo() {
 	return
 }
 
-func printConf() {
-	fmt.Printf("##### Admin #####\nemail:\t%s\nsecretkey:\t%s\n\n", conf.ADMIN_EMAIL, conf.SECRET_KEY)
-	fmt.Printf("####### Anonymous ######\nread:\t%t\nwrite:\t%t\ncreate-user:\t%t\n\n", conf.ANON_READ, conf.ANON_WRITE, conf.ANON_CREATEUSER)
-	if conf.AUTH_TYPE == "basic" {
-		fmt.Printf("##### Auth #####\ntype:\tbasic\n\n")
-	} else if conf.AUTH_TYPE == "globus" {
-		fmt.Printf("##### Auth #####\ntype:\tglobus\ntoken_url:\t%s\nprofile_url:\t%s\n\n", conf.GLOBUS_TOKEN_URL, conf.GLOBUS_PROFILE_URL)
-	}
-	fmt.Printf("##### Directories #####\nsite:\t%s\ndata:\t%s\nlogs:\t%s\n\n", conf.SITE_PATH, conf.DATA_PATH, conf.LOGS_PATH)
-	fmt.Printf("##### Mongodb #####\nhost(s):\t%s\n\n", conf.MONGODB)
-	fmt.Printf("##### Ports #####\nsite:\t%d\napi:\t%d\n\n", conf.SITE_PORT, conf.API_PORT)
-}
-
 type Query struct {
 	list map[string][]string
 }

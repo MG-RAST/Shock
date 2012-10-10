@@ -58,7 +58,7 @@ func launchAPI(control chan int, port int) {
 
 func main() {
 	printLogo()
-	printConf()
+	conf.Print()
 
 	if _, err := os.Stat(conf.DATA_PATH + "/temp"); err != nil && os.IsNotExist(err) {
 		if err := os.Mkdir(conf.DATA_PATH+"/temp", 0777); err != nil {
