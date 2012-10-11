@@ -15,12 +15,12 @@ import (
 
 // Fastq sequence format reader type.
 type Reader struct {
-	f io.ReadCloser
+	f io.Reader
 	r *bufio.Reader
 }
 
 // Returns a new fastq format reader using r.
-func NewReader(f io.ReadCloser) *Reader {
+func NewReader(f io.Reader) *Reader {
 	return &Reader{
 		f: f,
 		r: bufio.NewReader(f),
@@ -134,11 +134,6 @@ func (self *Reader) Rewind() (err error) {
 		err = errors.New("Not a Seeker")
 	}
 	return
-}
-
-// Close the reader.
-func (self *Reader) Close() (err error) {
-	return self.f.Close()
 }
 
 // Fastq sequence format writer type.
