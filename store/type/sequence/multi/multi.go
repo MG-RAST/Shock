@@ -5,9 +5,13 @@ import (
 	e "github.com/MG-RAST/Shock/errors"
 	"github.com/MG-RAST/Shock/store/type/sequence/fasta"
 	"github.com/MG-RAST/Shock/store/type/sequence/fastq"
+	"github.com/MG-RAST/Shock/store/type/sequence/sam"
 	"github.com/MG-RAST/Shock/store/type/sequence/seq"
 	"io"
 )
+
+//the order matters as it determines the order for checking format.
+var valid_format = [3]string{"sam", "fastq", "fasta"}
 
 type Reader struct {
 	f       io.Reader
@@ -23,14 +27,16 @@ func NewReader(f io.Reader) *Reader {
 		formats: map[string]seq.ReadRewinder{
 			"fasta": fasta.NewReader(f),
 			"fastq": fastq.NewReader(f),
+			"sam":   sam.NewReader(f),
 		},
 		format: "",
 	}
 }
 
 func (r *Reader) determineFormat() error {
-	for f, reader := range r.formats {
+	for _, f := range valid_format {
 		var er error
+		reader := r.formats[f]
 		for i := 0; i < 1; i++ {
 			_, er = reader.Read()
 			if er != nil {
@@ -69,8 +75,13 @@ func (r *Reader) ReadRaw(p []byte) (n int, err error) {
 }
 
 func (r *Reader) Format(s *seq.Seq, w io.Writer) (n int, err error) {
-	if r.format == "fasta" {
+	switch {
+	case r.format == "fasta":
 		return fasta.Format(s, w)
+	case r.format == "fastq":
+		return fastq.Format(s, w)
+	case r.format == "sam":
+		return sam.Format(s, w)
 	}
-	return fastq.Format(s, w)
+	return 0, errors.New("unknown sequence format")
 }
