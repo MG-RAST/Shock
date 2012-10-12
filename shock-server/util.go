@@ -65,37 +65,8 @@ func (q *Query) All() map[string][]string {
 	return q.list
 }
 
-type SectionReaderCloser struct {
-	f  *os.File
-	sr *io.SectionReader
-}
-
-// io.SectionReader doesn't implement close. Why? No one knows.
-func NewSectionReaderCloser(f *os.File, off int64, n int64) *SectionReaderCloser {
-	return &SectionReaderCloser{
-		f:  f,
-		sr: io.NewSectionReader(f, off, n),
-	}
-}
-
-func (s *SectionReaderCloser) Read(p []byte) (n int, err error) {
-	return s.sr.Read(p)
-}
-
-func (s *SectionReaderCloser) Seek(offset int64, whence int) (ret int64, err error) {
-	return s.sr.Seek(offset, whence)
-}
-
-func (s *SectionReaderCloser) ReadAt(p []byte, off int64) (n int, err error) {
-	return s.sr.ReadAt(p, off)
-}
-
-func (s *SectionReaderCloser) Close() error {
-	return s.f.Close()
-}
-
 type streamer struct {
-	rs          []io.ReadCloser
+	rs          []store.SectionReader
 	ws          http.ResponseWriter
 	contentType string
 	filename    string
@@ -110,15 +81,15 @@ func (s *streamer) stream() (err error) {
 		s.ws.Header().Set("Content-Length", fmt.Sprint(s.size))
 	}
 	for _, sr := range s.rs {
-		var rs io.ReadCloser
+		var rs io.Reader
 		if s.filter != nil {
 			rs = s.filter(sr)
 		} else {
 			rs = sr
 		}
-		_, err = io.Copy(s.ws, rs)
+		_, err := io.Copy(s.ws, rs)
 		if err != nil {
-			return
+			return err
 		}
 	}
 	return

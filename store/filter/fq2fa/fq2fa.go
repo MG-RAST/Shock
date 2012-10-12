@@ -9,12 +9,12 @@ import (
 )
 
 type Reader struct {
-	f        io.ReadCloser
-	r        seq.ReadCloser
+	f        io.Reader
+	r        seq.Reader
 	overflow []byte
 }
 
-func NewReader(f io.ReadCloser) io.ReadCloser {
+func NewReader(f io.Reader) io.Reader {
 	return &Reader{
 		f:        f,
 		r:        fastq.NewReader(f),

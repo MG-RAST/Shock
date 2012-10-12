@@ -6,10 +6,12 @@ import (
 	. "github.com/MG-RAST/Shock/store"
 	"github.com/MG-RAST/Shock/store/user"
 	"math/rand"
+	"os"
 	"testing"
 )
 
 var test_uuid = ""
+var test_uuids = []string{"703ce2a0-54cf-4af1-ab14-2de05305f823", "e4ca342a-2338-448b-bdea-d890370eddc2", "883c5c9d-3881-4647-9c9e-4d283cc9c253"}
 var temp_node_id string
 
 //var params map[string]string
@@ -40,16 +42,31 @@ func TestNewNode(t *testing.T) {
 func TestLoadNode(t *testing.T) {
 	fmt.Println("in testing LoadNode()")
 	node, err := LoadNode(temp_node_id, test_uuid)
-	fmt.Printf("node=%v", node)
+	fmt.Printf("node=%#v\n", node)
 	if err != nil {
 		fmt.Errorf("Load Node error: %v ", err)
+	}
+}
+
+func TestDBFindNodes(t *testing.T) {
+	fmt.Println("in testing FindNodes()")
+	nodes := []*Node{}
+	if db, err := DBConnect(); err == nil {
+		defer db.Close()
+		if err = db.FindNodes(test_uuids, &nodes); err == nil {
+			for i, n := range nodes {
+				fmt.Printf("nodes[%d]=%#v\n", i, n)
+			}
+		} else {
+			fmt.Errorf("Find Nodes error: %v ", err)
+		}
 	}
 }
 
 func TestReLoadNodeFromDisk(t *testing.T) {
 	fmt.Println("in TestReLoadNodeFromDisk()...")
 	node, err := LoadNodeFromDisk(temp_node_id)
-	fmt.Printf("node=%v", node)
+	fmt.Printf("node=%#v\n", node)
 	if err != nil {
 		fmt.Errorf("Load Node error: %v ", err)
 	}
@@ -73,10 +90,32 @@ func TestCreateNodeUpload(t *testing.T) {
 	fmt.Println("files=", formfile1)
 
 	node, err := CreateNodeUpload(u, params, files)
-	fmt.Printf("node=%v", node)
+	fmt.Printf("node=%#v\n", node)
 
 	if err != nil {
 		fmt.Errorf("CreateNodeUpload error: %v ", err)
 	}
 
+}
+
+func TestMultiReaderAt(t *testing.T) {
+	fmt.Println("in TestMultiReaderAt()")
+	readers := []ReaderAt{}
+	for _, fn := range []string{"./testdata/10kb.fna", "./testdata/40kb.fna"} {
+		if r, err := os.Open(fn); err == nil {
+			readers = append(readers, r)
+		} else {
+			fmt.Errorf("MultiReaderAt error: %v ", err)
+		}
+	}
+	mr := MultiReaderAt(readers...)
+	fmt.Printf("mutlireaderat: %#v\n", mr)
+	buffer := make([]byte, 2000)
+	fmt.Println("---------------")
+	for _, offset := range []int64{0, 100, 1000, 11000, 25000, 56000} {
+		n, _ := mr.ReadAt(buffer, offset)
+		fmt.Printf("read: %d\n", n)
+		fmt.Printf("buffer: \n%s\n", buffer[0:n])
+		fmt.Println("---------------")
+	}
 }
