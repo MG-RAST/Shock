@@ -18,21 +18,18 @@ func New(id []byte, seq []byte, qual []byte) *Seq {
 	}
 }
 
-type ReadFormatCloser interface {
+type ReadFormater interface {
 	Read() (*Seq, error)
 	Format(*Seq, io.Writer) (int, error)
-	Close() error
 }
 
-type ReadCloser interface {
+type Reader interface {
 	Read() (*Seq, error)
 	ReadRaw(p []byte) (int, error)
-	Close() error
 }
 
-type ReadRewindCloser interface {
+type ReadRewinder interface {
 	Read() (*Seq, error)
 	ReadRaw(p []byte) (int, error)
 	Rewind() error
-	Close() error
 }

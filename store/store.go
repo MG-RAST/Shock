@@ -10,18 +10,28 @@ import (
 )
 
 func LoadNode(id string, uuid string) (node *Node, err error) {
-	db, err := DBConnect()
-	if err != nil {
-		return
+	if db, err := DBConnect(); err == nil {
+		defer db.Close()
+		node = new(Node)
+		if err = db.FindByIdAuth(id, uuid, node); err == nil {
+			return node, nil
+		} else {
+			return nil, err
+		}
 	}
-	defer db.Close()
+	return nil, err
+}
 
-	node = new(Node)
-	err = db.FindByIdAuth(id, uuid, node)
-	if err != nil {
-		node = nil
+func LoadNodes(ids []string) (nodes []*Node, err error) {
+	if db, err := DBConnect(); err == nil {
+		defer db.Close()
+		if err = db.FindNodes(ids, &nodes); err == nil {
+			return nodes, err
+		} else {
+			return nil, err
+		}
 	}
-	return
+	return nil, err
 }
 
 func LoadNodeFromDisk(id string) (node *Node, err error) {

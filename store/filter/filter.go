@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-type FilterFunc func(io.ReadCloser) io.ReadCloser
+type FilterFunc func(io.Reader) io.Reader
 
 var (
 	filters = map[string]FilterFunc{
@@ -26,6 +26,6 @@ func Filter(f string) FilterFunc {
 	return filters[f]
 }
 
-func NewReader(f string, file io.ReadCloser) io.ReadCloser {
+func NewReader(f string, file io.Reader) io.Reader {
 	return filters[f](file)
 }

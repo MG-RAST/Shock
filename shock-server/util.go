@@ -42,19 +42,6 @@ func printLogo() {
 	return
 }
 
-func printConf() {
-	fmt.Printf("##### Admin #####\nemail:\t%s\nsecretkey:\t%s\n\n", conf.ADMIN_EMAIL, conf.SECRET_KEY)
-	fmt.Printf("####### Anonymous ######\nread:\t%t\nwrite:\t%t\ncreate-user:\t%t\n\n", conf.ANON_READ, conf.ANON_WRITE, conf.ANON_CREATEUSER)
-	if conf.AUTH_TYPE == "basic" {
-		fmt.Printf("##### Auth #####\ntype:\tbasic\n\n")
-	} else if conf.AUTH_TYPE == "globus" {
-		fmt.Printf("##### Auth #####\ntype:\tglobus\ntoken_url:\t%s\nprofile_url:\t%s\n\n", conf.GLOBUS_TOKEN_URL, conf.GLOBUS_PROFILE_URL)
-	}
-	fmt.Printf("##### Directories #####\nsite:\t%s\ndata:\t%s\nlogs:\t%s\n\n", conf.SITE_PATH, conf.DATA_PATH, conf.LOGS_PATH)
-	fmt.Printf("##### Mongodb #####\nhost(s):\t%s\n\n", conf.MONGODB)
-	fmt.Printf("##### Ports #####\nsite:\t%d\napi:\t%d\n\n", conf.SITE_PORT, conf.API_PORT)
-}
-
 type Query struct {
 	list map[string][]string
 }
@@ -78,37 +65,8 @@ func (q *Query) All() map[string][]string {
 	return q.list
 }
 
-type SectionReaderCloser struct {
-	f  *os.File
-	sr *io.SectionReader
-}
-
-// io.SectionReader doesn't implement close. Why? No one knows.
-func NewSectionReaderCloser(f *os.File, off int64, n int64) *SectionReaderCloser {
-	return &SectionReaderCloser{
-		f:  f,
-		sr: io.NewSectionReader(f, off, n),
-	}
-}
-
-func (s *SectionReaderCloser) Read(p []byte) (n int, err error) {
-	return s.sr.Read(p)
-}
-
-func (s *SectionReaderCloser) Seek(offset int64, whence int) (ret int64, err error) {
-	return s.sr.Seek(offset, whence)
-}
-
-func (s *SectionReaderCloser) ReadAt(p []byte, off int64) (n int, err error) {
-	return s.sr.ReadAt(p, off)
-}
-
-func (s *SectionReaderCloser) Close() error {
-	return s.f.Close()
-}
-
 type streamer struct {
-	rs          []io.ReadCloser
+	rs          []store.SectionReader
 	ws          http.ResponseWriter
 	contentType string
 	filename    string
@@ -123,15 +81,15 @@ func (s *streamer) stream() (err error) {
 		s.ws.Header().Set("Content-Length", fmt.Sprint(s.size))
 	}
 	for _, sr := range s.rs {
-		var rs io.ReadCloser
+		var rs io.Reader
 		if s.filter != nil {
 			rs = s.filter(sr)
 		} else {
 			rs = sr
 		}
-		_, err = io.Copy(s.ws, rs)
+		_, err := io.Copy(s.ws, rs)
 		if err != nil {
-			return
+			return err
 		}
 	}
 	return

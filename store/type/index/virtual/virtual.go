@@ -51,20 +51,29 @@ func SizePart(part string, v *vIndex) (pos int64, length int64, err error) {
 		startend := strings.Split(part, "-")
 		start, startEr := strconv.ParseInt(startend[0], 10, 64)
 		end, endEr := strconv.ParseInt(startend[1], 10, 64)
-		if startEr != nil || endEr != nil || start <= 0 || start*v.ChunkSize > v.size || end <= 0 || end*v.ChunkSize > v.size {
+		if startEr != nil || endEr != nil || start <= 0 || (start-1)*v.ChunkSize > v.size || end <= 0 || (end-1)*v.ChunkSize > v.size {
 			err = errors.New("")
 			return
 		}
 		pos = (start - 1) * v.ChunkSize
-		length = ((end-1)*v.ChunkSize - (start-1)*v.ChunkSize) + v.ChunkSize
+		fullReads := (end-1)*v.ChunkSize - (start-1)*v.ChunkSize
+		if fullReads+v.ChunkSize+pos > v.size {
+			length = fullReads + (v.size - (pos + fullReads))
+		} else {
+			length = fullReads + v.ChunkSize
+		}
 	} else {
 		p, er := strconv.ParseInt(part, 10, 64)
-		if er != nil || p <= 0 || p > v.size {
+		if er != nil || p <= 0 || (p-1)*v.ChunkSize > v.size {
 			err = errors.New("")
 			return
 		}
 		pos = (p - 1) * v.ChunkSize
-		length = v.ChunkSize
+		if v.size-pos < v.ChunkSize {
+			length = v.size - pos
+		} else {
+			length = v.ChunkSize
+		}
 	}
 	return
 }
