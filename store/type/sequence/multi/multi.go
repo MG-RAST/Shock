@@ -2,7 +2,6 @@ package multi
 
 import (
 	"errors"
-	"fmt"
 	e "github.com/MG-RAST/Shock/errors"
 	"github.com/MG-RAST/Shock/store/type/sequence/fasta"
 	"github.com/MG-RAST/Shock/store/type/sequence/fastq"
@@ -15,17 +14,17 @@ import (
 var valid_format = [3]string{"sam", "fastq", "fasta"}
 
 type Reader struct {
-	f       io.ReadCloser
-	r       seq.ReadRewindCloser
-	formats map[string]seq.ReadRewindCloser
+	f       io.Reader
+	r       seq.ReadRewinder
+	formats map[string]seq.ReadRewinder
 	format  string
 }
 
-func NewReader(f io.ReadCloser) *Reader {
+func NewReader(f io.Reader) *Reader {
 	return &Reader{
 		f: f,
 		r: nil,
-		formats: map[string]seq.ReadRewindCloser{
+		formats: map[string]seq.ReadRewinder{
 			"fasta": fasta.NewReader(f),
 			"fastq": fastq.NewReader(f),
 			"sam":   sam.NewReader(f),
@@ -85,16 +84,4 @@ func (r *Reader) Format(s *seq.Seq, w io.Writer) (n int, err error) {
 		return sam.Format(s, w)
 	}
 	return 0, errors.New("unknown sequence format")
-}
-
-// This cause server to hang without even printing debug
-// statements. Not sure wtf is up with that.
-func (r *Reader) Close() error {
-	fmt.Println("Starting close")
-	for format, reader := range r.formats {
-		fmt.Println("Closing:", format)
-		reader.Close()
-	}
-	fmt.Println("Done close")
-	return nil
 }

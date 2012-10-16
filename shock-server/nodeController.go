@@ -87,7 +87,7 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 	node, err := store.CreateNodeUpload(u, params, files)
 	if err != nil {
 		log.Error("err " + err.Error())
-		cx.RespondWithError(http.StatusBadRequest)
+		cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 		return
 	}
 	cx.RespondWithData(node)
@@ -159,7 +159,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 	// ?download=1
 	if query.Has("download") {
 		if !node.HasFile() {
-			cx.RespondWithErrorMessage("node file not found", http.StatusBadRequest)
+			cx.RespondWithErrorMessage("File not found", http.StatusBadRequest)
 			return
 		}
 
@@ -172,8 +172,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				return
 			}
 			// open file
-			r, err := os.Open(node.FilePath())
-			defer r.Close()
+			r, err := node.FileReader()
 			if err != nil {
 				log.Error("Err@node_Read:Open: " + err.Error())
 				cx.RespondWithError(http.StatusInternalServerError)
@@ -197,7 +196,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				idx.Set(map[string]interface{}{"ChunkSize": csize})
 			}
 			var size int64 = 0
-			s := &streamer{rs: []io.ReadCloser{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, filter: fFunc}
+			s := &streamer{rs: []store.SectionReader{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, filter: fFunc}
 			for _, p := range query.List("part") {
 				pos, length, err := idx.Part(p)
 				if err != nil {
@@ -205,16 +204,17 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 					return
 				}
 				size += length
-				s.rs = append(s.rs, NewSectionReaderCloser(r, pos, length))
+				s.rs = append(s.rs, io.NewSectionReader(r, pos, length))
 			}
 			s.size = size
 			err = s.stream()
 			if err != nil {
-				// fix
+				// causes "multiple response.WriteHeader calls" error but better than no response
+				cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 				log.Error("err: " + err.Error())
 			}
 		} else {
-			nf, err := os.Open(node.FilePath())
+			nf, err := node.FileReader()
 			if err != nil {
 				// File not found or some sort of file read error. 
 				// Probably deserves more checking
@@ -222,10 +222,11 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				cx.RespondWithError(http.StatusBadRequest)
 				return
 			}
-			s := &streamer{rs: []io.ReadCloser{nf}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, size: node.File.Size, filter: fFunc}
+			s := &streamer{rs: []store.SectionReader{nf}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, size: node.File.Size, filter: fFunc}
 			err = s.stream()
 			if err != nil {
-				// fix
+				// causes "multiple response.WriteHeader calls" error but better than no response
+				cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 				log.Error("err " + err.Error())
 			}
 		}
@@ -394,7 +395,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 				}
 			}
 			log.Error("err " + err.Error())
-			cx.RespondWithError(http.StatusBadRequest)
+			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 			return
 		}
 		cx.RespondWithData(node)

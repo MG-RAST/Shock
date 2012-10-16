@@ -66,6 +66,11 @@ func (d *db) FindById(id string, result *Node) (err error) {
 	return
 }
 
+func (d *db) FindNodes(ids []string, results *[]*Node) (err error) {
+	err = d.Nodes.Find(bson.M{"id": bson.M{"$in": ids}}).All(results)
+	return
+}
+
 func (d *db) FindByIdAuth(id string, uuid string, result *Node) (err error) {
 	err = d.Nodes.Find(bson.M{"id": id}).One(&result)
 	if err != nil {

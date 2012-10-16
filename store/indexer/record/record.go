@@ -9,7 +9,7 @@ import (
 
 type indexer struct {
 	f     io.ReadCloser
-	r     seq.ReadCloser
+	r     seq.Reader
 	Index *index.Idx
 }
 

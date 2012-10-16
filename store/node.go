@@ -14,6 +14,7 @@ import (
 	"labix.org/v2/mgo/bson"
 	"os"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -30,14 +31,17 @@ type Node struct {
 	Indexes      map[string]string `bson:"indexes" json:"indexes"`
 	Acl          acl               `bson:"acl" json:"-"`
 	VersionParts map[string]string `bson:"version_parts" json:"-"`
+	Type         string            `bson:"type" json:"-"`
 }
 
 type file struct {
-	Name     string            `bson:"name" json:"name"`
-	Size     int64             `bson:"size" json:"size"`
-	Checksum map[string]string `bson:"checksum" json:"checksum"`
-	Format   string            `bson:"format" json:"format"`
-	Path     string            `bson:"path" json:"-"`
+	Name         string            `bson:"name" json:"name"`
+	Size         int64             `bson:"size" json:"size"`
+	Checksum     map[string]string `bson:"checksum" json:"checksum"`
+	Format       string            `bson:"format" json:"format"`
+	Path         string            `bson:"path" json:"-"`
+	Virtual      bool              `bson:"virtual" json:"virtual"`
+	VirtualParts []string          `bson:"virtual_parts" json:"virtual_parts"`
 }
 
 type partsList struct {
@@ -84,6 +88,30 @@ func (node *Node) Path() string {
 
 func (node *Node) IndexPath() string {
 	return getIndexPath(node.Id)
+}
+
+func (node *Node) FileReader() (reader ReaderAt, err error) {
+	if node.File.Virtual {
+		readers := []ReaderAt{}
+		nodes := []*Node{}
+		if db, err := DBConnect(); err == nil {
+			defer db.Close()
+			if err := db.FindNodes(node.File.VirtualParts, &nodes); err != nil {
+				return nil, err
+			}
+		}
+		if len(nodes) > 0 {
+			for _, n := range nodes {
+				if r, err := n.FileReader(); err == nil {
+					readers = append(readers, r)
+				} else {
+					return nil, err
+				}
+			}
+		}
+		return MultiReaderAt(readers...), nil
+	}
+	return os.Open(node.FilePath())
 }
 
 func (node *Node) FilePath() string {
@@ -137,6 +165,55 @@ func (node *Node) initParts(count int) (err error) {
 	err = os.MkdirAll(fmt.Sprintf("%s/parts", node.Path()), 0777)
 	p := &partsList{Count: count, Length: 0, Parts: make([]partsFile, count)}
 	err = node.writeParts(p)
+	return
+}
+
+func (node *Node) addVirtualParts(ids []string) (err error) {
+	nodes := []*Node{}
+	if db, err := DBConnect(); err == nil {
+		defer db.Close()
+		if err := db.FindNodes(ids, &nodes); err != nil {
+			return err
+		}
+	} else {
+		return err
+	}
+	if len(ids) != len(nodes) {
+		return errors.New("unable to load all node ids.")
+	}
+	node.File.Virtual = true
+	for _, n := range nodes {
+		if n.HasFile() {
+			node.File.VirtualParts = append(node.File.VirtualParts, n.Id)
+		} else {
+			return errors.New("node %s: has no file. All nodes in source must have files.")
+		}
+	}
+	if reader, err := node.FileReader(); err == nil {
+		md5h := md5.New()
+		sha1h := sha1.New()
+		buffer := make([]byte, 32*1024)
+		size := 0
+		for {
+			n, err := reader.Read(buffer)
+			if n == 0 || err != nil {
+				break
+			}
+			md5h.Write(buffer[0:n])
+			sha1h.Write(buffer[0:n])
+			size = size + n
+		}
+
+		var md5s, sha1s []byte
+		md5s = md5h.Sum(md5s)
+		sha1s = sha1h.Sum(sha1s)
+		node.File.Checksum["md5"] = fmt.Sprintf("%x", md5s)
+		node.File.Checksum["sha1"] = fmt.Sprintf("%x", sha1s)
+		node.File.Size = int64(size)
+	} else {
+		return err
+	}
+	err = node.Save()
 	return
 }
 
@@ -247,10 +324,44 @@ func (node *Node) SetFileFromParts(p *partsList) (err error) {
 
 //Modification functions
 func (node *Node) Update(params map[string]string, files FormFiles) (err error) {
-	// set parts count. No upload allowed with this operation
-	if _, hasParts := params["parts"]; hasParts && node.partsCount() < 0 {
-		if node.HasFile() {
-			return errors.New(e.FileImut)
+	// Exclusive conditions
+	// 1. has files[upload] (regular upload)
+	// 2. has params[parts] (partial upload support)
+	// 3. has params[type] & params[source] (v_node)
+	// 4. has params[path] (set from local path)
+	// 
+	// All condition allow setting of attributes
+
+	_, isRegularUpload := files["upload"]
+	_, isPartialUpload := params["parts"]
+	isVirtualNode := false
+	if t, hasType := params["type"]; hasType && t == "virtual" {
+		isVirtualNode = true
+	}
+	_, isPathUpload := params["path"]
+
+	// Check exclusive conditions
+	if (isRegularUpload && isPartialUpload) || (isRegularUpload && isVirtualNode) || (isRegularUpload && isPathUpload) {
+		return errors.New("upload parameter incompatible with parts, path and/or type parmeter(s)")
+	} else if (isPartialUpload && isVirtualNode) || (isPartialUpload && isPathUpload) {
+		return errors.New("parts parameter incompatible with type and/or path parmeter(s)")
+	} else if isVirtualNode && isPathUpload {
+		return errors.New("type parameter incompatible with path parmeter")
+	}
+
+	// Check if immutiable 
+	if (isRegularUpload || isPartialUpload || isVirtualNode || isPathUpload) && node.HasFile() {
+		return errors.New(e.FileImut)
+	}
+
+	if isRegularUpload {
+		if err = node.SetFile(files["upload"]); err != nil {
+			return err
+		}
+		delete(files, "upload")
+	} else if isPartialUpload {
+		if node.partsCount() > 0 {
+			return errors.New("parts already set")
 		}
 		n, err := strconv.Atoi(params["parts"])
 		if err != nil {
@@ -262,33 +373,16 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		if err = node.initParts(n); err != nil {
 			return err
 		}
-	} else { // process upload
-		file := ""
-		// handle file parameter names "upload" & "file"
-		if _, hasUpload := files["upload"]; hasUpload {
-			file = "upload"
-		} else if _, hasFile := files["file"]; hasFile {
-			file = "file"
+	} else if isVirtualNode {
+		if source, hasSource := params["source"]; hasSource {
+			ids := strings.Split(source, ",")
+			node.addVirtualParts(ids)
+		} else {
+			return errors.New("type virtual requires source parameter")
 		}
-		if file != "" { // process uploaded file
-			if node.HasFile() == false {
-				if err = node.SetFile(files[file]); err != nil {
-					return err
-				}
-				delete(files, file)
-			} else {
-				return errors.New(e.FileImut)
-			}
-		} else { // no upload. set file from system path
-			if _, hasPath := params["path"]; hasPath {
-				if node.HasFile() == false {
-					if err = node.SetFileFromPath(params["path"]); err != nil {
-						return err
-					}
-				} else {
-					return errors.New(e.FileImut)
-				}
-			}
+	} else if isPathUpload {
+		if err = node.SetFileFromPath(params["path"]); err != nil {
+			return err
 		}
 	}
 

@@ -9,13 +9,13 @@ import (
 )
 
 type Reader struct {
-	f        io.ReadCloser
-	r        seq.ReadFormatCloser
+	f        io.Reader
+	r        seq.ReadFormater
 	counter  int
 	overflow []byte
 }
 
-func NewReader(f io.ReadCloser) io.ReadCloser {
+func NewReader(f io.Reader) io.Reader {
 	return &Reader{
 		f:        f,
 		r:        multi.NewReader(f),
