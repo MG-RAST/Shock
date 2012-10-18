@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	sample = "../testdata/sample1.sam"
+	sample = "../../../testdata/sample1.sam"
 	Idx    [][]int64 //list of {offset, length} pair
 )
 
@@ -125,8 +125,8 @@ func TestReadSeqByIndex(t *testing.T) {
 			}
 			rs = append(rs, io.NewSectionReader(fd, pos, length))
 		}
-        
-        i := 1
+
+		i := 1
 		for _, sec_reader := range rs {
 			if sec_reader != nil {
 				buf := make([]byte, 32*1024)
