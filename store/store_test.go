@@ -85,7 +85,7 @@ func TestCreateNodeUpload(t *testing.T) {
 	files := make(FormFiles)
 	tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.DATA_PATH, rand.Int(), rand.Int())
 	fmt.Println("tmpPath=", tmpPath)
-	formfile1 := FormFile{Name: "tshock", Path: tmpPath, Checksum: make(map[string]string)}
+	formfile1 := FormFile{Name: "./testdata/10kb.fna", Path: tmpPath, Checksum: make(map[string]string)}
 	files["file1"] = formfile1
 	fmt.Println("files=", formfile1)
 
