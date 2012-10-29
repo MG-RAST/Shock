@@ -32,6 +32,13 @@ func handleAuthError(err error, cx *goweb.Context) {
 	return
 }
 
+// Options: /node
+func (cr *NodeController) Options(cx *goweb.Context) {
+	LogRequest(cx.Request)
+	cx.RespondWithOK()
+	return
+}
+
 // POST: /node
 func (cr *NodeController) Create(cx *goweb.Context) {
 	// Log Request and check for Auth
