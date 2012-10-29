@@ -172,6 +172,12 @@ type resource struct {
 	T string   `json:"type"`
 }
 
+func RespondOk(cx *goweb.Context) {
+	LogRequest(cx.Request)
+	cx.RespondWithOK()
+	return
+}
+
 func ResourceDescription(cx *goweb.Context) {
 	LogRequest(cx.Request)
 	host := ""
