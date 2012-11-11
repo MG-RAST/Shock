@@ -14,6 +14,13 @@ import (
 
 type UserController struct{}
 
+// Options: /user
+func (cr *UserController) Options(cx *goweb.Context) {
+	LogRequest(cx.Request)
+	cx.RespondWithOK()
+	return
+}
+
 // POST: /user
 // To create a new user make a empty POST to /user with user:password 
 // Basic Auth encoded in the header. Return new user object.
