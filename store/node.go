@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -119,6 +120,13 @@ func (node *Node) FilePath() string {
 		return node.File.Path
 	}
 	return getPath(node.Id) + "/" + node.Id + ".data"
+}
+
+func (node *Node) FileExt() string {
+	if node.File.Name != "" {
+		return filepath.Ext(node.File.Name)
+	}
+	return ""
 }
 
 // Index functions
