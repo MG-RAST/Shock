@@ -32,7 +32,9 @@ type Node struct {
 	Indexes      map[string]string `bson:"indexes" json:"indexes"`
 	Acl          acl               `bson:"acl" json:"-"`
 	VersionParts map[string]string `bson:"version_parts" json:"-"`
-	Type         string            `bson:"type" json:"-"`
+	Type         []string          `bson:"type" json:"type"`
+	Parent       parent            `bson:"parent" json:"parent"`
+	Children     map[string]string `bson:"children" json:"children"` //map[nodeid]operation
 }
 
 type file struct {
@@ -49,6 +51,11 @@ type partsList struct {
 	Count  int         `json:"count"`
 	Length int         `json:"length"`
 	Parts  []partsFile `json:"parts"`
+}
+
+type parent struct {
+	Operation   string   `bson:"operation" json:"operation"`
+	ParentNodes []string `bson:"parent_nodes" json:"parent_nodes"`
 }
 
 type partsFile []string
@@ -78,6 +85,13 @@ func (node *Node) HasIndex(index string) bool {
 				return true
 			}
 		}
+	}
+	return false
+}
+
+func (node *Node) HasParent() bool {
+	if len(node.Parent.ParentNodes) > 0 {
+		return true
 	}
 	return false
 }
@@ -422,6 +436,35 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			}
 		}
 	}
+
+	// update parent (provenance info)
+	if _, hasParent := params["parents"]; hasParent {
+		if node.HasParent() {
+			return errors.New(e.ProvenanceImut)
+		}
+		var operation string = ""
+		if _, hasOp := params["operation"]; hasOp {
+			operation = params["operation"]
+		}
+		if err = node.SetParents(params["parents"], operation); err != nil {
+			return err
+		}
+	}
+
+	//add child
+	if _, hasChild := params["child"]; hasChild {
+		if err = node.SetChild(params["child"]); err != nil {
+			return err
+		}
+	}
+
+	//delete child
+	if _, deleteChild := params["deletechild"]; deleteChild {
+		if err = node.DeleteChild(params["deletechild"]); err != nil {
+			return err
+		}
+	}
+
 	return
 }
 
@@ -497,6 +540,44 @@ func (node *Node) SetFile(file FormFile) (err error) {
 	node.File.Name = file.Name
 	node.File.Size = fileStat.Size()
 	node.File.Checksum = file.Checksum
+	err = node.Save()
+	return
+}
+
+func (node *Node) SetParents(parents string, operation string) (err error) {
+	node.Parent.Operation = operation
+	parentList := strings.Split(parents, ",")
+	for _, parent := range parentList {
+		node.Parent.ParentNodes = append(node.Parent.ParentNodes, parent)
+	}
+	err = node.Save()
+	return
+}
+
+func (node *Node) SetChild(child string) (err error) {
+	segs := strings.Split(child, ",")
+	if len(segs) > 2 {
+		return errors.New("invalid child string")
+	}
+	childId := segs[0]
+	if _, hasKey := node.Children[childId]; hasKey {
+		return errors.New("child id already existed")
+	}
+	var op string
+	if len(segs) == 1 {
+		op = "unknown_operation"
+	} else if len(segs) == 2 {
+		op = segs[1]
+	}
+	node.Children[childId] = op
+	err = node.Save()
+	return
+}
+
+func (node *Node) DeleteChild(child string) (err error) {
+	if _, ok := node.Children[child]; ok {
+		delete(node.Children, child)
+	}
 	err = node.Save()
 	return
 }
