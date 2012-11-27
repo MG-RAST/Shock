@@ -465,6 +465,23 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 	}
 
+	//update node type
+	if _, hasDataType := params["datatype"]; hasDataType {
+		if err = node.UpdateDataType(params["datatype"]); err != nil {
+			return err
+		}
+	}
+
+	//update file format
+	if _, hasFormat := params["format"]; hasFormat {
+		if node.File.Format != "" {
+			return errors.New(fmt.Sprintf("file format already set:%s", node.File.Format))
+		}
+		if err = node.SetFileFormat(params["format"]); err != nil {
+			return err
+		}
+	}
+
 	return
 }
 
@@ -582,6 +599,24 @@ func (node *Node) DeleteChild(child string) (err error) {
 	return
 }
 
+func (node *Node) UpdateDataType(types string) (err error) {
+	typelist := strings.Split(types, ",")
+	for _, newtype := range typelist {
+		if contains(node.Type, newtype) {
+			continue
+		}
+		node.Type = append(node.Type, newtype)
+	}
+	err = node.Save()
+	return
+}
+
+func (node *Node) SetFileFormat(format string) (err error) {
+	node.File.Format = format
+	err = node.Save()
+	return
+}
+
 func (node *Node) SetAttributes(attr FormFile) (err error) {
 	attributes, err := ioutil.ReadFile(attr.Path)
 	if err != nil {
@@ -600,4 +635,13 @@ func (node *Node) ToJson() (s string, err error) {
 	m, err := json.Marshal(node)
 	s = string(m)
 	return
+}
+
+func contains(list []string, elem string) bool {
+	for _, t := range list {
+		if t == elem {
+			return true
+		}
+	}
+	return false
 }
