@@ -22,6 +22,10 @@ var (
 	virtIdx = mappy{
 		"size": true,
 	}
+	relationTypes = mappy{
+		"parent": true,
+		"child":  true,
+	}
 )
 
 type Node struct {
@@ -33,8 +37,7 @@ type Node struct {
 	Acl          acl               `bson:"acl" json:"-"`
 	VersionParts map[string]string `bson:"version_parts" json:"-"`
 	Type         []string          `bson:"type" json:"type"`
-	Parent       parent            `bson:"parent" json:"parent"`
-	Children     map[string]string `bson:"children" json:"children"` //map[nodeid]operation
+	Relatives    []relationship    `bson:"relatives" json:"relatives"`
 }
 
 type file struct {
@@ -53,9 +56,10 @@ type partsList struct {
 	Parts  []partsFile `json:"parts"`
 }
 
-type parent struct {
-	Operation   string   `bson:"operation" json:"operation"`
-	ParentNodes []string `bson:"parent_nodes" json:"parent_nodes"`
+type relationship struct {
+	Type      string   `bson: "relation" json:"relation"`
+	Ids       []string `bson:"ids" json:"ids"`
+	Operation string   `bson:"operation" json:"operation"`
 }
 
 type partsFile []string
@@ -90,8 +94,10 @@ func (node *Node) HasIndex(index string) bool {
 }
 
 func (node *Node) HasParent() bool {
-	if len(node.Parent.ParentNodes) > 0 {
-		return true
+	for _, relative := range node.Relatives {
+		if relative.Type == "parent" {
+			return true
+		}
 	}
 	return false
 }
@@ -437,30 +443,28 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 	}
 
-	// update parent (provenance info)
-	if _, hasParent := params["parents"]; hasParent {
-		if node.HasParent() {
-			return errors.New(e.ProvenanceImut)
+	// update relatives
+	if _, hasRelation := params["relation"]; hasRelation {
+		rtype := params["relation"]
+		if !IsInMappy(rtype, relationTypes) {
+			return errors.New("invalid relationship type")
 		}
-		var operation string = ""
+		if rtype == "parent" {
+			if node.HasParent() {
+				return errors.New(e.ProvenanceImut)
+			}
+		}
+		var ids string
+		if _, hasIds := params["ids"]; hasIds {
+			ids = params["ids"]
+		} else {
+			return errors.New("missing ids for updating relativs")
+		}
+		var operation string
 		if _, hasOp := params["operation"]; hasOp {
 			operation = params["operation"]
 		}
-		if err = node.SetParents(params["parents"], operation); err != nil {
-			return err
-		}
-	}
-
-	//add child
-	if _, hasChild := params["child"]; hasChild {
-		if err = node.SetChild(params["child"]); err != nil {
-			return err
-		}
-	}
-
-	//delete child
-	if _, deleteChild := params["deletechild"]; deleteChild {
-		if err = node.DeleteChild(params["deletechild"]); err != nil {
+		if err = node.UpdateRelatives(rtype, ids, operation); err != nil {
 			return err
 		}
 	}
@@ -561,40 +565,15 @@ func (node *Node) SetFile(file FormFile) (err error) {
 	return
 }
 
-func (node *Node) SetParents(parents string, operation string) (err error) {
-	node.Parent.Operation = operation
-	parentList := strings.Split(parents, ",")
-	for _, parent := range parentList {
-		node.Parent.ParentNodes = append(node.Parent.ParentNodes, parent)
+func (node *Node) UpdateRelatives(rtype string, ids string, operation string) (err error) {
+	var relative relationship
+	relative.Type = rtype
+	idList := strings.Split(ids, ",")
+	for _, id := range idList {
+		relative.Ids = append(relative.Ids, id)
 	}
-	err = node.Save()
-	return
-}
-
-func (node *Node) SetChild(child string) (err error) {
-	segs := strings.Split(child, ",")
-	if len(segs) > 2 {
-		return errors.New("invalid child string")
-	}
-	childId := segs[0]
-	if _, hasKey := node.Children[childId]; hasKey {
-		return errors.New("child id already existed")
-	}
-	var op string
-	if len(segs) == 1 {
-		op = "unknown_operation"
-	} else if len(segs) == 2 {
-		op = segs[1]
-	}
-	node.Children[childId] = op
-	err = node.Save()
-	return
-}
-
-func (node *Node) DeleteChild(child string) (err error) {
-	if _, ok := node.Children[child]; ok {
-		delete(node.Children, child)
-	}
+	relative.Operation = operation
+	node.Relatives = append(node.Relatives, relative)
 	err = node.Save()
 	return
 }

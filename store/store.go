@@ -74,7 +74,6 @@ func NewNode() (node *Node) {
 	node = new(Node)
 	node.Indexes = make(map[string]string)
 	node.File.Checksum = make(map[string]string)
-	node.Children = make(map[string]string)
 	node.setId()
 	return
 }
