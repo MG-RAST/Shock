@@ -22,10 +22,6 @@ var (
 	virtIdx = mappy{
 		"size": true,
 	}
-	relationTypes = mappy{
-		"parent": true,
-		"child":  true,
-	}
 )
 
 type Node struct {
@@ -446,9 +442,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	// update relatives
 	if _, hasRelation := params["relation"]; hasRelation {
 		rtype := params["relation"]
-		if !IsInMappy(rtype, relationTypes) {
-			return errors.New("invalid relationship type")
-		}
+
 		if rtype == "parent" {
 			if node.HasParent() {
 				return errors.New(e.ProvenanceImut)
