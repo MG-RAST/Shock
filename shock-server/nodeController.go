@@ -173,6 +173,32 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 		//_, chunksize := 
 		// ?index=foo
 		if query.Has("index") {
+			//handling bam file
+			if query.Value("index") == "bai" {
+				s := &streamer{rs: []store.SectionReader{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, size: node.File.Size, filter: fFunc}
+
+				var region string
+
+				if query.Has("region") {
+					//retrieve alingments overlapped with specified region
+					region = query.Value("region")
+				}
+
+				argv, err := ParseSamtoolsArgs(query)
+				if err != nil {
+					cx.RespondWithErrorMessage("Invaid args in query url", http.StatusBadRequest)
+					return
+				}
+
+				err = s.stream_samtools(node.FilePath(), region, argv...)
+				if err != nil {
+					cx.RespondWithErrorMessage("error while involking samtools", http.StatusBadRequest)
+					return
+				}
+
+				return
+			}
+
 			// if forgot ?part=N
 			if !query.Has("part") {
 				cx.RespondWithErrorMessage("Index parameter requires part parameter", http.StatusBadRequest)
@@ -191,6 +217,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				cx.RespondWithErrorMessage("Invalid index", http.StatusBadRequest)
 				return
 			}
+
 			if idx.Type() == "virtual" {
 				csize := int64(1048576)
 				if query.Has("chunksize") {
@@ -220,7 +247,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 				log.Error("err: " + err.Error())
 			}
-		} else {
+		} else { //!query.Has("index")
 			nf, err := node.FileReader()
 			if err != nil {
 				// File not found or some sort of file read error. 
@@ -368,6 +395,22 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 			cx.RespondWithErrorMessage("node file empty", http.StatusBadRequest)
 			return
 		}
+
+		if query.Value("index") == "bai" {
+
+			//bam index is created by the command-line tool samtools
+			if ext := node.FileExt(); ext == ".bam" {
+				if err := CreateBamIndex(node.FilePath()); err != nil {
+					cx.RespondWithErrorMessage("Error while creating bam index", http.StatusBadRequest)
+					return
+				}
+				return
+			} else {
+				cx.RespondWithErrorMessage("Index type bai requires .bam file", http.StatusBadRequest)
+				return
+			}
+		}
+
 		newIndexer := indexer.Indexer(query.Value("index"))
 		f, _ := os.Open(node.FilePath())
 		defer f.Close()

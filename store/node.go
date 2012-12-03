@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -32,7 +33,7 @@ type Node struct {
 	Acl          acl               `bson:"acl" json:"-"`
 	VersionParts map[string]string `bson:"version_parts" json:"-"`
 	Type         string            `bson:"type" json:"-"`
-	Revisions    []Node            `bson:"revisions" json:"-"`
+	Relatives    []relationship    `bson:"relatives" json:"relatives"`
 }
 
 type file struct {
@@ -49,6 +50,12 @@ type partsList struct {
 	Count  int         `json:"count"`
 	Length int         `json:"length"`
 	Parts  []partsFile `json:"parts"`
+}
+
+type relationship struct {
+	Type      string   `bson: "relation" json:"relation"`
+	Ids       []string `bson:"ids" json:"ids"`
+	Operation string   `bson:"operation" json:"operation"`
 }
 
 type partsFile []string
@@ -82,6 +89,15 @@ func (node *Node) HasIndex(index string) bool {
 			if _, err := os.Stat(node.IndexPath() + "/" + index); err == nil {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+func (node *Node) HasParent() bool {
+	for _, relative := range node.Relatives {
+		if relative.Type == "parent" {
+			return true
 		}
 	}
 	return false
@@ -125,6 +141,13 @@ func (node *Node) FilePath() string {
 		return node.File.Path
 	}
 	return getPath(node.Id) + "/" + node.Id + ".data"
+}
+
+func (node *Node) FileExt() string {
+	if node.File.Name != "" {
+		return filepath.Ext(node.File.Name)
+	}
+	return ""
 }
 
 // Index functions
@@ -416,6 +439,48 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			}
 		}
 	}
+
+	// update relatives
+	if _, hasRelation := params["relation"]; hasRelation {
+		rtype := params["relation"]
+
+		if rtype == "parent" {
+			if node.HasParent() {
+				return errors.New(e.ProvenanceImut)
+			}
+		}
+		var ids string
+		if _, hasIds := params["ids"]; hasIds {
+			ids = params["ids"]
+		} else {
+			return errors.New("missing ids for updating relativs")
+		}
+		var operation string
+		if _, hasOp := params["operation"]; hasOp {
+			operation = params["operation"]
+		}
+		if err = node.UpdateRelatives(rtype, ids, operation); err != nil {
+			return err
+		}
+	}
+
+	//update node type
+	if _, hasDataType := params["datatype"]; hasDataType {
+		if err = node.UpdateDataType(params["datatype"]); err != nil {
+			return err
+		}
+	}
+
+	//update file format
+	if _, hasFormat := params["format"]; hasFormat {
+		if node.File.Format != "" {
+			return errors.New(fmt.Sprintf("file format already set:%s", node.File.Format))
+		}
+		if err = node.SetFileFormat(params["format"]); err != nil {
+			return err
+		}
+	}
+
 	return
 }
 
@@ -498,6 +563,37 @@ func (node *Node) SetFile(file FormFile) (err error) {
 	return
 }
 
+func (node *Node) UpdateRelatives(rtype string, ids string, operation string) (err error) {
+	var relative relationship
+	relative.Type = rtype
+	idList := strings.Split(ids, ",")
+	for _, id := range idList {
+		relative.Ids = append(relative.Ids, id)
+	}
+	relative.Operation = operation
+	node.Relatives = append(node.Relatives, relative)
+	err = node.Save()
+	return
+}
+
+func (node *Node) UpdateDataType(types string) (err error) {
+	typelist := strings.Split(types, ",")
+	for _, newtype := range typelist {
+		if contains(node.Type, newtype) {
+			continue
+		}
+		node.Type = append(node.Type, newtype)
+	}
+	err = node.Save()
+	return
+}
+
+func (node *Node) SetFileFormat(format string) (err error) {
+	node.File.Format = format
+	err = node.Save()
+	return
+}
+
 func (node *Node) SetAttributes(attr FormFile) (err error) {
 	attributes, err := ioutil.ReadFile(attr.Path)
 	if err != nil {
@@ -523,4 +619,13 @@ func (node *Node) ToJson() (s string, err error) {
 	m, err := json.Marshal(node)
 	s = string(m)
 	return
+}
+
+func contains(list []string, elem string) bool {
+	for _, t := range list {
+		if t == elem {
+			return true
+		}
+	}
+	return false
 }
