@@ -292,7 +292,7 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 
 	// Setup query and nodes objects
 	q := bson.M{}
-	nodes := new(store.Nodes)
+	nodes := store.Nodes{}
 
 	if u != nil {
 		// Admin sees all

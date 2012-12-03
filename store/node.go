@@ -32,7 +32,7 @@ type Node struct {
 	Indexes      map[string]string `bson:"indexes" json:"indexes"`
 	Acl          acl               `bson:"acl" json:"-"`
 	VersionParts map[string]string `bson:"version_parts" json:"-"`
-	Type         []string          `bson:"type" json:"type"`
+	Type         string            `bson:"type" json:"-"`
 	Relatives    []relationship    `bson:"relatives" json:"relatives"`
 }
 
@@ -66,6 +66,11 @@ type FormFile struct {
 	Name     string
 	Path     string
 	Checksum map[string]string
+}
+
+type AttrHis struct {
+	Rev  string
+	Attr interface{}
 }
 
 // HasFoo functions
@@ -412,15 +417,11 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 
 	// set attributes from file
 	if _, hasAttr := files["attributes"]; hasAttr {
-		if node.Attributes == nil {
-			if err = node.SetAttributes(files["attributes"]); err != nil {
-				return err
-			}
-			os.Remove(files["attributes"].Path)
-			delete(files, "attributes")
-		} else {
-			return errors.New(e.AttrImut)
+		if err = node.SetAttributes(files["attributes"]); err != nil {
+			return err
 		}
+		os.Remove(files["attributes"].Path)
+		delete(files, "attributes")
 	}
 
 	// handle part file
@@ -489,8 +490,11 @@ func (node *Node) Save() (err error) {
 		return
 	}
 	defer db.Close()
-
 	node.UpdateVersion()
+	if len(node.Revisions) == 0 || node.Revisions[len(node.Revisions)-1].Version != node.Version {
+		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Type, nil}
+		node.Revisions = append(node.Revisions, n)
+	}
 	bsonPath := fmt.Sprintf("%s/%s.bson", node.Path(), node.Id)
 	os.Remove(bsonPath)
 	nbson, err := bson.Marshal(node)
@@ -599,6 +603,13 @@ func (node *Node) SetAttributes(attr FormFile) (err error) {
 	if err != nil {
 		return
 	}
+
+	h := md5.New()
+	h.Write(attributes)
+
+	rev := AttrHis{}
+	rev.Rev = fmt.Sprintf("%x", h.Sum(nil))
+	rev.Attr = node.Attributes
 	err = node.Save()
 	return
 }
