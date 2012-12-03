@@ -32,7 +32,7 @@ type Node struct {
 	Indexes      map[string]string `bson:"indexes" json:"indexes"`
 	Acl          acl               `bson:"acl" json:"-"`
 	VersionParts map[string]string `bson:"version_parts" json:"-"`
-	Type         []string          `bson:"type" json:"-"`
+	Type         []string          `bson:"type" json:"type"`
 	Revisions    []Node            `bson:"revisions" json:"-"`
 	Relatives    []relationship    `bson:"relatives" json:"relatives"`
 }
