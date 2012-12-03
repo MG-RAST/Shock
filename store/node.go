@@ -32,7 +32,8 @@ type Node struct {
 	Indexes      map[string]string `bson:"indexes" json:"indexes"`
 	Acl          acl               `bson:"acl" json:"-"`
 	VersionParts map[string]string `bson:"version_parts" json:"-"`
-	Type         string            `bson:"type" json:"-"`
+	Type         []string          `bson:"type" json:"-"`
+	Revisions    []Node            `bson:"revisions" json:"-"`
 	Relatives    []relationship    `bson:"relatives" json:"relatives"`
 }
 
@@ -492,7 +493,7 @@ func (node *Node) Save() (err error) {
 	defer db.Close()
 	node.UpdateVersion()
 	if len(node.Revisions) == 0 || node.Revisions[len(node.Revisions)-1].Version != node.Version {
-		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Type, nil}
+		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Type, nil, node.Relatives}
 		node.Revisions = append(node.Revisions, n)
 	}
 	bsonPath := fmt.Sprintf("%s/%s.bson", node.Path(), node.Id)
