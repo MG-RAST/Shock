@@ -29,7 +29,7 @@ type Node struct {
 	Version      string            `bson:"version" json:"version"`
 	File         file              `bson:"file" json:"file"`
 	Attributes   interface{}       `bson:"attributes" json:"attributes"`
-	Indexes      map[string]string `bson:"indexes" json:"indexes"`
+	Indexes      map[string]string `bson:"indexes" json:"-"`
 	Acl          acl               `bson:"acl" json:"-"`
 	VersionParts map[string]string `bson:"version_parts" json:"-"`
 	Type         []string          `bson:"type" json:"type"`
@@ -116,10 +116,10 @@ func (node *Node) IndexPath() string {
 func (node *Node) FileReader() (reader ReaderAt, err error) {
 	if node.File.Virtual {
 		readers := []ReaderAt{}
-		nodes := []*Node{}
+		nodes := Nodes{}
 		if db, err := DBConnect(); err == nil {
 			defer db.Close()
-			if err := db.FindNodes(node.File.VirtualParts, &nodes); err != nil {
+			if err := db.Find(bson.M{"id": bson.M{"$in": node.File.VirtualParts}}, &nodes, nil); err != nil {
 				return nil, err
 			}
 		}
@@ -198,11 +198,18 @@ func (node *Node) initParts(count int) (err error) {
 	return
 }
 
+func (node *Node) Delete() (err error) {
+	// check to make sure this node isn't referenced by a vnode
+	// unlink file
+	// delete from db
+	return
+}
+
 func (node *Node) addVirtualParts(ids []string) (err error) {
-	nodes := []*Node{}
+	nodes := Nodes{}
 	if db, err := DBConnect(); err == nil {
 		defer db.Close()
-		if err := db.FindNodes(ids, &nodes); err != nil {
+		if err := db.Find(bson.M{"id": bson.M{"$in": ids}}, &nodes, nil); err != nil {
 			return err
 		}
 	} else {

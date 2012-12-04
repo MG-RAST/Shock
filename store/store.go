@@ -1,6 +1,7 @@
 package store
 
 import (
+	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/conf"
 	"github.com/MG-RAST/Shock/store/user"
@@ -13,7 +14,11 @@ func LoadNode(id string, uuid string) (node *Node, err error) {
 	if db, err := DBConnect(); err == nil {
 		defer db.Close()
 		node = new(Node)
-		if err = db.FindByIdAuth(id, uuid, node); err == nil {
+		if err = db.FindOne(bson.M{"id": id}, node); err == nil {
+			rights := node.Acl.check(uuid)
+			if !rights["read"] {
+				return nil, errors.New("User Unauthorized")
+			}
 			return node, nil
 		} else {
 			return nil, err
@@ -22,10 +27,10 @@ func LoadNode(id string, uuid string) (node *Node, err error) {
 	return nil, err
 }
 
-func LoadNodes(ids []string) (nodes []*Node, err error) {
+func LoadNodes(ids []string) (nodes Nodes, err error) {
 	if db, err := DBConnect(); err == nil {
 		defer db.Close()
-		if err = db.FindNodes(ids, &nodes); err == nil {
+		if err = db.Find(bson.M{"id": bson.M{"$in": ids}}, &nodes, nil); err == nil {
 			return nodes, err
 		} else {
 			return nil, err
