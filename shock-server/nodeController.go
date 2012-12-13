@@ -220,7 +220,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 			}
 
 			if idx.Type() == "virtual" {
-				csize := int64(1048576)
+				csize := conf.CHUNK_SIZE
 				if query.Has("chunksize") {
 					csize, err = strconv.ParseInt(query.Value("chunksize"), 10, 64)
 					if err != nil {
@@ -410,7 +410,6 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 		}
 
 		if query.Value("index") == "bai" {
-
 			//bam index is created by the command-line tool samtools
 			if ext := node.FileExt(); ext == ".bam" {
 				if err := CreateBamIndex(node.FilePath()); err != nil {
@@ -428,18 +427,32 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 		f, _ := os.Open(node.FilePath())
 		defer f.Close()
 		idxer := newIndexer(f)
-		err := idxer.Create()
+		count, err := idxer.Create()
 		if err != nil {
 			log.Error("err " + err.Error())
-		}
-		err = idxer.Dump(node.IndexPath() + "/record")
-		if err != nil {
 			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 			return
-		} else {
-			cx.RespondWithOK()
+		}
+
+		if err := idxer.Dump(node.IndexPath() + "/" + query.Value("index") + ".idx"); err != nil {
+			log.Error("err " + err.Error())
+			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 			return
 		}
+
+		idxInfo := store.IdxInfo{
+			Type:        query.Value("index"),
+			TotalUnits:  count,
+			AvgUnitSize: node.File.Size / count,
+		}
+
+		if err := node.SetIndexInfo(query.Value("index"), idxInfo); err != nil {
+			log.Error("err@node.SetIndexInfo: " + err.Error())
+		}
+
+		cx.RespondWithOK()
+		return
+
 	} else {
 		params, files, err := ParseMultipartForm(cx.Request)
 		if err != nil {

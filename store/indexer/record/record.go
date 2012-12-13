@@ -21,8 +21,9 @@ func NewIndexer(f io.ReadCloser) index.Indexer {
 	}
 }
 
-func (i *indexer) Create() (err error) {
+func (i *indexer) Create() (count int64, err error) {
 	curr := int64(0)
+	count = 0
 	for {
 		buf := make([]byte, 32*1024)
 		n, er := i.r.ReadRaw(buf)
@@ -34,6 +35,7 @@ func (i *indexer) Create() (err error) {
 		}
 		i.Index.Append([]int64{curr, int64(n)})
 		curr += int64(n)
+		count += 1
 	}
 	return
 }
