@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type NodeController struct{}
@@ -311,13 +312,25 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 
 	// Gather params to make db query. Do not include the
 	// following list.	
-	skip := map[string]int{"limit": 1, "skip": 1, "query": 1}
+	skip := map[string]int{"limit": 1, "skip": 1, "query": 1, "querynode": 1, "type": 1}
 	if query.Has("query") {
 		for key, val := range query.All() {
 			_, s := skip[key]
 			if !s {
 				q[fmt.Sprintf("attributes.%s", key)] = val[0]
 			}
+		}
+	} else if query.Has("querynode") {
+		for key, val := range query.All() {
+			_, s := skip[key]
+			if !s {
+				q[key] = val[0]
+			}
+		}
+
+		if query.Has("type") {
+			querytypes := strings.Split(query.Value("type"), ",")
+			q["type"] = bson.M{"$all": querytypes}
 		}
 	}
 
