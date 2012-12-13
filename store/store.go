@@ -72,7 +72,7 @@ func ReloadFromDisk(path string) (err error) {
 
 func NewNode() (node *Node) {
 	node = new(Node)
-	node.Indexes = make(map[string]string)
+	node.Indexes = make(map[string]IdxInfo)
 	node.File.Checksum = make(map[string]string)
 	node.setId()
 	return

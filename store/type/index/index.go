@@ -11,7 +11,7 @@ import (
 
 type Indexer interface {
 	Dump(string) error
-	Create() error
+	Create() (int64, error)
 	Close() error
 }
 
@@ -89,10 +89,10 @@ func (i *Idx) Dump(file string) (err error) {
 
 func (i *Idx) Load(file string) (err error) {
 	f, err := os.Open(file)
-	defer f.Close()
 	if err != nil {
 		return
 	}
+	defer f.Close()
 	for {
 		rec := make([]int64, 2)
 		er := binary.Read(f, binary.LittleEndian, &rec[0])

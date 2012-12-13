@@ -58,6 +58,9 @@ var (
 
 	// Node Indices
 	NODE_IDXS map[string]idxOpts = nil
+
+	// Default Chunksize for size virtual index
+	CHUNK_SIZE int64 = 1048576
 )
 
 func init() {

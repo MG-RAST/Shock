@@ -11,7 +11,7 @@ func NewIndexer(f io.ReadCloser) index.Indexer {
 	return &indexer{}
 }
 
-func (i *indexer) Create() (err error) {
+func (i *indexer) Create() (count int64, err error) {
 	return
 }
 
