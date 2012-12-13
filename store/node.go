@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/MG-RAST/Shock/conf"
 	e "github.com/MG-RAST/Shock/errors"
 	"github.com/MG-RAST/Shock/store/type/index"
 	"github.com/MG-RAST/Shock/store/type/index/virtual"
@@ -25,16 +26,16 @@ var (
 )
 
 type Node struct {
-	Id           string            `bson:"id" json:"id"`
-	Version      string            `bson:"version" json:"version"`
-	File         file              `bson:"file" json:"file"`
-	Attributes   interface{}       `bson:"attributes" json:"attributes"`
-	Indexes      map[string]string `bson:"indexes" json:"indexes"`
-	Acl          acl               `bson:"acl" json:"-"`
-	VersionParts map[string]string `bson:"version_parts" json:"-"`
-	Type         []string          `bson:"type" json:"type"`
-	Revisions    []Node            `bson:"revisions" json:"-"`
-	Relatives    []relationship    `bson:"relatives" json:"relatives"`
+	Id           string             `bson:"id" json:"id"`
+	Version      string             `bson:"version" json:"version"`
+	File         file               `bson:"file" json:"file"`
+	Attributes   interface{}        `bson:"attributes" json:"attributes"`
+	Indexes      map[string]IdxInfo `bson:"indexes" json:"indexes"`
+	Acl          acl                `bson:"acl" json:"-"`
+	VersionParts map[string]string  `bson:"version_parts" json:"-"`
+	Type         []string           `bson:"type" json:"type"`
+	Revisions    []Node             `bson:"revisions" json:"-"`
+	Relatives    []relationship     `bson:"relatives" json:"relatives"`
 }
 
 type file struct {
@@ -57,6 +58,12 @@ type relationship struct {
 	Type      string   `bson: "relation" json:"relation"`
 	Ids       []string `bson:"ids" json:"ids"`
 	Operation string   `bson:"operation" json:"operation"`
+}
+
+type IdxInfo struct {
+	Type        string `bson: "index_type" json:"index_type"`
+	TotalUnits  int64  `bson: "total_units" json:"total_units"`
+	AvgUnitSize int64  `bson: "avg_unitsize" json:"avg_unitsize"`
 }
 
 type partsFile []string
@@ -157,7 +164,7 @@ func (node *Node) Index(name string) (idx index.Index, err error) {
 		idx = virtual.New(name, node.FilePath(), node.File.Size, 10240)
 	} else {
 		idx = index.New()
-		err = idx.Load(node.IndexPath() + "/" + name)
+		err = idx.Load(node.IndexPath() + "/" + name + ".idx")
 	}
 	return
 }
@@ -560,6 +567,24 @@ func (node *Node) SetFile(file FormFile) (err error) {
 	node.File.Name = file.Name
 	node.File.Size = fileStat.Size()
 	node.File.Checksum = file.Checksum
+
+	totalunits := node.File.Size / conf.CHUNK_SIZE
+	m := node.File.Size % conf.CHUNK_SIZE
+	if m != 0 {
+		totalunits += 1
+	}
+	node.Indexes["size"] = IdxInfo{
+		Type:        "size",
+		TotalUnits:  totalunits,
+		AvgUnitSize: conf.CHUNK_SIZE,
+	}
+
+	err = node.Save()
+	return
+}
+
+func (node *Node) SetIndexInfo(indextype string, idxinfo IdxInfo) (err error) {
+	node.Indexes[indextype] = idxinfo
 	err = node.Save()
 	return
 }
