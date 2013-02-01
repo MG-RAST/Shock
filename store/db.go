@@ -55,6 +55,11 @@ func DropDB() (err error) {
 	return d.Nodes.DropCollection()
 }
 
+func (d *db) Delete(q bson.M) (err error) {
+	_, err = d.Nodes.RemoveAll(q)
+	return
+}
+
 func (d *db) Upsert(node *Node) (err error) {
 	_, err = d.Nodes.Upsert(bson.M{"id": node.Id}, &node)
 	return

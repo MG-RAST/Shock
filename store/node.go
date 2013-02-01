@@ -69,11 +69,6 @@ type FormFile struct {
 	Checksum map[string]string
 }
 
-type AttrHis struct {
-	Rev  string
-	Attr interface{}
-}
-
 // HasFoo functions
 func (node *Node) HasFile() bool {
 	if node.File.Name == "" && node.File.Size == 0 && len(node.File.Checksum) == 0 && node.File.Path == "" {
@@ -200,9 +195,23 @@ func (node *Node) initParts(count int) (err error) {
 
 func (node *Node) Delete() (err error) {
 	// check to make sure this node isn't referenced by a vnode
-	// unlink file
-	// delete from db
-	return
+	nodes := Nodes{}
+	if db, err := DBConnect(); err == nil {
+		defer db.Close()
+		if err = db.Find(bson.M{"virtual_parts": node.Id}, &nodes, nil); err != nil {
+			return err
+		}
+		if len(nodes) != 0 {
+			return errors.New(e.NodeReferenced)
+		} else {
+			if err = db.Delete(bson.M{"id": node.Id}); err != nil {
+				return err
+			}
+		}
+	} else {
+		return err
+	}
+	return node.Rmdir()
 }
 
 func (node *Node) addVirtualParts(ids []string) (err error) {
@@ -520,6 +529,10 @@ func (node *Node) Save() (err error) {
 	return
 }
 
+func (node *Node) Rmdir() (err error) {
+	return os.RemoveAll(node.Path())
+}
+
 func (node *Node) Mkdir() (err error) {
 	err = os.MkdirAll(node.Path(), 0777)
 	if err != nil {
@@ -611,13 +624,6 @@ func (node *Node) SetAttributes(attr FormFile) (err error) {
 	if err != nil {
 		return
 	}
-
-	h := md5.New()
-	h.Write(attributes)
-
-	rev := AttrHis{}
-	rev.Rev = fmt.Sprintf("%x", h.Sum(nil))
-	rev.Attr = node.Attributes
 	err = node.Save()
 	return
 }

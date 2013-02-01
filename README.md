@@ -75,60 +75,123 @@ The Shock configuration file is in INI file format. There is a template of the c
     # key=unique:true/false[,dropDups:true/false][,sparse:true/false]
     id=unique:true
 
+<a name="auth"/>
 <br>
 Authentication:
 ---------------
-Shock currently supports two forms of Authentication. Http Basic Auth with local user support and Globus Online Nexus oauth implementation. 
+Shock currently supports two forms of Authentication. Http Basic Auth with local user support and Globus Online Nexus oauth implementation. See configuration for more details.
 
-Basic Auth:
+### Basic Auth
+In this configuration Shock locally stores user information. Users must create accounts via the [user api](#post_user). Once this is done they can pass basic auth headers to authenticate.
 
-- configure shock with Auth.type = basic
-- create user via api [/user](#post_user)
-- set headers in api requests (curl --user username:password)
+Example
 
-<br>
-Globus Online:
-
-shock.conf 
-
-    type=basic
-    globus_token_url=<url_to_retrieve_tokens>
-    globus_profile_url=<url_to_retrieve_user_profile>
-
-- use globus online username & password in api requests (curl --user username:password ...)
-- use globus online token in api requests (curl -H "Authorization: Globus-Goauthtoken TOKEN" ...)
+    curl --user username:password ...
 
 <br>
-Routes Overview
----------------
+### Globus Online 
+In this configuration Shock locally stores only uuids for users that it has already seen. The registration of new users is done exclusively with the external auth provider. The user api is disabled in this mode.
+
+__Note__: Using the basic auth method shown below is significantly slower than the bearer token. Its highly discouraged for large numbers of request.
+
+Examples:
+
+    # globus online username & password
+    curl --user username:password ...
+
+    # globus online bearer token 
+    curl -H "Authorization: OAuth $TOKEN" ...
+
+
+<br>
+Quick start guide
+-----------------
+__Note__: Authentication is required for most of these commands
+<br>
+#### Create a node: [more details](#post_node)
+
+    # without file or attributes
+    curl -X POST http://<host>[:<port>]/node
+
+    # with attributes
+    curl -X POST -F "attributes=@<path_to_json_file>" http://<host>[:<port>]/node
     
-### Implemented API Routes (default port 8000):
+    # with file
+    curl -X POST -F "upload=@<path_to_data_file>" http://<host>[:<port>]/node
 
-#####GET
-
-- [/](#get_slash)  resource listing
-- [/node](#get_nodes)  list nodes, query
-- [/node/{id}](#get_node)  view node, download file (full or partial)
-- [/user](#get_users)  list users (admin users only)
-- [/user/{id}](#get_user)  view user
-
-#####PUT
-
-- [/node/{id}](#put_node)  modify node, create index
-
-#####POST
- 
-- [/node](#post_node)  create node
-- [/user](#post_user)  create user
+    # with file local to the shock server
+    curl -X POST -F "path=<path_to_data_file>" http://<host>[:<port>]/node
+    
+    # with file upload in N parts (part uploads may be done in parallel)
+    curl -X POST -F "parts=N" http://<host>[:<port>]/node
+    curl -X PUT -F "1=@<file_part_1>" http://<host>[:<port>]/node/<node_id>
+    curl -X PUT -F "2=@<file_part_2>" http://<host>[:<port>]/node/<node_id>
+    ...
+    curl -X PUT -F "N=@<file_part_N>" http://<host>[:<port>]/node/<node_id>
 
 <br>
-### Site Routes (default port 80):
+#### View a node: [more details](#get_node) 
 
-    GET  /    
-    GET  /raw    # listing of data dir
-    GET  /assets # js, img, css, README.md
+    # node information
+    curl -X GET http://<host>[:<port>]/node/{id}
+
+    # download file
+    curl -X GET http://<host>[:<port>]/node/{id}/?download
+
+    # download first 1mb of file
+    curl -X GET http://<host>[:<port>]/node/{id}/?download&index=size&part=1
+        
+    # download first 10mb of file
+    curl -X GET http://<host>[:<port>]/node/{id}/?download&index=size&chunk_size=10485760&part=1
+
+    # download Nth 10mb of file
+    curl -X GET http://<host>[:<port>]/node/{id}/?download&index=size&chunk_size=10485760&part=N
+    
+<br>
+#### View and modifying acls: 
+
+    # view all acls
+    curl -X GET http://<host>[:<port>]/node/{id}/acl/
+
+    # view specific acls
+    curl -X GET http://<host>[:<port>]/node/{id}/acl/[ read | write | delete | owner ]
+    
+    # adding user to all acls (expect owner)
+    curl -X PUT http://<host>[:<port>]/node/{id}/acl/?all=<list_of_email-addresses_or_uuids>
+
+    # adding user to specific acls
+    curl -X PUT http://<host>[:<port>]/node/{id}/acl/[ read | write | delete | owner ]?users=<list_of_email-addresses_or_uuids>
+    or
+    curl -X PUT http://<host>[:<port>]/node/{id}/acl/?[ read | write | delete ]=<list_of_email-addresses_or_uuids>
+    
+    example adding users to both read and write acls:
+    curl -X PUT http://<host>[:<port>]/node/{id}/acl/?read=joeblow@gmail.com,frank@gmail.com&write=joeblow@gmail.com,frank@gmail.com
+    
+    # deleting user from all acls (expect owner)
+    curl -X DELETE http://<host>[:<port>]/node/{id}/acl/?all=<list_of_email-addresses_or_uuids>    
+    
+    # deleting user to specific acls
+    curl -X DELETE http://<host>[:<port>]/node/{id}/acl/[ read | write | delete | owner ]?users=<list_of_email-addresses_or_uuids>
+    or
+    curl -X DELETE http://<host>[:<port>]/node/{id}/acl/?[ read | write | delete ]=<list_of_email-addresses_or_uuids>
+    
+    example deleting users to both read and write acls:
+    curl -X DELETE http://<host>[:<port>]/node/{id}/acl/?read=joeblow@gmail.com,frank@gmail.com&write=joeblow@gmail.com,frank@gmail.com
 
 <br>
+#### Querying: [more details](#get_nodes)   
+
+    # by attribute key value
+    curl -X GET http://<host>[:<port>]/node/?query&<key>=<value>
+
+    # by attribute key value, limit 10
+    curl -X GET http://<host>[:<port>]/node/?query&<key>=<value>&limit=10
+
+    # by attribute key value, limit 10, skip 10
+    curl -X GET http://<host>[:<port>]/node/?query&<key>=<value>&limit=10&skip=10
+
+<br><br>
+
 Data Types
 ----------
 
@@ -137,75 +200,27 @@ Data Types
 - id: unique identifier
 - file: name, size, checksum(s).
 - attributes: arbitrary json. Queriable.
-- acl: arrays of user uuids corresponding to read, write, delete access controls.
 - indexes: A set of indexes to use.
 - version: a version stamp for this node.
 - version_parts: version stamps for specific parts of the node, such as acl, attributes and file.
 
-##### node example (metagenome from MG-RAST):
+##### node example:
     
     {
         "D": {
-            "id": "4a6299ccb2cc44c2cd4b702cb98f2d9e", 
+            "attributes": null, 
             "file": {
-                "checksum": {
-                    "md5": "05306fcb6f510ef7880863256797a486", 
-                    "sha1": "10c97a28985623ca82cdf5337547406e7e48b1ed"
-                }, 
-                "name": "mgm4440286.3.json", 
-                "size": 1861
+                "checksum": {}, 
+                "format": "", 
+                "name": "", 
+                "size": 0, 
+                "virtual": false, 
+                "virtual_parts": []
             }, 
-            "attributes": {
-                "about": "metagenome", 
-                "created": "2007-11-05 13:10:13", 
-                "id": "mgm4440286.3", 
-                "library": null, 
-                "metadata": {
-                    "biome-information_envo_lite": "animal-associated habitat", 
-                    "external-ids_gold_id": "Gm00130", 
-                    "external-ids_project_id": "28959, 28599", 
-                    "external-ids_pubmed_id": "18698407, 18337718", 
-                    "host-associated_age": "years/months/28/hh/mm/ss", 
-                    "host-associated_body_site": "cecum", 
-                    "host-associated_diet": "commercial chicken feed (Eagle Milling, AZ)", 
-                    "host-associated_host_common_name": "Chicken", 
-                    "host-associated_host_subject_id": "B", 
-                    "host-associated_host_taxid": "9031", 
-                    "host-associated_life_stage": "Adult", 
-                    "host-associated_perturbation": "chicks were challenged via oral gavage with 1\u00d7105 CFU C. jejuni NCTC11168", 
-                    "host-associated_samp_store_temp": "-80", 
-                    "project-description_metagenome_name": "Chicken Cecum B Contigs", 
-                    "sample-isolation-and-treatment_biomaterial_treatment": "DNA extraction", 
-                    "sample-isolation-and-treatment_sample_isolation_description": "Fourteen days post challenge, birds from two pens (A&B) were euthanized and ceca collected for further analysis. Fresh cecal samples from two (C. jejuni-inoculated and C. jejuni-uninoculated) 28-day old chickens were analyzed. Cecal contents were collected using aseptic techniques. Samples were stored at &#8722;80\u00b0C until DNA extraction.", 
-                    "sample-isolation-and-treatment_sample_isolation_reference": "18698407", 
-                    "sample-origin_continent": "north_america", 
-                    "sample-origin_country": "US", 
-                    "sample-origin_geodetic_system": "wgs_84", 
-                    "sample-origin_latitude": "40.1106", 
-                    "sample-origin_location": "Urbana, IL", 
-                    "sample-origin_longitude": "-88.2073", 
-                    "sample-origin_sampling_timezone": "UTC", 
-                    "sequencing_sequencing_center": "454 Life Sciences, Inc, Branford, CT", 
-                    "sequencing_sequencing_method": "454"
-                }, 
-                "name": "Chicken Cecum B Contigs", 
-                "project": "mgp101", 
-                "sample": null, 
-                "url": "http://api.metagenomics.anl.gov/metagenome/mgm4440286.3", 
-                "version": 1
-            }, 
-            "acl": {
-                "delete": [], 
-                "read": [], 
-                "write": []
-            }, 
-            "indexes": {}, 
-            "version": "eeb8a92f954cc1691900497e537162fb", 
-            "version_parts": {
-                "acl_ver": "15251b8a2ba46ff4c6ce5baea5cd8b2a", 
-                "attributes_ver": "8f0534ac82552d55420b82e7131f91f3", 
-                "file_ver": "26c85f331645d98bf3f35d754c7ec352"
-            }
+            "id": "130cadb5-9435-4bd9-be13-715ec40b2bb5", 
+            "relatives": [], 
+            "type": [], 
+            "version": "4da883924aa8ae9eb95f6cd247f2f554"
         }, 
         "E": null, 
         "S": 200
@@ -265,6 +280,37 @@ Currently in early development the file index is a json file stored on disk in t
     	"version" : 1,
     	"index" : [[0,1861]]
     }
+
+<br><br>
+
+Routes Overview
+---------------
+    
+### Implemented API Routes (default port 8000):
+
+#####GET
+
+- [/](#get_slash)  resource listing
+- [/node](#get_nodes)  list nodes, query
+- [/node/{id}](#get_node)  view node, download file (full or partial)
+- [/user](#get_users)  list users (admin users only)
+- [/user/{id}](#get_user)  view user
+
+#####PUT
+
+- [/node/{id}](#put_node)  modify node, create index
+
+#####POST
+ 
+- [/node](#post_node)  create node
+- [/user](#post_user)  create user
+
+<br>
+### Site Routes (default port 80):
+
+    GET  /    
+    GET  /raw    # listing of data dir
+    GET  /assets # js, img, css, README.md
 
 <br><br>
 API

@@ -15,7 +15,7 @@ func LoadNode(id string, uuid string) (node *Node, err error) {
 		defer db.Close()
 		node = new(Node)
 		if err = db.FindOne(bson.M{"id": id}, node); err == nil {
-			rights := node.Acl.check(uuid)
+			rights := node.Acl.Check(uuid)
 			if !rights["read"] {
 				return nil, errors.New("User Unauthorized")
 			}
@@ -86,8 +86,8 @@ func NewNode() (node *Node) {
 func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (node *Node, err error) {
 	node = NewNode()
 	if u.Uuid != "" {
-		node.Acl.setOwner(u.Uuid)
-		node.Acl.set(u.Uuid, rights{"read": true, "write": true, "delete": true})
+		node.Acl.SetOwner(u.Uuid)
+		node.Acl.Set(u.Uuid, rights{"read": true, "write": true, "delete": true})
 	} else {
 		node.Acl = acl{Owner: "", Read: make([]string, 0), Write: make([]string, 0), Delete: make([]string, 0)}
 	}

@@ -18,20 +18,6 @@ import (
 
 type NodeController struct{}
 
-func handleAuthError(err error, cx *goweb.Context) {
-	switch err.Error() {
-	case e.MongoDocNotFound:
-		cx.RespondWithErrorMessage("Invalid username or password", http.StatusBadRequest)
-		return
-	case e.InvalidAuth:
-		cx.RespondWithErrorMessage("Invalid Authorization header", http.StatusBadRequest)
-		return
-	}
-	log.Error("Error at Auth: " + err.Error())
-	cx.RespondWithError(http.StatusInternalServerError)
-	return
-}
-
 // Options: /node
 func (cr *NodeController) Options(cx *goweb.Context) {
 	LogRequest(cx.Request)
@@ -104,13 +90,41 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 // DELETE: /node/{id}
 func (cr *NodeController) Delete(id string, cx *goweb.Context) {
 	LogRequest(cx.Request)
-	cx.RespondWithError(http.StatusNotImplemented)
-}
+	u, err := AuthenticateRequest(cx.Request)
+	if err != nil && err.Error() != e.NoAuth {
+		handleAuthError(err, cx)
+		return
+	}
+	if u == nil {
+		cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
+		return
+	}
 
-// DELETE: /node
-func (cr *NodeController) DeleteMany(cx *goweb.Context) {
-	LogRequest(cx.Request)
-	cx.RespondWithError(http.StatusNotImplemented)
+	// Load node and handle user unauthorized
+	node, err := store.LoadNode(id, u.Uuid)
+	if err != nil {
+		if err.Error() == e.UnAuth {
+			cx.RespondWithError(http.StatusUnauthorized)
+			return
+		} else if err.Error() == e.MongoDocNotFound {
+			cx.RespondWithNotFound()
+			return
+		} else {
+			// In theory the db connection could be lost between
+			// checking user and load but seems unlikely.
+			log.Error("Err@node_Read:Delete: " + err.Error())
+			cx.RespondWithError(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	if err := node.Delete(); err != nil {
+		cx.RespondWithOK()
+		return
+	}
+	log.Error("Err@node_Delet:Delete: " + err.Error())
+	cx.RespondWithError(http.StatusInternalServerError)
+	return
 }
 
 // GET: /node/{id}
@@ -297,7 +311,7 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 	if u != nil {
 		// Admin sees all
 		if !u.Admin {
-			q["$or"] = []bson.M{bson.M{"acl.read": []string{}}, bson.M{"acl.read": u.Uuid}}
+			q["$or"] = []bson.M{bson.M{"acl.read": []string{}}, bson.M{"acl.read": u.Uuid}, bson.M{"acl.owner": u.Uuid}}
 		}
 	} else {
 		if conf.ANON_READ {
@@ -453,8 +467,15 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 	return
 }
 
+// Will not implement
 // PUT: /node
 func (cr *NodeController) UpdateMany(cx *goweb.Context) {
+	LogRequest(cx.Request)
+	cx.RespondWithError(http.StatusNotImplemented)
+}
+
+// DELETE: /node
+func (cr *NodeController) DeleteMany(cx *goweb.Context) {
 	LogRequest(cx.Request)
 	cx.RespondWithError(http.StatusNotImplemented)
 }
