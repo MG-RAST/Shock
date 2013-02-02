@@ -48,7 +48,7 @@ func AdminGet(u *Users) (err error) {
 func (u *User) SetUuid() (err error) {
 	if d, err := DBConnect(); err == nil {
 		defer d.Close()
-		if uu, err := d.GetUuid(u.Username); err == nil {
+		if uu, err := d.GetUuid(u.Email); err == nil {
 			u.Uuid = uu
 			return nil
 		} else {

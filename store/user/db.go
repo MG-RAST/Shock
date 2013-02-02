@@ -52,9 +52,9 @@ func (d *db) AdminGet(u *Users) (err error) {
 	return
 }
 
-func (d *db) GetUuid(username string) (uuid string, err error) {
+func (d *db) GetUuid(email string) (uuid string, err error) {
 	u := User{}
-	err = d.User.Find(bson.M{"username": username}).One(&u)
+	err = d.User.Find(bson.M{"email": email}).One(&u)
 	if err == nil {
 		return u.Uuid, nil
 	}

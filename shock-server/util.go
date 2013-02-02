@@ -356,3 +356,17 @@ func AuthenticateRequest(req *http.Request) (u *user.User, err error) {
 	u, err = auth.Authenticate(header)
 	return
 }
+
+func handleAuthError(err error, cx *goweb.Context) {
+	switch err.Error() {
+	case e.MongoDocNotFound:
+		cx.RespondWithErrorMessage("Invalid username or password", http.StatusBadRequest)
+		return
+	case e.InvalidAuth:
+		cx.RespondWithErrorMessage("Invalid Authorization header", http.StatusBadRequest)
+		return
+	}
+	log.Error("Error at Auth: " + err.Error())
+	cx.RespondWithError(http.StatusInternalServerError)
+	return
+}

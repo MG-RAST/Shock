@@ -5,7 +5,7 @@ import (
 )
 
 // Node array type
-type Nodes []Node
+type Nodes []*Node
 
 func (n *Nodes) GetAll(q bson.M) (err error) {
 	db, err := DBConnect()
@@ -13,7 +13,7 @@ func (n *Nodes) GetAll(q bson.M) (err error) {
 		return
 	}
 	defer db.Close()
-	err = db.GetAll(q, n)
+	err = db.Find(q, n, nil)
 	return
 }
 
@@ -23,6 +23,6 @@ func (n *Nodes) GetAllLimitOffset(q bson.M, limit int, offset int) (err error) {
 		return
 	}
 	defer db.Close()
-	err = db.GetAllLimitOffset(q, n, limit, offset)
+	err = db.Find(q, n, map[string]int{"limit": limit, "offset": offset})
 	return
 }

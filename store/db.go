@@ -1,7 +1,6 @@
 package store
 
 import (
-	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/conf"
 	"labix.org/v2/mgo"
@@ -56,40 +55,29 @@ func DropDB() (err error) {
 	return d.Nodes.DropCollection()
 }
 
+func (d *db) Delete(q bson.M) (err error) {
+	_, err = d.Nodes.RemoveAll(q)
+	return
+}
+
 func (d *db) Upsert(node *Node) (err error) {
 	_, err = d.Nodes.Upsert(bson.M{"id": node.Id}, &node)
 	return
 }
 
-func (d *db) FindById(id string, result *Node) (err error) {
-	err = d.Nodes.Find(bson.M{"id": id}).One(&result)
-	return
-}
-
-func (d *db) FindNodes(ids []string, results *[]*Node) (err error) {
-	err = d.Nodes.Find(bson.M{"id": bson.M{"$in": ids}}).All(results)
-	return
-}
-
-func (d *db) FindByIdAuth(id string, uuid string, result *Node) (err error) {
-	err = d.Nodes.Find(bson.M{"id": id}).One(&result)
-	if err != nil {
-		return
+func (d *db) Find(q bson.M, results *Nodes, options map[string]int) (err error) {
+	if limit, haslimit := options["limit"]; haslimit {
+		if offset, hasoffset := options["offset"]; hasoffset {
+			err = d.Nodes.Find(q).Limit(limit).Skip(offset).All(results)
+			return
+		}
 	}
-	rights := result.Acl.check(uuid)
-	if !rights["read"] {
-		err = errors.New("User Unauthorized")
-	}
-	return
-}
-
-func (d *db) GetAll(q bson.M, results *Nodes) (err error) {
 	err = d.Nodes.Find(q).All(results)
 	return
 }
 
-func (d *db) GetAllLimitOffset(q bson.M, results *Nodes, limit int, offset int) (err error) {
-	err = d.Nodes.Find(q).Limit(limit).Skip(offset).All(results)
+func (d *db) FindOne(q bson.M, result *Node) (err error) {
+	err = d.Nodes.Find(q).One(&result)
 	return
 }
 
