@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/MG-RAST/Shock/conf"
 	e "github.com/MG-RAST/Shock/errors"
 	"github.com/MG-RAST/Shock/store/type/index"
 	"github.com/MG-RAST/Shock/store/type/index/virtual"
@@ -26,16 +25,16 @@ var (
 )
 
 type Node struct {
-	Id           string             `bson:"id" json:"id"`
-	Version      string             `bson:"version" json:"version"`
-	File         file               `bson:"file" json:"file"`
-	Attributes   interface{}        `bson:"attributes" json:"attributes"`
-	Indexes      map[string]IdxInfo `bson:"indexes" json:"indexes"`
-	Acl          acl                `bson:"acl" json:"-"`
-	VersionParts map[string]string  `bson:"version_parts" json:"-"`
-	Type         []string           `bson:"type" json:"type"`
-	Revisions    []Node             `bson:"revisions" json:"-"`
-	Relatives    []relationship     `bson:"relatives" json:"relatives"`
+	Id           string            `bson:"id" json:"id"`
+	Version      string            `bson:"version" json:"version"`
+	File         file              `bson:"file" json:"file"`
+	Attributes   interface{}       `bson:"attributes" json:"attributes"`
+	Indexes      map[string]string `bson:"indexes" json:"-"`
+	Acl          acl               `bson:"acl" json:"-"`
+	VersionParts map[string]string `bson:"version_parts" json:"-"`
+	Type         []string          `bson:"type" json:"type"`
+	Revisions    []Node            `bson:"revisions" json:"-"`
+	Relatives    []relationship    `bson:"relatives" json:"relatives"`
 }
 
 type file struct {
@@ -60,12 +59,6 @@ type relationship struct {
 	Operation string   `bson:"operation" json:"operation"`
 }
 
-type IdxInfo struct {
-	Type        string `bson: "index_type" json:"index_type"`
-	TotalUnits  int64  `bson: "total_units" json:"total_units"`
-	AvgUnitSize int64  `bson: "avg_unitsize" json:"avg_unitsize"`
-}
-
 type partsFile []string
 
 type FormFiles map[string]FormFile
@@ -74,11 +67,6 @@ type FormFile struct {
 	Name     string
 	Path     string
 	Checksum map[string]string
-}
-
-type AttrHis struct {
-	Rev  string
-	Attr interface{}
 }
 
 // HasFoo functions
@@ -123,10 +111,10 @@ func (node *Node) IndexPath() string {
 func (node *Node) FileReader() (reader ReaderAt, err error) {
 	if node.File.Virtual {
 		readers := []ReaderAt{}
-		nodes := []*Node{}
+		nodes := Nodes{}
 		if db, err := DBConnect(); err == nil {
 			defer db.Close()
-			if err := db.FindNodes(node.File.VirtualParts, &nodes); err != nil {
+			if err := db.Find(bson.M{"id": bson.M{"$in": node.File.VirtualParts}}, &nodes, nil); err != nil {
 				return nil, err
 			}
 		}
@@ -164,7 +152,7 @@ func (node *Node) Index(name string) (idx index.Index, err error) {
 		idx = virtual.New(name, node.FilePath(), node.File.Size, 10240)
 	} else {
 		idx = index.New()
-		err = idx.Load(node.IndexPath() + "/" + name + ".idx")
+		err = idx.Load(node.IndexPath() + "/" + name)
 	}
 	return
 }
@@ -205,11 +193,32 @@ func (node *Node) initParts(count int) (err error) {
 	return
 }
 
-func (node *Node) addVirtualParts(ids []string) (err error) {
-	nodes := []*Node{}
+func (node *Node) Delete() (err error) {
+	// check to make sure this node isn't referenced by a vnode
+	nodes := Nodes{}
 	if db, err := DBConnect(); err == nil {
 		defer db.Close()
-		if err := db.FindNodes(ids, &nodes); err != nil {
+		if err = db.Find(bson.M{"virtual_parts": node.Id}, &nodes, nil); err != nil {
+			return err
+		}
+		if len(nodes) != 0 {
+			return errors.New(e.NodeReferenced)
+		} else {
+			if err = db.Delete(bson.M{"id": node.Id}); err != nil {
+				return err
+			}
+		}
+	} else {
+		return err
+	}
+	return node.Rmdir()
+}
+
+func (node *Node) addVirtualParts(ids []string) (err error) {
+	nodes := Nodes{}
+	if db, err := DBConnect(); err == nil {
+		defer db.Close()
+		if err := db.Find(bson.M{"id": bson.M{"$in": ids}}, &nodes, nil); err != nil {
 			return err
 		}
 	} else {
@@ -520,6 +529,10 @@ func (node *Node) Save() (err error) {
 	return
 }
 
+func (node *Node) Rmdir() (err error) {
+	return os.RemoveAll(node.Path())
+}
+
 func (node *Node) Mkdir() (err error) {
 	err = os.MkdirAll(node.Path(), 0777)
 	if err != nil {
@@ -567,24 +580,6 @@ func (node *Node) SetFile(file FormFile) (err error) {
 	node.File.Name = file.Name
 	node.File.Size = fileStat.Size()
 	node.File.Checksum = file.Checksum
-
-	totalunits := node.File.Size / conf.CHUNK_SIZE
-	m := node.File.Size % conf.CHUNK_SIZE
-	if m != 0 {
-		totalunits += 1
-	}
-	node.Indexes["size"] = IdxInfo{
-		Type:        "size",
-		TotalUnits:  totalunits,
-		AvgUnitSize: conf.CHUNK_SIZE,
-	}
-
-	err = node.Save()
-	return
-}
-
-func (node *Node) SetIndexInfo(indextype string, idxinfo IdxInfo) (err error) {
-	node.Indexes[indextype] = idxinfo
 	err = node.Save()
 	return
 }
@@ -629,13 +624,6 @@ func (node *Node) SetAttributes(attr FormFile) (err error) {
 	if err != nil {
 		return
 	}
-
-	h := md5.New()
-	h.Write(attributes)
-
-	rev := AttrHis{}
-	rev.Rev = fmt.Sprintf("%x", h.Sum(nil))
-	rev.Attr = node.Attributes
 	err = node.Save()
 	return
 }

@@ -9,13 +9,14 @@ var (
 )
 
 const (
-	MongoDocNotFound         = "not found"
+	MongoDocNotFound         = "Not found"
 	InvalidAuth              = "Invalid Auth Header"
 	UnAuth                   = "User Unauthorized"
 	NoAuth                   = "No Authorization"
-	AttrImut                 = "node attributes immutable"
-	FileImut                 = "node file immutable"
-	ProvenanceImut           = "provenance info immutable"
+	AttrImut                 = "Node attributes immutable"
+	FileImut                 = "Node file immutable"
+	ProvenanceImut           = "Provenance info immutable"
 	InvalidIndex             = "Invalid Index"
 	InvalidFileTypeForFilter = "Invalid file type for filter"
+	NodeReferenced           = "Node referenced by virtual node"
 )

@@ -48,21 +48,6 @@ func TestLoadNode(t *testing.T) {
 	}
 }
 
-func TestDBFindNodes(t *testing.T) {
-	fmt.Println("in testing FindNodes()")
-	nodes := []*Node{}
-	if db, err := DBConnect(); err == nil {
-		defer db.Close()
-		if err = db.FindNodes(test_uuids, &nodes); err == nil {
-			for i, n := range nodes {
-				fmt.Printf("nodes[%d]=%#v\n", i, n)
-			}
-		} else {
-			fmt.Errorf("Find Nodes error: %v ", err)
-		}
-	}
-}
-
 func TestReLoadNodeFromDisk(t *testing.T) {
 	fmt.Println("in TestReLoadNodeFromDisk()...")
 	node, err := LoadNodeFromDisk(temp_node_id)
