@@ -25,16 +25,16 @@ var (
 )
 
 type Node struct {
-	Id           string            `bson:"id" json:"id"`
-	Version      string            `bson:"version" json:"version"`
-	File         file              `bson:"file" json:"file"`
-	Attributes   interface{}       `bson:"attributes" json:"attributes"`
-	Indexes      map[string]string `bson:"indexes" json:"-"`
-	Acl          acl               `bson:"acl" json:"-"`
-	VersionParts map[string]string `bson:"version_parts" json:"-"`
-	Type         []string          `bson:"type" json:"type"`
-	Revisions    []Node            `bson:"revisions" json:"-"`
-	Relatives    []relationship    `bson:"relatives" json:"relatives"`
+	Id           string             `bson:"id" json:"id"`
+	Version      string             `bson:"version" json:"version"`
+	File         file               `bson:"file" json:"file"`
+	Attributes   interface{}        `bson:"attributes" json:"attributes"`
+	Indexes      map[string]IdxInfo `bson:"indexes" json:"indexes"`
+	Acl          acl                `bson:"acl" json:"-"`
+	VersionParts map[string]string  `bson:"version_parts" json:"-"`
+	Type         []string           `bson:"type" json:"type"`
+	Revisions    []Node             `bson:"revisions" json:"-"`
+	Relatives    []relationship     `bson:"relatives" json:"relatives"`
 }
 
 type file struct {
@@ -57,6 +57,12 @@ type relationship struct {
 	Type      string   `bson: "relation" json:"relation"`
 	Ids       []string `bson:"ids" json:"ids"`
 	Operation string   `bson:"operation" json:"operation"`
+}
+
+type IdxInfo struct {
+	Type        string `bson: "index_type" json:"index_type"`
+	TotalUnits  int64  `bson: "total_units" json:"total_units"`
+	AvgUnitSize int64  `bson: "avg_unitsize" json:"avg_unitsize"`
 }
 
 type partsFile []string
@@ -580,6 +586,12 @@ func (node *Node) SetFile(file FormFile) (err error) {
 	node.File.Name = file.Name
 	node.File.Size = fileStat.Size()
 	node.File.Checksum = file.Checksum
+	err = node.Save()
+	return
+}
+
+func (node *Node) SetIndexInfo(indextype string, idxinfo IdxInfo) (err error) {
+	node.Indexes[indextype] = idxinfo
 	err = node.Save()
 	return
 }
