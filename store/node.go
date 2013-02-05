@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/MG-RAST/Shock/conf"
 	e "github.com/MG-RAST/Shock/errors"
 	"github.com/MG-RAST/Shock/store/type/index"
 	"github.com/MG-RAST/Shock/store/type/index/virtual"
@@ -158,7 +159,7 @@ func (node *Node) Index(name string) (idx index.Index, err error) {
 		idx = virtual.New(name, node.FilePath(), node.File.Size, 10240)
 	} else {
 		idx = index.New()
-		err = idx.Load(node.IndexPath() + "/" + name)
+		err = idx.Load(node.IndexPath() + "/" + name + ".idx")
 	}
 	return
 }
@@ -586,6 +587,19 @@ func (node *Node) SetFile(file FormFile) (err error) {
 	node.File.Name = file.Name
 	node.File.Size = fileStat.Size()
 	node.File.Checksum = file.Checksum
+
+	//fill size index info
+	totalunits := node.File.Size / conf.CHUNK_SIZE
+	m := node.File.Size % conf.CHUNK_SIZE
+	if m != 0 {
+		totalunits += 1
+	}
+	node.Indexes["size"] = IdxInfo{
+		Type:        "size",
+		TotalUnits:  totalunits,
+		AvgUnitSize: conf.CHUNK_SIZE,
+	}
+
 	err = node.Save()
 	return
 }
