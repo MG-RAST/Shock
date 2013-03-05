@@ -14,8 +14,78 @@ var (
 	validAclTypes = map[string]bool{"read": true, "write": true, "delete": true, "owner": true}
 )
 
-// GET, POST, PUT, DELETE: /node/{nid}/acl/{type}
+// GET, POST, PUT, DELETE: /node/{nid}/acl/
 var AclController goweb.ControllerFunc = func(cx *goweb.Context) {
+	LogRequest(cx.Request)
+	u, err := AuthenticateRequest(cx.Request)
+	if err != nil && err.Error() != e.NoAuth {
+		handleAuthError(err, cx)
+		return
+	}
+
+	// acl require auth even for public data
+	if u == nil {
+		cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
+		return
+	}
+
+	// Load node and handle user unauthorized
+	id := cx.PathParams["nid"]
+	node, err := store.LoadNode(id, u.Uuid)
+	if err != nil {
+		if err.Error() == e.UnAuth {
+			cx.RespondWithError(http.StatusUnauthorized)
+			return
+		} else if err.Error() == e.MongoDocNotFound {
+			cx.RespondWithNotFound()
+			return
+		} else {
+			// In theory the db connection could be lost between
+			// checking user and load but seems unlikely.
+			log.Error("Err@node_Read:LoadNode: " + err.Error())
+			cx.RespondWithError(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	rights := node.Acl.Check(u.Uuid)
+	if cx.Request.Method != "GET" {
+		ids, err := parseAclRequest(cx)
+		if err != nil {
+			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
+			return
+		}
+		if (cx.Request.Method == "POST" || cx.Request.Method == "PUT") && (u.Uuid == node.Acl.Owner || rights["write"]) {
+			for k, v := range ids {
+				for _, i := range v {
+					node.Acl.Set(i, map[string]bool{k: true})
+				}
+			}
+			node.Save()
+		} else if cx.Request.Method == "DELETE" && (u.Uuid == node.Acl.Owner || rights["delete"]) {
+			for k, v := range ids {
+				for _, i := range v {
+					node.Acl.UnSet(i, map[string]bool{k: true})
+				}
+			}
+			node.Save()
+		} else {
+			cx.RespondWithError(http.StatusUnauthorized)
+			return
+		}
+	}
+
+	if u.Uuid == node.Acl.Owner || rights["read"] {
+		cx.RespondWithData(node.Acl)
+	} else {
+		cx.RespondWithError(http.StatusUnauthorized)
+		return
+	}
+	return
+}
+
+// GET, POST, PUT, DELETE: /node/{nid}/acl/{type}
+var AclControllerTyped goweb.ControllerFunc = func(cx *goweb.Context) {
 	LogRequest(cx.Request)
 	u, err := AuthenticateRequest(cx.Request)
 	if err != nil && err.Error() != e.NoAuth {
@@ -56,17 +126,22 @@ var AclController goweb.ControllerFunc = func(cx *goweb.Context) {
 
 	rights := node.Acl.Check(u.Uuid)
 	if cx.Request.Method != "GET" {
-		ids, err := parseTypeRequest(cx)
+		ids, err := parseAclRequestTyped(cx)
 		if err != nil {
 			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 			return
 		}
 		if (cx.Request.Method == "POST" || cx.Request.Method == "PUT") && (u.Uuid == node.Acl.Owner || rights["write"]) {
 			if rtype == "owner" {
-				if len(ids) == 1 {
-					node.Acl.SetOwner(ids[0])
+				if u.Uuid != node.Acl.Owner {
+					if len(ids) == 1 {
+						node.Acl.SetOwner(ids[0])
+					} else {
+						cx.RespondWithErrorMessage("Too many users. Nodes may have only one owner.", http.StatusBadRequest)
+						return
+					}
 				} else {
-					cx.RespondWithErrorMessage("Too many users. Nodes may have only one owner.", http.StatusBadRequest)
+					cx.RespondWithErrorMessage("Only owner can change ownership of Node.", http.StatusBadRequest)
 					return
 				}
 			} else {
@@ -104,77 +179,7 @@ var AclController goweb.ControllerFunc = func(cx *goweb.Context) {
 	return
 }
 
-// GET, POST, PUT, DELETE: /node/{nid}/acl/
-var AclBaseController goweb.ControllerFunc = func(cx *goweb.Context) {
-	LogRequest(cx.Request)
-	u, err := AuthenticateRequest(cx.Request)
-	if err != nil && err.Error() != e.NoAuth {
-		handleAuthError(err, cx)
-		return
-	}
-
-	// acl require auth even for public data
-	if u == nil {
-		cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
-		return
-	}
-
-	// Load node and handle user unauthorized
-	id := cx.PathParams["nid"]
-	node, err := store.LoadNode(id, u.Uuid)
-	if err != nil {
-		if err.Error() == e.UnAuth {
-			cx.RespondWithError(http.StatusUnauthorized)
-			return
-		} else if err.Error() == e.MongoDocNotFound {
-			cx.RespondWithNotFound()
-			return
-		} else {
-			// In theory the db connection could be lost between
-			// checking user and load but seems unlikely.
-			log.Error("Err@node_Read:LoadNode: " + err.Error())
-			cx.RespondWithError(http.StatusInternalServerError)
-			return
-		}
-	}
-
-	rights := node.Acl.Check(u.Uuid)
-	if cx.Request.Method != "GET" {
-		ids, err := parseRequest(cx)
-		if err != nil {
-			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
-			return
-		}
-		if (cx.Request.Method == "POST" || cx.Request.Method == "PUT") && (u.Uuid == node.Acl.Owner || rights["write"]) {
-			for k, v := range ids {
-				for _, i := range v {
-					node.Acl.Set(i, map[string]bool{k: true})
-				}
-			}
-			node.Save()
-		} else if cx.Request.Method == "DELETE" && (u.Uuid == node.Acl.Owner || rights["delete"]) {
-			for k, v := range ids {
-				for _, i := range v {
-					node.Acl.UnSet(i, map[string]bool{k: true})
-				}
-			}
-			node.Save()
-		} else {
-			cx.RespondWithError(http.StatusUnauthorized)
-			return
-		}
-	}
-
-	if u.Uuid == node.Acl.Owner || rights["read"] {
-		cx.RespondWithData(node.Acl)
-	} else {
-		cx.RespondWithError(http.StatusUnauthorized)
-		return
-	}
-	return
-}
-
-func parseRequest(cx *goweb.Context) (ids map[string][]string, err error) {
+func parseAclRequest(cx *goweb.Context) (ids map[string][]string, err error) {
 	ids = map[string][]string{}
 	users := map[string][]string{}
 	query := &Query{list: cx.Request.URL.Query()}
@@ -226,7 +231,7 @@ func parseRequest(cx *goweb.Context) (ids map[string][]string, err error) {
 	return ids, nil
 }
 
-func parseTypeRequest(cx *goweb.Context) (ids []string, err error) {
+func parseAclRequestTyped(cx *goweb.Context) (ids []string, err error) {
 	var users []string
 	query := &Query{list: cx.Request.URL.Query()}
 	params, _, err := ParseMultipartForm(cx.Request)
