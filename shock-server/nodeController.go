@@ -171,9 +171,14 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			log.Error("Err@node_Read:LoadNode: " + err.Error())
-			cx.RespondWithError(http.StatusInternalServerError)
-			return
+			log.Error("Err@node_Read:LoadNode:" + id + ":" + err.Error())
+
+			node, err = store.LoadNodeFromDisk(id)
+			if err != nil {
+				log.Error("Err@node_Read:LoadNodeFromDisk:" + id + ":" + err.Error())
+				cx.RespondWithError(http.StatusInternalServerError)
+				return
+			}
 		}
 	}
 

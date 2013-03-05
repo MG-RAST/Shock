@@ -106,6 +106,31 @@ func (node *Node) HasParent() bool {
 	return false
 }
 
+//----locker
+var (
+	LockMgr *Locker
+)
+
+type Locker struct {
+	partLock chan bool
+}
+
+func NewLocker() *Locker {
+	return &Locker{
+		partLock: make(chan bool, 1), //non-blocking buffered channel
+	}
+}
+
+func (l *Locker) LockAddPart() {
+	l.partLock <- true
+}
+
+func (l *Locker) UnlockAddPart() {
+	<-l.partLock
+}
+
+//----end locker
+
 // Path functions
 func (node *Node) Path() string {
 	return getPath(node.Id)
@@ -180,7 +205,7 @@ func (node *Node) loadParts() (p *partsList, err error) {
 
 func (node *Node) writeParts(p *partsList) (err error) {
 	pm, _ := json.Marshal(p)
-	os.Remove(node.partsListPath())
+	//os.Remove(node.partsListPath())
 	err = ioutil.WriteFile(node.partsListPath(), []byte(pm), 0644)
 	return
 }
@@ -271,6 +296,10 @@ func (node *Node) addVirtualParts(ids []string) (err error) {
 }
 
 func (node *Node) addPart(n int, file *FormFile) (err error) {
+
+	//lock
+	LockMgr.LockAddPart()
+
 	// load
 	p, err := node.loadParts()
 	if err != nil {
@@ -292,6 +321,9 @@ func (node *Node) addPart(n int, file *FormFile) (err error) {
 	if err != nil {
 		return
 	}
+
+	//unlock
+	LockMgr.UnlockAddPart()
 
 	// create file if done
 	if p.Length == p.Count {
