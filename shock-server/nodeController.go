@@ -171,9 +171,14 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			log.Error("Err@node_Read:LoadNode: " + err.Error())
-			cx.RespondWithError(http.StatusInternalServerError)
-			return
+			log.Error("Err@node_Read:LoadNode:" + id + ":" + err.Error())
+
+			node, err = store.LoadNodeFromDisk(id)
+			if err != nil {
+				log.Error("Err@node_Read:LoadNodeFromDisk:" + id + ":" + err.Error())
+				cx.RespondWithError(http.StatusInternalServerError)
+				return
+			}
 		}
 	}
 
@@ -326,7 +331,7 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 
 	// Gather params to make db query. Do not include the
 	// following list.	
-	skip := map[string]int{"limit": 1, "skip": 1, "query": 1, "querynode": 1, "type": 1}
+	skip := map[string]int{"limit": 1, "skip": 1, "query": 1, "querynode": 1}
 	if query.Has("query") {
 		for key, val := range query.All() {
 			_, s := skip[key]
@@ -336,15 +341,15 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 		}
 	} else if query.Has("querynode") {
 		for key, val := range query.All() {
-			_, s := skip[key]
-			if !s {
-				q[key] = val[0]
+			if key == "type" {
+				querytypes := strings.Split(query.Value("type"), ",")
+				q["type"] = bson.M{"$all": querytypes}
+			} else {
+				_, s := skip[key]
+				if !s {
+					q[key] = val[0]
+				}
 			}
-		}
-
-		if query.Has("type") {
-			querytypes := strings.Split(query.Value("type"), ",")
-			q["type"] = bson.M{"$all": querytypes}
 		}
 	}
 
