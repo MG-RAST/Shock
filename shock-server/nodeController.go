@@ -80,7 +80,7 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 	// Create node	
 	node, err := store.CreateNodeUpload(u, params, files)
 	if err != nil {
-		log.Error("err " + err.Error())
+		log.Error("err@node_CreateNodeUpload: " + err.Error())
 		cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -171,9 +171,14 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			log.Error("Err@node_Read:LoadNode: " + err.Error())
-			cx.RespondWithError(http.StatusInternalServerError)
-			return
+			log.Error("Err@node_Read:LoadNode:" + id + ":" + err.Error())
+
+			node, err = store.LoadNodeFromDisk(id)
+			if err != nil {
+				log.Error("Err@node_Read:LoadNodeFromDisk:" + id + ":" + err.Error())
+				cx.RespondWithError(http.StatusInternalServerError)
+				return
+			}
 		}
 	}
 
@@ -260,14 +265,14 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 			if err != nil {
 				// causes "multiple response.WriteHeader calls" error but better than no response
 				cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
-				log.Error("err: " + err.Error())
+				log.Error("err:@node_Read s.stream: " + err.Error())
 			}
 		} else { //!query.Has("index")
 			nf, err := node.FileReader()
 			if err != nil {
 				// File not found or some sort of file read error. 
 				// Probably deserves more checking
-				log.Error("err " + err.Error())
+				log.Error("err:@node_Read node.FileReader: " + err.Error())
 				cx.RespondWithError(http.StatusBadRequest)
 				return
 			}
@@ -276,7 +281,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 			if err != nil {
 				// causes "multiple response.WriteHeader calls" error but better than no response
 				cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
-				log.Error("err " + err.Error())
+				log.Error("err:@node_Read: s.stream: " + err.Error())
 			}
 		}
 		return
@@ -470,7 +475,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 	} else {
 		params, files, err := ParseMultipartForm(cx.Request)
 		if err != nil {
-			log.Error("err " + err.Error())
+			log.Error("err@node_ParseMultipartForm: " + err.Error())
 			cx.RespondWithError(http.StatusBadRequest)
 			return
 		}
@@ -484,7 +489,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 					return
 				}
 			}
-			log.Error("err " + err.Error())
+			log.Error("err@node_Update: " + id + ":" + err.Error())
 			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 			return
 		}
