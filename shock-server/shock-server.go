@@ -10,7 +10,6 @@ import (
 
 var (
 	log = logger.New()
-	//LockMgr = store.NewLocker()
 )
 
 func launchSite(control chan int, port int) {
