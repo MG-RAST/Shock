@@ -180,13 +180,15 @@ func (node *Node) loadParts() (p *partsList, err error) {
 
 func (node *Node) writeParts(p *partsList) (err error) {
 	pm, _ := json.Marshal(p)
-	os.Remove(node.partsListPath())
+	//os.Remove(node.partsListPath())
 	err = ioutil.WriteFile(node.partsListPath(), []byte(pm), 0644)
 	return
 }
 
 func (node *Node) partsCount() int {
+	LockMgr.LockPartOp()
 	p, err := node.loadParts()
+	LockMgr.UnlockPartOp()
 	if err != nil {
 		return -1
 	}
@@ -271,6 +273,10 @@ func (node *Node) addVirtualParts(ids []string) (err error) {
 }
 
 func (node *Node) addPart(n int, file *FormFile) (err error) {
+
+	LockMgr.LockPartOp()
+	defer LockMgr.UnlockPartOp()
+
 	// load
 	p, err := node.loadParts()
 	if err != nil {
@@ -285,7 +291,11 @@ func (node *Node) addPart(n int, file *FormFile) (err error) {
 	part := partsFile{file.Name, file.Checksum["md5"]}
 	p.Parts[n] = part
 	p.Length = p.Length + 1
-	os.Rename(file.Path, fmt.Sprintf("%s/parts/%d", node.Path(), n))
+
+	err = os.Rename(file.Path, fmt.Sprintf("%s/parts/%d", node.Path(), n))
+	if err != nil {
+		return
+	}
 
 	// rewrite	
 	err = node.writeParts(p)
@@ -449,13 +459,15 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	}
 
 	// handle part file
-	if node.partsCount() > 1 {
+
+	parts_count := node.partsCount()
+	if parts_count > 1 {
 		for key, file := range files {
 			if node.HasFile() {
 				return errors.New(e.FileImut)
 			}
 			keyn, errf := strconv.Atoi(key)
-			if errf == nil && keyn <= node.partsCount() {
+			if errf == nil && keyn <= parts_count {
 				err = node.addPart(keyn-1, &file)
 				if err != nil {
 					return
