@@ -106,31 +106,6 @@ func (node *Node) HasParent() bool {
 	return false
 }
 
-//----locker
-var (
-	LockMgr *Locker
-)
-
-type Locker struct {
-	partLock chan bool
-}
-
-func NewLocker() *Locker {
-	return &Locker{
-		partLock: make(chan bool, 1), //non-blocking buffered channel
-	}
-}
-
-func (l *Locker) LockAddPart() {
-	l.partLock <- true
-}
-
-func (l *Locker) UnlockAddPart() {
-	<-l.partLock
-}
-
-//----end locker
-
 // Path functions
 func (node *Node) Path() string {
 	return getPath(node.Id)
@@ -211,7 +186,9 @@ func (node *Node) writeParts(p *partsList) (err error) {
 }
 
 func (node *Node) partsCount() int {
+	LockMgr.LockPartOp()
 	p, err := node.loadParts()
+	LockMgr.UnlockPartOp()
 	if err != nil {
 		return -1
 	}
@@ -297,8 +274,8 @@ func (node *Node) addVirtualParts(ids []string) (err error) {
 
 func (node *Node) addPart(n int, file *FormFile) (err error) {
 
-	//lock
-	LockMgr.LockAddPart()
+	LockMgr.LockPartOp()
+	defer LockMgr.UnlockPartOp()
 
 	// load
 	p, err := node.loadParts()
@@ -314,16 +291,17 @@ func (node *Node) addPart(n int, file *FormFile) (err error) {
 	part := partsFile{file.Name, file.Checksum["md5"]}
 	p.Parts[n] = part
 	p.Length = p.Length + 1
-	os.Rename(file.Path, fmt.Sprintf("%s/parts/%d", node.Path(), n))
+
+	err = os.Rename(file.Path, fmt.Sprintf("%s/parts/%d", node.Path(), n))
+	if err != nil {
+		return
+	}
 
 	// rewrite	
 	err = node.writeParts(p)
 	if err != nil {
 		return
 	}
-
-	//unlock
-	LockMgr.UnlockAddPart()
 
 	// create file if done
 	if p.Length == p.Count {
@@ -481,13 +459,15 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	}
 
 	// handle part file
-	if node.partsCount() > 1 {
+
+	parts_count := node.partsCount()
+	if parts_count > 1 {
 		for key, file := range files {
 			if node.HasFile() {
 				return errors.New(e.FileImut)
 			}
 			keyn, errf := strconv.Atoi(key)
-			if errf == nil && keyn <= node.partsCount() {
+			if errf == nil && keyn <= parts_count {
 				err = node.addPart(keyn-1, &file)
 				if err != nil {
 					return
