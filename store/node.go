@@ -106,28 +106,6 @@ func (node *Node) HasParent() bool {
 	return false
 }
 
-var (
-	LockMgr *Locker
-)
-
-type Locker struct {
-	partLock chan bool //semaphore for checkout (mutual exclusion between different clients)
-}
-
-func NewLocker() *Locker {
-	return &Locker{
-		partLock: make(chan bool, 1), //non-blocking buffered channel
-	}
-}
-
-func (l *Locker) LockPartOp() {
-	l.partLock <- true
-}
-
-func (l *Locker) UnlockPartOp() {
-	<-l.partLock
-}
-
 // Path functions
 func (node *Node) Path() string {
 	return getPath(node.Id)

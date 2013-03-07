@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"github.com/MG-RAST/Shock/conf"
 	"github.com/MG-RAST/Shock/logger"
-	. "github.com/MG-RAST/Shock/store"
 	"github.com/jaredwilkening/goweb"
 	"os"
 )
 
 var (
 	log = logger.New()
+	//LockMgr = store.NewLocker()
 )
 
 func launchSite(control chan int, port int) {
@@ -81,8 +81,6 @@ func main() {
 		}
 		fmt.Println("Done")
 	}
-
-	LockMgr = NewLocker()
 
 	//launch server
 	control := make(chan int)
