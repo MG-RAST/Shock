@@ -423,6 +423,10 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 	}
 
 	if query.Has("index") {
+		if conf.PERF_LOG {
+			log.Perf("START indexing: " + id)
+		}
+
 		if !node.HasFile() {
 			cx.RespondWithErrorMessage("node file empty", http.StatusBadRequest)
 			return
@@ -469,10 +473,17 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 			log.Error("err@node.SetIndexInfo: " + err.Error())
 		}
 
+		if conf.PERF_LOG {
+			log.Perf("END indexing: " + id)
+		}
+
 		cx.RespondWithOK()
 		return
 
 	} else {
+		if conf.PERF_LOG {
+			log.Perf("START PUT data: " + id)
+		}
 		params, files, err := ParseMultipartForm(cx.Request)
 		if err != nil {
 			log.Error("err@node_ParseMultipartForm: " + err.Error())
@@ -494,6 +505,9 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 			return
 		}
 		cx.RespondWithData(node)
+		if conf.PERF_LOG {
+			log.Perf("END PUT data: " + id)
+		}
 	}
 	return
 }

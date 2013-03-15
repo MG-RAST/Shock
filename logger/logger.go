@@ -37,6 +37,14 @@ func New() *Logger {
 		os.Exit(1)
 	}
 	l.logs["error"].AddFilter("error", l4g.FINEST, errorf.SetFormat("[%D %T] [%L] %M").SetRotate(true).SetRotateDaily(true))
+
+	l.logs["perf"] = make(l4g.Logger)
+	perff := l4g.NewFileLogWriter(conf.LOGS_PATH+"/perf.log", false)
+	if perff == nil {
+		fmt.Fprintln(os.Stderr, "ERROR: error creating perf log file")
+		os.Exit(1)
+	}
+	l.logs["perf"].AddFilter("perf", l4g.FINEST, perff.SetFormat("[%D %T] [%L] %M").SetRotate(true).SetRotateDaily(true))
 	return l
 }
 
@@ -74,5 +82,10 @@ func (l *Logger) Error(message string) {
 
 func (l *Logger) Critical(log string, message string) {
 	l.Log(log, l4g.CRITICAL, message)
+	return
+}
+
+func (l *Logger) Perf(message string) {
+	l.Log("perf", l4g.INFO, message)
 	return
 }
