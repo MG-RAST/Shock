@@ -133,7 +133,7 @@ var AclControllerTyped goweb.ControllerFunc = func(cx *goweb.Context) {
 		}
 		if (cx.Request.Method == "POST" || cx.Request.Method == "PUT") && (u.Uuid == node.Acl.Owner || rights["write"]) {
 			if rtype == "owner" {
-				if u.Uuid != node.Acl.Owner {
+				if u.Uuid == node.Acl.Owner {
 					if len(ids) == 1 {
 						node.Acl.SetOwner(ids[0])
 					} else {
