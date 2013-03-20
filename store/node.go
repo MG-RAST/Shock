@@ -329,10 +329,10 @@ func (node *Node) SetFileFromPath(path string) (err error) {
 	md5h := md5.New()
 	sha1h := sha1.New()
 	f, err := os.Open(path)
-	defer f.Close()
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 	for {
 		buffer := make([]byte, 10240)
 		n, err := f.Read(buffer)
@@ -444,8 +444,19 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			return errors.New("type virtual requires source parameter")
 		}
 	} else if isPathUpload {
-		if err = node.SetFileFromPath(params["path"]); err != nil {
-			return err
+		if len(conf.LOCAL_PATHS) > 0 {
+			for _, p := range conf.LOCAL_PATHS {
+				if strings.HasPrefix(params["path"], p) {
+					if err = node.SetFileFromPath(params["path"]); err != nil {
+						return err
+					} else {
+						return nil
+					}
+				}
+			}
+			return errors.New("file not in local files path. Please contact your Shock administrator.")
+		} else {
+			return errors.New("local files path uploads must be configured. Please contact your Shock administrator.")
 		}
 	}
 

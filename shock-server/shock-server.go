@@ -37,8 +37,8 @@ func launchSite(control chan int, port int) {
 func launchAPI(control chan int, port int) {
 	goweb.ConfigureDefaultFormatters()
 	r := &goweb.RouteManager{}
-	r.Map("/node/{nid}/acl/{type}", AclController)
-	r.Map("/node/{nid}/acl", AclBaseController)
+	r.Map("/node/{nid}/acl/{type}", AclControllerTyped)
+	r.Map("/node/{nid}/acl", AclController)
 	r.MapRest("/node", new(NodeController))
 	r.MapRest("/user", new(UserController))
 	r.MapFunc("*", ResourceDescription, goweb.GetMethod)
