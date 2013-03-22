@@ -49,9 +49,10 @@ var (
 	SECRET_KEY  = ""
 
 	// Directories
-	DATA_PATH = ""
-	SITE_PATH = ""
-	LOGS_PATH = ""
+	DATA_PATH   = ""
+	SITE_PATH   = ""
+	LOGS_PATH   = ""
+	LOCAL_PATHS = []string{}
 
 	// Mongodb 
 	MONGODB = ""
@@ -114,6 +115,8 @@ func init() {
 	SITE_PATH, _ = c.String("Directories", "site")
 	DATA_PATH, _ = c.String("Directories", "data")
 	LOGS_PATH, _ = c.String("Directories", "logs")
+	localPaths, _ := c.String("Directories", "local_paths")
+	LOCAL_PATHS = strings.Split(localPaths, ",")
 
 	// Mongodb
 	MONGODB, _ = c.String("Mongodb", "hosts")
@@ -163,7 +166,7 @@ func Print() {
 	} else if AUTH_TYPE == "globus" {
 		fmt.Printf("##### Auth #####\ntype:\tglobus\ntoken_url:\t%s\nprofile_url:\t%s\n\n", GLOBUS_TOKEN_URL, GLOBUS_PROFILE_URL)
 	}
-	fmt.Printf("##### Directories #####\nsite:\t%s\ndata:\t%s\nlogs:\t%s\n\n", SITE_PATH, DATA_PATH, LOGS_PATH)
+	fmt.Printf("##### Directories #####\nsite:\t%s\ndata:\t%s\nlogs:\t%s\nlocal_paths:\t%s\n\n", SITE_PATH, DATA_PATH, LOGS_PATH, strings.Join(LOCAL_PATHS, ","))
 	if SSL_ENABLED {
 		fmt.Printf("##### SSL #####\nenabled:\t%t\nkey:\t%s\ncert:\t%s\n\n", SSL_ENABLED, SSL_KEY_FILE, SSL_CERT_FILE)
 	} else {
