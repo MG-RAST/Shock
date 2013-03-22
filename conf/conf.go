@@ -62,6 +62,9 @@ var (
 
 	// Default Chunksize for size virtual index
 	CHUNK_SIZE int64 = 1048576
+
+	// Log
+	PERF_LOG = false
 )
 
 func init() {
@@ -149,6 +152,10 @@ func init() {
 		NODE_IDXS[opt] = opts
 	}
 
+	if perf_log, err := c.Bool("Log", "perf_log"); err == nil {
+		PERF_LOG = perf_log
+	}
+
 }
 
 func Print() {
@@ -167,4 +174,7 @@ func Print() {
 	}
 	fmt.Printf("##### Mongodb #####\nhost(s):\t%s\n\n", MONGODB)
 	fmt.Printf("##### Ports #####\nsite:\t%d\napi:\t%d\n\n", SITE_PORT, API_PORT)
+	if PERF_LOG {
+		fmt.Printf("##### PerfLog enabled #####\n\n")
+	}
 }

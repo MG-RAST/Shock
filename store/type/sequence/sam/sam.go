@@ -91,6 +91,10 @@ func (self *Reader) ReadRaw(p []byte) (n int, err error) {
 	return
 }
 
+func (self *Reader) SeekChunk() (n int, err error) {
+	return
+}
+
 // Rewind the reader.
 func (self *Reader) Rewind() (err error) {
 	if s, ok := self.f.(io.Seeker); ok {

@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"github.com/MG-RAST/Shock/conf"
 	"github.com/MG-RAST/Shock/store/type/sequence/seq"
 	"io"
 	"os"
@@ -60,6 +61,39 @@ func (self *Reader) ReadRaw(p []byte) (n int, err error) {
 		if len(read) > 1 {
 			copy(p[n:n+len(read)-1], read[0:len(read)-1])
 			n += len(read) - 1
+			break
+		} else if er != nil {
+			err = er
+			break
+		}
+	}
+	return
+}
+
+// seek sequences which add up to a size close to the configured chunk size (conf.CHUNK_SIZE, e.g. 1M)
+func (self *Reader) SeekChunk() (n int, err error) {
+	n = 0
+	var c int
+	for {
+		tmpbuf := make([]byte, conf.CHUNK_SIZE-1024)
+		c, err = self.r.Read(tmpbuf)
+		n += c
+		if err != nil {
+			if n > 0 {
+				return n, nil
+			} else {
+				return
+			}
+		}
+		if n >= int(conf.CHUNK_SIZE-1024) {
+			break
+		}
+	}
+	for {
+		read, er := self.r.ReadBytes('>')
+		if len(read) > 1 {
+			n += len(read) - 1
+			self.r.UnreadByte()
 			break
 		} else if er != nil {
 			err = er
