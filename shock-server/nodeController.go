@@ -446,7 +446,13 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 			}
 		}
 
-		newIndexer := indexer.Indexer(query.Value("index"))
+		idxtype := query.Value("index")
+		if _, ok := indexer.Indexers[idxtype]; !ok {
+			cx.RespondWithErrorMessage("invalid index type", http.StatusBadRequest)
+			return
+		}
+
+		newIndexer := indexer.Indexer(idxtype)
 		f, _ := os.Open(node.FilePath())
 		defer f.Close()
 		idxer := newIndexer(f)
@@ -467,6 +473,10 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 			Type:        query.Value("index"),
 			TotalUnits:  count,
 			AvgUnitSize: node.File.Size / count,
+		}
+
+		if idxtype == "chunkrecord" {
+			idxInfo.AvgUnitSize = conf.CHUNK_SIZE
 		}
 
 		if err := node.SetIndexInfo(query.Value("index"), idxInfo); err != nil {

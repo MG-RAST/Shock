@@ -74,6 +74,16 @@ func (r *Reader) ReadRaw(p []byte) (n int, err error) {
 	return r.r.ReadRaw(p)
 }
 
+func (r *Reader) SeekChunk() (n int, err error) {
+	if r.r == nil {
+		err := r.determineFormat()
+		if err != nil {
+			return 0, err
+		}
+	}
+	return r.r.SeekChunk()
+}
+
 func (r *Reader) Format(s *seq.Seq, w io.Writer) (n int, err error) {
 	switch {
 	case r.format == "fasta":

@@ -1,6 +1,7 @@
 package indexer
 
 import (
+	"github.com/MG-RAST/Shock/store/indexer/chunkrecord"
 	"github.com/MG-RAST/Shock/store/indexer/record"
 	"github.com/MG-RAST/Shock/store/type/index"
 	"io"
@@ -9,12 +10,13 @@ import (
 type indexerFunc func(io.ReadCloser) index.Indexer
 
 var (
-	indexers = map[string]indexerFunc{
-		"record": record.NewIndexer,
-		"size":   record.NewIndexer,
+	Indexers = map[string]indexerFunc{
+		"record":      record.NewIndexer,
+		"size":        record.NewIndexer,
+		"chunkrecord": chunkrecord.NewIndexer,
 	}
 )
 
 func Indexer(i string) indexerFunc {
-	return indexers[i]
+	return Indexers[i]
 }

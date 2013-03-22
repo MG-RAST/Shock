@@ -26,10 +26,12 @@ type ReadFormater interface {
 type Reader interface {
 	Read() (*Seq, error)
 	ReadRaw(p []byte) (int, error)
+	SeekChunk() (int, error)
 }
 
 type ReadRewinder interface {
 	Read() (*Seq, error)
 	ReadRaw(p []byte) (int, error)
+	SeekChunk() (int, error)
 	Rewind() error
 }
