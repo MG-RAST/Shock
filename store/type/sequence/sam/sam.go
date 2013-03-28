@@ -91,7 +91,7 @@ func (self *Reader) ReadRaw(p []byte) (n int, err error) {
 	return
 }
 
-func (self *Reader) SeekChunk() (n int, err error) {
+func (self *Reader) SeekChunk(offSet int64) (n int64, err error) {
 	return
 }
 

@@ -3,19 +3,20 @@ package anonymize
 import (
 	"bytes"
 	"fmt"
+	"github.com/MG-RAST/Shock/store"
 	"github.com/MG-RAST/Shock/store/type/sequence/multi"
 	"github.com/MG-RAST/Shock/store/type/sequence/seq"
 	"io"
 )
 
 type Reader struct {
-	f        io.Reader
+	f        store.SectionReader
 	r        seq.ReadFormater
 	counter  int
 	overflow []byte
 }
 
-func NewReader(f io.Reader) io.Reader {
+func NewReader(f store.SectionReader) io.Reader {
 	return &Reader{
 		f:        f,
 		r:        multi.NewReader(f),

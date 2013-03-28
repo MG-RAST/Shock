@@ -2,6 +2,7 @@ package fq2fa
 
 import (
 	"bytes"
+	"github.com/MG-RAST/Shock/store"
 	"github.com/MG-RAST/Shock/store/type/sequence/fasta"
 	"github.com/MG-RAST/Shock/store/type/sequence/fastq"
 	"github.com/MG-RAST/Shock/store/type/sequence/seq"
@@ -9,12 +10,12 @@ import (
 )
 
 type Reader struct {
-	f        io.Reader
+	f        store.SectionReader
 	r        seq.Reader
 	overflow []byte
 }
 
-func NewReader(f io.Reader) io.Reader {
+func NewReader(f store.SectionReader) io.Reader {
 	return &Reader{
 		f:        f,
 		r:        fastq.NewReader(f),

@@ -5,17 +5,21 @@ import (
 	"github.com/MG-RAST/Shock/store/type/sequence/multi"
 	"github.com/MG-RAST/Shock/store/type/sequence/seq"
 	"io"
+	"os"
 )
 
 type indexer struct {
-	f     io.ReadCloser
+	f     *os.File
 	r     seq.Reader
 	Index *index.Idx
+	size  int64
 }
 
-func NewIndexer(f io.ReadCloser) index.Indexer {
+func NewIndexer(f *os.File) index.Indexer {
+	fi, _ := f.Stat()
 	return &indexer{
 		f:     f,
+		size:  fi.Size(),
 		r:     multi.NewReader(f),
 		Index: index.New(),
 	}
@@ -25,16 +29,20 @@ func (i *indexer) Create() (count int64, err error) {
 	curr := int64(0)
 	count = 0
 	for {
-		n, er := i.r.SeekChunk()
+		n, er := i.r.SeekChunk(curr)
 		if er != nil {
-			if er != io.EOF {
+			if er == io.EOF {
+				i.Index.Append([]int64{curr, i.size - curr})
+				count += 1
+			} else {
 				err = er
 			}
 			break
+		} else {
+			i.Index.Append([]int64{curr, n})
+			curr += int64(n)
+			count += 1
 		}
-		i.Index.Append([]int64{curr, int64(n)})
-		curr += int64(n)
-		count += 1
 	}
 	return
 }
