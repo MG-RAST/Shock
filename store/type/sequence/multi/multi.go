@@ -3,6 +3,7 @@ package multi
 import (
 	"errors"
 	e "github.com/MG-RAST/Shock/errors"
+	"github.com/MG-RAST/Shock/store"
 	"github.com/MG-RAST/Shock/store/type/sequence/fasta"
 	"github.com/MG-RAST/Shock/store/type/sequence/fastq"
 	"github.com/MG-RAST/Shock/store/type/sequence/sam"
@@ -14,13 +15,13 @@ import (
 var valid_format = [3]string{"sam", "fastq", "fasta"}
 
 type Reader struct {
-	f       io.Reader
+	f       store.SectionReader
 	r       seq.ReadRewinder
 	formats map[string]seq.ReadRewinder
 	format  string
 }
 
-func NewReader(f io.Reader) *Reader {
+func NewReader(f store.SectionReader) *Reader {
 	return &Reader{
 		f: f,
 		r: nil,
@@ -34,6 +35,9 @@ func NewReader(f io.Reader) *Reader {
 }
 
 func (r *Reader) determineFormat() error {
+	if r.format != "" {
+		return nil
+	}
 	for _, f := range valid_format {
 		var er error
 		reader := r.formats[f]
@@ -74,14 +78,14 @@ func (r *Reader) ReadRaw(p []byte) (n int, err error) {
 	return r.r.ReadRaw(p)
 }
 
-func (r *Reader) SeekChunk() (n int, err error) {
+func (r *Reader) SeekChunk(carryOver int64) (n int64, err error) {
 	if r.r == nil {
 		err := r.determineFormat()
 		if err != nil {
 			return 0, err
 		}
 	}
-	return r.r.SeekChunk()
+	return r.r.SeekChunk(carryOver)
 }
 
 func (r *Reader) Format(s *seq.Seq, w io.Writer) (n int, err error) {

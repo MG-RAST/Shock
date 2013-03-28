@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"errors"
 	"github.com/MG-RAST/Shock/conf"
+	"github.com/MG-RAST/Shock/store"
 	"github.com/MG-RAST/Shock/store/type/sequence/seq"
 	"io"
 	"os"
@@ -16,12 +17,12 @@ import (
 
 // Fasta sequence format reader type.
 type Reader struct {
-	f io.Reader
+	f store.SectionReader
 	r *bufio.Reader
 }
 
 // Returns a new fasta format reader using f.
-func NewReader(f io.Reader) *Reader {
+func NewReader(f store.SectionReader) *Reader {
 	return &Reader{
 		f: f,
 		r: bufio.NewReader(f),
@@ -71,34 +72,16 @@ func (self *Reader) ReadRaw(p []byte) (n int, err error) {
 }
 
 // seek sequences which add up to a size close to the configured chunk size (conf.CHUNK_SIZE, e.g. 1M)
-func (self *Reader) SeekChunk() (n int, err error) {
-	n = 0
-	var c int
-	for {
-		tmpbuf := make([]byte, conf.CHUNK_SIZE-1024)
-		c, err = self.r.Read(tmpbuf)
-		n += c
-		if err != nil {
-			if n > 0 {
-				return n, nil
-			} else {
-				return
-			}
-		}
-		if n >= int(conf.CHUNK_SIZE-1024) {
-			break
-		}
+func (self *Reader) SeekChunk(offSet int64) (n int64, err error) {
+	r := io.NewSectionReader(self.f, offSet+conf.CHUNK_SIZE-32768, 32768)
+	buf := make([]byte, 32768)
+	if n, err := r.Read(buf); err != nil {
+		return int64(n), err
 	}
-	for {
-		read, er := self.r.ReadBytes('>')
-		if len(read) > 1 {
-			n += len(read) - 1
-			self.r.UnreadByte()
-			break
-		} else if er != nil {
-			err = er
-			break
-		}
+	if pos := bytes.LastIndex(buf, []byte(">")); pos == -1 {
+		return self.SeekChunk(offSet + conf.CHUNK_SIZE)
+	} else {
+		return conf.CHUNK_SIZE - 32768 + int64(pos), nil
 	}
 	return
 }
