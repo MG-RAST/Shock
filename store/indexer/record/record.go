@@ -5,15 +5,16 @@ import (
 	"github.com/MG-RAST/Shock/store/type/sequence/multi"
 	"github.com/MG-RAST/Shock/store/type/sequence/seq"
 	"io"
+	"os"
 )
 
 type indexer struct {
-	f     io.ReadCloser
+	f     *os.File
 	r     seq.Reader
 	Index *index.Idx
 }
 
-func NewIndexer(f io.ReadCloser) index.Indexer {
+func NewIndexer(f *os.File) index.Indexer {
 	return &indexer{
 		f:     f,
 		r:     multi.NewReader(f),
