@@ -13,6 +13,11 @@ import (
 	"github.com/MG-RAST/Shock/store/type/sequence/seq"
 	"io"
 	"os"
+	"regexp"
+)
+
+var (
+	Regex = regexp.MustCompile(`\s*> *[\S ]+[\n\r]+[[A-Za-z\n\r]+`)
 )
 
 // Fasta sequence format reader type.
@@ -22,15 +27,18 @@ type Reader struct {
 }
 
 // Returns a new fasta format reader using f.
-func NewReader(f store.SectionReader) *Reader {
+func NewReader(f store.SectionReader) seq.ReadRewinder {
 	return &Reader{
 		f: f,
-		r: bufio.NewReader(f),
+		r: nil,
 	}
 }
 
 // Read a single sequence and return it or an error.
 func (self *Reader) Read() (sequence *seq.Seq, err error) {
+	if self.r == nil {
+		self.r = bufio.NewReader(self.f)
+	}
 	var label, body []byte
 	for {
 		read, err := self.r.ReadBytes('>')
@@ -55,6 +63,9 @@ func (self *Reader) Read() (sequence *seq.Seq, err error) {
 
 // Read a single sequence and return it or an error.
 func (self *Reader) ReadRaw(p []byte) (n int, err error) {
+	if self.r == nil {
+		self.r = bufio.NewReader(self.f)
+	}
 	p[n] = byte('>')
 	n = 1
 	for {

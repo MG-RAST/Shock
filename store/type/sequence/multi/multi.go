@@ -9,58 +9,61 @@ import (
 	"github.com/MG-RAST/Shock/store/type/sequence/sam"
 	"github.com/MG-RAST/Shock/store/type/sequence/seq"
 	"io"
+	"regexp"
 )
 
 //the order matters as it determines the order for checking format.
 var valid_format = [3]string{"sam", "fastq", "fasta"}
 
+var readers = map[string]func(f store.SectionReader) seq.ReadRewinder{
+	"fasta": fasta.NewReader,
+	"fastq": fastq.NewReader,
+	"sam":   sam.NewReader,
+}
+
+var validators = map[string]*regexp.Regexp{
+	"fasta": fasta.Regex,
+	"fastq": fastq.Regex,
+	"sam":   sam.Regex,
+}
+
 type Reader struct {
-	f       store.SectionReader
-	r       seq.ReadRewinder
-	formats map[string]seq.ReadRewinder
-	format  string
+	f      store.SectionReader
+	r      seq.ReadRewinder
+	format string
 }
 
 func NewReader(f store.SectionReader) *Reader {
 	return &Reader{
-		f: f,
-		r: nil,
-		formats: map[string]seq.ReadRewinder{
-			"fasta": fasta.NewReader(f),
-			"fastq": fastq.NewReader(f),
-			"sam":   sam.NewReader(f),
-		},
+		f:      f,
+		r:      nil,
 		format: "",
 	}
 }
 
-func (r *Reader) determineFormat() error {
-	if r.format != "" {
+func (r *Reader) DetermineFormat() error {
+	if r.format != "" && r.r != nil {
 		return nil
 	}
-	for _, f := range valid_format {
-		var er error
-		reader := r.formats[f]
-		for i := 0; i < 1; i++ {
-			_, er = reader.Read()
-			if er != nil {
-				break
-			}
-		}
-		reader.Rewind()
-		if er == nil {
-			r.r = reader
-			r.format = f
+	reader := io.NewSectionReader(r.f, 0, 32768)
+	buf := make([]byte, 32768)
+	if _, err := reader.Read(buf); err != nil {
+		return err
+	}
+
+	for format, re := range validators {
+		if re.Match(buf) {
+			r.format = format
+			r.r = readers[format](r.f)
 			return nil
 		}
-
 	}
 	return errors.New(e.InvalidFileTypeForFilter)
 }
 
 func (r *Reader) Read() (*seq.Seq, error) {
 	if r.r == nil {
-		err := r.determineFormat()
+		err := r.DetermineFormat()
 		if err != nil {
 			return nil, err
 		}
@@ -70,7 +73,7 @@ func (r *Reader) Read() (*seq.Seq, error) {
 
 func (r *Reader) ReadRaw(p []byte) (n int, err error) {
 	if r.r == nil {
-		err := r.determineFormat()
+		err := r.DetermineFormat()
 		if err != nil {
 			return 0, err
 		}
@@ -80,7 +83,7 @@ func (r *Reader) ReadRaw(p []byte) (n int, err error) {
 
 func (r *Reader) SeekChunk(carryOver int64) (n int64, err error) {
 	if r.r == nil {
-		err := r.determineFormat()
+		err := r.DetermineFormat()
 		if err != nil {
 			return 0, err
 		}
