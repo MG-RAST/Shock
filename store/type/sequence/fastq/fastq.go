@@ -13,6 +13,11 @@ import (
 	"github.com/MG-RAST/Shock/store/type/sequence/seq"
 	"io"
 	"os"
+	"regexp"
+)
+
+var (
+	Regex = regexp.MustCompile(`@[\S ]+[\n\r]+[A-Za-z]+[\n\r]+\+\S*[\n\r]+\S*[\n\r]*`)
 )
 
 // Fastq sequence format reader type.
@@ -22,15 +27,15 @@ type Reader struct {
 }
 
 // Returns a new fastq format reader using r.
-func NewReader(f store.SectionReader) *Reader {
+func NewReader(f store.SectionReader) seq.ReadRewinder {
 	return &Reader{
 		f: f,
-		r: bufio.NewReader(f),
+		r: nil,
 	}
 }
 
 // Returns a new fastq format reader using a filename.
-func NewReaderName(name string) (r *Reader, err error) {
+func NewReaderName(name string) (r seq.ReadRewinder, err error) {
 	var f *os.File
 	if f, err = os.Open(name); err != nil {
 		return
@@ -41,6 +46,9 @@ func NewReaderName(name string) (r *Reader, err error) {
 // Read a single sequence and return it or an error.
 // TODO: Does not read interleaved fastq.
 func (self *Reader) Read() (sequence *seq.Seq, err error) {
+	if self.r == nil {
+		self.r = bufio.NewReader(self.f)
+	}
 	var line, label, seqBody, qualBody []byte
 	sequence = &seq.Seq{}
 
@@ -90,6 +98,9 @@ READ:
 }
 
 func (self *Reader) ReadRaw(p []byte) (n int, err error) {
+	if self.r == nil {
+		self.r = bufio.NewReader(self.f)
+	}
 	curr := 0
 	id, err := self.r.ReadBytes('\n')
 	if err != nil {

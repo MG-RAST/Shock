@@ -5,9 +5,15 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"github.com/MG-RAST/Shock/store"
 	"github.com/MG-RAST/Shock/store/type/sequence/seq"
 	"io"
 	"os"
+	"regexp"
+)
+
+var (
+	Regex = regexp.MustCompile(`[@[A-Z][A-Z][ \t]+[\S \t]+[\n\r]]*`)
 )
 
 // Sam sequence format reader type.
@@ -17,7 +23,7 @@ type Reader struct {
 }
 
 // Returns a new Sam format reader using r.
-func NewReader(f io.Reader) *Reader {
+func NewReader(f store.SectionReader) seq.ReadRewinder {
 	return &Reader{
 		f: f,
 		r: bufio.NewReader(f),
@@ -25,7 +31,7 @@ func NewReader(f io.Reader) *Reader {
 }
 
 // Returns a new Sam format reader using a filename.
-func NewReaderName(name string) (r *Reader, err error) {
+func NewReaderName(name string) (r seq.ReadRewinder, err error) {
 	var f *os.File
 	if f, err = os.Open(name); err != nil {
 		return
