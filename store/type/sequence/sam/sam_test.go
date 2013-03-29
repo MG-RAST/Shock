@@ -4,6 +4,7 @@ import (
 	"fmt"
 	. "github.com/MG-RAST/Shock/store/type/sequence/sam"
 	"io"
+	"io/ioutil"
 	"os"
 	"testing"
 )
@@ -12,6 +13,34 @@ var (
 	sample = "../../../testdata/sample1.sam"
 	Idx    [][]int64 //list of {offset, length} pair
 )
+
+func TestValid(t *testing.T) {
+	f, _ := ioutil.ReadFile(sample)
+	println("valid")
+	println(Regex.Match(f))
+	println("invalid:")
+	for _, s := range invalid {
+		println(Regex.MatchString(s))
+	}
+}
+
+var invalid = []string{`>S1 rank=0000056 x=2202.0 y=484.0 length=288
+TGAATGTATTCCAGTAAACCGCCCGCGCAAGTAGGCTTCAAATGCCTGCACATTGTCCGTGCCGCGTTTTCAAAGTTTCTGTTCTTCGCCCGAAAGAATAGGAAGAATTGATTTGGCGACCTGTTCGGAAACAATATCTTCAAGCGTCAAAACGTCGCTGAATTTTCATCAAAGGTCTTCGCCCAACACGTCGAATTATCCTTGACGCTCAAAAGCTGCGCTGAAATGCGAATTCTATCACCGACGCGGCGGAGATTACCGTCAAGAATAAAATCAACGCCGAGTTCG`,
+	`@SEQ_ID
+GATTTGGGGTTCAAAGCAGTATCGATCAAATAGTAAATCCATTTGTTCAACTCACAGTTT
++
+!''*((((***+))%%%++)(%%%%).1***-+*''))**55CCF>>>>>>CCCCCCC65
+@SEQ_ID
+GATTTGGGGTTCAAAGCAGTATCGATCAAATAGTAAATCCATTTGTTCAACTCACAGTTT
++
+!''*((((***+))%%%++)(%%%%).1***-+*''))**55CCF>>>>>>CCCCCCC65`, `@SEQ_ID
+GATTTGGGGTTCAAAGCAGTATCGATCAAATAGTAAATCCATTTGTTCAACTCACAGTTT
++junkhhere
+!''*((((***+))%%%++)(%%%%).1***-+*''))**55CCF>>>>>>CCCCCCC65
+@SEQ_ID
+GATTTGGGGTTCAAAGCAGTATCGATCAAATAGTAAATCCATTTGTTCAACTCACAGTTT
++junkhhere
+!''*((((***+))%%%++)(%%%%).1***-+*''))**55CCF>>>>>>CCCCCCC65`}
 
 func TestRead(t *testing.T) {
 	var (
