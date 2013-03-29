@@ -13,6 +13,7 @@ import (
 	"github.com/MG-RAST/Shock/store/user"
 	"github.com/MG-RAST/Shock/store/user/auth"
 	"github.com/jaredwilkening/goweb"
+	"hash"
 	"io"
 	"math/rand"
 	//"mime/multipart"
@@ -38,6 +39,11 @@ var (
 		" |             |  |    |    |    |  |              |  |              |  |    |     |    |\n" +
 		" +-------------+  +----+    +----+  +--------------+  +--------------+  +----+     +----+\n"
 )
+
+type buflen struct {
+	buf *[]byte
+	n   int
+}
 
 func printLogo() {
 	fmt.Println(logo)
@@ -246,22 +252,29 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files store.
 				files[part.FormName()] = store.FormFile{Name: part.FileName(), Path: tmpPath, Checksum: make(map[string]string)}
 				if tmpFile, err := os.Create(tmpPath); err == nil {
 					buffer := make([]byte, 32*1024)
+					control := make(chan bool)
+					md5c := make(chan buflen)
+					sha1c := make(chan buflen)
+					go writeChecksum(md5h, md5c, control)
+					go writeChecksum(sha1h, sha1c, control)
 					for {
 						n, err := part.Read(buffer)
 						if n == 0 || err != nil {
+							md5c <- buflen{buf: &buffer, n: 0}
+							sha1c <- buflen{buf: &buffer, n: 0}
 							break
 						}
 						tmpFile.Write(buffer[0:n])
-						md5h.Write(buffer[0:n])
-						sha1h.Write(buffer[0:n])
+						md5c <- buflen{buf: &buffer, n: n}
+						sha1c <- buflen{buf: &buffer, n: n}
 					}
-
+					<-control
+					<-control
 					var md5s, sha1s []byte
 					md5s = md5h.Sum(md5s)
 					sha1s = sha1h.Sum(sha1s)
 					files[part.FormName()].Checksum["md5"] = fmt.Sprintf("%x", md5s)
 					files[part.FormName()].Checksum["sha1"] = fmt.Sprintf("%x", sha1s)
-
 					md5h.Reset()
 					sha1h.Reset()
 					tmpFile.Close()
@@ -277,6 +290,20 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files store.
 		}
 	}
 	return
+}
+
+func writeChecksum(h hash.Hash, c chan buflen, control chan bool) {
+	for {
+		select {
+		case b := <-c:
+			if b.n == 0 {
+				control <- true
+				return
+			} else {
+				h.Write((*b.buf)[0:b.n])
+			}
+		}
+	}
 }
 
 type resource struct {
