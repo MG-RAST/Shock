@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	Regex = regexp.MustCompile(`@[\S ]+[\n\r]+[A-Za-z]+[\n\r]+\+\S*[\n\r]+\S*[\n\r]*`)
+	Regex = regexp.MustCompile(`@[\S ]+[\n\r]+[A-Za-z]+[\n\r]+\+[\S ]*[\n\r]+\S*[\n\r]*`)
 )
 
 // Fastq sequence format reader type.
