@@ -183,12 +183,17 @@ func RespondOk(cx *goweb.Context) {
 }
 
 func apiUrl(cx *goweb.Context) string {
+	if conf.API_URL != "" {
+		return conf.API_URL
+	}
 	return "http://" + cx.Request.Host
 }
 
 func siteUrl(cx *goweb.Context) string {
-	if strings.Contains(cx.Request.Host, ":") {
-		return fmt.Sprint("http://%s:%d", strings.Split(cx.Request.Host, ":")[0], conf.SITE_PORT)
+	if conf.SITE_URL != "" {
+		return conf.SITE_URL
+	} else if strings.Contains(cx.Request.Host, ":") {
+		return fmt.Sprintf("http://%s:%d", strings.Split(cx.Request.Host, ":")[0], conf.SITE_PORT)
 	}
 	return "http://" + cx.Request.Host
 }
