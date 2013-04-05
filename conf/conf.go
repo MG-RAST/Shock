@@ -22,6 +22,10 @@ var (
 	// Config File
 	CONFIG_FILE = ""
 
+	// External Address
+	API_URL  = ""
+	SITE_URL = ""
+
 	// Ports
 	SITE_PORT = 0
 	API_PORT  = 0
@@ -80,6 +84,10 @@ func init() {
 	// Ports
 	SITE_PORT, _ = c.Int("Ports", "site-port")
 	API_PORT, _ = c.Int("Ports", "api-port")
+
+	// URLs
+	SITE_URL, _ = c.String("External", "site-url")
+	API_URL, _ = c.String("External", "api-url")
 
 	// SSL
 	SSL_ENABLED, _ = c.Bool("SSL", "enable")
