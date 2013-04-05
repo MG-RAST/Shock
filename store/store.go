@@ -8,7 +8,51 @@ import (
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"path/filepath"
+	"time"
 )
+
+type PreAuth struct {
+	Id        string
+	Type      string
+	NodeId    string
+	ValidTill time.Time
+}
+
+func NewPreAuth(id, t, nid string) (p *PreAuth, err error) {
+	p = &PreAuth{Id: id, Type: t, NodeId: nid, ValidTill: time.Now().AddDate(0, 0, 1)}
+	if db, err := DBConnect(); err == nil {
+		defer db.Close()
+		if err = db.AddPreAuth(p); err != nil {
+			return nil, err
+		} else {
+			return p, nil
+		}
+	} else {
+		return nil, err
+	}
+	return
+}
+
+func LoadPreAuth(id string) (p *PreAuth, err error) {
+	p = &PreAuth{}
+	if db, err := DBConnect(); err == nil {
+		defer db.Close()
+		err = db.FindPreAuth(id, p)
+		return p, err
+	} else {
+		return nil, err
+	}
+	return
+}
+
+func DeletePreAuth(id string) (err error) {
+	db, err := DBConnect()
+	defer db.Close()
+	if err == nil {
+		err = db.DeletePreAuth(id)
+	}
+	return err
+}
 
 func LoadNode(id string, uuid string) (node *Node, err error) {
 	if db, err := DBConnect(); err == nil {
