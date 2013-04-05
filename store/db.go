@@ -13,13 +13,14 @@ const (
 	DbTimeout = time.Duration(time.Second * 1)
 )
 
-func init() {
-	InitDB()
-}
-
 type db struct {
+	PreAuth *mgo.Collection
 	Nodes   *mgo.Collection
 	Session *mgo.Session
+}
+
+func init() {
+	InitDB()
 }
 
 func InitDB() {
@@ -34,6 +35,8 @@ func InitDB() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: fatal mongodb initialization error: %v", err)
 		os.Exit(1)
+	} else {
+		d.PreAuth.EnsureIndex(idIdx)
 	}
 }
 
@@ -42,7 +45,7 @@ func DBConnect() (d *db, err error) {
 	if err != nil {
 		return
 	}
-	d = &db{Nodes: session.DB("ShockDB").C("Nodes"), Session: session}
+	d = &db{Nodes: session.DB("ShockDB").C("Nodes"), PreAuth: session.DB("ShockDB").C("PreAuth"), Session: session}
 	return
 }
 
@@ -53,6 +56,21 @@ func DropDB() (err error) {
 		return err
 	}
 	return d.Nodes.DropCollection()
+}
+
+func (d *db) AddPreAuth(p *PreAuth) (err error) {
+	_, err = d.PreAuth.Upsert(bson.M{"id": p.Id}, &p)
+	return
+}
+
+func (d *db) FindPreAuth(id string, p *PreAuth) (err error) {
+	err = d.PreAuth.Find(bson.M{"id": id}).One(&p)
+	return
+}
+
+func (d *db) DeletePreAuth(id string) (err error) {
+	_, err = d.PreAuth.RemoveAll(bson.M{"id": id})
+	return
 }
 
 func (d *db) Delete(q bson.M) (err error) {

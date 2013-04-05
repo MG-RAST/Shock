@@ -15,6 +15,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type NodeController struct{}
@@ -186,7 +187,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 	// ?download=1
 	if query.Has("download") {
 		if !node.HasFile() {
-			cx.RespondWithErrorMessage("File not found", http.StatusBadRequest)
+			cx.RespondWithErrorMessage("Node has no file", http.StatusBadRequest)
 			return
 		}
 
@@ -267,7 +268,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 				log.Error("err:@node_Read s.stream: " + err.Error())
 			}
-		} else { //!query.Has("index")
+		} else {
 			nf, err := node.FileReader()
 			if err != nil {
 				// File not found or some sort of file read error. 
@@ -285,10 +286,21 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 			}
 		}
 		return
-	} else if query.Has("pipe") {
-		cx.RespondWithError(http.StatusNotImplemented)
-	} else if query.Has("list") {
-		cx.RespondWithError(http.StatusNotImplemented)
+	} else if query.Has("download_url") {
+		if !node.HasFile() {
+			cx.RespondWithErrorMessage("Node has not fil", http.StatusBadRequest)
+			return
+		} else if u.Uuid == "" {
+			cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
+			return
+		} else {
+			if p, err := store.NewPreAuth(RandString(20), "download", node.Id); err != nil {
+				cx.RespondWithError(http.StatusInternalServerError)
+				log.Error("err:@node_Read download_url: " + err.Error())
+			} else {
+				cx.RespondWithData(urlResponse{Url: apiUrl(cx) + "/preauth/" + p.Id, ValidTill: p.ValidTill.Format(time.ANSIC)})
+			}
+		}
 	} else {
 		// Base case respond with node in json	
 		cx.RespondWithData(node)
