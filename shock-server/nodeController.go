@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/MG-RAST/Shock/conf"
-	e "github.com/MG-RAST/Shock/errors"
-	"github.com/MG-RAST/Shock/store"
-	"github.com/MG-RAST/Shock/store/filter"
-	"github.com/MG-RAST/Shock/store/indexer"
-	"github.com/MG-RAST/Shock/store/user"
+	"github.com/MG-RAST/Shock/shock-server/conf"
+	e "github.com/MG-RAST/Shock/shock-server/errors"
+	"github.com/MG-RAST/Shock/shock-server/store"
+	"github.com/MG-RAST/Shock/shock-server/store/filter"
+	"github.com/MG-RAST/Shock/shock-server/store/indexer"
+	"github.com/MG-RAST/Shock/shock-server/store/user"
 	"github.com/jaredwilkening/goweb"
 	"io"
 	"labix.org/v2/mgo/bson"

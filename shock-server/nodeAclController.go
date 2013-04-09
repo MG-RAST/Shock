@@ -2,9 +2,9 @@ package main
 
 import (
 	"errors"
-	e "github.com/MG-RAST/Shock/errors"
-	"github.com/MG-RAST/Shock/store"
-	"github.com/MG-RAST/Shock/store/user"
+	e "github.com/MG-RAST/Shock/shock-server/errors"
+	"github.com/MG-RAST/Shock/shock-server/store"
+	"github.com/MG-RAST/Shock/shock-server/store/user"
 	"github.com/jaredwilkening/goweb"
 	"net/http"
 	"strings"

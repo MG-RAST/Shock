@@ -3,8 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/MG-RAST/Shock/store"
-	"github.com/MG-RAST/Shock/store/filter"
+	"github.com/MG-RAST/Shock/shock-server/store"
+	"github.com/MG-RAST/Shock/shock-server/store/filter"
 	"io"
 	"net/http"
 	"os/exec"
