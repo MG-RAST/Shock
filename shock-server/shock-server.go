@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/MG-RAST/Shock/conf"
-	"github.com/MG-RAST/Shock/logger"
+	"github.com/MG-RAST/Shock/shock-server/conf"
+	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/jaredwilkening/goweb"
 	"os"
 )

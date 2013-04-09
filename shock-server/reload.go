@@ -3,8 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/MG-RAST/Shock/conf"
-	"github.com/MG-RAST/Shock/store"
+	"github.com/MG-RAST/Shock/shock-server/conf"
+	"github.com/MG-RAST/Shock/shock-server/store"
 	"os"
 	"path/filepath"
 	"regexp"
