@@ -1,7 +1,7 @@
 package user
 
 import (
-	"github.com/MG-RAST/Shock/store/uuid"
+	"github.com/MG-RAST/Shock/shock-server/store/uuid"
 )
 
 // Array of User

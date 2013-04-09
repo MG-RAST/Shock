@@ -2,7 +2,7 @@ package globus_test
 
 import (
 	"fmt"
-	. "github.com/MG-RAST/Shock/store/user/auth/globus"
+	. "github.com/MG-RAST/Shock/shock-server/store/user/auth/globus"
 	"testing"
 )
 

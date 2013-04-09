@@ -2,7 +2,7 @@ package store
 
 import (
 	"fmt"
-	"github.com/MG-RAST/Shock/conf"
+	"github.com/MG-RAST/Shock/shock-server/conf"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"os"

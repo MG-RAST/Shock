@@ -1,10 +1,10 @@
 package auth
 
 import (
-	"github.com/MG-RAST/Shock/conf"
-	"github.com/MG-RAST/Shock/store/user"
-	"github.com/MG-RAST/Shock/store/user/auth/basic"
-	"github.com/MG-RAST/Shock/store/user/auth/globus"
+	"github.com/MG-RAST/Shock/shock-server/conf"
+	"github.com/MG-RAST/Shock/shock-server/store/user"
+	"github.com/MG-RAST/Shock/shock-server/store/user/auth/basic"
+	"github.com/MG-RAST/Shock/shock-server/store/user/auth/globus"
 	"strings"
 )
 

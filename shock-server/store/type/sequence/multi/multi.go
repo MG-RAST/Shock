@@ -2,12 +2,12 @@ package multi
 
 import (
 	"errors"
-	e "github.com/MG-RAST/Shock/errors"
-	"github.com/MG-RAST/Shock/store"
-	"github.com/MG-RAST/Shock/store/type/sequence/fasta"
-	"github.com/MG-RAST/Shock/store/type/sequence/fastq"
-	"github.com/MG-RAST/Shock/store/type/sequence/sam"
-	"github.com/MG-RAST/Shock/store/type/sequence/seq"
+	e "github.com/MG-RAST/Shock/shock-server/errors"
+	"github.com/MG-RAST/Shock/shock-server/store"
+	"github.com/MG-RAST/Shock/shock-server/store/type/sequence/fasta"
+	"github.com/MG-RAST/Shock/shock-server/store/type/sequence/fastq"
+	"github.com/MG-RAST/Shock/shock-server/store/type/sequence/sam"
+	"github.com/MG-RAST/Shock/shock-server/store/type/sequence/seq"
 	"io"
 	"regexp"
 )

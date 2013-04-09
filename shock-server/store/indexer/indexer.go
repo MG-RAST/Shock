@@ -1,9 +1,9 @@
 package indexer
 
 import (
-	"github.com/MG-RAST/Shock/store/indexer/chunkrecord"
-	"github.com/MG-RAST/Shock/store/indexer/record"
-	"github.com/MG-RAST/Shock/store/type/index"
+	"github.com/MG-RAST/Shock/shock-server/store/indexer/chunkrecord"
+	"github.com/MG-RAST/Shock/shock-server/store/indexer/record"
+	"github.com/MG-RAST/Shock/shock-server/store/type/index"
 	"os"
 )
 

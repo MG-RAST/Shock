@@ -2,7 +2,7 @@ package logger
 
 import (
 	"fmt"
-	"github.com/MG-RAST/Shock/conf"
+	"github.com/MG-RAST/Shock/shock-server/conf"
 	l4g "github.com/jaredwilkening/log4go"
 	"os"
 )

@@ -3,7 +3,7 @@ package basic
 import (
 	"encoding/base64"
 	"errors"
-	e "github.com/MG-RAST/Shock/errors"
+	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"strings"
 )
 

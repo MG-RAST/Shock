@@ -1,9 +1,9 @@
 package filter
 
 import (
-	"github.com/MG-RAST/Shock/store"
-	"github.com/MG-RAST/Shock/store/filter/anonymize"
-	"github.com/MG-RAST/Shock/store/filter/fq2fa"
+	"github.com/MG-RAST/Shock/shock-server/store"
+	"github.com/MG-RAST/Shock/shock-server/store/filter/anonymize"
+	"github.com/MG-RAST/Shock/shock-server/store/filter/fq2fa"
 	"io"
 )
 

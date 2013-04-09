@@ -2,7 +2,7 @@ package sam_test
 
 import (
 	"fmt"
-	. "github.com/MG-RAST/Shock/store/type/sequence/sam"
+	. "github.com/MG-RAST/Shock/shock-server/store/type/sequence/sam"
 	"io"
 	"io/ioutil"
 	"os"

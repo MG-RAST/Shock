@@ -1,7 +1,7 @@
 package fasta_test
 
 import (
-	. "github.com/MG-RAST/Shock/store/type/sequence/fasta"
+	. "github.com/MG-RAST/Shock/shock-server/store/type/sequence/fasta"
 	//"regexp"
 	"testing"
 )

@@ -1,7 +1,7 @@
 package size
 
 import (
-	"github.com/MG-RAST/Shock/store/type/index"
+	"github.com/MG-RAST/Shock/shock-server/store/type/index"
 	"io"
 )
 

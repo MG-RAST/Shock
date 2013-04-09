@@ -2,7 +2,7 @@ package uuid_test
 
 import (
 	"fmt"
-	. "github.com/MG-RAST/Shock/store/uuid"
+	. "github.com/MG-RAST/Shock/shock-server/store/uuid"
 	"testing"
 )
 

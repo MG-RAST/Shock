@@ -1,7 +1,7 @@
 package fastq_test
 
 import (
-	. "github.com/MG-RAST/Shock/store/type/sequence/fastq"
+	. "github.com/MG-RAST/Shock/shock-server/store/type/sequence/fastq"
 	"testing"
 )
 

@@ -2,9 +2,9 @@ package store_test
 
 import (
 	"fmt"
-	"github.com/MG-RAST/Shock/conf"
-	. "github.com/MG-RAST/Shock/store"
-	"github.com/MG-RAST/Shock/store/user"
+	"github.com/MG-RAST/Shock/shock-server/conf"
+	. "github.com/MG-RAST/Shock/shock-server/store"
+	"github.com/MG-RAST/Shock/shock-server/store/user"
 	"math/rand"
 	"os"
 	"testing"

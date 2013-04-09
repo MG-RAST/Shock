@@ -1,7 +1,7 @@
 package chunkrecord_test
 
 import (
-	. "github.com/MG-RAST/Shock/store/indexer/chunkrecord"
+	. "github.com/MG-RAST/Shock/shock-server/store/indexer/chunkrecord"
 	"os"
 	"testing"
 )

@@ -3,8 +3,8 @@ package store
 import (
 	"errors"
 	"fmt"
-	"github.com/MG-RAST/Shock/conf"
-	"github.com/MG-RAST/Shock/store/user"
+	"github.com/MG-RAST/Shock/shock-server/conf"
+	"github.com/MG-RAST/Shock/shock-server/store/user"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"path/filepath"

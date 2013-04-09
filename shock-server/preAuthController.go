@@ -1,8 +1,8 @@
 package main
 
 import (
-	e "github.com/MG-RAST/Shock/errors"
-	"github.com/MG-RAST/Shock/store"
+	e "github.com/MG-RAST/Shock/shock-server/errors"
+	"github.com/MG-RAST/Shock/shock-server/store"
 	"github.com/jaredwilkening/goweb"
 	"net/http"
 )
