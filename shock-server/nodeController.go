@@ -120,12 +120,13 @@ func (cr *NodeController) Delete(id string, cx *goweb.Context) {
 		}
 	}
 
-	if err := node.Delete(); err != nil {
+	if err := node.Delete(); err == nil {
 		cx.RespondWithOK()
 		return
+	} else {
+		log.Error("Err@node_Delet:Delete: " + err.Error())
+		cx.RespondWithError(http.StatusInternalServerError)
 	}
-	log.Error("Err@node_Delet:Delete: " + err.Error())
-	cx.RespondWithError(http.StatusInternalServerError)
 	return
 }
 
