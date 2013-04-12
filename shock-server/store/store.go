@@ -71,6 +71,19 @@ func LoadNode(id string, uuid string) (node *Node, err error) {
 	return nil, err
 }
 
+func LoadNodeUnauth(id string) (node *Node, err error) {
+	if db, err := DBConnect(); err == nil {
+		defer db.Close()
+		node = new(Node)
+		if err = db.FindOne(bson.M{"id": id}, node); err == nil {
+			return node, nil
+		} else {
+			return nil, err
+		}
+	}
+	return nil, err
+}
+
 func LoadNodes(ids []string) (nodes Nodes, err error) {
 	if db, err := DBConnect(); err == nil {
 		defer db.Close()
