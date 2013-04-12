@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/store"
 	"github.com/jaredwilkening/goweb"
@@ -19,14 +20,18 @@ func PreAuthRequest(cx *goweb.Context) {
 		}
 		return
 	} else {
-		node, _ := store.LoadNode(p.NodeId, "")
-		switch p.Type {
-		case "download":
-			streamDownload(node, cx)
-			store.DeletePreAuth(id)
-			return
-		default:
+		if node, err := store.LoadNodeUnauth(p.NodeId); err == nil {
+			switch p.Type {
+			case "download":
+				streamDownload(node, cx)
+				store.DeletePreAuth(id)
+				return
+			default:
+				cx.RespondWithError(http.StatusInternalServerError)
+			}
+		} else {
 			cx.RespondWithError(http.StatusInternalServerError)
+			log.Error("err:@preAuth loadnode: " + err.Error())
 		}
 	}
 	return
