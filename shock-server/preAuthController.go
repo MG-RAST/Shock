@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/store"
 	"github.com/jaredwilkening/goweb"
