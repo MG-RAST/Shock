@@ -191,13 +191,17 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 			cx.RespondWithErrorMessage("Node has no file", http.StatusBadRequest)
 			return
 		}
+		filename := node.Id
+		if query.Has("filename") {
+			filename = query.Value("filename")
+		}
 
 		//_, chunksize := 
 		// ?index=foo
 		if query.Has("index") {
 			//handling bam file
 			if query.Value("index") == "bai" {
-				s := &streamer{rs: []store.SectionReader{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, size: node.File.Size, filter: fFunc}
+				s := &streamer{rs: []store.SectionReader{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: filename, size: node.File.Size, filter: fFunc}
 
 				var region string
 
@@ -252,7 +256,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				idx.Set(map[string]interface{}{"ChunkSize": csize})
 			}
 			var size int64 = 0
-			s := &streamer{rs: []store.SectionReader{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, filter: fFunc}
+			s := &streamer{rs: []store.SectionReader{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: filename, filter: fFunc}
 			for _, p := range query.List("part") {
 				pos, length, err := idx.Part(p)
 				if err != nil {
@@ -278,7 +282,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				cx.RespondWithError(http.StatusBadRequest)
 				return
 			}
-			s := &streamer{rs: []store.SectionReader{nf}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: node.Id, size: node.File.Size, filter: fFunc}
+			s := &streamer{rs: []store.SectionReader{nf}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: filename, size: node.File.Size, filter: fFunc}
 			err = s.stream()
 			if err != nil {
 				// causes "multiple response.WriteHeader calls" error but better than no response
@@ -289,13 +293,17 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 		return
 	} else if query.Has("download_url") {
 		if !node.HasFile() {
-			cx.RespondWithErrorMessage("Node has not fil", http.StatusBadRequest)
+			cx.RespondWithErrorMessage("Node has not file", http.StatusBadRequest)
 			return
 		} else if u.Uuid == "" {
 			cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
 			return
 		} else {
-			if p, err := store.NewPreAuth(RandString(20), "download", node.Id); err != nil {
+			options := map[string]string{}
+			if query.Has("filename") {
+				options["filename"] = query.Value("filename")
+			}
+			if p, err := store.NewPreAuth(RandString(20), "download", node.Id, options); err != nil {
 				cx.RespondWithError(http.StatusInternalServerError)
 				log.Error("err:@node_Read download_url: " + err.Error())
 			} else {
