@@ -121,7 +121,7 @@ func (node *Node) FileReader() (reader ReaderAt, err error) {
 		nodes := Nodes{}
 		if db, err := DBConnect(); err == nil {
 			defer db.Close()
-			if err := db.Find(bson.M{"id": bson.M{"$in": node.File.VirtualParts}}, &nodes, nil); err != nil {
+			if _, err := db.Find(bson.M{"id": bson.M{"$in": node.File.VirtualParts}}, &nodes, nil); err != nil {
 				return nil, err
 			}
 		}
@@ -207,7 +207,7 @@ func (node *Node) Delete() (err error) {
 	nodes := Nodes{}
 	if db, err := DBConnect(); err == nil {
 		defer db.Close()
-		if err = db.Find(bson.M{"virtual_parts": node.Id}, &nodes, nil); err != nil {
+		if _, err = db.Find(bson.M{"virtual_parts": node.Id}, &nodes, nil); err != nil {
 			return err
 		}
 		if len(nodes) != 0 {
@@ -227,7 +227,7 @@ func (node *Node) addVirtualParts(ids []string) (err error) {
 	nodes := Nodes{}
 	if db, err := DBConnect(); err == nil {
 		defer db.Close()
-		if err := db.Find(bson.M{"id": bson.M{"$in": ids}}, &nodes, nil); err != nil {
+		if _, err := db.Find(bson.M{"id": bson.M{"$in": ids}}, &nodes, nil); err != nil {
 			return err
 		}
 	} else {

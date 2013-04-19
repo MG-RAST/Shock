@@ -88,7 +88,7 @@ func LoadNodeUnauth(id string) (node *Node, err error) {
 func LoadNodes(ids []string) (nodes Nodes, err error) {
 	if db, err := DBConnect(); err == nil {
 		defer db.Close()
-		if err = db.Find(bson.M{"id": bson.M{"$in": ids}}, &nodes, nil); err == nil {
+		if _, err = db.Find(bson.M{"id": bson.M{"$in": ids}}, &nodes, nil); err == nil {
 			return nodes, err
 		} else {
 			return nil, err
