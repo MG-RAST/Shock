@@ -26,16 +26,16 @@ var (
 )
 
 type Node struct {
-	Id           string             `bson:"id" json:"id"`
-	Version      string             `bson:"version" json:"version"`
-	File         file               `bson:"file" json:"file"`
-	Attributes   interface{}        `bson:"attributes" json:"attributes"`
-	Indexes      map[string]IdxInfo `bson:"indexes" json:"indexes"`
-	Acl          acl                `bson:"acl" json:"-"`
-	VersionParts map[string]string  `bson:"version_parts" json:"-"`
-	Type         []string           `bson:"type" json:"type"`
-	Revisions    []Node             `bson:"revisions" json:"-"`
-	Relatives    []relationship     `bson:"relatives" json:"relatives"`
+	Id           string            `bson:"id" json:"id"`
+	Version      string            `bson:"version" json:"version"`
+	File         file              `bson:"file" json:"file"`
+	Attributes   interface{}       `bson:"attributes" json:"attributes"`
+	Indexes      indexes           `bson:"indexes" json:"indexes"`
+	Acl          acl               `bson:"acl" json:"-"`
+	VersionParts map[string]string `bson:"version_parts" json:"-"`
+	Tags         []string          `bson:"tags" json:"tags"`
+	Revisions    []Node            `bson:"revisions" json:"-"`
+	Linkages     []linkage         `bson:"linkage" json:"linkages"`
 }
 
 type file struct {
@@ -54,16 +54,18 @@ type partsList struct {
 	Parts  []partsFile `json:"parts"`
 }
 
-type relationship struct {
+type linkage struct {
 	Type      string   `bson: "relation" json:"relation"`
 	Ids       []string `bson:"ids" json:"ids"`
 	Operation string   `bson:"operation" json:"operation"`
 }
 
+type indexes map[string]IdxInfo
+
 type IdxInfo struct {
-	Type        string `bson: "index_type" json:"index_type"`
-	TotalUnits  int64  `bson: "total_units" json:"total_units"`
-	AvgUnitSize int64  `bson: "avg_unitsize" json:"avg_unitsize"`
+	Type        string `bson:"index_type" json:"-"`
+	TotalUnits  int64  `bson:"total_units" json:"total_units"`
+	AvgUnitSize int64  `bson:"average_unit_size" json:"average_unit_size"`
 }
 
 type partsFile []string
@@ -98,8 +100,8 @@ func (node *Node) HasIndex(index string) bool {
 }
 
 func (node *Node) HasParent() bool {
-	for _, relative := range node.Relatives {
-		if relative.Type == "parent" {
+	for _, linkage := range node.Linkages {
+		if linkage.Type == "parent" {
 			return true
 		}
 	}
@@ -488,10 +490,10 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	}
 
 	// update relatives
-	if _, hasRelation := params["relation"]; hasRelation {
-		rtype := params["relation"]
+	if _, hasRelation := params["linkage"]; hasRelation {
+		ltype := params["linkage"]
 
-		if rtype == "parent" {
+		if ltype == "parent" {
 			if node.HasParent() {
 				return errors.New(e.ProvenanceImut)
 			}
@@ -506,14 +508,14 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		if _, hasOp := params["operation"]; hasOp {
 			operation = params["operation"]
 		}
-		if err = node.UpdateRelatives(rtype, ids, operation); err != nil {
+		if err = node.UpdateLinkages(ltype, ids, operation); err != nil {
 			return err
 		}
 	}
 
-	//update node type
-	if _, hasDataType := params["datatype"]; hasDataType {
-		if err = node.UpdateDataType(params["datatype"]); err != nil {
+	//update node tags
+	if _, hasDataType := params["tags"]; hasDataType {
+		if err = node.UpdateDataTags(params["tags"]); err != nil {
 			return err
 		}
 	}
@@ -539,7 +541,7 @@ func (node *Node) Save() (err error) {
 	defer db.Close()
 	node.UpdateVersion()
 	if len(node.Revisions) == 0 || node.Revisions[len(node.Revisions)-1].Version != node.Version {
-		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Type, nil, node.Relatives}
+		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages}
 		node.Revisions = append(node.Revisions, n)
 	}
 	bsonPath := fmt.Sprintf("%s/%s.bson", node.Path(), node.Id)
@@ -633,26 +635,26 @@ func (node *Node) SetIndexInfo(indextype string, idxinfo IdxInfo) (err error) {
 	return
 }
 
-func (node *Node) UpdateRelatives(rtype string, ids string, operation string) (err error) {
-	var relative relationship
-	relative.Type = rtype
+func (node *Node) UpdateLinkages(ltype string, ids string, operation string) (err error) {
+	var link linkage
+	link.Type = ltype
 	idList := strings.Split(ids, ",")
 	for _, id := range idList {
-		relative.Ids = append(relative.Ids, id)
+		link.Ids = append(link.Ids, id)
 	}
-	relative.Operation = operation
-	node.Relatives = append(node.Relatives, relative)
+	link.Operation = operation
+	node.Linkages = append(node.Linkages, link)
 	err = node.Save()
 	return
 }
 
-func (node *Node) UpdateDataType(types string) (err error) {
-	typelist := strings.Split(types, ",")
-	for _, newtype := range typelist {
-		if contains(node.Type, newtype) {
+func (node *Node) UpdateDataTags(types string) (err error) {
+	tagslist := strings.Split(types, ",")
+	for _, newtag := range tagslist {
+		if contains(node.Tags, newtag) {
 			continue
 		}
-		node.Type = append(node.Type, newtype)
+		node.Tags = append(node.Tags, newtag)
 	}
 	err = node.Save()
 	return
