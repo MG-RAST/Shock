@@ -13,16 +13,16 @@ func (n *Nodes) GetAll(q bson.M) (err error) {
 		return
 	}
 	defer db.Close()
-	err = db.Find(q, n, nil)
+	_, err = db.Find(q, n, nil)
 	return
 }
 
-func (n *Nodes) GetAllLimitOffset(q bson.M, limit int, offset int) (err error) {
+func (n *Nodes) GetPaginated(q bson.M, limit int, offset int) (count int, err error) {
 	db, err := DBConnect()
 	if err != nil {
 		return
 	}
 	defer db.Close()
-	err = db.Find(q, n, map[string]int{"limit": limit, "offset": offset})
+	count, err = db.Find(q, n, map[string]int{"limit": limit, "offset": offset})
 	return
 }

@@ -22,7 +22,7 @@ type streamer struct {
 
 func (s *streamer) stream() (err error) {
 	s.ws.Header().Set("Content-Type", s.contentType)
-	s.ws.Header().Set("Content-Disposition", fmt.Sprintf(":attachment;filename=%s", s.filename))
+	s.ws.Header().Set("Content-Disposition", fmt.Sprintf(" attachment; filename=%s", s.filename))
 	if s.size > 0 && s.filter == nil {
 		s.ws.Header().Set("Content-Length", fmt.Sprint(s.size))
 	}

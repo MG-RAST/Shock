@@ -15,11 +15,12 @@ type PreAuth struct {
 	Id        string
 	Type      string
 	NodeId    string
+	Options   map[string]string
 	ValidTill time.Time
 }
 
-func NewPreAuth(id, t, nid string) (p *PreAuth, err error) {
-	p = &PreAuth{Id: id, Type: t, NodeId: nid, ValidTill: time.Now().AddDate(0, 0, 1)}
+func NewPreAuth(id, t, nid string, options map[string]string) (p *PreAuth, err error) {
+	p = &PreAuth{Id: id, Type: t, NodeId: nid, Options: options, ValidTill: time.Now().AddDate(0, 0, 1)}
 	if db, err := DBConnect(); err == nil {
 		defer db.Close()
 		if err = db.AddPreAuth(p); err != nil {
@@ -87,7 +88,7 @@ func LoadNodeUnauth(id string) (node *Node, err error) {
 func LoadNodes(ids []string) (nodes Nodes, err error) {
 	if db, err := DBConnect(); err == nil {
 		defer db.Close()
-		if err = db.Find(bson.M{"id": bson.M{"$in": ids}}, &nodes, nil); err == nil {
+		if _, err = db.Find(bson.M{"id": bson.M{"$in": ids}}, &nodes, nil); err == nil {
 			return nodes, err
 		} else {
 			return nil, err
