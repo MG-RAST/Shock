@@ -23,6 +23,13 @@ site=/usr/local/shock/site
 data=/usr/local/shock
 logs=/var/log/shock
 
+# Comma delimited search path available for remote path uploads. Only remote paths that prefix 
+# match one of the following will be allowed. Note: poor choices can result in security concerns.
+local_paths=N/A
+
+[External]
+site-url=http://localhost
+
 [SSL]
 enable=false
 #key=<path_to_key_file>
@@ -41,5 +48,6 @@ id=unique:true
 [Ports]
 # Ports for site/api
 # Note: use of port 80 may require root access
-site-port=80
-api-port=8000
+site-port=7444
+api-port=7445
+

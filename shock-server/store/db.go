@@ -1,6 +1,7 @@
 package store
 
 import (
+	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"labix.org/v2/mgo"
@@ -83,11 +84,17 @@ func (d *db) Upsert(node *Node) (err error) {
 	return
 }
 
-func (d *db) Find(q bson.M, results *Nodes, options map[string]int) (err error) {
-	if limit, haslimit := options["limit"]; haslimit {
-		if offset, hasoffset := options["offset"]; hasoffset {
-			err = d.Nodes.Find(q).Limit(limit).Skip(offset).All(results)
+func (d *db) Find(q bson.M, results *Nodes, options map[string]int) (count int, err error) {
+	if limit, has := options["limit"]; has {
+		if offset, has := options["offset"]; has {
+			query := d.Nodes.Find(q)
+			if count, err = query.Count(); err != nil {
+				return 0, err
+			}
+			err = query.Limit(limit).Skip(offset).All(results)
 			return
+		} else {
+			return 0, errors.New("store.db.Find options limit and offset must be used together")
 		}
 	}
 	err = d.Nodes.Find(q).All(results)

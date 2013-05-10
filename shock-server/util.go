@@ -16,6 +16,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -44,6 +45,11 @@ type checkSumCom struct {
 type urlResponse struct {
 	Url       string `json:"url"`
 	ValidTill string `json:"validtill"`
+}
+
+func ToInt(s string) (i int) {
+	i, _ = strconv.Atoi(s)
+	return
 }
 
 func RandString(l int) (s string) {
