@@ -310,7 +310,12 @@ __Note__: Authentication is required for most of these commands
 
     # view specific acls
     curl -X GET http://<host>[:<port>]/node/{id}/acl/[ read | write | delete | owner ]
-    
+
+    # changing owner (chown)
+    curl -X PUT http://<host>[:<port>]/node/{id}/acl/?owner=<email-address_or_uuid>
+    or
+    curl -X PUT http://<host>[:<port>]/node/{id}/acl/owner?users=<email-address_or_uuid>
+
     # adding user to all acls (expect owner)
     curl -X PUT http://<host>[:<port>]/node/{id}/acl/?all=<list_of_email-addresses_or_uuids>
 
@@ -319,19 +324,19 @@ __Note__: Authentication is required for most of these commands
     or
     curl -X PUT http://<host>[:<port>]/node/{id}/acl/?[ read | write | delete ]=<list_of_email-addresses_or_uuids>
     
-    example adding users to both read and write acls:
-    curl -X PUT http://<host>[:<port>]/node/{id}/acl/?read=joeblow@gmail.com,frank@gmail.com&write=joeblow@gmail.com,frank@gmail.com
+    # adding users to both read and write acls:
+    curl -X PUT http://<host>[:<port>]/node/{id}/acl/?read=<list_of_email-addresses_or_uuids>&write=<list_of_email-addresses_or_uuids>
     
     # deleting user from all acls (expect owner)
     curl -X DELETE http://<host>[:<port>]/node/{id}/acl/?all=<list_of_email-addresses_or_uuids>    
     
     # deleting user to specific acls
-    curl -X DELETE http://<host>[:<port>]/node/{id}/acl/[ read | write | delete | owner ]?users=<list_of_email-addresses_or_uuids>
+    curl -X DELETE http://<host>[:<port>]/node/{id}/acl/[ read | write | delete ]?users=<list_of_email-addresses_or_uuids>
     or
     curl -X DELETE http://<host>[:<port>]/node/{id}/acl/?[ read | write | delete ]=<list_of_email-addresses_or_uuids>
     
-    example deleting users to both read and write acls:
-    curl -X DELETE http://<host>[:<port>]/node/{id}/acl/?read=joeblow@gmail.com,frank@gmail.com&write=joeblow@gmail.com,frank@gmail.com
+    # deleting users to both read and write acls:
+    curl -X DELETE http://<host>[:<port>]/node/{id}/acl/?read=<list_of_email-addresses_or_uuids>&write=<list_of_email-addresses_or_uuids>
 
 <br>
 #### Querying ([details](#get_nodes)):
