@@ -181,7 +181,7 @@ func (n *Node) Download(opts Opts) (download io.Reader, err error) {
 		if opts.HasKey("parts") {
 			url += "&part=" + opts.Value("parts")
 		} else {
-			return nil, errors.New("missing index parameter: part")
+			return nil, errors.New("missing index parameter: parts")
 		}
 		if opts.HasKey("index_options") {
 			// index options should be in form key=value
