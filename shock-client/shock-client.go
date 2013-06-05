@@ -220,7 +220,63 @@ func main() {
 				io.Copy(os.Stdout, ih)
 			}
 		}
+	case "pdownload":
+		if len(args) < 2 {
+			helpf("pdownload requires <id>")
+		}
+		n := lib.Node{Id: args[1]}
+		if err := n.Get(); err != nil {
+			fmt.Printf("Error retrieving %s: %s\n", n.Id, err.Error())
+		}
 
+		//opts := lib.Opts{}
+		totalChunk := 0
+		if idxinfo, ok := n.Indexes["size"]; ok {
+			totalChunk = int(idxinfo.TotalUnits)
+		}
+
+		split_size := totalChunk / conf.DOWNLOAD_THREADS
+		remainder := totalChunk % conf.DOWNLOAD_THREADS
+		if remainder > 0 {
+			split_size += 1
+		}
+
+		fmt.Printf("Number of size chunks=%d, number of threads=%d, each split has %d chunks\n", totalChunk, conf.DOWNLOAD_THREADS, split_size)
+
+		var filename string
+		if len(args) == 3 {
+			filename = args[2]
+		} else {
+			filename = n.Id
+		}
+
+		oh, err := os.Create(filename)
+		if err != nil {
+			fmt.Printf("Error creating output file %s: %s\n", filename, err.Error())
+			return
+		}
+		oh.Close()
+
+		ch := make(chan int, 1)
+		for i := 0; i < conf.DOWNLOAD_THREADS; i++ {
+			start_chunk := i*split_size + 1
+			end_chunk := (i + 1) * split_size
+			if end_chunk > totalChunk {
+				end_chunk = totalChunk
+			}
+			part_string := fmt.Sprintf("%d-%d", start_chunk, end_chunk)
+
+			opts := lib.Opts{}
+			opts["index"] = "size"
+			opts["parts"] = part_string
+			//opts_list = append(opts_list, opts)
+			start_offset := (int64(start_chunk) - 1) * conf.CHUNK_SIZE
+			fmt.Printf("part_string=%s\n", part_string)
+			go downloadChunk(n, opts, filename, start_offset, ch)
+		}
+		for i := 0; i < conf.DOWNLOAD_THREADS; i++ {
+			<-ch
+		}
 	case "auth":
 		if len(args) != 2 {
 			helpf("auth requires show/set/unset")

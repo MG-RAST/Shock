@@ -2,6 +2,10 @@ package main
 
 import (
 	"errors"
+	"fmt"
+	"github.com/MG-RAST/Shock/shock-client/lib"
+	"io"
+	"os"
 )
 
 type Set map[string]bool
@@ -33,4 +37,35 @@ func fileOptions(options map[string]*string) (t string, err error) {
 		}
 	}
 	return
+}
+
+func downloadChunk(n lib.Node, opts lib.Opts, filename string, offset int64, c chan int) {
+	fmt.Printf("in downloadChunk: opts=%v, offset=%d\n", opts, offset)
+	defer fmt.Printf("leave downloadChunk: opts=%v, offset=%d\n", opts, offset)
+	oh, err := os.OpenFile(filename, os.O_RDWR, 0644)
+	if err != nil {
+		fmt.Printf("Error open output file %s: %s\n", filename, err.Error())
+		return
+	}
+	defer oh.Close()
+
+	_, err = oh.Seek(offset, os.SEEK_SET)
+	if err != nil {
+		fmt.Printf("Error seek output file %s: %s\n", filename, err.Error())
+	}
+
+	if ih, err := n.Download(opts); err != nil {
+		fmt.Printf("Error downloading %s: %s\n", n.Id, err.Error())
+	} else {
+		if s, err := io.Copy(oh, ih); err != nil {
+			fmt.Printf("Error writing output: %s\n", err.Error())
+		} else {
+			fmt.Printf("Success. Wrote %d bytes\n", s)
+		}
+	}
+	c <- 1
+}
+
+func testGoroutin(id int) {
+	fmt.Printf("in testGoroutine %d\n", id)
 }

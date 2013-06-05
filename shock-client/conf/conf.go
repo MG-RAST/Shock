@@ -24,12 +24,15 @@ type auth struct {
 }
 
 var (
-	Auth           = auth{}
-	Server         = server{}
-	Cache          = cache{}
-	ConfFile       = ""
-	Flags          = map[string]*string{}
-	Examples *bool = nil
+	Auth                   = auth{}
+	Server                 = server{}
+	Cache                  = cache{}
+	ConfFile               = ""
+	Flags                  = map[string]*string{}
+	Examples         *bool = nil
+	DOWNLOAD_THREADS       = 4
+	// Default Chunksize for size virtual index
+	CHUNK_SIZE int64 = 1048576
 )
 
 func init() {
