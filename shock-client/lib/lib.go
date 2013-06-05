@@ -178,8 +178,8 @@ func (n *Node) Download(opts Opts) (download io.Reader, err error) {
 	url := conf.Server.Url + "/node/" + n.Id + "?download"
 	if opts.HasKey("index") {
 		url += "&index=" + opts.Value("index")
-		if opts.HasKey("part") {
-			url += "&part=" + opts.Value("part")
+		if opts.HasKey("parts") {
+			url += "&part=" + opts.Value("parts")
 		} else {
 			return nil, errors.New("missing index parameter: part")
 		}
