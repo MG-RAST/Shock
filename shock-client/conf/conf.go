@@ -45,6 +45,7 @@ func init() {
 	Flags["parts"] = flag.String("parts", "", "")
 	Flags["part"] = flag.String("part", "", "")
 	Flags["file"] = flag.String("file", "", "")
+	Flags["threads"] = flag.String("threads", "", "")
 	Flags["virtual_file"] = flag.String("virtual_file", "", "")
 	Flags["remote_path"] = flag.String("remote_path", "", "")
 	Flags["index"] = flag.String("index", "", "")

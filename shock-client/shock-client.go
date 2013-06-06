@@ -7,6 +7,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-client/lib"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -229,19 +230,34 @@ func main() {
 			fmt.Printf("Error retrieving %s: %s\n", n.Id, err.Error())
 		}
 
-		//opts := lib.Opts{}
-		totalChunk := 0
-		if idxinfo, ok := n.Indexes["size"]; ok {
-			totalChunk = int(idxinfo.TotalUnits)
+		totalChunk := int(n.File.Size / conf.CHUNK_SIZE)
+		m := n.File.Size % conf.CHUNK_SIZE
+		if m != 0 {
+			totalChunk += 1
 		}
 
-		split_size := totalChunk / conf.DOWNLOAD_THREADS
-		remainder := totalChunk % conf.DOWNLOAD_THREADS
+		var splits int
+		if ne(conf.Flags["threads"]) {
+			if th, err := strconv.Atoi(*conf.Flags["threads"]); err != nil {
+				splits = conf.DOWNLOAD_THREADS
+			} else {
+				splits = th
+			}
+		} else {
+			splits = conf.DOWNLOAD_THREADS
+		}
+
+		if totalChunk < splits {
+			splits = totalChunk
+		}
+
+		fmt.Printf("downloading using %d threads\n", splits)
+
+		split_size := totalChunk / splits
+		remainder := totalChunk % splits
 		if remainder > 0 {
 			split_size += 1
 		}
-
-		fmt.Printf("Number of size chunks=%d, number of threads=%d, each split has %d chunks\n", totalChunk, conf.DOWNLOAD_THREADS, split_size)
 
 		var filename string
 		if len(args) == 3 {
@@ -258,23 +274,20 @@ func main() {
 		oh.Close()
 
 		ch := make(chan int, 1)
-		for i := 0; i < conf.DOWNLOAD_THREADS; i++ {
+		for i := 0; i < splits; i++ {
 			start_chunk := i*split_size + 1
 			end_chunk := (i + 1) * split_size
 			if end_chunk > totalChunk {
 				end_chunk = totalChunk
 			}
 			part_string := fmt.Sprintf("%d-%d", start_chunk, end_chunk)
-
 			opts := lib.Opts{}
 			opts["index"] = "size"
 			opts["parts"] = part_string
-			//opts_list = append(opts_list, opts)
 			start_offset := (int64(start_chunk) - 1) * conf.CHUNK_SIZE
-			fmt.Printf("part_string=%s\n", part_string)
 			go downloadChunk(n, opts, filename, start_offset, ch)
 		}
-		for i := 0; i < conf.DOWNLOAD_THREADS; i++ {
+		for i := 0; i < splits; i++ {
 			<-ch
 		}
 	case "auth":

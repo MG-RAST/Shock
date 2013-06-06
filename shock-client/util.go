@@ -40,12 +40,9 @@ func fileOptions(options map[string]*string) (t string, err error) {
 }
 
 func downloadChunk(n lib.Node, opts lib.Opts, filename string, offset int64, c chan int) {
-	fmt.Printf("in downloadChunk: opts=%v, offset=%d\n", opts, offset)
-	defer fmt.Printf("leave downloadChunk: opts=%v, offset=%d\n", opts, offset)
 	oh, err := os.OpenFile(filename, os.O_RDWR, 0644)
 	if err != nil {
 		fmt.Printf("Error open output file %s: %s\n", filename, err.Error())
-		return
 	}
 	defer oh.Close()
 
@@ -64,8 +61,4 @@ func downloadChunk(n lib.Node, opts lib.Opts, filename string, offset int64, c c
 		}
 	}
 	c <- 1
-}
-
-func testGoroutin(id int) {
-	fmt.Printf("in testGoroutine %d\n", id)
 }

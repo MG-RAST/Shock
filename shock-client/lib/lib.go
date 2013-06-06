@@ -189,8 +189,6 @@ func (n *Node) Download(opts Opts) (download io.Reader, err error) {
 		}
 	}
 
-	fmt.Printf("Download url=%s\n", url)
-
 	res, err := client.Get(url, client.Header{}, nil)
 	if err == nil {
 		if res.StatusCode == 200 {
