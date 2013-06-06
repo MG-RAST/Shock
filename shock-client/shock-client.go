@@ -41,6 +41,12 @@ download <id> [<output>]
     
     Note: if output is not present the download will be written to stdout.
     
+pdownload <id> [<output>]
+    -threads=<i>                number of threads to use for downloading (default 4)
+    
+    Note: parallel download for the whole file. if output is not present the download will 
+          be written to a file named as the shock node id.
+    
 acl <add/rm> <all/read/write/delete> <users> <id>
     Note: users are in the form of comma delimited list of email address or uuids 
 
