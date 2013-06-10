@@ -1,8 +1,8 @@
 // Package to read and write FASTA format files
 package fasta
 
-// Modified under the terms of GPL3 from 
-// Dan Kortschak github.com/kortschak/BioGo 
+// Modified under the terms of GPL3 from
+// Dan Kortschak github.com/kortschak/BioGo
 
 import (
 	"bufio"

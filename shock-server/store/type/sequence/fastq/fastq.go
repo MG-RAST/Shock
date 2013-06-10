@@ -1,7 +1,7 @@
 // Package to read and write FASTQ format files
 package fastq
 
-// Modified under the terms of GPL3 from 
+// Modified under the terms of GPL3 from
 // Dan Kortschak github.com/kortschak/BioGo
 
 import (

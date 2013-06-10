@@ -62,7 +62,7 @@ func (mr *multiReaderAt) ReadAt(p []byte, off int64) (n int, err error) {
 		}
 	}
 
-	// find end    
+	// find end
 	if off+length > mr.size {
 		endF = len(mr.readers) - 1
 		endPos = mr.size - mr.boundaries[endF].start
