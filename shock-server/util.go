@@ -235,11 +235,15 @@ func AssetsDir(cx *goweb.Context) {
 func LogRequest(req *http.Request) {
 	host, _, _ := net.SplitHostPort(req.RemoteAddr)
 	// failed attempt to get the host in ipv4
-	//addrs, _ := net.LookupIP(host)	
+	//addrs, _ := net.LookupIP(host)
 	//fmt.Println(addrs)
 	suffix := ""
 	if _, auth := req.Header["Authorization"]; auth {
-		suffix = " AUTH"
+		suffix += " AUTH"
+	}
+
+	if l, has := req.Header["Content-Length"]; has {
+		suffix += " Content-Length: " + l[0]
 	}
 	url := ""
 	if req.URL.RawQuery != "" {

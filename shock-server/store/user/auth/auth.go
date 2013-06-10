@@ -22,7 +22,7 @@ func Authenticate(header string) (u *user.User, err error) {
 		switch AuthHeaderType(header) {
 		case "Globus-Goauthtoken", "OAuth":
 			// check cache
-			// auth from server			
+			// auth from server
 			if u, err = globus.AuthToken(strings.Split(header, " ")[1]); err == nil {
 				return
 			} else {

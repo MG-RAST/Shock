@@ -44,7 +44,7 @@ func streamDownload(cx *goweb.Context, node *store.Node, filename string) {
 	query := &Query{list: cx.Request.URL.Query()}
 	nf, err := node.FileReader()
 	if err != nil {
-		// File not found or some sort of file read error. 
+		// File not found or some sort of file read error.
 		// Probably deserves more checking
 		log.Error("err:@preAuth node.FileReader: " + err.Error())
 		cx.RespondWithError(http.StatusBadRequest)

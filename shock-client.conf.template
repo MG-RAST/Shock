@@ -3,3 +3,13 @@ dir=/tmp
 
 [Server]
 url=http://shock.example.com
+
+[Auth]
+# defaults to local user management with basis auth
+#type=basic
+
+# comment line above and uncomment below to use Globus Online as auth provider
+type=globus 
+token_url=https://nexus.api.globusonline.org/goauth/token?grant_type=client_credentials
+profile_url=https://nexus.api.globusonline.org/users
+

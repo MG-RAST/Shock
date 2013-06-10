@@ -299,7 +299,7 @@ func (node *Node) addPart(n int, file *FormFile) (err error) {
 		return
 	}
 
-	// rewrite	
+	// rewrite
 	err = node.writeParts(p)
 	if err != nil {
 		return
@@ -394,7 +394,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	// 2. has params[parts] (partial upload support)
 	// 3. has params[type] & params[source] (v_node)
 	// 4. has params[path] (set from local path)
-	// 
+	//
 	// All condition allow setting of attributes
 
 	_, isRegularUpload := files["upload"]
@@ -414,7 +414,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		return errors.New("type parameter incompatible with path parmeter")
 	}
 
-	// Check if immutiable 
+	// Check if immutiable
 	if (isRegularUpload || isPartialUpload || isVirtualNode || isPathUpload) && node.HasFile() {
 		return errors.New(e.FileImut)
 	}

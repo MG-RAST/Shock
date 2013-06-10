@@ -18,6 +18,7 @@ _testmain.go
 test.out 
 build.out
 _obj
+.project
 
 # bin 
 pkg
