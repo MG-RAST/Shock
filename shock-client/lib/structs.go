@@ -24,16 +24,16 @@ type WAcl struct {
 }
 
 type Node struct {
-	Id           string             `bson:"id" json:"id"`
-	Version      string             `bson:"version" json:"version"`
-	File         file               `bson:"file" json:"file"`
-	Attributes   interface{}        `bson:"attributes" json:"attributes"`
-	Indexes      map[string]IdxInfo `bson:"indexes" json:"indexes"`
-	Acl          acl                `bson:"acl" json:"acl"`
-	VersionParts map[string]string  `bson:"version_parts" json:"-"`
-	Type         []string           `bson:"type" json:"type"`
-	Revisions    []Node             `bson:"revisions" json:"-"`
-	Relatives    []relationship     `bson:"relatives" json:"relatives"`
+	Id           string            `bson:"id" json:"id"`
+	Version      string            `bson:"version" json:"version"`
+	File         file              `bson:"file" json:"file"`
+	Attributes   interface{}       `bson:"attributes" json:"attributes"`
+	Indexes      indexes           `bson:"indexes" json:"indexes"`
+	Acl          acl               `bson:"acl" json:"-"`
+	VersionParts map[string]string `bson:"version_parts" json:"-"`
+	Tags         []string          `bson:"tags" json:"tags"`
+	Revisions    []Node            `bson:"revisions" json:"-"`
+	Linkages     []linkage         `bson:"linkage" json:"linkages"`
 }
 
 type file struct {
@@ -52,16 +52,18 @@ type partsList struct {
 	Parts  []partsFile `json:"parts"`
 }
 
-type relationship struct {
+type linkage struct {
 	Type      string   `bson: "relation" json:"relation"`
 	Ids       []string `bson:"ids" json:"ids"`
 	Operation string   `bson:"operation" json:"operation"`
 }
 
+type indexes map[string]IdxInfo
+
 type IdxInfo struct {
-	Type        string `bson: "index_type" json:"index_type"`
-	TotalUnits  int64  `bson: "total_units" json:"total_units"`
-	AvgUnitSize int64  `bson: "avg_unitsize" json:"avg_unitsize"`
+	Type        string `bson:"index_type" json:"-"`
+	TotalUnits  int64  `bson:"total_units" json:"total_units"`
+	AvgUnitSize int64  `bson:"average_unit_size" json:"average_unit_size"`
 }
 
 type acl struct {

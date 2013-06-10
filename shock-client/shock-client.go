@@ -7,6 +7,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-client/lib"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -39,6 +40,12 @@ download <id> [<output>]
     -index_options=<o>          Additional index options. Varies by index type
     
     Note: if output is not present the download will be written to stdout.
+    
+pdownload <id> [<output>]
+    -threads=<i>                number of threads to use for downloading (default 4)
+    
+    Note: parallel download for the whole file. if output is not present the download will 
+          be written to a file named as the shock node id.
     
 acl <add/rm> <all/read/write/delete> <users> <id>
     Note: users are in the form of comma delimited list of email address or uuids 
@@ -220,7 +227,75 @@ func main() {
 				io.Copy(os.Stdout, ih)
 			}
 		}
+	case "pdownload":
+		if len(args) < 2 {
+			helpf("pdownload requires <id>")
+		}
+		n := lib.Node{Id: args[1]}
+		if err := n.Get(); err != nil {
+			fmt.Printf("Error retrieving %s: %s\n", n.Id, err.Error())
+		}
 
+		totalChunk := int(n.File.Size / conf.CHUNK_SIZE)
+		m := n.File.Size % conf.CHUNK_SIZE
+		if m != 0 {
+			totalChunk += 1
+		}
+
+		var splits int
+		if ne(conf.Flags["threads"]) {
+			if th, err := strconv.Atoi(*conf.Flags["threads"]); err != nil {
+				splits = conf.DOWNLOAD_THREADS
+			} else {
+				splits = th
+			}
+		} else {
+			splits = conf.DOWNLOAD_THREADS
+		}
+
+		if totalChunk < splits {
+			splits = totalChunk
+		}
+
+		fmt.Printf("downloading using %d threads\n", splits)
+
+		split_size := totalChunk / splits
+		remainder := totalChunk % splits
+		if remainder > 0 {
+			split_size += 1
+		}
+
+		var filename string
+		if len(args) == 3 {
+			filename = args[2]
+		} else {
+			filename = n.Id
+		}
+
+		oh, err := os.Create(filename)
+		if err != nil {
+			fmt.Printf("Error creating output file %s: %s\n", filename, err.Error())
+			return
+		}
+		oh.Close()
+
+		ch := make(chan int, 1)
+		for i := 0; i < splits; i++ {
+			start_chunk := i*split_size + 1
+			end_chunk := (i + 1) * split_size
+			if end_chunk > totalChunk {
+				end_chunk = totalChunk
+			}
+			part_string := fmt.Sprintf("%d-%d", start_chunk, end_chunk)
+			opts := lib.Opts{}
+			opts["index"] = "size"
+			opts["parts"] = part_string
+			start_offset := (int64(start_chunk) - 1) * conf.CHUNK_SIZE
+			go downloadChunk(n, opts, filename, start_offset, ch)
+		}
+		for i := 0; i < splits; i++ {
+			<-ch
+		}
 	case "auth":
 		if len(args) != 2 {
 			helpf("auth requires show/set/unset")
