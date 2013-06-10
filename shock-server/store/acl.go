@@ -2,8 +2,8 @@ package store
 
 import ()
 
-// Node.acl struct
-type acl struct {
+// Node.Acl struct
+type Acl struct {
 	Owner  string   `bson:"owner" json:"owner"`
 	Read   []string `bson:"read" json:"read"`
 	Write  []string `bson:"write" json:"write"`
@@ -12,12 +12,12 @@ type acl struct {
 
 type rights map[string]bool
 
-func (a *acl) SetOwner(uuid string) {
+func (a *Acl) SetOwner(uuid string) {
 	a.Owner = uuid
 	return
 }
 
-func (a *acl) UnSet(uuid string, r rights) {
+func (a *Acl) UnSet(uuid string, r rights) {
 	if r["read"] {
 		a.Read = del(a.Read, uuid)
 	}
@@ -30,7 +30,7 @@ func (a *acl) UnSet(uuid string, r rights) {
 	return
 }
 
-func (a *acl) Set(uuid string, r rights) {
+func (a *Acl) Set(uuid string, r rights) {
 	if r["read"] {
 		a.Read = insert(a.Read, uuid)
 	}
@@ -43,7 +43,7 @@ func (a *acl) Set(uuid string, r rights) {
 	return
 }
 
-func (a *acl) Check(uuid string) (r rights) {
+func (a *Acl) Check(uuid string) (r rights) {
 	r = rights{"read": false, "write": false, "delete": false}
 	acls := map[string][]string{"read": a.Read, "write": a.Write, "delete": a.Delete}
 	for k, v := range acls {
