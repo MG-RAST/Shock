@@ -37,7 +37,7 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 		return
 	}
 
-	// Fake public user 
+	// Fake public user
 	if u == nil {
 		if conf.ANON_WRITE {
 			u = &user.User{Uuid: ""}
@@ -47,12 +47,12 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 		}
 	}
 
-	// Parse uploaded form 
+	// Parse uploaded form
 	params, files, err := ParseMultipartForm(cx.Request)
 	if err != nil {
-		// If not multipart/form-data it will create an empty node. 
+		// If not multipart/form-data it will create an empty node.
 		// TODO: create another request parser for non-multipart request
-		// to handle this cleaner.		
+		// to handle this cleaner.
 		if err.Error() == "request Content-Type isn't multipart/form-data" {
 			node, err := store.CreateNodeUpload(u, params, files)
 			if err != nil {
@@ -70,7 +70,7 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 				return
 			}
 		} else {
-			// Some error other than request encoding. Theoretically 
+			// Some error other than request encoding. Theoretically
 			// could be a lost db connection between user lookup and parsing.
 			// Blame the user, Its probaby their fault anyway.
 			log.Error("Error parsing form: " + err.Error())
@@ -78,7 +78,7 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 			return
 		}
 	}
-	// Create node	
+	// Create node
 	node, err := store.CreateNodeUpload(u, params, files)
 	if err != nil {
 		log.Error("err@node_CreateNodeUpload: " + err.Error())
@@ -141,7 +141,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 		return
 	}
 
-	// Fake public user 
+	// Fake public user
 	if u == nil {
 		if conf.ANON_READ {
 			u = &user.User{Uuid: ""}
@@ -196,7 +196,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 			filename = query.Value("filename")
 		}
 
-		//_, chunksize := 
+		//_, chunksize :=
 		// ?index=foo
 		if query.Has("index") {
 			//handling bam file
@@ -276,7 +276,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 		} else {
 			nf, err := node.FileReader()
 			if err != nil {
-				// File not found or some sort of file read error. 
+				// File not found or some sort of file read error.
 				// Probably deserves more checking
 				log.Error("err:@node_Read node.FileReader: " + err.Error())
 				cx.RespondWithError(http.StatusBadRequest)
@@ -311,7 +311,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 			}
 		}
 	} else {
-		// Base case respond with node in json	
+		// Base case respond with node in json
 		cx.RespondWithData(node)
 	}
 }
@@ -351,7 +351,7 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 	}
 
 	// Gather params to make db query. Do not include the
-	// following list.	
+	// following list.
 	paramlist := map[string]int{"limit": 1, "offset": 1, "query": 1, "querynode": 1}
 	if query.Has("query") {
 		for key, val := range query.All() {
@@ -395,7 +395,7 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 	return
 }
 
-// PUT: /node/{id} -> multipart-form 
+// PUT: /node/{id} -> multipart-form
 func (cr *NodeController) Update(id string, cx *goweb.Context) {
 	// Log Request and check for Auth
 	LogRequest(cx.Request)
@@ -408,7 +408,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 	// Gather query params
 	query := &Query{list: cx.Request.URL.Query()}
 
-	// Fake public user 
+	// Fake public user
 	if u == nil {
 		u = &user.User{Uuid: ""}
 	}

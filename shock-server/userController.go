@@ -22,7 +22,7 @@ func (cr *UserController) Options(cx *goweb.Context) {
 }
 
 // POST: /user
-// To create a new user make a empty POST to /user with user:password 
+// To create a new user make a empty POST to /user with user:password
 // Basic Auth encoded in the header. Return new user object.
 func (cr *UserController) Create(cx *goweb.Context) {
 	// Log Request
@@ -107,7 +107,7 @@ func (cr *UserController) Read(id string, cx *goweb.Context) {
 		}
 	}
 	// Any user can access their own user info. Only admins can
-	// access other's info	
+	// access other's info
 	if u.Uuid == id {
 		cx.RespondWithData(u)
 		return
@@ -164,7 +164,7 @@ func (cr *UserController) ReadMany(cx *goweb.Context) {
 	}
 }
 
-// PUT: /user/{id} 
+// PUT: /user/{id}
 func (cr *UserController) Update(id string, cx *goweb.Context) {
 	LogRequest(cx.Request)
 	cx.RespondWithError(http.StatusNotImplemented)

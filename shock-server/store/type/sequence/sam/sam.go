@@ -141,7 +141,7 @@ func (self *Writer) Write(s *seq.Seq) (n int, err error) {
 	return Format(s, self.w)
 }
 
-//To-do: not finished 
+//To-do: not finished
 //Format a single sequence into sam string
 func Format(s *seq.Seq, w io.Writer) (n int, err error) {
 	return w.Write([]byte(string(s.Seq) + "\n"))

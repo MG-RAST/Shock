@@ -55,7 +55,7 @@ func init() {
 	c, err := config.ReadDefault(ConfFile)
 	handle(err)
 
-	// Cache	
+	// Cache
 	Cache.Dir, err = c.String("Cache", "dir")
 	Cache.MaxConnections, err = c.Int("Cache", "max_connections")
 
