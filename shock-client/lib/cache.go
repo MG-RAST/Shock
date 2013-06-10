@@ -1,9 +1,9 @@
-package cache
+package lib
 
 /*
    shock client package
        - async (cache)
-       - get 
+       - get
        - put (slow bleed)
        - invalidate
 */
@@ -11,17 +11,14 @@ package cache
 import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-client/conf"
-	"math/rand"
 	"os"
-	"time"
 )
 
 type Cache struct {
-	Dir         string
-	Server      string
-	getChan     chan message
-	putChan     chan message
-	connectPool chan bool
+	Dir     string
+	Server  string
+	getChan chan message
+	putChan chan message
 }
 
 type message struct {
@@ -31,27 +28,26 @@ type message struct {
 
 func New() (c *Cache, err error) {
 	c = &Cache{
-		Dir:         conf.Cache.Dir,
-		Server:      conf.Server.Url,
-		getChan:     make(chan message),
-		putChan:     make(chan message),
-		connectPool: make(chan bool, conf.Cache.MaxConnections),
+		Dir:     conf.Cache.Dir,
+		Server:  conf.Server.Url,
+		getChan: make(chan message),
+		putChan: make(chan message),
 	}
-	go func() {
-		for {
-			select {
-			case m := <-c.getChan:
-				//c.connectPool
 
-				time.Sleep(time.Duration(rand.Intn(1e3)) * time.Millisecond)
-				if m.wait != nil {
-					m.wait <- true
+	for i := 0; i < conf.Cache.MaxConnections; i++ {
+		go func() {
+			for {
+				select {
+				case m := <-c.getChan:
+					fmt.Println("get: Grabbing Object: " + m.str)
+					fmt.Println("get: Splitting into part: " + m.str)
+				case m := <-c.putChan:
+					fmt.Println("put: Spliting: " + m.str)
+					fmt.Println("put: Dumping to connectionPool: " + m.str)
 				}
-			case m := <-c.putChan:
-				fmt.Println("Running: put:" + m.str)
 			}
-		}
-	}()
+		}()
+	}
 	return
 }
 
