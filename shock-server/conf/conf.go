@@ -71,7 +71,7 @@ var (
 	PERF_LOG = false
 )
 
-func init() {
+func Initialize() {
 	flag.StringVar(&CONFIG_FILE, "conf", "/usr/local/shock/conf/shock.cfg", "path to config file")
 	flag.StringVar(&RELOAD, "reload", "", "path or url to shock data. WARNING this will drop all current data.")
 	flag.Parse()
