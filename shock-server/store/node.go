@@ -31,7 +31,7 @@ type Node struct {
 	File         file              `bson:"file" json:"file"`
 	Attributes   interface{}       `bson:"attributes" json:"attributes"`
 	Indexes      indexes           `bson:"indexes" json:"indexes"`
-	Acl          acl               `bson:"acl" json:"-"`
+	Acl          Acl               `bson:"acl" json:"-"`
 	VersionParts map[string]string `bson:"version_parts" json:"-"`
 	Tags         []string          `bson:"tags" json:"tags"`
 	Revisions    []Node            `bson:"revisions" json:"-"`
@@ -396,6 +396,10 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	// 4. has params[path] (set from local path)
 	//
 	// All condition allow setting of attributes
+
+	if _, uploadMisplaced := params["upload"]; uploadMisplaced {
+		return errors.New("upload form field must be file encoded.")
+	}
 
 	_, isRegularUpload := files["upload"]
 	_, isPartialUpload := params["parts"]

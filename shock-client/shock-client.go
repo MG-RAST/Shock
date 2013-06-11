@@ -128,6 +128,7 @@ func main() {
 		helpf("")
 	}
 
+	setToken(true)
 	switch args[0] {
 	case "create", "update":
 		n := lib.Node{}
@@ -218,7 +219,7 @@ func main() {
 		}
 		if splits == 1 {
 			opts := lib.Opts{}
-			opts["updload_type"] = "full"
+			opts["upload_type"] = "full"
 			opts["full"] = filename
 			if err := n.Create(opts); err != nil {
 				fmt.Printf("Error creating node: %s\n", err.Error())
@@ -232,8 +233,6 @@ func main() {
 			opts["parts"] = strconv.Itoa(splits)
 			if err := n.Create(opts); err != nil {
 				fmt.Printf("Error creating node: %s\n", err.Error())
-			} else {
-				n.PP()
 			}
 
 			//calculate split size
@@ -426,7 +425,6 @@ func main() {
 		if len(args) != 5 {
 			helpf("acl requires 4 arguments")
 		}
-		setToken(true)
 		if err := acl(args[1], args[2], args[3], args[4]); err != nil {
 			handle(err)
 		}
@@ -434,7 +432,6 @@ func main() {
 		if len(args) != 3 {
 			helpf("chown requires <user> and <id>")
 		}
-		setToken(true)
 		if err := acl("chown", "", args[1], args[2]); err != nil {
 			handle(err)
 		}

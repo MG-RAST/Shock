@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	log = logger.New()
+	log *logger.Logger
 )
 
 func launchSite(control chan int, port int) {
@@ -61,6 +61,8 @@ func launchAPI(control chan int, port int) {
 }
 
 func main() {
+	conf.Initialize()
+	log = logger.New()
 	printLogo()
 	conf.Print()
 

@@ -31,7 +31,7 @@ func TestDownload(t *testing.T) {
 	    f, _ := ioutil.TempFile("/tmp", "test-download")
         if w, err := io.Copy(f, fh); err == nil {
             fmt.Printf("Full file: %d bytes\n", w)
-        }		
+        }
 	}
 
     if fh, err := n.Download(Opts{"index": "size", "index_options": "chunksize=1024", "part": "1"}); err != nil {
@@ -40,7 +40,7 @@ func TestDownload(t *testing.T) {
         f, _ := ioutil.TempFile("/tmp", "test-download")
         if w, err := io.Copy(f, fh); err == nil {
             fmt.Printf("Size index 1024 btyes: %d bytes\n", w)
-        }		
+        }
     }
 }
 
