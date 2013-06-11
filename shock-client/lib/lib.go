@@ -122,7 +122,7 @@ func (n *Node) createOrUpdate(opts Opts) (err error) {
 		case "part":
 			if opts.HasKey("part") && opts.HasKey("file") {
 				println(opts.Value("part"), opts.Value("file"))
-				form.AddParam(opts.Value("part"), opts.Value("file"))
+				form.AddFile(opts.Value("part"), opts.Value("file"))
 			} else {
 				return errors.New("missing partial upload parameter: part or file")
 			}
