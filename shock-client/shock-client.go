@@ -25,7 +25,13 @@ create
     -full=<u>                   Path to file
     -parts=<p>                  Number of parts to be uploaded
     -virtual_file=<s>           Comma seperated list of node ids
-    -remote_path=<p>            Remote file path 
+    -remote_path=<p>            Remote file path
+    
+pcreate 
+    -full=<u>                   Path to file
+    -threads=<i>                number of threads to use for uploading (default 4)
+    
+    Note: parallel uploading for the whole file.
 
 update <id>
     -part=<p> -file=<f>         The part number to be uploaded and path to file
@@ -180,6 +186,94 @@ func main() {
 				}
 			}
 		}
+	case "pcreate":
+		n := lib.Node{}
+		var filename string
+		if ne(conf.Flags["full"]) {
+			filename = (*conf.Flags["full"])
+		} else {
+			helpf("pcreate requires file path: -full=<u>")
+		}
+
+		var filesize int64
+		if fi, err := os.Stat(filename); err == nil {
+			filesize = fi.Size()
+		} else {
+			helpf(err.Error())
+		}
+
+		totalChunk := int(filesize / conf.CHUNK_SIZE)
+		m := filesize % conf.CHUNK_SIZE
+		if m != 0 {
+			totalChunk += 1
+		}
+		splits := conf.DOWNLOAD_THREADS
+		if ne(conf.Flags["threads"]) {
+			if th, err := strconv.Atoi(*conf.Flags["threads"]); err == nil {
+				splits = th
+			}
+		}
+		if totalChunk < splits {
+			splits = totalChunk
+		}
+		if splits == 1 {
+			opts := lib.Opts{}
+			opts["updload_type"] = "full"
+			opts["full"] = filename
+			if err := n.Create(opts); err != nil {
+				fmt.Printf("Error creating node: %s\n", err.Error())
+			} else {
+				n.PP()
+			}
+		} else {
+			//create parts
+			opts := lib.Opts{}
+			opts["upload_type"] = "parts"
+			opts["parts"] = strconv.Itoa(splits)
+			if err := n.Create(opts); err != nil {
+				fmt.Printf("Error creating node: %s\n", err.Error())
+			} else {
+				n.PP()
+			}
+
+			//calculate split size
+			splitsize := filesize / int64(splits)
+			if filesize%int64(splits) != 0 {
+				splitsize += 1
+			}
+
+			origf, err := os.Open(filename)
+			if err != nil {
+				fmt.Printf("Error open file: %s\n", err.Error())
+			}
+			ch := make(chan int, 1)
+			for i := 0; i < splits; i++ {
+				opts := lib.Opts{}
+				opts["upload_type"] = "part"
+				opts["part"] = strconv.Itoa(i + 1)
+
+				tmpfname := fmt.Sprintf("%s_%d", filename, i+1)
+				tmpf, err := os.Create(tmpfname)
+				if err != nil {
+					fmt.Printf("Error create temp file: %s\n", err.Error())
+				}
+
+				io.CopyN(tmpf, origf, int64(splitsize))
+				tmpf.Close()
+
+				opts["file"] = tmpfname
+
+				go uploadChunk(n, opts, tmpfname, ch)
+			}
+			origf.Close()
+			fmt.Printf("Uploading using %d threads...\n", splits)
+			for i := 0; i < splits; i++ {
+				<-ch
+			}
+			n.Get()
+			n.PP()
+		}
+
 	case "get":
 		if len(args) != 2 {
 			helpf("get requires <id>")
@@ -241,18 +335,16 @@ func main() {
 		if m != 0 {
 			totalChunk += 1
 		}
-
-		var splits int
-		if ne(conf.Flags["threads"]) {
-			if th, err := strconv.Atoi(*conf.Flags["threads"]); err != nil {
-				splits = conf.DOWNLOAD_THREADS
-			} else {
-				splits = th
-			}
-		} else {
-			splits = conf.DOWNLOAD_THREADS
+		if totalChunk < 1 {
+			totalChunk = 1
 		}
 
+		splits := conf.DOWNLOAD_THREADS
+		if ne(conf.Flags["threads"]) {
+			if th, err := strconv.Atoi(*conf.Flags["threads"]); err == nil {
+				splits = th
+			}
+		}
 		if totalChunk < splits {
 			splits = totalChunk
 		}
