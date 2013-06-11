@@ -397,9 +397,9 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	//
 	// All condition allow setting of attributes
 
-    if _, uploadMisplaced := params["upload"]; uploadMisplaced {
-        return errors.New("upload form field must be file encoded.")
-    }
+	if _, uploadMisplaced := params["upload"]; uploadMisplaced {
+		return errors.New("upload form field must be file encoded.")
+	}
 
 	_, isRegularUpload := files["upload"]
 	_, isPartialUpload := params["parts"]
