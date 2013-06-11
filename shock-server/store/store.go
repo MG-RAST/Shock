@@ -147,7 +147,7 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 		node.Acl.SetOwner(u.Uuid)
 		node.Acl.Set(u.Uuid, rights{"read": true, "write": true, "delete": true})
 	} else {
-		node.Acl = acl{Owner: "", Read: make([]string, 0), Write: make([]string, 0), Delete: make([]string, 0)}
+		node.Acl = Acl{Owner: "", Read: make([]string, 0), Write: make([]string, 0), Delete: make([]string, 0)}
 	}
 	err = node.Mkdir()
 	if err != nil {

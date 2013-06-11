@@ -1,4 +1,4 @@
-package cache
+package lib
 
 import (
 	"os"
