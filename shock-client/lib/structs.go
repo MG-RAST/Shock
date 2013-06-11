@@ -14,19 +14,19 @@ type User struct {
 }
 
 type Wrapper struct {
-	Data  interface{} `json:"D"`
-	Error *[]string   `json:"E"`
+	Data  interface{} `json:"data"`
+	Error *[]string   `json:"error"`
 	//status already parsed in res.Status
 }
 
 type WNode struct {
-	Data  *Node     `json:"D"`
-	Error *[]string `json:"E"`
+	Data  *Node     `json:"data"`
+	Error *[]string `json:"error"`
 }
 
 type WAcl struct {
-	Data  *store.Acl `json:"D"`
-	Error *[]string  `json:"E"`
+	Data  *store.Acl `json:"data"`
+	Error *[]string  `json:"error"`
 }
 
 type Token struct {

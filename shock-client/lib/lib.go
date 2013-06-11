@@ -5,14 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-client/conf"
-	client "github.com/MG-RAST/Shock/shock-client/lib/httpclient"
+	client "github.com/jaredwilkening/httpclient"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os/user"
 	"strconv"
-	"syscall"
-	"time"
 )
 
 type Opts map[string]string
@@ -47,43 +44,6 @@ func OAuthToken(username, password string) (t *Token, err error) {
 		return nil, err
 	}
 	return
-}
-
-func (t *Token) ExpiresInDays() int {
-	d := time.Duration(t.ExpiresIn) * time.Second
-	return int(d.Hours()) / 24
-}
-
-func (t *Token) Path() (path string) {
-	u, _ := user.Current()
-	return u.HomeDir + "/.shock-client.token"
-}
-
-func (t *Token) Delete() (err error) {
-	if err := syscall.Unlink(t.Path()); err != nil {
-		if err.Error() == "no such file or directory" {
-			return nil
-		} else {
-			return err
-		}
-	}
-	return nil
-}
-
-func (t *Token) Load() (err error) {
-	if f, err := ioutil.ReadFile(t.Path()); err != nil {
-		return err
-	} else {
-		if err = json.Unmarshal(f, &t); err != nil {
-			return err
-		}
-	}
-	return
-}
-
-func (t *Token) Store() (err error) {
-	m, _ := json.Marshal(t)
-	return ioutil.WriteFile(t.Path(), m, 0600)
 }
 
 func (n *Node) Create(opts Opts) (err error) {
@@ -121,7 +81,6 @@ func (n *Node) createOrUpdate(opts Opts) (err error) {
 			}
 		case "part":
 			if opts.HasKey("part") && opts.HasKey("file") {
-				println(opts.Value("part"), opts.Value("file"))
 				form.AddFile(opts.Value("part"), opts.Value("file"))
 			} else {
 				return errors.New("missing partial upload parameter: part or file")
@@ -141,7 +100,10 @@ func (n *Node) createOrUpdate(opts Opts) (err error) {
 			}
 		}
 	}
-	form.Create()
+	err = form.Create()
+	if err != nil {
+		return err
+	}
 
 	// "Authorization": "OAuth "+token,
 	headers := client.Header{
