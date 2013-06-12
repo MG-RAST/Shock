@@ -13,7 +13,7 @@ const (
 	DbTimeout = time.Duration(time.Second * 1)
 )
 
-func init() {
+func Initialize() {
 	d, err := DBConnect()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "user: no reachable mongodb server")

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/logger"
+	"github.com/MG-RAST/Shock/shock-server/store"
 	"github.com/jaredwilkening/goweb"
 	"os"
 )
@@ -62,6 +63,7 @@ func launchAPI(control chan int, port int) {
 
 func main() {
 	conf.Initialize()
+	store.Initialize()
 	log = logger.New()
 	printLogo()
 	conf.Print()
