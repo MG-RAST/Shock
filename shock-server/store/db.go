@@ -20,10 +20,6 @@ type db struct {
 	Session *mgo.Session
 }
 
-func init() {
-	InitDB()
-}
-
 func InitDB() {
 	d, err := DBConnect()
 	defer d.Close()
