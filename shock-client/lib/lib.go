@@ -105,7 +105,6 @@ func (n *Node) createOrUpdate(opts Opts) (err error) {
 		return err
 	}
 
-	// "Authorization": "OAuth "+token,
 	headers := client.Header{
 		"Content-Type":   form.ContentType,
 		"Content-Length": strconv.FormatInt(form.Length, 10),

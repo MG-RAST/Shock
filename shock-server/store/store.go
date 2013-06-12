@@ -19,6 +19,11 @@ type PreAuth struct {
 	ValidTill time.Time
 }
 
+func Initialize() {
+	InitDB()
+	user.Initialize()
+}
+
 func NewPreAuth(id, t, nid string, options map[string]string) (p *PreAuth, err error) {
 	p = &PreAuth{Id: id, Type: t, NodeId: nid, Options: options, ValidTill: time.Now().AddDate(0, 0, 1)}
 	if db, err := DBConnect(); err == nil {
