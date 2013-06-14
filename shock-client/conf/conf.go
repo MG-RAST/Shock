@@ -35,7 +35,7 @@ var (
 	CHUNK_SIZE int64 = 1048576
 )
 
-func Initialize(args []string) {
+func Initialize(args []string) []string {
 	// options
 	fs := flag.FlagSet{}
 	Flags["attributes"] = fs.String("attributes", "", "")
@@ -70,6 +70,7 @@ func Initialize(args []string) {
 	case "basic":
 		// nothing yet
 	}
+	return fs.Args()
 }
 
 func handle(err error) {

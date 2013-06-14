@@ -112,21 +112,27 @@ func acl(action, perm, users, id string) (err error) {
 }
 
 func main() {
-	args := os.Args[1:]
-	if len(args) == 0 || args[0] == "help" {
+	fmt.Printf("%#v\n", os.Args)
+
+	if len(os.Args) == 1 || os.Args[1] == "help" {
 		helpf("")
 	}
-	conf.Initialize(args[1:])
+
+	cmd := os.Args[1]
+	args := conf.Initialize(os.Args[2:])
+
+	fmt.Printf("%#v\n", cmd)
+	fmt.Printf("%#v\n", args)
 
 	setToken(true)
-	switch args[0] {
+	switch cmd {
 	case "create", "update":
 		n := lib.Node{}
-		if args[0] == "update" {
-			if len(args) != 2 {
+		if cmd == "update" {
+			if len(args) != 1 {
 				helpf("update requires <id>")
 			} else {
-				n.Id = args[1]
+				n.Id = args[0]
 			}
 		}
 		opts := lib.Opts{}
@@ -137,7 +143,7 @@ func main() {
 			helpf(err.Error())
 		} else {
 			if t == "part" {
-				if args[0] == "create" {
+				if cmd == "create" {
 					helpf("part option only usable with update")
 				}
 				if !ne(conf.Flags["file"]) {
@@ -155,7 +161,7 @@ func main() {
 				if t != "" {
 					opts["upload_type"] = t
 					opts[t] = (*conf.Flags[t])
-					if args[0] == "create" {
+					if cmd == "create" {
 						if err := n.Create(opts); err != nil {
 							fmt.Printf("Error creating node: %s\n", err.Error())
 						} else {
@@ -264,17 +270,17 @@ func main() {
 		}
 
 	case "get":
-		if len(args) != 2 {
+		if len(args) != 1 {
 			helpf("get requires <id>")
 		}
-		n := lib.Node{Id: args[1]}
+		n := lib.Node{Id: args[0]}
 		if err := n.Get(); err != nil {
 			fmt.Printf("Error retrieving %s: %s\n", n.Id, err.Error())
 		} else {
 			n.PP()
 		}
 	case "download":
-		if len(args) < 2 {
+		if len(args) < 1 {
 			helpf("download requires <id>")
 		}
 		index := conf.Flags["index"]
@@ -292,12 +298,12 @@ func main() {
 				helpf("index and parts options must be used together")
 			}
 		}
-		n := lib.Node{Id: args[1]}
+		n := lib.Node{Id: args[0]}
 		if ih, err := n.Download(opts); err != nil {
 			fmt.Printf("Error downloading %s: %s\n", n.Id, err.Error())
 		} else {
 			if len(args) == 3 {
-				if oh, err := os.Create(args[2]); err == nil {
+				if oh, err := os.Create(args[1]); err == nil {
 					if s, err := io.Copy(oh, ih); err != nil {
 						fmt.Printf("Error writing output: %s\n", err.Error())
 					} else {
@@ -311,10 +317,10 @@ func main() {
 			}
 		}
 	case "pdownload":
-		if len(args) < 2 {
+		if len(args) < 1 {
 			helpf("pdownload requires <id>")
 		}
-		n := lib.Node{Id: args[1]}
+		n := lib.Node{Id: args[0]}
 		if err := n.Get(); err != nil {
 			fmt.Printf("Error retrieving %s: %s\n", n.Id, err.Error())
 		}
@@ -347,8 +353,8 @@ func main() {
 		}
 
 		var filename string
-		if len(args) == 3 {
-			filename = args[2]
+		if len(args) == 2 {
+			filename = args[1]
 		} else {
 			filename = n.Id
 		}
@@ -378,10 +384,10 @@ func main() {
 			<-ch
 		}
 	case "auth":
-		if len(args) != 2 {
+		if len(args) != 1 {
 			helpf("auth requires show/set/unset")
 		}
-		switch args[1] {
+		switch args[0] {
 		case "set":
 			var username, password string
 			fmt.Printf("Please authenticate to store your credentials.\nusername: ")
@@ -412,17 +418,17 @@ func main() {
 			}
 		}
 	case "acl":
-		if len(args) != 5 {
+		if len(args) != 4 {
 			helpf("acl requires 4 arguments")
 		}
-		if err := acl(args[1], args[2], args[3], args[4]); err != nil {
+		if err := acl(args[0], args[1], args[2], args[3]); err != nil {
 			handle(err)
 		}
 	case "chown":
-		if len(args) != 3 {
+		if len(args) != 2 {
 			helpf("chown requires <user> and <id>")
 		}
-		if err := acl("chown", "", args[1], args[2]); err != nil {
+		if err := acl("chown", "", args[0], args[1]); err != nil {
 			handle(err)
 		}
 	default:
