@@ -35,23 +35,21 @@ var (
 	CHUNK_SIZE int64 = 1048576
 )
 
-func init() {
+func Initialize(args []string) {
 	// options
-	flag.Bool("h", false, "")
-	flag.Bool("help", false, "")
-	Examples = flag.Bool("examples", false, "")
-	Flags["attributes"] = flag.String("attributes", "", "")
-	Flags["full"] = flag.String("full", "", "")
-	Flags["parts"] = flag.String("parts", "", "")
-	Flags["part"] = flag.String("part", "", "")
-	Flags["file"] = flag.String("file", "", "")
-	Flags["threads"] = flag.String("threads", "", "")
-	Flags["virtual_file"] = flag.String("virtual_file", "", "")
-	Flags["remote_path"] = flag.String("remote_path", "", "")
-	Flags["index"] = flag.String("index", "", "")
-	Flags["index_options"] = flag.String("index_options", "", "")
-	flag.StringVar(&ConfFile, "conf", DefaultPath(), "path to config file")
-	flag.Parse()
+	fs := flag.FlagSet{}
+	Flags["attributes"] = fs.String("attributes", "", "")
+	Flags["full"] = fs.String("full", "", "")
+	Flags["parts"] = fs.String("parts", "", "")
+	Flags["part"] = fs.String("part", "", "")
+	Flags["file"] = fs.String("file", "", "")
+	Flags["threads"] = fs.String("threads", "", "")
+	Flags["virtual_file"] = fs.String("virtual_file", "", "")
+	Flags["remote_path"] = fs.String("remote_path", "", "")
+	Flags["index"] = fs.String("index", "", "")
+	Flags["index_options"] = fs.String("index_options", "", "")
+	fs.StringVar(&ConfFile, "conf", DefaultPath(), "path to config file")
+	fs.Parse(args)
 	c, err := config.ReadDefault(ConfFile)
 	handle(err)
 

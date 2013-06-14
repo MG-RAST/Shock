@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-client/conf"
 	"github.com/MG-RAST/Shock/shock-client/lib"
@@ -11,14 +10,13 @@ import (
 	"strings"
 )
 
-const Usage = `Usage: shock-client [options...] <command> [args..]
+const Usage = `Usage: shock-client <command> [options...] [args..]
 Global Options:
-    -h                          This help message
     -conf                       Config file location (default ~/.shock-client.cfg)
-    -examples                   Extended help with examples
 
 Commands:
-create
+help                            This help message
+create [options...]
     -attributes=<i>             JSON formated attribute file
                                 Note: Attributes will replace all current attributes
     Mutualy exclusive options:
@@ -27,27 +25,27 @@ create
     -virtual_file=<s>           Comma seperated list of node ids
     -remote_path=<p>            Remote file path
     
-pcreate 
+pcreate [options...]
     -full=<u>                   Path to file
     -threads=<i>                number of threads to use for uploading (default 4)
     
     Note: parallel uploading for the whole file.
 
-update <id>
+update [options...] <id>
     -part=<p> -file=<f>         The part number to be uploaded and path to file
                                 Note: parts must be set
     Note: With the inclusion of part update options are the same as create.
     
 get <id>
     
-download <id> [<output>]
+download [options...] <id> [<output>]
     -index=<i>                  Name of index (must be used with -parts)
     -parts={p}                  Part(s) from index, may be a range eg. 1-10
     -index_options=<o>          Additional index options. Varies by index type
     
     Note: if output is not present the download will be written to stdout.
     
-pdownload <id> [<output>]
+pdownload [options...] <id> [<output>]
     -threads=<i>                number of threads to use for downloading (default 4)
     
     Note: parallel download for the whole file. if output is not present the download will 
@@ -63,12 +61,6 @@ auth show                       Displays username of currently authenticated use
      set                        Prompts for user authentication and store credentials 
      unset                      Deletes stored credentials
 `
-
-/*
-conf list
-     set <key> <value>
-     unset <key> <value>
-*/
 
 // print help & die
 func helpf(e string) {
@@ -120,13 +112,11 @@ func acl(action, perm, users, id string) (err error) {
 }
 
 func main() {
-	args := flag.Args()
-	if *conf.Examples {
-		helpf("Coming soon.")
-	}
-	if len(args) == 0 {
+	args := os.Args[1:]
+	if len(args) == 0 || args[0] == "help" {
 		helpf("")
 	}
+	conf.Initialize(args[1:])
 
 	setToken(true)
 	switch args[0] {
