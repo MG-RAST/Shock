@@ -72,7 +72,12 @@ func helpf(e string) {
 }
 
 func handle(err error) {
-	fmt.Fprintln(os.Stderr, err.Error())
+	fmt.Fprint(os.Stderr, err.Error())
+	os.Exit(1)
+}
+
+func handleString(e string) {
+	fmt.Fprintln(os.Stderr, e)
 	os.Exit(1)
 }
 
@@ -148,7 +153,7 @@ func main() {
 				opts["part"] = (*conf.Flags["part"])
 				opts["file"] = (*conf.Flags["file"])
 				if err := n.Update(opts); err != nil {
-					fmt.Printf("Error updating %s: %s\n", n.Id, err.Error())
+					handleString(fmt.Sprintf("Error updating %s: %s\n", n.Id, err.Error()))
 				} else {
 					n.PP()
 				}
@@ -158,20 +163,20 @@ func main() {
 					opts[t] = (*conf.Flags[t])
 					if cmd == "create" {
 						if err := n.Create(opts); err != nil {
-							fmt.Printf("Error creating node: %s\n", err.Error())
+							handleString(fmt.Sprintf("Error creating node: %s\n", err.Error()))
 						} else {
 							n.PP()
 						}
 					} else {
 						if err := n.Update(opts); err != nil {
-							fmt.Printf("Error updating %s: %s\n", n.Id, err.Error())
+							handleString(fmt.Sprintf("Error updating %s: %s\n", n.Id, err.Error()))
 						} else {
 							n.PP()
 						}
 					}
 				} else {
 					if err := n.Create(opts); err != nil {
-						fmt.Printf("Error creating node: %s\n", err.Error())
+						handleString(fmt.Sprintf("Error creating node: %s\n", err.Error()))
 					} else {
 						n.PP()
 					}
@@ -213,7 +218,7 @@ func main() {
 			opts["upload_type"] = "full"
 			opts["full"] = filename
 			if err := n.Create(opts); err != nil {
-				fmt.Printf("Error creating node: %s\n", err.Error())
+				handleString(fmt.Sprintf("Error creating node: %s\n", err.Error()))
 			} else {
 				n.PP()
 			}
@@ -223,7 +228,7 @@ func main() {
 			opts["upload_type"] = "parts"
 			opts["parts"] = strconv.Itoa(splits)
 			if err := n.Create(opts); err != nil {
-				fmt.Printf("Error creating node: %s\n", err.Error())
+				handleString(fmt.Sprintf("Error creating node: %s\n", err.Error()))
 			}
 
 			//calculate split size
@@ -234,7 +239,7 @@ func main() {
 
 			origf, err := os.Open(filename)
 			if err != nil {
-				fmt.Printf("Error open file: %s\n", err.Error())
+				handleString(fmt.Sprintf("Error open file: %s\n", err.Error()))
 			}
 			ch := make(chan int, 1)
 			for i := 0; i < splits; i++ {
@@ -245,7 +250,7 @@ func main() {
 				tmpfname := fmt.Sprintf("%s_%d", filename, i+1)
 				tmpf, err := os.Create(tmpfname)
 				if err != nil {
-					fmt.Printf("Error create temp file: %s\n", err.Error())
+					handleString(fmt.Sprintf("Error create temp file: %s\n", err.Error()))
 				}
 
 				io.CopyN(tmpf, origf, int64(splitsize))
@@ -300,12 +305,12 @@ func main() {
 			if len(args) == 3 {
 				if oh, err := os.Create(args[1]); err == nil {
 					if s, err := io.Copy(oh, ih); err != nil {
-						fmt.Printf("Error writing output: %s\n", err.Error())
+						handleString(fmt.Sprintf("Error writing output: %s\n", err.Error()))
 					} else {
 						fmt.Printf("Success. Wrote %d bytes\n", s)
 					}
 				} else {
-					fmt.Printf("Error writing output: %s\n", err.Error())
+					handleString(fmt.Sprintf("Error writing output: %s\n", err.Error()))
 				}
 			} else {
 				io.Copy(os.Stdout, ih)
@@ -317,7 +322,7 @@ func main() {
 		}
 		n := lib.Node{Id: args[0]}
 		if err := n.Get(); err != nil {
-			fmt.Printf("Error retrieving %s: %s\n", n.Id, err.Error())
+			handleString(fmt.Sprintf("Error retrieving %s: %s\n", n.Id, err.Error()))
 		}
 
 		totalChunk := int(n.File.Size / conf.CHUNK_SIZE)
@@ -356,7 +361,7 @@ func main() {
 
 		oh, err := os.Create(filename)
 		if err != nil {
-			fmt.Printf("Error creating output file %s: %s\n", filename, err.Error())
+			handleString(fmt.Sprintf("Error creating output file %s: %s\n", filename, err.Error()))
 			return
 		}
 		oh.Close()
@@ -391,7 +396,7 @@ func main() {
 			fmt.Scan(&password)
 			if t, err := lib.OAuthToken(username, password); err == nil {
 				if err := t.Store(); err != nil {
-					fmt.Printf("Authenticated but failed to store token: %s\n", err.Error())
+					handleString(fmt.Sprintf("Authenticated but failed to store token: %s\n", err.Error()))
 				}
 				fmt.Printf("Authenticated credentials stored for user %s. Expires in %d days.\n", t.UserName, t.ExpiresInDays())
 			} else {
