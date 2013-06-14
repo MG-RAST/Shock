@@ -112,17 +112,12 @@ func acl(action, perm, users, id string) (err error) {
 }
 
 func main() {
-	fmt.Printf("%#v\n", os.Args)
-
 	if len(os.Args) == 1 || os.Args[1] == "help" {
 		helpf("")
 	}
 
 	cmd := os.Args[1]
 	args := conf.Initialize(os.Args[2:])
-
-	fmt.Printf("%#v\n", cmd)
-	fmt.Printf("%#v\n", args)
 
 	setToken(true)
 	switch cmd {
