@@ -1,6 +1,8 @@
 package main
 
 import (
+	"code.google.com/p/gopass"
+	"encoding/json"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-client/conf"
 	"github.com/MG-RAST/Shock/shock-client/lib"
@@ -59,7 +61,9 @@ chown <user> <id>
 
 auth show                       Displays username of currently authenticated user
      set                        Prompts for user authentication and store credentials 
+     set-token <token>          Stores credentials from token
      unset                      Deletes stored credentials
+     
 `
 
 // print help & die
@@ -124,7 +128,7 @@ func main() {
 	cmd := os.Args[1]
 	args := conf.Initialize(os.Args[2:])
 
-	setToken(true)
+	setToken(false)
 	switch cmd {
 	case "create", "update":
 		n := lib.Node{}
@@ -384,16 +388,15 @@ func main() {
 			<-ch
 		}
 	case "auth":
-		if len(args) != 1 {
-			helpf("auth requires show/set/unset")
+		if len(args) < 1 {
+			helpf("auth requires show/set/set-token/unset")
 		}
 		switch args[0] {
 		case "set":
 			var username, password string
 			fmt.Printf("Please authenticate to store your credentials.\nusername: ")
 			fmt.Scan(&username)
-			fmt.Printf("password: ")
-			fmt.Scan(&password)
+			password, _ = gopass.GetPass("password: ")
 			if t, err := lib.OAuthToken(username, password); err == nil {
 				if err := t.Store(); err != nil {
 					handleString(fmt.Sprintf("Authenticated but failed to store token: %s\n", err.Error()))
@@ -402,6 +405,18 @@ func main() {
 			} else {
 				fmt.Printf("%s\n", err.Error())
 			}
+		case "set-token":
+			if len(args) != 2 {
+				helpf("auth set-token requires token.")
+			}
+			t := &lib.Token{}
+			if err := json.Unmarshal([]byte(args[1]), &t); err != nil {
+				handleString("Invalid auth token.\n")
+			}
+			if err := t.Store(); err != nil {
+				handleString(fmt.Sprintf("Failed to store token: %s\n", err.Error()))
+			}
+			fmt.Printf("Authenticated credentials stored for user %s. Expires in %d days.\n", t.UserName, t.ExpiresInDays())
 		case "unset":
 			t := &lib.Token{}
 			if err := t.Delete(); err != nil {
