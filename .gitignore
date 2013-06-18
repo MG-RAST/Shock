@@ -8,7 +8,8 @@ common/**/*
 *\#*
 *\~*
 
-# go build files
+# build files
+*.pyc
 *.o
 *.a 
 *.[568vq]
