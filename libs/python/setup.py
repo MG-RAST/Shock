@@ -4,7 +4,6 @@ from distutils.core import setup
 import shock
 
 setup(name='shock',
-      title=shock.__title__,
       version=shock.__version__,
       author=shock.__author__,
       license=shock.__licence__,
