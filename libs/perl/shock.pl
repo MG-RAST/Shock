@@ -159,17 +159,12 @@ sub _download_shockclient {
 }
 
 sub create_node {
-    my ($self, $data, $attr, $type) = @_;
+    my ($self, $data, $attr) = @_;
     return $self->upload(undef, $data, $attr);
 }
 
 sub upload {
     my ($self, $node, $data, $attr) = @_;
-    
-    unless ($data || $attr) {
-        print STDERR "[error] need atleast one of 'file' or 'attributes'\n";
-        return undef;
-    }
     
     if (($self->transport_method eq 'shock-client') && (! $node) && (-s $data)) {
         my $res = $self->_upload_shockclient($data);
