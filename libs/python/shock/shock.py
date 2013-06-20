@@ -16,7 +16,6 @@ import cStringIO
 import json
 import os
 import requests
-import sys
 import subprocess
 
 #-----------------------------------------------------------------------------
@@ -87,7 +86,7 @@ class Client:
                     f.flush()
         return path
 
-    def _download_shockclient(self, node, path):        
+    def _download_shockclient(self, node, path):
         proc = subprocess.Popen("shock-client pdownload -threads=4 %s %s"%(node,path), shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         return_code = proc.wait()
         if return_code > 0:
@@ -143,7 +142,7 @@ class Client:
             err = ""
             for line in proc.stderr:
                 err += line
-            raise Exception(u'Error uploading via shock-client: %s => %s: error: %s' %(node, path, err))
+            raise Exception(u'Error uploading via shock-client: %s: error: %s' %(path, err))
         else:
             res = ""
             for line in proc.stdout:
