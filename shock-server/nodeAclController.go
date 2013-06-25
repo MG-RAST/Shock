@@ -3,8 +3,8 @@ package main
 import (
 	"errors"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
-	"github.com/MG-RAST/Shock/shock-server/store"
-	"github.com/MG-RAST/Shock/shock-server/store/user"
+	"github.com/MG-RAST/Shock/shock-server/node"
+	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/jaredwilkening/goweb"
 	"net/http"
 	"strings"
@@ -31,7 +31,7 @@ var AclController goweb.ControllerFunc = func(cx *goweb.Context) {
 
 	// Load node and handle user unauthorized
 	id := cx.PathParams["nid"]
-	node, err := store.LoadNode(id, u.Uuid)
+	n, err := node.Load(id, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
 			cx.RespondWithError(http.StatusUnauthorized)
@@ -48,35 +48,35 @@ var AclController goweb.ControllerFunc = func(cx *goweb.Context) {
 		}
 	}
 
-	rights := node.Acl.Check(u.Uuid)
+	rights := n.Acl.Check(u.Uuid)
 	if cx.Request.Method != "GET" {
 		ids, err := parseAclRequest(cx)
 		if err != nil {
 			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 			return
 		}
-		if (cx.Request.Method == "POST" || cx.Request.Method == "PUT") && (u.Uuid == node.Acl.Owner || rights["write"]) {
+		if (cx.Request.Method == "POST" || cx.Request.Method == "PUT") && (u.Uuid == n.Acl.Owner || rights["write"]) {
 			for k, v := range ids {
 				for _, i := range v {
-					node.Acl.Set(i, map[string]bool{k: true})
+					n.Acl.Set(i, map[string]bool{k: true})
 				}
 			}
-			node.Save()
-		} else if cx.Request.Method == "DELETE" && (u.Uuid == node.Acl.Owner || rights["delete"]) {
+			n.Save()
+		} else if cx.Request.Method == "DELETE" && (u.Uuid == n.Acl.Owner || rights["delete"]) {
 			for k, v := range ids {
 				for _, i := range v {
-					node.Acl.UnSet(i, map[string]bool{k: true})
+					n.Acl.UnSet(i, map[string]bool{k: true})
 				}
 			}
-			node.Save()
+			n.Save()
 		} else {
 			cx.RespondWithError(http.StatusUnauthorized)
 			return
 		}
 	}
 
-	if u.Uuid == node.Acl.Owner || rights["read"] {
-		cx.RespondWithData(node.Acl)
+	if u.Uuid == n.Acl.Owner || rights["read"] {
+		cx.RespondWithData(n.Acl)
 	} else {
 		cx.RespondWithError(http.StatusUnauthorized)
 		return
@@ -107,7 +107,7 @@ var AclControllerTyped goweb.ControllerFunc = func(cx *goweb.Context) {
 
 	// Load node and handle user unauthorized
 	id := cx.PathParams["nid"]
-	node, err := store.LoadNode(id, u.Uuid)
+	n, err := node.Load(id, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
 			cx.RespondWithError(http.StatusUnauthorized)
@@ -124,18 +124,18 @@ var AclControllerTyped goweb.ControllerFunc = func(cx *goweb.Context) {
 		}
 	}
 
-	rights := node.Acl.Check(u.Uuid)
+	rights := n.Acl.Check(u.Uuid)
 	if cx.Request.Method != "GET" {
 		ids, err := parseAclRequestTyped(cx)
 		if err != nil {
 			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 			return
 		}
-		if (cx.Request.Method == "POST" || cx.Request.Method == "PUT") && (u.Uuid == node.Acl.Owner || rights["write"]) {
+		if (cx.Request.Method == "POST" || cx.Request.Method == "PUT") && (u.Uuid == n.Acl.Owner || rights["write"]) {
 			if rtype == "owner" {
-				if u.Uuid == node.Acl.Owner {
+				if u.Uuid == n.Acl.Owner {
 					if len(ids) == 1 {
-						node.Acl.SetOwner(ids[0])
+						n.Acl.SetOwner(ids[0])
 					} else {
 						cx.RespondWithErrorMessage("Too many users. Nodes may have only one owner.", http.StatusBadRequest)
 						return
@@ -146,31 +146,31 @@ var AclControllerTyped goweb.ControllerFunc = func(cx *goweb.Context) {
 				}
 			} else {
 				for _, i := range ids {
-					node.Acl.Set(i, map[string]bool{rtype: true})
+					n.Acl.Set(i, map[string]bool{rtype: true})
 				}
 			}
-			node.Save()
-		} else if cx.Request.Method == "DELETE" && (u.Uuid == node.Acl.Owner || rights["delete"]) {
+			n.Save()
+		} else if cx.Request.Method == "DELETE" && (u.Uuid == n.Acl.Owner || rights["delete"]) {
 			for _, i := range ids {
-				node.Acl.UnSet(i, map[string]bool{rtype: true})
+				n.Acl.UnSet(i, map[string]bool{rtype: true})
 			}
-			node.Save()
+			n.Save()
 		} else {
 			cx.RespondWithError(http.StatusUnauthorized)
 			return
 		}
 	}
 
-	if u.Uuid == node.Acl.Owner || rights["read"] {
+	if u.Uuid == n.Acl.Owner || rights["read"] {
 		switch rtype {
 		case "read":
-			cx.RespondWithData(map[string][]string{"read": node.Acl.Read})
+			cx.RespondWithData(map[string][]string{"read": n.Acl.Read})
 		case "write":
-			cx.RespondWithData(map[string][]string{"write": node.Acl.Write})
+			cx.RespondWithData(map[string][]string{"write": n.Acl.Write})
 		case "delete":
-			cx.RespondWithData(map[string][]string{"delete": node.Acl.Delete})
+			cx.RespondWithData(map[string][]string{"delete": n.Acl.Delete})
 		case "owner":
-			cx.RespondWithData(map[string]string{"owner": node.Acl.Owner})
+			cx.RespondWithData(map[string]string{"owner": n.Acl.Owner})
 		}
 	} else {
 		cx.RespondWithError(http.StatusUnauthorized)

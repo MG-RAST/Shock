@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
-	"github.com/MG-RAST/Shock/shock-server/store/user"
+	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/jaredwilkening/goweb"
 	"net/http"
 	"strings"

@@ -1,10 +1,11 @@
 package lib
 
 import (
-	"github.com/MG-RAST/Shock/shock-server/store"
+	"github.com/MG-RAST/Shock/shock-server/node"
+	"github.com/MG-RAST/Shock/shock-server/node/acl"
 )
 
-type Node store.Node
+type Node node.Node
 
 type User struct {
 	Username string
@@ -25,8 +26,8 @@ type WNode struct {
 }
 
 type WAcl struct {
-	Data  *store.Acl `json:"data"`
-	Error *[]string  `json:"error"`
+	Data  *acl.Acl  `json:"data"`
+	Error *[]string `json:"error"`
 }
 
 type Token struct {

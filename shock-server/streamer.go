@@ -3,8 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/MG-RAST/Shock/shock-server/store"
-	"github.com/MG-RAST/Shock/shock-server/store/filter"
+	"github.com/MG-RAST/Shock/shock-server/node/file"
+	"github.com/MG-RAST/Shock/shock-server/node/filter"
 	"io"
 	"net/http"
 	"os/exec"
@@ -12,7 +12,7 @@ import (
 )
 
 type streamer struct {
-	rs          []store.SectionReader
+	rs          []file.SectionReader
 	ws          http.ResponseWriter
 	contentType string
 	filename    string

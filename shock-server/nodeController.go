@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
-	"github.com/MG-RAST/Shock/shock-server/store"
-	"github.com/MG-RAST/Shock/shock-server/store/filter"
-	"github.com/MG-RAST/Shock/shock-server/store/indexer"
-	"github.com/MG-RAST/Shock/shock-server/store/user"
+	"github.com/MG-RAST/Shock/shock-server/indexer"
+	"github.com/MG-RAST/Shock/shock-server/node"
+	"github.com/MG-RAST/Shock/shock-server/node/file"
+	"github.com/MG-RAST/Shock/shock-server/node/filter"
+	"github.com/MG-RAST/Shock/shock-server/preauth"
+	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/jaredwilkening/goweb"
 	"io"
 	"labix.org/v2/mgo/bson"
@@ -54,19 +56,19 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 		// TODO: create another request parser for non-multipart request
 		// to handle this cleaner.
 		if err.Error() == "request Content-Type isn't multipart/form-data" {
-			node, err := store.CreateNodeUpload(u, params, files)
+			n, err := node.CreateNodeUpload(u, params, files)
 			if err != nil {
 				log.Error("Error at create empty: " + err.Error())
 				cx.RespondWithError(http.StatusInternalServerError)
 				return
 			}
-			if node == nil {
+			if n == nil {
 				// Not sure how you could get an empty node with no error
 				// Assume it's the user's fault
 				cx.RespondWithError(http.StatusBadRequest)
 				return
 			} else {
-				cx.RespondWithData(node)
+				cx.RespondWithData(n)
 				return
 			}
 		} else {
@@ -79,13 +81,13 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 		}
 	}
 	// Create node
-	node, err := store.CreateNodeUpload(u, params, files)
+	n, err := node.CreateNodeUpload(u, params, files)
 	if err != nil {
 		log.Error("err@node_CreateNodeUpload: " + err.Error())
 		cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 		return
 	}
-	cx.RespondWithData(node)
+	cx.RespondWithData(n)
 	return
 }
 
@@ -103,7 +105,7 @@ func (cr *NodeController) Delete(id string, cx *goweb.Context) {
 	}
 
 	// Load node and handle user unauthorized
-	node, err := store.LoadNode(id, u.Uuid)
+	n, err := node.Load(id, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
 			cx.RespondWithError(http.StatusUnauthorized)
@@ -120,7 +122,7 @@ func (cr *NodeController) Delete(id string, cx *goweb.Context) {
 		}
 	}
 
-	if err := node.Delete(); err == nil {
+	if err := n.Delete(); err == nil {
 		cx.RespondWithOK()
 		return
 	} else {
@@ -162,7 +164,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 	}
 
 	// Load node and handle user unauthorized
-	node, err := store.LoadNode(id, u.Uuid)
+	n, err := node.Load(id, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
 			cx.RespondWithError(http.StatusUnauthorized)
@@ -175,7 +177,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 			// checking user and load but seems unlikely.
 			log.Error("Err@node_Read:LoadNode:" + id + ":" + err.Error())
 
-			node, err = store.LoadNodeFromDisk(id)
+			n, err = node.LoadFromDisk(id)
 			if err != nil {
 				log.Error("Err@node_Read:LoadNodeFromDisk:" + id + ":" + err.Error())
 				cx.RespondWithError(http.StatusInternalServerError)
@@ -187,11 +189,11 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 	// Switch though param flags
 	// ?download=1
 	if query.Has("download") {
-		if !node.HasFile() {
+		if !n.HasFile() {
 			cx.RespondWithErrorMessage("Node has no file", http.StatusBadRequest)
 			return
 		}
-		filename := node.Id
+		filename := n.Id
 		if query.Has("filename") {
 			filename = query.Value("filename")
 		}
@@ -201,7 +203,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 		if query.Has("index") {
 			//handling bam file
 			if query.Value("index") == "bai" {
-				s := &streamer{rs: []store.SectionReader{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: filename, size: node.File.Size, filter: fFunc}
+				s := &streamer{rs: []file.SectionReader{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: filename, size: n.File.Size, filter: fFunc}
 
 				var region string
 
@@ -216,7 +218,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 					return
 				}
 
-				err = s.stream_samtools(node.FilePath(), region, argv...)
+				err = s.stream_samtools(n.FilePath(), region, argv...)
 				if err != nil {
 					cx.RespondWithErrorMessage("error while involking samtools", http.StatusBadRequest)
 					return
@@ -231,14 +233,14 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				return
 			}
 			// open file
-			r, err := node.FileReader()
+			r, err := n.FileReader()
 			if err != nil {
 				log.Error("Err@node_Read:Open: " + err.Error())
 				cx.RespondWithError(http.StatusInternalServerError)
 				return
 			}
 			// load index
-			idx, err := node.Index(query.Value("index"))
+			idx, err := n.Index(query.Value("index"))
 			if err != nil {
 				cx.RespondWithErrorMessage("Invalid index", http.StatusBadRequest)
 				return
@@ -256,7 +258,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				idx.Set(map[string]interface{}{"ChunkSize": csize})
 			}
 			var size int64 = 0
-			s := &streamer{rs: []store.SectionReader{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: filename, filter: fFunc}
+			s := &streamer{rs: []file.SectionReader{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: filename, filter: fFunc}
 			for _, p := range query.List("part") {
 				pos, length, err := idx.Part(p)
 				if err != nil {
@@ -274,7 +276,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				log.Error("err:@node_Read s.stream: " + err.Error())
 			}
 		} else {
-			nf, err := node.FileReader()
+			nf, err := n.FileReader()
 			if err != nil {
 				// File not found or some sort of file read error.
 				// Probably deserves more checking
@@ -282,7 +284,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				cx.RespondWithError(http.StatusBadRequest)
 				return
 			}
-			s := &streamer{rs: []store.SectionReader{nf}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: filename, size: node.File.Size, filter: fFunc}
+			s := &streamer{rs: []file.SectionReader{nf}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: filename, size: n.File.Size, filter: fFunc}
 			err = s.stream()
 			if err != nil {
 				// causes "multiple response.WriteHeader calls" error but better than no response
@@ -292,7 +294,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 		}
 		return
 	} else if query.Has("download_url") {
-		if !node.HasFile() {
+		if !n.HasFile() {
 			cx.RespondWithErrorMessage("Node has not file", http.StatusBadRequest)
 			return
 		} else if u.Uuid == "" {
@@ -303,7 +305,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 			if query.Has("filename") {
 				options["filename"] = query.Value("filename")
 			}
-			if p, err := store.NewPreAuth(RandString(20), "download", node.Id, options); err != nil {
+			if p, err := preauth.New(RandString(20), "download", n.Id, options); err != nil {
 				cx.RespondWithError(http.StatusInternalServerError)
 				log.Error("err:@node_Read download_url: " + err.Error())
 			} else {
@@ -312,7 +314,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 		}
 	} else {
 		// Base case respond with node in json
-		cx.RespondWithData(node)
+		cx.RespondWithData(n)
 	}
 }
 
@@ -333,7 +335,7 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 
 	// Setup query and nodes objects
 	q := bson.M{}
-	nodes := store.Nodes{}
+	nodes := node.Nodes{}
 
 	if u != nil {
 		// Admin sees all
@@ -413,7 +415,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 		u = &user.User{Uuid: ""}
 	}
 
-	node, err := store.LoadNode(id, u.Uuid)
+	n, err := node.Load(id, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
 			cx.RespondWithError(http.StatusUnauthorized)
@@ -435,15 +437,15 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 			log.Perf("START indexing: " + id)
 		}
 
-		if !node.HasFile() {
+		if !n.HasFile() {
 			cx.RespondWithErrorMessage("node file empty", http.StatusBadRequest)
 			return
 		}
 
 		if query.Value("index") == "bai" {
 			//bam index is created by the command-line tool samtools
-			if ext := node.FileExt(); ext == ".bam" {
-				if err := CreateBamIndex(node.FilePath()); err != nil {
+			if ext := n.FileExt(); ext == ".bam" {
+				if err := CreateBamIndex(n.FilePath()); err != nil {
 					cx.RespondWithErrorMessage("Error while creating bam index", http.StatusBadRequest)
 					return
 				}
@@ -461,7 +463,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 		}
 
 		newIndexer := indexer.Indexer(idxtype)
-		f, _ := os.Open(node.FilePath())
+		f, _ := os.Open(n.FilePath())
 		defer f.Close()
 		idxer := newIndexer(f)
 		count, err := idxer.Create()
@@ -471,23 +473,23 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 			return
 		}
 
-		if err := idxer.Dump(node.IndexPath() + "/" + query.Value("index") + ".idx"); err != nil {
+		if err := idxer.Dump(n.IndexPath() + "/" + query.Value("index") + ".idx"); err != nil {
 			log.Error("err " + err.Error())
 			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		idxInfo := store.IdxInfo{
+		idxInfo := node.IdxInfo{
 			Type:        query.Value("index"),
 			TotalUnits:  count,
-			AvgUnitSize: node.File.Size / count,
+			AvgUnitSize: n.File.Size / count,
 		}
 
 		if idxtype == "chunkrecord" {
 			idxInfo.AvgUnitSize = conf.CHUNK_SIZE
 		}
 
-		if err := node.SetIndexInfo(query.Value("index"), idxInfo); err != nil {
+		if err := n.SetIndexInfo(query.Value("index"), idxInfo); err != nil {
 			log.Error("err@node.SetIndexInfo: " + err.Error())
 		}
 
@@ -509,7 +511,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 			return
 		}
 
-		err = node.Update(params, files)
+		err = n.Update(params, files)
 		if err != nil {
 			errors := []string{e.FileImut, e.AttrImut, "parts cannot be less than 1"}
 			for e := range errors {
@@ -522,7 +524,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 			return
 		}
-		cx.RespondWithData(node)
+		cx.RespondWithData(n)
 		if conf.PERF_LOG {
 			log.Perf("END PUT data: " + id)
 		}
