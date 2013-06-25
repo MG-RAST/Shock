@@ -5,11 +5,11 @@ import (
 	"crypto/sha1"
 	"errors"
 	"fmt"
+	"github.com/MG-RAST/Shock/shock-server/auth"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
-	"github.com/MG-RAST/Shock/shock-server/store"
-	"github.com/MG-RAST/Shock/shock-server/store/user"
-	"github.com/MG-RAST/Shock/shock-server/store/user/auth"
+	"github.com/MG-RAST/Shock/shock-server/node"
+	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/jaredwilkening/goweb"
 	"hash"
 	"math/rand"
@@ -90,9 +90,9 @@ func (q *Query) All() map[string][]string {
 }
 
 // helper function for create & update
-func ParseMultipartForm(r *http.Request) (params map[string]string, files store.FormFiles, err error) {
+func ParseMultipartForm(r *http.Request) (params map[string]string, files node.FormFiles, err error) {
 	params = make(map[string]string)
-	files = make(store.FormFiles)
+	files = make(node.FormFiles)
 	reader, err := r.MultipartReader()
 	if err != nil {
 		return
@@ -119,7 +119,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files store.
 						reader = &part
 					}
 				*/
-				files[part.FormName()] = store.FormFile{Name: part.FileName(), Path: tmpPath, Checksum: make(map[string]string)}
+				files[part.FormName()] = node.FormFile{Name: part.FileName(), Path: tmpPath, Checksum: make(map[string]string)}
 				if tmpFile, err := os.Create(tmpPath); err == nil {
 					buffer := make([]byte, 32*1024)
 					md5c := make(chan checkSumCom)

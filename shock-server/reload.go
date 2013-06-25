@@ -4,7 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
-	"github.com/MG-RAST/Shock/shock-server/store"
+	"github.com/MG-RAST/Shock/shock-server/db"
+	"github.com/MG-RAST/Shock/shock-server/node"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -40,10 +41,10 @@ func reload(source string) (err error) {
 
 func reloadDB() (err error) {
 	fmt.Printf("dropping & re-initializing database...")
-	if err = store.DropDB(); err != nil {
+	if err = db.Drop(); err != nil {
 		return err
 	}
-	store.InitDB()
+	db.Initialize()
 	fmt.Printf("done\n")
 	return
 }
@@ -56,7 +57,7 @@ func reloadFromDir(path string, info os.FileInfo, err error) error {
 	if dirExp.MatchString(path) {
 		id := filepath.Base(path)
 		fmt.Printf(id + "...")
-		if err := store.ReloadFromDisk(path); err != nil {
+		if err := node.ReloadFromDisk(path); err != nil {
 			return err
 		}
 		fmt.Printf("done\n")
