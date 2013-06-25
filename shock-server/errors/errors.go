@@ -9,7 +9,7 @@ var (
 )
 
 const (
-	MongoDocNotFound         = "not found"
+	MongoDocNotFound         = "Not found"
 	InvalidAuth              = "Invalid Auth Header"
 	UnAuth                   = "User Unauthorized"
 	NoAuth                   = "No Authorization"

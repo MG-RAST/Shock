@@ -2,7 +2,9 @@ package main
 
 import (
 	e "github.com/MG-RAST/Shock/shock-server/errors"
-	"github.com/MG-RAST/Shock/shock-server/store"
+	"github.com/MG-RAST/Shock/shock-server/node"
+	"github.com/MG-RAST/Shock/shock-server/node/file"
+	"github.com/MG-RAST/Shock/shock-server/preauth"
 	"github.com/jaredwilkening/goweb"
 	"net/http"
 )
@@ -10,7 +12,7 @@ import (
 func PreAuthRequest(cx *goweb.Context) {
 	LogRequest(cx.Request)
 	id := cx.PathParams["id"]
-	if p, err := store.LoadPreAuth(id); err != nil {
+	if p, err := preauth.Load(id); err != nil {
 		if err.Error() == e.MongoDocNotFound {
 			cx.RespondWithNotFound()
 		} else {
@@ -19,15 +21,15 @@ func PreAuthRequest(cx *goweb.Context) {
 		}
 		return
 	} else {
-		if node, err := store.LoadNodeUnauth(p.NodeId); err == nil {
+		if n, err := node.LoadUnauth(p.NodeId); err == nil {
 			switch p.Type {
 			case "download":
-				filename := node.Id
+				filename := n.Id
 				if fn, has := p.Options["filename"]; has {
 					filename = fn
 				}
-				streamDownload(cx, node, filename)
-				store.DeletePreAuth(id)
+				streamDownload(cx, n, filename)
+				preauth.Delete(id)
 				return
 			default:
 				cx.RespondWithError(http.StatusInternalServerError)
@@ -40,9 +42,9 @@ func PreAuthRequest(cx *goweb.Context) {
 	return
 }
 
-func streamDownload(cx *goweb.Context, node *store.Node, filename string) {
+func streamDownload(cx *goweb.Context, n *node.Node, filename string) {
 	query := &Query{list: cx.Request.URL.Query()}
-	nf, err := node.FileReader()
+	nf, err := n.FileReader()
 	if err != nil {
 		// File not found or some sort of file read error.
 		// Probably deserves more checking
@@ -53,7 +55,7 @@ func streamDownload(cx *goweb.Context, node *store.Node, filename string) {
 	if query.Has("filename") {
 		filename = query.Value("filename")
 	}
-	s := &streamer{rs: []store.SectionReader{nf}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: filename, size: node.File.Size, filter: nil}
+	s := &streamer{rs: []file.SectionReader{nf}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: filename, size: n.File.Size, filter: nil}
 	err = s.stream()
 	if err != nil {
 		// causes "multiple response.WriteHeader calls" error but better than no response
