@@ -23,7 +23,7 @@ type credentials struct {
 }
 
 func AuthToken(t string) (*user.User, error) {
-	url := "http://dieppe-1.mcs.anl.gov/oauth2.cgi"
+	url := ""
 	form := client.NewForm()
 	form.AddParam("token", t)
 	form.AddParam("action", "credentials")

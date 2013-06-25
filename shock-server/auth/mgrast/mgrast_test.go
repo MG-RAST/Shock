@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	valid   = "gCyVPMHcAR9mvfKnyeshDWDj8"
-	invalid = "ghaioehgaoei"
+	valid   = ""
+	invalid = ""
 )
 
 func TestAuthToken(t *testing.T) {
