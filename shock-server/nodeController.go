@@ -41,7 +41,7 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 
 	// Fake public user
 	if u == nil {
-		if conf.ANON_WRITE {
+		if conf.Bool(conf.Conf["anon-write"]) {
 			u = &user.User{Uuid: ""}
 		} else {
 			cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
@@ -145,7 +145,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 
 	// Fake public user
 	if u == nil {
-		if conf.ANON_READ {
+		if conf.Bool(conf.Conf["anon-read"]) {
 			u = &user.User{Uuid: ""}
 		} else {
 			cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
@@ -343,7 +343,7 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 			q["$or"] = []bson.M{bson.M{"acl.read": []string{}}, bson.M{"acl.read": u.Uuid}, bson.M{"acl.owner": u.Uuid}}
 		}
 	} else {
-		if conf.ANON_READ {
+		if conf.Bool(conf.Conf["anon-read"]) {
 			// select on only nodes with no read rights set
 			q["acl.read"] = []string{}
 		} else {
@@ -433,7 +433,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 	}
 
 	if query.Has("index") {
-		if conf.PERF_LOG {
+		if conf.Bool(conf.Conf["perf-log"]) {
 			log.Perf("START indexing: " + id)
 		}
 
@@ -493,7 +493,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 			log.Error("err@node.SetIndexInfo: " + err.Error())
 		}
 
-		if conf.PERF_LOG {
+		if conf.Bool(conf.Conf["perf-log"]) {
 			log.Perf("END indexing: " + id)
 		}
 
@@ -501,7 +501,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 		return
 
 	} else {
-		if conf.PERF_LOG {
+		if conf.Bool(conf.Conf["perf-log"]) {
 			log.Perf("START PUT data: " + id)
 		}
 		params, files, err := ParseMultipartForm(cx.Request)
@@ -525,7 +525,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 			return
 		}
 		cx.RespondWithData(n)
-		if conf.PERF_LOG {
+		if conf.Bool(conf.Conf["perf-log"]) {
 			log.Perf("END PUT data: " + id)
 		}
 	}

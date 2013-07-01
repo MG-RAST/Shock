@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"errors"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
+	"github.com/MG-RAST/Shock/shock-server/user"
 	"strings"
 )
 
@@ -22,4 +23,8 @@ func DecodeHeader(header string) (string, string, error) {
 
 	}
 	return "", "", errors.New(e.InvalidAuth)
+}
+
+func Auth(username string, password string) (u *user.User, err error) {
+	return user.FindByUsernamePassword(username, password)
 }
