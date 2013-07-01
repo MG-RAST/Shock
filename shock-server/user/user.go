@@ -1,7 +1,6 @@
 package user
 
 import (
-	//"github.com/MG-RAST/Shock/shock-server/conf"
 	"code.google.com/p/go-uuid/uuid"
 	"github.com/MG-RAST/Shock/shock-server/db"
 	"labix.org/v2/mgo"
@@ -25,7 +24,7 @@ type User struct {
 }
 
 func Initialize() {
-	DB = db.Connection.Session.DB("ShockDB").C("Users")
+	DB = db.Connection.DB.C("Users")
 	DB.EnsureIndex(mgo.Index{Key: []string{"uuid"}, Unique: true})
 	DB.EnsureIndex(mgo.Index{Key: []string{"username"}, Unique: true})
 }

@@ -12,7 +12,7 @@ import (
 var DB *mgo.Collection
 
 func Initialize() {
-	DB = db.Connection.Session.DB("ShockDB").C("Nodes")
+	DB = db.Connection.DB.C("Nodes")
 	DB.EnsureIndex(mgo.Index{Key: []string{"id"}, Unique: true})
 }
 

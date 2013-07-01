@@ -18,7 +18,7 @@ type PreAuth struct {
 }
 
 func Initialize() {
-	DB = db.Connection.Session.DB("ShockDB").C("PreAuth")
+	DB = db.Connection.DB.C("PreAuth")
 	DB.EnsureIndex(mgo.Index{Key: []string{"id"}, Unique: true})
 }
 
