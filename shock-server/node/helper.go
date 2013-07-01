@@ -84,7 +84,7 @@ func contains(list []string, elem string) bool {
 }
 
 func getPath(id string) string {
-	return fmt.Sprintf("%s/%s/%s/%s/%s", conf.DATA_PATH, id[0:2], id[2:4], id[4:6], id)
+	return fmt.Sprintf("%s/%s/%s/%s/%s", conf.Conf["data-path"], id[0:2], id[2:4], id[4:6], id)
 }
 
 func getIndexPath(id string) string {

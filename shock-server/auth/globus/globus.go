@@ -42,7 +42,7 @@ func FetchToken(u string, p string) (t *Token, err error) {
 	client := &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
-	req, err := http.NewRequest("GET", conf.GLOBUS_TOKEN_URL, nil)
+	req, err := http.NewRequest("GET", conf.Conf["globus_token_url"], nil)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func FetchProfile(t string) (u *user.User, err error) {
 	client := &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
-	req, err := http.NewRequest("GET", conf.GLOBUS_PROFILE_URL+"/"+clientId(t), nil)
+	req, err := http.NewRequest("GET", conf.Conf["globus_profile_url"]+"/"+clientId(t), nil)
 	if err != nil {
 		return nil, err
 	}

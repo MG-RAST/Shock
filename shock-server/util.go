@@ -107,7 +107,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 				}
 				params[part.FormName()] = fmt.Sprintf("%s", buffer[0:n])
 			} else {
-				tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.DATA_PATH, rand.Int(), rand.Int())
+				tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.Conf["data-path"], rand.Int(), rand.Int())
 				/*
 					if fname[len(fname)-3:] == ".gz" && params["decompress"] == "true" {
 						fname = fname[:len(fname)-3]
@@ -189,17 +189,17 @@ func RespondOk(cx *goweb.Context) {
 }
 
 func apiUrl(cx *goweb.Context) string {
-	if conf.API_URL != "" {
-		return conf.API_URL
+	if conf.Conf["api-url"] != "" {
+		return conf.Conf["api-url"]
 	}
 	return "http://" + cx.Request.Host
 }
 
 func siteUrl(cx *goweb.Context) string {
-	if conf.SITE_URL != "" {
-		return conf.SITE_URL
+	if conf.Conf["site-url"] != "" {
+		return conf.Conf["site-url"]
 	} else if strings.Contains(cx.Request.Host, ":") {
-		return fmt.Sprintf("http://%s:%d", strings.Split(cx.Request.Host, ":")[0], conf.SITE_PORT)
+		return fmt.Sprintf("http://%s:%d", strings.Split(cx.Request.Host, ":")[0], conf.Conf["site-port"])
 	}
 	return "http://" + cx.Request.Host
 }
@@ -210,7 +210,7 @@ func ResourceDescription(cx *goweb.Context) {
 		R: []string{"node", "user"},
 		U: apiUrl(cx) + "/",
 		D: siteUrl(cx) + "/",
-		C: conf.ADMIN_EMAIL,
+		C: conf.Conf["admin-email"],
 		I: "Shock",
 		T: "Shock",
 	}
@@ -219,17 +219,17 @@ func ResourceDescription(cx *goweb.Context) {
 
 func Site(cx *goweb.Context) {
 	LogRequest(cx.Request)
-	http.ServeFile(cx.ResponseWriter, cx.Request, conf.SITE_PATH+"/pages/main.html")
+	http.ServeFile(cx.ResponseWriter, cx.Request, conf.Conf["site-path"]+"/pages/main.html")
 }
 
 func RawDir(cx *goweb.Context) {
 	LogRequest(cx.Request)
-	http.ServeFile(cx.ResponseWriter, cx.Request, fmt.Sprintf("%s%s", conf.DATA_PATH, cx.Request.URL.Path))
+	http.ServeFile(cx.ResponseWriter, cx.Request, fmt.Sprintf("%s%s", conf.Conf["data-path"], cx.Request.URL.Path))
 }
 
 func AssetsDir(cx *goweb.Context) {
 	LogRequest(cx.Request)
-	http.ServeFile(cx.ResponseWriter, cx.Request, conf.SITE_PATH+cx.Request.URL.Path)
+	http.ServeFile(cx.ResponseWriter, cx.Request, conf.Conf["site-path"]+cx.Request.URL.Path)
 }
 
 func LogRequest(req *http.Request) {

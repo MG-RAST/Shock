@@ -42,7 +42,7 @@ func (cr *UserController) Create(cx *goweb.Context) {
 	}
 
 	authValuesArray := strings.Split(string(authValues), ":")
-	if conf.ANON_CREATEUSER == false && len(authValuesArray) != 4 {
+	if conf.Bool(conf.Conf["anon-user"]) == false && len(authValuesArray) != 4 {
 		if len(authValuesArray) == 2 {
 			cx.RespondWithErrorMessage(e.UnAuth, http.StatusUnauthorized)
 			return
@@ -55,7 +55,7 @@ func (cr *UserController) Create(cx *goweb.Context) {
 	passwd := authValuesArray[1]
 	admin := false
 	if len(authValuesArray) == 4 {
-		if authValuesArray[2] != fmt.Sprint(conf.SECRET_KEY) {
+		if authValuesArray[2] != fmt.Sprint(conf.Conf["admin-secret"]) {
 			cx.RespondWithErrorMessage(e.UnAuth, http.StatusUnauthorized)
 			return
 		} else if authValuesArray[3] == "true" {

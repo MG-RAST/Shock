@@ -77,8 +77,9 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			return errors.New("type virtual requires source parameter")
 		}
 	} else if isPathUpload {
-		if len(conf.LOCAL_PATHS) > 0 {
-			for _, p := range conf.LOCAL_PATHS {
+		localpaths := strings.Split(conf.Conf["local-paths"], ",")
+		if len(localpaths) > 0 {
+			for _, p := range localpaths {
 				if strings.HasPrefix(params["path"], p) {
 					if err = node.SetFileFromPath(params["path"]); err != nil {
 						return err
