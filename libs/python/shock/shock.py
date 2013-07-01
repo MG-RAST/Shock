@@ -80,7 +80,7 @@ class Client:
         if not (rget.ok):
             raise Exception(u'Unable to connect to Shock server %s: %s' %(url, rget.raise_for_status()))
         with open(path, 'wb') as f:
-            for chunk in rget.iter_content(chunk_size=1024): 
+            for chunk in rget.iter_content(chunk_size=8192): 
                 if chunk:
                     f.write(chunk)
                     f.flush()
