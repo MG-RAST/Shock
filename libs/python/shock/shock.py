@@ -64,7 +64,7 @@ class Client:
         if not (rj and isinstance(rj, dict) and all([key in rj for key in ['status','data','error']])):
             raise Exception(u'Return data not valid Shock format')
         if rj['error']:
-            raise Exception('Shock error: %d: %s'%(rj['status'], rj['error']))
+            raise Exception('Shock error: %d: %s'%(rj['status'], rj['error'][0]))
         return rj['data']
         
     def download_to_path(self, node, path):
@@ -131,7 +131,7 @@ class Client:
             if not (req.ok):
                 raise Exception(u'Unable to connect to Shock server %s: %s' %(url, req.raise_for_status()))
             if rj['error']:
-                raise Exception(u'Shock error %s : %s'%(rj['status'], rj['error']))
+                raise Exception(u'Shock error %s : %s'%(rj['status'], rj['error'][0]))
             else:
                 return rj['data']  
 
