@@ -88,6 +88,12 @@ func Initialize() {
 
 	// Mongodb
 	Conf["mongodb-hosts"], _ = c.String("Mongodb", "hosts")
+	if Conf["mongodb-database"], err = c.String("Mongodb", "database"); err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: Mongodb database must be set in config file.")
+		os.Exit(1)
+	}
+	Conf["mongodb-user"], _ = c.String("Mongodb", "user")
+	Conf["mongodb-password"], _ = c.String("Mongodb", "password")
 
 	// parse Node-Indices
 	NODE_IDXS = map[string]idxOpts{}
@@ -142,7 +148,7 @@ func Print() {
 	} else {
 		fmt.Printf("##### SSL #####\nenabled:\t%s\n\n", Conf["ssl"])
 	}
-	fmt.Printf("##### Mongodb #####\nhost(s):\t%s\n\n", Conf["mongodb-hosts"])
+	fmt.Printf("##### Mongodb #####\nhost(s):\t%s\ndatabase:\t%s\n\n", Conf["mongodb-hosts"], Conf["mongodb-database"])
 	fmt.Printf("##### Ports #####\nsite:\t%s\napi:\t%s\n\n", Conf["site-port"], Conf["api-port"])
 	if Bool(Conf["perf-log"]) {
 		fmt.Printf("##### PerfLog enabled #####\n\n")

@@ -32,7 +32,11 @@ func Initialize() {
 		os.Exit(1)
 	}
 	c.Session = s
-	c.DB = c.Session.DB("ShockDB")
+	c.DB = c.Session.DB(conf.Conf["mongodb-database"])
+	println(conf.Conf["mongodb-user"] + ":" + conf.Conf["mongodb-password"])
+	if conf.Conf["mongodb-user"] != "" && conf.Conf["mongodb-password"] != "" {
+		c.DB.Login(conf.Conf["mongodb-user"], conf.Conf["mongodb-password"])
+	}
 	Connection = c
 }
 
