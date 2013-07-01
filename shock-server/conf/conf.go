@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/jaredwilkening/goconfig/config"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -16,59 +17,19 @@ type idxOpts struct {
 
 // Setup conf variables
 var (
+	Conf = map[string]string{}
+
 	// Reload
 	RELOAD = ""
 
 	// Config File
 	CONFIG_FILE = ""
 
-	// External Address
-	API_URL  = ""
-	SITE_URL = ""
-
-	// Ports
-	SITE_PORT = 0
-	API_PORT  = 0
-
-	// SSL
-	SSL_ENABLED   = false
-	SSL_KEY_FILE  = ""
-	SSL_CERT_FILE = ""
-
-	// Anonymous-Access-Control
-	ANON_WRITE      = false
-	ANON_READ       = true
-	ANON_CREATEUSER = false
-
-	// Auth
-	AUTH_TYPE               = "" //globus, oauth, basic
-	GLOBUS_TOKEN_URL        = ""
-	GLOBUS_PROFILE_URL      = ""
-	OAUTH_REQUEST_TOKEN_URL = ""
-	OAUTH_AUTH_TOKEN_URL    = ""
-	OAUTH_ACCESS_TOKEN_URL  = ""
-
-	// Admin
-	ADMIN_EMAIL = ""
-	SECRET_KEY  = ""
-
-	// Directories
-	DATA_PATH   = ""
-	SITE_PATH   = ""
-	LOGS_PATH   = ""
-	LOCAL_PATHS = []string{}
-
-	// Mongodb
-	MONGODB = ""
-
 	// Node Indices
 	NODE_IDXS map[string]idxOpts = nil
 
 	// Default Chunksize for size virtual index
 	CHUNK_SIZE int64 = 1048576
-
-	// Log
-	PERF_LOG = false
 )
 
 func Initialize() {
@@ -82,52 +43,51 @@ func Initialize() {
 	}
 
 	// Ports
-	SITE_PORT, _ = c.Int("Ports", "site-port")
-	API_PORT, _ = c.Int("Ports", "api-port")
+	Conf["site-port"], _ = c.String("Ports", "site-port")
+	Conf["api-port"], _ = c.String("Ports", "api-port")
 
 	// URLs
-	SITE_URL, _ = c.String("External", "site-url")
-	API_URL, _ = c.String("External", "api-url")
+	Conf["site-url"], _ = c.String("External", "site-url")
+	Conf["api-url"], _ = c.String("External", "api-url")
 
 	// SSL
-	SSL_ENABLED, _ = c.Bool("SSL", "enable")
-	if SSL_ENABLED {
-		SSL_KEY_FILE, _ = c.String("SSL", "key")
-		SSL_CERT_FILE, _ = c.String("SSL", "cert")
+	Conf["ssl"], _ = c.String("SSL", "enable")
+	if Bool(Conf["ssl"]) {
+		Conf["ssl-key"], _ = c.String("SSL", "key")
+		Conf["ssl-cert"], _ = c.String("SSL", "cert")
 	}
 
 	// Access-Control
-	ANON_WRITE, _ = c.Bool("Anonymous", "write")
-	ANON_READ, _ = c.Bool("Anonymous", "read")
-	ANON_CREATEUSER, _ = c.Bool("Anonymous", "create-user")
+	Conf["anon-write"], _ = c.String("Anonymous", "write")
+	Conf["anon-read"], _ = c.String("Anonymous", "read")
+	Conf["anon-user"], _ = c.String("Anonymous", "create-user")
 
 	// Auth
-	AUTH_TYPE, _ = c.String("Auth", "type")
-	switch AUTH_TYPE {
+	Conf["auth-type"], _ = c.String("Auth", "type")
+	switch Conf["auth-type"] {
 	case "globus":
-		GLOBUS_TOKEN_URL, _ = c.String("Auth", "globus_token_url")
-		GLOBUS_PROFILE_URL, _ = c.String("Auth", "globus_profile_url")
+		Conf["globus_token_url"], _ = c.String("Auth", "globus_token_url")
+		Conf["globus_profile_url"], _ = c.String("Auth", "globus_profile_url")
 	case "oauth":
-		OAUTH_REQUEST_TOKEN_URL, _ = c.String("Auth", "oauth_request_token_url")
-		OAUTH_AUTH_TOKEN_URL, _ = c.String("Auth", "oauth_auth_token_url")
-		OAUTH_ACCESS_TOKEN_URL, _ = c.String("Auth", "oauth_access_token_url")
+		Conf["oauth_request_token_url"], _ = c.String("Auth", "oauth_request_token_url")
+		Conf["oauth_auth_token_url"], _ = c.String("Auth", "oauth_auth_token_url")
+		Conf["oauth_access_token_url"], _ = c.String("Auth", "oauth_access_token_url")
 	case "basic":
 		// nothing yet
 	}
 
 	// Admin
-	ADMIN_EMAIL, _ = c.String("Admin", "email")
-	SECRET_KEY, _ = c.String("Admin", "secretkey")
+	Conf["admin-email"], _ = c.String("Admin", "email")
+	Conf["admin-secret"], _ = c.String("Admin", "secretkey")
 
 	// Directories
-	SITE_PATH, _ = c.String("Directories", "site")
-	DATA_PATH, _ = c.String("Directories", "data")
-	LOGS_PATH, _ = c.String("Directories", "logs")
-	localPaths, _ := c.String("Directories", "local_paths")
-	LOCAL_PATHS = strings.Split(localPaths, ",")
+	Conf["site-path"], _ = c.String("Directories", "site")
+	Conf["data-path"], _ = c.String("Directories", "data")
+	Conf["logs-path"], _ = c.String("Directories", "logs")
+	Conf["local-paths"], _ = c.String("Directories", "local_paths")
 
 	// Mongodb
-	MONGODB, _ = c.String("Mongodb", "hosts")
+	Conf["mongodb-hosts"], _ = c.String("Mongodb", "hosts")
 
 	// parse Node-Indices
 	NODE_IDXS = map[string]idxOpts{}
@@ -160,29 +120,31 @@ func Initialize() {
 		NODE_IDXS[opt] = opts
 	}
 
-	if perf_log, err := c.Bool("Log", "perf_log"); err == nil {
-		PERF_LOG = perf_log
-	}
+	Conf["perf-log"], _ = c.String("Log", "perf_log")
+}
 
+func Bool(s string) bool {
+	b, _ := strconv.ParseBool(s)
+	return b
 }
 
 func Print() {
-	fmt.Printf("##### Admin #####\nemail:\t%s\nsecretkey:\t%s\n\n", ADMIN_EMAIL, SECRET_KEY)
-	fmt.Printf("####### Anonymous ######\nread:\t%t\nwrite:\t%t\ncreate-user:\t%t\n\n", ANON_READ, ANON_WRITE, ANON_CREATEUSER)
-	if AUTH_TYPE == "basic" {
+	fmt.Printf("##### Admin #####\nemail:\t%s\nsecretkey:\t%s\n\n", Conf["admin-email"], Conf["admin-secret"])
+	fmt.Printf("####### Anonymous ######\nread:\t%s\nwrite:\t%s\ncreate-user:\t%s\n\n", Conf["anon-read"], Conf["anon-write"], Conf["anon-user"])
+	if Conf["auth-type"] == "basic" {
 		fmt.Printf("##### Auth #####\ntype:\tbasic\n\n")
-	} else if AUTH_TYPE == "globus" {
-		fmt.Printf("##### Auth #####\ntype:\tglobus\ntoken_url:\t%s\nprofile_url:\t%s\n\n", GLOBUS_TOKEN_URL, GLOBUS_PROFILE_URL)
+	} else if Conf["auth-type"] == "globus" {
+		fmt.Printf("##### Auth #####\ntype:\tglobus\ntoken_url:\t%s\nprofile_url:\t%s\n\n", Conf["globus_token_url"], Conf["globus_profile_url"])
 	}
-	fmt.Printf("##### Directories #####\nsite:\t%s\ndata:\t%s\nlogs:\t%s\nlocal_paths:\t%s\n\n", SITE_PATH, DATA_PATH, LOGS_PATH, strings.Join(LOCAL_PATHS, ","))
-	if SSL_ENABLED {
-		fmt.Printf("##### SSL #####\nenabled:\t%t\nkey:\t%s\ncert:\t%s\n\n", SSL_ENABLED, SSL_KEY_FILE, SSL_CERT_FILE)
+	fmt.Printf("##### Directories #####\nsite:\t%s\ndata:\t%s\nlogs:\t%s\nlocal_paths:\t%s\n\n", Conf["site-path"], Conf["data-path"], Conf["logs-path"], Conf["local-paths"])
+	if Bool(Conf["ssl"]) {
+		fmt.Printf("##### SSL #####\nenabled:\t%s\nkey:\t%s\ncert:\t%s\n\n", Conf["ssl"], Conf["ssl-key"], Conf["ssl-cert"])
 	} else {
-		fmt.Printf("##### SSL #####\nenabled:\t%t\n\n", SSL_ENABLED)
+		fmt.Printf("##### SSL #####\nenabled:\t%s\n\n", Conf["ssl"])
 	}
-	fmt.Printf("##### Mongodb #####\nhost(s):\t%s\n\n", MONGODB)
-	fmt.Printf("##### Ports #####\nsite:\t%d\napi:\t%d\n\n", SITE_PORT, API_PORT)
-	if PERF_LOG {
+	fmt.Printf("##### Mongodb #####\nhost(s):\t%s\n\n", Conf["mongodb-hosts"])
+	fmt.Printf("##### Ports #####\nsite:\t%s\napi:\t%s\n\n", Conf["site-port"], Conf["api-port"])
+	if Bool(Conf["perf-log"]) {
 		fmt.Printf("##### PerfLog enabled #####\n\n")
 	}
 }
