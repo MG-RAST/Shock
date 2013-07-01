@@ -18,7 +18,7 @@ func AuthHeaderType(header string) string {
 }
 
 func Authenticate(header string) (u *user.User, err error) {
-	switch conf.AUTH_TYPE {
+	switch conf.Conf["auth-type"] {
 	case "globus":
 		switch AuthHeaderType(header) {
 		case "Globus-Goauthtoken", "OAuth":
@@ -51,20 +51,9 @@ func Authenticate(header string) (u *user.User, err error) {
 		// stub
 	case "basic":
 		if username, password, err := basic.DecodeHeader(header); err == nil {
-			return AuthByUsernamePassword(username, password)
+			return basic.Auth(username, password)
 		} else {
 			return nil, err
-		}
-	}
-	return
-}
-
-func AuthByUsernamePassword(username string, password string) (u *user.User, err error) {
-	if d, err := user.DBConnect(); err == nil {
-		defer d.Close()
-		u = &user.User{Username: username, Password: password}
-		if err = d.GetUser(u); err != nil {
-			u = nil
 		}
 	}
 	return
