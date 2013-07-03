@@ -13,9 +13,9 @@ import (
 func uploader(args ...interface{}) interface{} {
 	n := args[0].(lib.Node)
 	part := args[1].(int)
-	r := args[2].(io.Reader)
+	fh := args[2].(*os.File)
 	size := args[3].(int64)
-	return n.UploadPart(strconv.Itoa(part), r, size)
+	return n.UploadPart(strconv.Itoa(part), io.NewSectionReader(fh, int64(part-1)*conf.CHUNK_SIZE, size), size)
 }
 
 func pcreate(args []string) (err error) {
@@ -71,9 +71,29 @@ func pcreate(args []string) (err error) {
 			if size*(int64(i)+1) > filesize {
 				size = filesize - size*(int64(i))
 			}
-			workers.Add(uploader, n, (i + 1), io.NewSectionReader(fh, int64(i)*conf.CHUNK_SIZE, size), size)
+			workers.Add(uploader, n, (i + 1), fh, size)
 		}
 		workers.Wait()
+		maxRetries := 10
+		for i := 1; i <= maxRetries; i++ {
+			errCount := 0
+			completed_jobs := workers.Results()
+			for _, job := range completed_jobs {
+				if job.Result != nil {
+					err := job.Result.(error)
+					println("Chunk", job.Args[1].(int), "error:", err.Error())
+					workers.Add(job.F, job.Args...)
+					errCount++
+				}
+			}
+			if errCount == 0 {
+				println("All chunks successfully upload.")
+				break
+			} else {
+				println("Retry", i, "of", maxRetries)
+				workers.Wait()
+			}
+		}
 		workers.Stop()
 
 		n.Get()
