@@ -32,7 +32,7 @@ var (
 	Examples         *bool = nil
 	DOWNLOAD_THREADS       = 4
 	// Default Chunksize for size virtual index
-	CHUNK_SIZE int64 = 1048576
+	CHUNK_SIZE int64 = 10485760
 )
 
 func Initialize(args []string) []string {
