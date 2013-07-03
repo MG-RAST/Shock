@@ -109,15 +109,18 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	if parts_count > 1 {
 		for key, file := range files {
 			if node.HasFile() {
+				LockMgr.UnlockPartOp()
 				return errors.New(e.FileImut)
 			}
 			keyn, errf := strconv.Atoi(key)
 			if errf == nil && keyn <= parts_count {
 				err = node.addPart(keyn-1, &file)
 				if err != nil {
+					LockMgr.UnlockPartOp()
 					return err
 				}
 			} else {
+				LockMgr.UnlockPartOp()
 				return errors.New("invalid file parameter")
 			}
 		}
