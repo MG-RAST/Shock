@@ -62,13 +62,3 @@ func downloadChunk(n lib.Node, opts lib.Opts, filename string, offset int64, c c
 	}
 	c <- 1
 }
-
-func uploadChunk(n lib.Node, opts lib.Opts, filename string, c chan int) {
-	if err := n.Update(opts); err != nil {
-		fmt.Printf("Error updating %s: %s\n", n.Id, err.Error())
-	} else {
-		os.Remove(filename)
-	}
-
-	c <- 1
-}
