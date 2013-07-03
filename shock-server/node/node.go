@@ -14,8 +14,6 @@ import (
 	"os"
 )
 
-var virtIdx = mappy{"size": true}
-
 type Node struct {
 	Id           string            `bson:"id" json:"id"`
 	Version      string            `bson:"version" json:"version"`

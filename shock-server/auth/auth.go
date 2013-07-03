@@ -9,6 +9,12 @@ import (
 	"strings"
 )
 
+var authCache cache
+
+func init() {
+	authCache = cache{m: make(map[string]cacheValue)}
+}
+
 func AuthHeaderType(header string) string {
 	tmp := strings.Split(header, " ")
 	if len(tmp) > 1 {
@@ -18,6 +24,10 @@ func AuthHeaderType(header string) string {
 }
 
 func Authenticate(header string) (u *user.User, err error) {
+	if u = authCache.lookup(header); u != nil {
+		return u, nil
+	}
+
 	switch conf.Conf["auth-type"] {
 	case "globus":
 		switch AuthHeaderType(header) {
@@ -25,6 +35,7 @@ func Authenticate(header string) (u *user.User, err error) {
 			// check cache
 			// auth from server
 			if u, err = globus.AuthToken(strings.Split(header, " ")[1]); err == nil {
+				authCache.add(header, u)
 				return
 			} else {
 				return nil, err
@@ -33,6 +44,7 @@ func Authenticate(header string) (u *user.User, err error) {
 		case "Basic":
 			if username, password, err := basic.DecodeHeader(header); err == nil {
 				if u, err := globus.AuthUsernamePassword(username, password); err == nil {
+					authCache.add(header, u)
 					return u, nil
 				} else {
 					return nil, err

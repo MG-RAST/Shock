@@ -11,6 +11,8 @@ func IsInMappy(item string, mp mappy) bool {
 	return false
 }
 
+var virtIdx = mappy{"size": true}
+
 var (
 	LockMgr = NewLocker()
 )
