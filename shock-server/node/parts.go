@@ -36,15 +36,12 @@ func (node *Node) loadParts() (p *partsList, err error) {
 
 func (node *Node) writeParts(p *partsList) (err error) {
 	pm, _ := json.Marshal(p)
-	//os.Remove(node.partsListPath())
 	err = ioutil.WriteFile(node.partsListPath(), []byte(pm), 0644)
 	return
 }
 
 func (node *Node) partsCount() int {
-	LockMgr.LockPartOp()
 	p, err := node.loadParts()
-	LockMgr.UnlockPartOp()
 	if err != nil {
 		return -1
 	}
@@ -103,41 +100,33 @@ func (node *Node) addVirtualParts(ids []string) (err error) {
 }
 
 func (node *Node) addPart(n int, file *FormFile) (err error) {
-
-	LockMgr.LockPartOp()
-	defer LockMgr.UnlockPartOp()
-
 	// load
 	p, err := node.loadParts()
 	if err != nil {
-		return
+		return err
 	}
 
 	// modify
 	if len(p.Parts[n]) > 0 {
-		err = errors.New(e.FileImut)
-		return
+		return errors.New(e.FileImut)
 	}
 	part := partsFile{file.Name, file.Checksum["md5"]}
 	p.Parts[n] = part
 	p.Length = p.Length + 1
 
-	err = os.Rename(file.Path, fmt.Sprintf("%s/parts/%d", node.Path(), n))
-	if err != nil {
-		return
+	if err = os.Rename(file.Path, fmt.Sprintf("%s/parts/%d", node.Path(), n)); err != nil {
+		return err
 	}
 
 	// rewrite
-	err = node.writeParts(p)
-	if err != nil {
-		return
+	if err = node.writeParts(p); err != nil {
+		return err
 	}
 
 	// create file if done
 	if p.Length == p.Count {
-		err = node.SetFileFromParts(p)
-		if err != nil {
-			return
+		if err = node.SetFileFromParts(p); err != nil {
+			return err
 		}
 	}
 	return

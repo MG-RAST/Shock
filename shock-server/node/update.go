@@ -104,7 +104,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	}
 
 	// handle part file
-
+	LockMgr.LockPartOp()
 	parts_count := node.partsCount()
 	if parts_count > 1 {
 		for key, file := range files {
@@ -115,11 +115,14 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			if errf == nil && keyn <= parts_count {
 				err = node.addPart(keyn-1, &file)
 				if err != nil {
-					return
+					return err
 				}
+			} else {
+				return errors.New("invalid file parameter")
 			}
 		}
 	}
+	LockMgr.UnlockPartOp()
 
 	// update relatives
 	if _, hasRelation := params["linkage"]; hasRelation {

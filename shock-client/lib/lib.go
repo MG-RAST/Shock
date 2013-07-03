@@ -54,6 +54,40 @@ func (n *Node) Update(opts Opts) (err error) {
 	return n.createOrUpdate(opts)
 }
 
+func (n *Node) UploadPart(part string, r io.Reader, size int64) (err error) {
+	form := client.NewForm()
+	form.AddFileReader(part, r, size)
+	if err = form.Create(); err != nil {
+		return err
+	}
+
+	headers := client.Header{
+		"Content-Type":   form.ContentType,
+		"Content-Length": strconv.FormatInt(form.Length, 10),
+	}
+
+	if res, err := client.Do("PUT", conf.Server.Url+"/node/"+n.Id, headers, form.Reader); err == nil {
+		if res.StatusCode == 200 {
+			r := WNode{Data: n}
+			body, _ := ioutil.ReadAll(res.Body)
+			if err = json.Unmarshal(body, &r); err == nil {
+				return err
+			}
+		} else {
+			r := Wrapper{}
+			body, _ := ioutil.ReadAll(res.Body)
+			if err = json.Unmarshal(body, &r); err == nil {
+				return errors.New(res.Status + ": " + (*r.Error)[0])
+			} else {
+				return errors.New("request error: " + res.Status)
+			}
+		}
+	} else {
+		return err
+	}
+	return nil
+}
+
 func (n *Node) createOrUpdate(opts Opts) (err error) {
 	url := conf.Server.Url + "/node"
 	method := "POST"
