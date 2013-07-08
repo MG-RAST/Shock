@@ -106,7 +106,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	// handle part file
 	LockMgr.LockPartOp()
 	parts_count := node.partsCount()
-	if parts_count > 1 {
+	if parts_count > 0 {
 		for key, file := range files {
 			if node.HasFile() {
 				LockMgr.UnlockPartOp()

@@ -71,6 +71,9 @@ The Shock configuration file is in INI file format. There is a template of the c
     # Mongodb configuration:
     # Hostnames and ports hosts=host1[,host2:port,...,hostN]
     hosts=localhost
+    database=ShockDB
+    user=
+    password=
 
     [Mongodb-Node-Indices]
     # See http://www.mongodb.org/display/DOCS/Indexes#Indexes-CreationOptions for more info on mongodb index options.
