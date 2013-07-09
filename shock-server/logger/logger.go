@@ -7,8 +7,11 @@ import (
 	"os"
 )
 
-//type level int
+var (
+	Log *Logger
+)
 
+//type level int
 type m struct {
 	log     string
 	lvl     l4g.Level
@@ -18,6 +21,10 @@ type m struct {
 type Logger struct {
 	queue chan m
 	logs  map[string]l4g.Logger
+}
+
+func Initialize() {
+	Log = New()
 }
 
 func New() *Logger {
@@ -70,8 +77,18 @@ func (l *Logger) Warning(log string, message string) {
 	return
 }
 
+func Info(log string, message string) {
+	Log.Log(log, l4g.INFO, message)
+	return
+}
+
 func (l *Logger) Info(log string, message string) {
 	l.Log(log, l4g.INFO, message)
+	return
+}
+
+func Error(message string) {
+	Log.Log("error", l4g.ERROR, message)
 	return
 }
 
@@ -82,6 +99,11 @@ func (l *Logger) Error(message string) {
 
 func (l *Logger) Critical(log string, message string) {
 	l.Log(log, l4g.CRITICAL, message)
+	return
+}
+
+func Perf(message string) {
+	Log.Log("perf", l4g.INFO, message)
 	return
 }
 

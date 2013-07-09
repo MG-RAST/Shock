@@ -1,23 +1,25 @@
-package main
+package preauth
 
 import (
 	e "github.com/MG-RAST/Shock/shock-server/errors"
+	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/preauth"
+	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/jaredwilkening/goweb"
 	"net/http"
 )
 
 func PreAuthRequest(cx *goweb.Context) {
-	LogRequest(cx.Request)
+	request.Log(cx.Request)
 	id := cx.PathParams["id"]
 	if p, err := preauth.Load(id); err != nil {
 		if err.Error() == e.MongoDocNotFound {
 			cx.RespondWithNotFound()
 		} else {
 			cx.RespondWithError(http.StatusInternalServerError)
-			log.Error("err:@preAuth load: " + err.Error())
+			logger.Error("err:@preAuth load: " + err.Error())
 		}
 		return
 	} else {
@@ -36,30 +38,30 @@ func PreAuthRequest(cx *goweb.Context) {
 			}
 		} else {
 			cx.RespondWithError(http.StatusInternalServerError)
-			log.Error("err:@preAuth loadnode: " + err.Error())
+			logger.Error("err:@preAuth loadnode: " + err.Error())
 		}
 	}
 	return
 }
 
 func streamDownload(cx *goweb.Context, n *node.Node, filename string) {
-	query := &Query{list: cx.Request.URL.Query()}
+	query := request.Q(cx.Request.URL.Query())
 	nf, err := n.FileReader()
 	if err != nil {
 		// File not found or some sort of file read error.
 		// Probably deserves more checking
-		log.Error("err:@preAuth node.FileReader: " + err.Error())
+		logger.Error("err:@preAuth node.FileReader: " + err.Error())
 		cx.RespondWithError(http.StatusBadRequest)
 		return
 	}
 	if query.Has("filename") {
 		filename = query.Value("filename")
 	}
-	s := &streamer{rs: []file.SectionReader{nf}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: filename, size: n.File.Size, filter: nil}
-	err = s.stream()
+	s := &request.Streamer{R: []file.SectionReader{nf}, W: cx.ResponseWriter, ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: nil}
+	err = s.Stream()
 	if err != nil {
 		// causes "multiple response.WriteHeader calls" error but better than no response
 		cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
-		log.Error("err:@preAuth: s.stream: " + err.Error())
+		logger.Error("err:@preAuth: s.stream: " + err.Error())
 	}
 }

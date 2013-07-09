@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
+	"github.com/MG-RAST/Shock/shock-server/controller"
 	"github.com/MG-RAST/Shock/shock-server/db"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
@@ -25,39 +26,39 @@ func launchSite(control chan int) {
 		err := goweb.ListenAndServeRoutesTLS(":"+conf.Conf["site-port"], conf.Conf["ssl-cert"], conf.Conf["ssl-key"], r)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: site: %v\n", err)
-			log.Error("ERROR: site: " + err.Error())
+			logger.Error("ERROR: site: " + err.Error())
 		}
 	} else {
 		err := goweb.ListenAndServeRoutes(":"+conf.Conf["site-port"], r)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: site: %v\n", err)
-			log.Error("ERROR: site: " + err.Error())
+			logger.Error("ERROR: site: " + err.Error())
 		}
 	}
 	control <- 1 //we are ending
 }
 
 func launchAPI(control chan int) {
+	c := controller.New()
 	goweb.ConfigureDefaultFormatters()
 	r := &goweb.RouteManager{}
-	r.MapFunc("/preauth/{id}", PreAuthRequest, goweb.GetMethod)
-	r.Map("/node/{nid}/acl/{type}", AclControllerTyped)
-	r.Map("/node/{nid}/acl", AclController)
-	r.MapRest("/node", new(NodeController))
-	r.MapRest("/user", new(UserController))
+	r.MapFunc("/preauth/{id}", c.Preauth, goweb.GetMethod)
+	r.Map("/node/{nid}/acl/{type}", c.Acl["typed"])
+	r.Map("/node/{nid}/acl", c.Acl["base"])
+	r.MapRest("/node", c.Node)
 	r.MapFunc("*", ResourceDescription, goweb.GetMethod)
 	r.MapFunc("*", RespondOk, goweb.OptionsMethod)
 	if conf.Bool(conf.Conf["ssl"]) {
 		err := goweb.ListenAndServeRoutesTLS(":"+conf.Conf["api-port"], conf.Conf["ssl-cert"], conf.Conf["ssl-key"], r)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: api: %v\n", err)
-			log.Error("ERROR: api: " + err.Error())
+			logger.Error("ERROR: api: " + err.Error())
 		}
 	} else {
 		err := goweb.ListenAndServeRoutes(":"+conf.Conf["api-port"], r)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: api: %v\n", err)
-			log.Error("ERROR: api: " + err.Error())
+			logger.Error("ERROR: api: " + err.Error())
 		}
 	}
 	control <- 1 //we are ending
@@ -65,18 +66,19 @@ func launchAPI(control chan int) {
 
 func main() {
 	conf.Initialize()
+	logger.Initialize()
+	log = logger.Log
 	db.Initialize()
 	user.Initialize()
 	node.Initialize()
 
-	log = logger.New()
 	printLogo()
 	conf.Print()
 
 	if _, err := os.Stat(conf.Conf["data-path"] + "/temp"); err != nil && os.IsNotExist(err) {
 		if err := os.Mkdir(conf.Conf["data-path"]+"/temp", 0777); err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
-			log.Error("ERROR: " + err.Error())
+			logger.Error("ERROR: " + err.Error())
 		}
 	}
 
@@ -86,14 +88,14 @@ func main() {
 		err := reload(conf.RELOAD)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
-			log.Error("ERROR: " + err.Error())
+			logger.Error("ERROR: " + err.Error())
 		}
 		fmt.Println("Done")
 	}
 
 	//launch server
 	control := make(chan int)
-	go log.Handle()
+	go logger.Log.Handle()
 	go launchSite(control)
 	go launchAPI(control)
 	<-control //block till something dies
