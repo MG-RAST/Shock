@@ -19,7 +19,7 @@ Shock is actively being developed at [github.com/MG-RAST/Shock](http://github.co
 <br>
 Building:
 ---------
-Shock (requires go=>1.0.0 [golang.org/doc/install/source](http://golang.org/doc/install/source), git, mercurial, bazaar):
+Shock (requires go=>1.1.0 [golang.org](http://golang.org/), git, mercurial, bazaar):
 
     go get github.com/MG-RAST/Shock/...
 
@@ -114,8 +114,6 @@ Routes Overview
 - [/node/{id}](#get_node)  view node, download file (full or partial)
 - [/node/{id}/acl]()  view node acls
 - [/node/{id}/acl/{type}]()  view node acls of type {type}
-- [/user](#get_users)  list users (admin users only)
-- [/user/{id}](#get_user)  view user
 
 #####PUT
 
@@ -126,7 +124,6 @@ Routes Overview
 #####POST
  
 - [/node](#post_node)  create node
-- [/user](#post_user)  create user
 
 #####DELETE
 
@@ -144,21 +141,10 @@ Routes Overview
 
 Authentication:
 ---------------
-Shock currently supports two forms of Authentication. Http Basic Auth with local user support and Globus Online Nexus oauth implementation. See configuration for more details.
-
-### Basic Auth
-In this configuration Shock locally stores user information. Users must create accounts via the [user api](#post_user). Once this is done they can pass basic auth headers to authenticate.
-
-Example
-
-    curl --user username:password ...
-
-<br>
+Shock supports multiple forms of Authentication via plugin modules. Credentials are cached for 1 hour to speed up high transaction loads. Server restarts will clear the credential cache.
 
 ### Globus Online 
 In this configuration Shock locally stores only uuids for users that it has already seen. The registration of new users is done exclusively with the external auth provider. The user api is disabled in this mode.
-
-__Note__: Using the basic auth method shown below is significantly slower than the bearer token. Its highly discouraged for large numbers of request.
 
 Examples:
 
@@ -199,27 +185,6 @@ Data Types
             "relatives": [], 
             "type": [], 
             "version": "4da883924aa8ae9eb95f6cd247f2f554"
-        }, 
-        "error": null, 
-        "status": 200
-    }
-
-<br>
-### User:
-
-- uuid: unique identifier
-- name: username
-- passwd: all responds are masked "**********" 
-- admin: boolean
-
-##### user example:
-
-    { 
-        "data": {
-            "uuid": "67394386a4acac62fdb851d78691ee48"
-            "name": "joeuser", 
-            "passwd": "**********", 
-            "admin": false, 
         }, 
         "error": null, 
         "status": 200
@@ -510,73 +475,6 @@ Modify node, create index
 
     {
         "data": null,
-        "error": <error message or null>, 
-        "status": <http status of request>
-    }
-
-<a name="post_user"/>
-<br>
-### POST /user
-
-Create user (basic auth only)
-
-Requires Basic Auth encoded as 'username:password'. To create an admin user 'username:password:secret-key:true' where secret-key was specified at server start.
-	
-##### example	
-
-    # regular user (when config Anonymous:create-user=true)
-    curl -X POST --user joeuser:1234 http://<host>[:<port>]/user
-
-    # regular user (when config Anonymous:create-user=false)
-    curl -X POST --user joeuser:1234:supersupersecret:false http://<host>[:<port>]/user    
-
-    # admin user
-    curl -X POST --user joeuser:1234:supersupersecret:true http://<host>[:<port>]/user
-	
-##### returns
-
-    {
-        "data": {<user>},
-        "error": <error message or null>, 
-        "status": <http status of request>
-    }
-
-<a name="get_user"/>
-<br>
-### GET /user/{id}
-
-View user (basic auth only)
-
-Requires Basic Auth encoded username:password. Regular user are able to see their own information while Admin user are able to access all. 
-
-##### example	
-
-    curl -X GET --user joeuser:1234 http://<host>[:<port>]/user/{id}
-
-##### returns
-
-    {
-        "data": {<user>},
-        "error": <error message or null>, 
-        "status": <http status of request>
-    }
-
-<a name="get_users"/>
-<br>
-### GET /user
-
-List users (basic auth only)
-
-Requires Basic Auth encoded username:password. Restricted to Admin users.
-
-##### example	
-
-    curl -X GET --user joeadmin:12345 http://<host>[:<port>]/user
-
-##### returns
-
-    {
-        "data": {[<user>,...]},
         "error": <error message or null>, 
         "status": <http status of request>
     }
