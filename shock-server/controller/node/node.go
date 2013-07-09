@@ -1,15 +1,18 @@
-package main
+package node
 
 import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/indexer"
+	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/node/filter"
 	"github.com/MG-RAST/Shock/shock-server/preauth"
+	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/user"
+	"github.com/MG-RAST/Shock/shock-server/util"
 	"github.com/jaredwilkening/goweb"
 	"io"
 	"labix.org/v2/mgo/bson"
@@ -20,22 +23,22 @@ import (
 	"time"
 )
 
-type NodeController struct{}
+type Controller struct{}
 
 // Options: /node
-func (cr *NodeController) Options(cx *goweb.Context) {
-	LogRequest(cx.Request)
+func (cr *Controller) Options(cx *goweb.Context) {
+	request.Log(cx.Request)
 	cx.RespondWithOK()
 	return
 }
 
 // POST: /node
-func (cr *NodeController) Create(cx *goweb.Context) {
+func (cr *Controller) Create(cx *goweb.Context) {
 	// Log Request and check for Auth
-	LogRequest(cx.Request)
-	u, err := AuthenticateRequest(cx.Request)
+	request.Log(cx.Request)
+	u, err := request.Authenticate(cx.Request)
 	if err != nil && err.Error() != e.NoAuth {
-		handleAuthError(err, cx)
+		request.AuthError(err, cx)
 		return
 	}
 
@@ -50,7 +53,7 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 	}
 
 	// Parse uploaded form
-	params, files, err := ParseMultipartForm(cx.Request)
+	params, files, err := request.ParseMultipartForm(cx.Request)
 	if err != nil {
 		// If not multipart/form-data it will create an empty node.
 		// TODO: create another request parser for non-multipart request
@@ -58,7 +61,7 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 		if err.Error() == "request Content-Type isn't multipart/form-data" {
 			n, err := node.CreateNodeUpload(u, params, files)
 			if err != nil {
-				log.Error("Error at create empty: " + err.Error())
+				logger.Error("Error at create empty: " + err.Error())
 				cx.RespondWithError(http.StatusInternalServerError)
 				return
 			}
@@ -75,7 +78,7 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 			// Some error other than request encoding. Theoretically
 			// could be a lost db connection between user lookup and parsing.
 			// Blame the user, Its probaby their fault anyway.
-			log.Error("Error parsing form: " + err.Error())
+			logger.Error("Error parsing form: " + err.Error())
 			cx.RespondWithError(http.StatusBadRequest)
 			return
 		}
@@ -83,7 +86,7 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 	// Create node
 	n, err := node.CreateNodeUpload(u, params, files)
 	if err != nil {
-		log.Error("err@node_CreateNodeUpload: " + err.Error())
+		logger.Error("err@node_CreateNodeUpload: " + err.Error())
 		cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -92,11 +95,11 @@ func (cr *NodeController) Create(cx *goweb.Context) {
 }
 
 // DELETE: /node/{id}
-func (cr *NodeController) Delete(id string, cx *goweb.Context) {
-	LogRequest(cx.Request)
-	u, err := AuthenticateRequest(cx.Request)
+func (cr *Controller) Delete(id string, cx *goweb.Context) {
+	request.Log(cx.Request)
+	u, err := request.Authenticate(cx.Request)
 	if err != nil && err.Error() != e.NoAuth {
-		handleAuthError(err, cx)
+		request.AuthError(err, cx)
 		return
 	}
 	if u == nil {
@@ -116,7 +119,7 @@ func (cr *NodeController) Delete(id string, cx *goweb.Context) {
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			log.Error("Err@node_Read:Delete: " + err.Error())
+			logger.Error("Err@node_Read:Delete: " + err.Error())
 			cx.RespondWithError(http.StatusInternalServerError)
 			return
 		}
@@ -126,7 +129,7 @@ func (cr *NodeController) Delete(id string, cx *goweb.Context) {
 		cx.RespondWithOK()
 		return
 	} else {
-		log.Error("Err@node_Delet:Delete: " + err.Error())
+		logger.Error("Err@node_Delet:Delete: " + err.Error())
 		cx.RespondWithError(http.StatusInternalServerError)
 	}
 	return
@@ -134,12 +137,12 @@ func (cr *NodeController) Delete(id string, cx *goweb.Context) {
 
 // GET: /node/{id}
 // ToDo: clean up this function. About to get unmanageable
-func (cr *NodeController) Read(id string, cx *goweb.Context) {
+func (cr *Controller) Read(id string, cx *goweb.Context) {
 	// Log Request and check for Auth
-	LogRequest(cx.Request)
-	u, err := AuthenticateRequest(cx.Request)
+	request.Log(cx.Request)
+	u, err := request.Authenticate(cx.Request)
 	if err != nil && err.Error() != e.NoAuth {
-		handleAuthError(err, cx)
+		request.AuthError(err, cx)
 		return
 	}
 
@@ -154,7 +157,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 	}
 
 	// Gather query params
-	query := &Query{list: cx.Request.URL.Query()}
+	query := request.Q(cx.Request.URL.Query())
 
 	var fFunc filter.FilterFunc = nil
 	if query.Has("filter") {
@@ -175,11 +178,11 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			log.Error("Err@node_Read:LoadNode:" + id + ":" + err.Error())
+			logger.Error("Err@node_Read:LoadNode:" + id + ":" + err.Error())
 
 			n, err = node.LoadFromDisk(id)
 			if err != nil {
-				log.Error("Err@node_Read:LoadNodeFromDisk:" + id + ":" + err.Error())
+				logger.Error("Err@node_Read:LoadNodeFromDisk:" + id + ":" + err.Error())
 				cx.RespondWithError(http.StatusInternalServerError)
 				return
 			}
@@ -203,7 +206,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 		if query.Has("index") {
 			//handling bam file
 			if query.Value("index") == "bai" {
-				s := &streamer{rs: []file.SectionReader{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: filename, size: n.File.Size, filter: fFunc}
+				s := &request.Streamer{R: []file.SectionReader{}, W: cx.ResponseWriter, ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc}
 
 				var region string
 
@@ -212,13 +215,13 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 					region = query.Value("region")
 				}
 
-				argv, err := ParseSamtoolsArgs(query)
+				argv, err := request.ParseSamtoolsArgs(query)
 				if err != nil {
 					cx.RespondWithErrorMessage("Invaid args in query url", http.StatusBadRequest)
 					return
 				}
 
-				err = s.stream_samtools(n.FilePath(), region, argv...)
+				err = s.StreamSamtools(n.FilePath(), region, argv...)
 				if err != nil {
 					cx.RespondWithErrorMessage("error while involking samtools", http.StatusBadRequest)
 					return
@@ -235,7 +238,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 			// open file
 			r, err := n.FileReader()
 			if err != nil {
-				log.Error("Err@node_Read:Open: " + err.Error())
+				logger.Error("Err@node_Read:Open: " + err.Error())
 				cx.RespondWithError(http.StatusInternalServerError)
 				return
 			}
@@ -258,7 +261,7 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 				idx.Set(map[string]interface{}{"ChunkSize": csize})
 			}
 			var size int64 = 0
-			s := &streamer{rs: []file.SectionReader{}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: filename, filter: fFunc}
+			s := &request.Streamer{R: []file.SectionReader{}, W: cx.ResponseWriter, ContentType: "application/octet-stream", Filename: filename, Filter: fFunc}
 			for _, p := range query.List("part") {
 				pos, length, err := idx.Part(p)
 				if err != nil {
@@ -266,30 +269,30 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 					return
 				}
 				size += length
-				s.rs = append(s.rs, io.NewSectionReader(r, pos, length))
+				s.R = append(s.R, io.NewSectionReader(r, pos, length))
 			}
-			s.size = size
-			err = s.stream()
+			s.Size = size
+			err = s.Stream()
 			if err != nil {
 				// causes "multiple response.WriteHeader calls" error but better than no response
 				cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
-				log.Error("err:@node_Read s.stream: " + err.Error())
+				logger.Error("err:@node_Read s.stream: " + err.Error())
 			}
 		} else {
 			nf, err := n.FileReader()
 			if err != nil {
 				// File not found or some sort of file read error.
 				// Probably deserves more checking
-				log.Error("err:@node_Read node.FileReader: " + err.Error())
+				logger.Error("err:@node_Read node.FileReader: " + err.Error())
 				cx.RespondWithError(http.StatusBadRequest)
 				return
 			}
-			s := &streamer{rs: []file.SectionReader{nf}, ws: cx.ResponseWriter, contentType: "application/octet-stream", filename: filename, size: n.File.Size, filter: fFunc}
-			err = s.stream()
+			s := &request.Streamer{R: []file.SectionReader{nf}, W: cx.ResponseWriter, ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc}
+			err = s.Stream()
 			if err != nil {
 				// causes "multiple response.WriteHeader calls" error but better than no response
 				cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
-				log.Error("err:@node_Read: s.stream: " + err.Error())
+				logger.Error("err:@node_Read: s.stream: " + err.Error())
 			}
 		}
 		return
@@ -305,11 +308,11 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 			if query.Has("filename") {
 				options["filename"] = query.Value("filename")
 			}
-			if p, err := preauth.New(RandString(20), "download", n.Id, options); err != nil {
+			if p, err := preauth.New(util.RandString(20), "download", n.Id, options); err != nil {
 				cx.RespondWithError(http.StatusInternalServerError)
-				log.Error("err:@node_Read download_url: " + err.Error())
+				logger.Error("err:@node_Read download_url: " + err.Error())
 			} else {
-				cx.RespondWithData(urlResponse{Url: apiUrl(cx) + "/preauth/" + p.Id, ValidTill: p.ValidTill.Format(time.ANSIC)})
+				cx.RespondWithData(util.UrlResponse{Url: util.ApiUrl(cx) + "/preauth/" + p.Id, ValidTill: p.ValidTill.Format(time.ANSIC)})
 			}
 		}
 	} else {
@@ -321,17 +324,17 @@ func (cr *NodeController) Read(id string, cx *goweb.Context) {
 // GET: /node
 // To do:
 // - Iterate node queries
-func (cr *NodeController) ReadMany(cx *goweb.Context) {
+func (cr *Controller) ReadMany(cx *goweb.Context) {
 	// Log Request and check for Auth
-	LogRequest(cx.Request)
-	u, err := AuthenticateRequest(cx.Request)
+	request.Log(cx.Request)
+	u, err := request.Authenticate(cx.Request)
 	if err != nil && err.Error() != e.NoAuth {
-		handleAuthError(err, cx)
+		request.AuthError(err, cx)
 		return
 	}
 
 	// Gather query params
-	query := &Query{list: cx.Request.URL.Query()}
+	query := request.Q(cx.Request.URL.Query())
 
 	// Setup query and nodes objects
 	q := bson.M{}
@@ -380,16 +383,16 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 	limit := 25
 	offset := 0
 	if query.Has("limit") {
-		limit = ToInt(query.Value("limit"))
+		limit = util.ToInt(query.Value("limit"))
 	}
 	if query.Has("offset") {
-		offset = ToInt(query.Value("offset"))
+		offset = util.ToInt(query.Value("offset"))
 	}
 
 	// Get nodes from db
 	count, err := nodes.GetPaginated(q, limit, offset)
 	if err != nil {
-		log.Error("err " + err.Error())
+		logger.Error("err " + err.Error())
 		cx.RespondWithError(http.StatusBadRequest)
 		return
 	}
@@ -398,17 +401,17 @@ func (cr *NodeController) ReadMany(cx *goweb.Context) {
 }
 
 // PUT: /node/{id} -> multipart-form
-func (cr *NodeController) Update(id string, cx *goweb.Context) {
+func (cr *Controller) Update(id string, cx *goweb.Context) {
 	// Log Request and check for Auth
-	LogRequest(cx.Request)
-	u, err := AuthenticateRequest(cx.Request)
+	request.Log(cx.Request)
+	u, err := request.Authenticate(cx.Request)
 	if err != nil && err.Error() != e.NoAuth {
-		handleAuthError(err, cx)
+		request.AuthError(err, cx)
 		return
 	}
 
 	// Gather query params
-	query := &Query{list: cx.Request.URL.Query()}
+	query := request.Q(cx.Request.URL.Query())
 
 	// Fake public user
 	if u == nil {
@@ -426,7 +429,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			log.Error("Err@node_Update:LoadNode: " + err.Error())
+			logger.Error("Err@node_Update:LoadNode: " + err.Error())
 			cx.RespondWithError(http.StatusInternalServerError)
 			return
 		}
@@ -434,7 +437,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 
 	if query.Has("index") {
 		if conf.Bool(conf.Conf["perf-log"]) {
-			log.Perf("START indexing: " + id)
+			logger.Perf("START indexing: " + id)
 		}
 
 		if !n.HasFile() {
@@ -445,7 +448,7 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 		if query.Value("index") == "bai" {
 			//bam index is created by the command-line tool samtools
 			if ext := n.FileExt(); ext == ".bam" {
-				if err := CreateBamIndex(n.FilePath()); err != nil {
+				if err := request.CreateBamIndex(n.FilePath()); err != nil {
 					cx.RespondWithErrorMessage("Error while creating bam index", http.StatusBadRequest)
 					return
 				}
@@ -468,13 +471,13 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 		idxer := newIndexer(f)
 		count, err := idxer.Create()
 		if err != nil {
-			log.Error("err " + err.Error())
+			logger.Error("err " + err.Error())
 			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 			return
 		}
 
 		if err := idxer.Dump(n.IndexPath() + "/" + query.Value("index") + ".idx"); err != nil {
-			log.Error("err " + err.Error())
+			logger.Error("err " + err.Error())
 			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -490,11 +493,11 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 		}
 
 		if err := n.SetIndexInfo(query.Value("index"), idxInfo); err != nil {
-			log.Error("err@node.SetIndexInfo: " + err.Error())
+			logger.Error("err@node.SetIndexInfo: " + err.Error())
 		}
 
 		if conf.Bool(conf.Conf["perf-log"]) {
-			log.Perf("END indexing: " + id)
+			logger.Perf("END indexing: " + id)
 		}
 
 		cx.RespondWithOK()
@@ -502,11 +505,11 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 
 	} else {
 		if conf.Bool(conf.Conf["perf-log"]) {
-			log.Perf("START PUT data: " + id)
+			logger.Perf("START PUT data: " + id)
 		}
-		params, files, err := ParseMultipartForm(cx.Request)
+		params, files, err := request.ParseMultipartForm(cx.Request)
 		if err != nil {
-			log.Error("err@node_ParseMultipartForm: " + err.Error())
+			logger.Error("err@node_ParseMultipartForm: " + err.Error())
 			cx.RespondWithError(http.StatusBadRequest)
 			return
 		}
@@ -520,13 +523,13 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 					return
 				}
 			}
-			log.Error("err@node_Update: " + id + ":" + err.Error())
+			logger.Error("err@node_Update: " + id + ":" + err.Error())
 			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 			return
 		}
 		cx.RespondWithData(n)
 		if conf.Bool(conf.Conf["perf-log"]) {
-			log.Perf("END PUT data: " + id)
+			logger.Perf("END PUT data: " + id)
 		}
 	}
 	return
@@ -534,13 +537,13 @@ func (cr *NodeController) Update(id string, cx *goweb.Context) {
 
 // Will not implement
 // PUT: /node
-func (cr *NodeController) UpdateMany(cx *goweb.Context) {
-	LogRequest(cx.Request)
+func (cr *Controller) UpdateMany(cx *goweb.Context) {
+	request.Log(cx.Request)
 	cx.RespondWithError(http.StatusNotImplemented)
 }
 
 // DELETE: /node
-func (cr *NodeController) DeleteMany(cx *goweb.Context) {
-	LogRequest(cx.Request)
+func (cr *Controller) DeleteMany(cx *goweb.Context) {
+	request.Log(cx.Request)
 	cx.RespondWithError(http.StatusNotImplemented)
 }

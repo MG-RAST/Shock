@@ -1,9 +1,11 @@
-package main
+package acl
 
 import (
 	"errors"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
+	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
+	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/jaredwilkening/goweb"
 	"net/http"
@@ -15,11 +17,11 @@ var (
 )
 
 // GET, POST, PUT, DELETE: /node/{nid}/acl/
-var AclController goweb.ControllerFunc = func(cx *goweb.Context) {
-	LogRequest(cx.Request)
-	u, err := AuthenticateRequest(cx.Request)
+var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
+	request.Log(cx.Request)
+	u, err := request.Authenticate(cx.Request)
 	if err != nil && err.Error() != e.NoAuth {
-		handleAuthError(err, cx)
+		request.AuthError(err, cx)
 		return
 	}
 
@@ -42,7 +44,7 @@ var AclController goweb.ControllerFunc = func(cx *goweb.Context) {
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			log.Error("Err@node_Read:LoadNode: " + err.Error())
+			logger.Error("Err@node_Read:LoadNode: " + err.Error())
 			cx.RespondWithError(http.StatusInternalServerError)
 			return
 		}
@@ -85,11 +87,11 @@ var AclController goweb.ControllerFunc = func(cx *goweb.Context) {
 }
 
 // GET, POST, PUT, DELETE: /node/{nid}/acl/{type}
-var AclControllerTyped goweb.ControllerFunc = func(cx *goweb.Context) {
-	LogRequest(cx.Request)
-	u, err := AuthenticateRequest(cx.Request)
+var ControllerTyped goweb.ControllerFunc = func(cx *goweb.Context) {
+	request.Log(cx.Request)
+	u, err := request.Authenticate(cx.Request)
 	if err != nil && err.Error() != e.NoAuth {
-		handleAuthError(err, cx)
+		request.AuthError(err, cx)
 		return
 	}
 
@@ -118,7 +120,7 @@ var AclControllerTyped goweb.ControllerFunc = func(cx *goweb.Context) {
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			log.Error("Err@node_Read:LoadNode: " + err.Error())
+			logger.Error("Err@node_Read:LoadNode: " + err.Error())
 			cx.RespondWithError(http.StatusInternalServerError)
 			return
 		}
@@ -182,8 +184,8 @@ var AclControllerTyped goweb.ControllerFunc = func(cx *goweb.Context) {
 func parseAclRequest(cx *goweb.Context) (ids map[string][]string, err error) {
 	ids = map[string][]string{}
 	users := map[string][]string{}
-	query := &Query{list: cx.Request.URL.Query()}
-	params, _, err := ParseMultipartForm(cx.Request)
+	query := request.Q(cx.Request.URL.Query())
+	params, _, err := request.ParseMultipartForm(cx.Request)
 	if err != nil && err.Error() == "request Content-Type isn't multipart/form-data" && (query.Has("all") || query.Has("read") || query.Has("write") || query.Has("delete")) {
 		if query.Has("all") {
 			users["all"] = strings.Split(query.Value("all"), ",")
@@ -233,8 +235,8 @@ func parseAclRequest(cx *goweb.Context) (ids map[string][]string, err error) {
 
 func parseAclRequestTyped(cx *goweb.Context) (ids []string, err error) {
 	var users []string
-	query := &Query{list: cx.Request.URL.Query()}
-	params, _, err := ParseMultipartForm(cx.Request)
+	query := request.Q(cx.Request.URL.Query())
+	params, _, err := request.ParseMultipartForm(cx.Request)
 	if err != nil && err.Error() == "request Content-Type isn't multipart/form-data" && query.Has("users") {
 		users = strings.Split(query.Value("users"), ",")
 	} else if params["users"] != "" {

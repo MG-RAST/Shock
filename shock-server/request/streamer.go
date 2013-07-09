@@ -1,4 +1,4 @@
-package main
+package request
 
 import (
 	"errors"
@@ -11,29 +11,29 @@ import (
 	"path/filepath"
 )
 
-type streamer struct {
-	rs          []file.SectionReader
-	ws          http.ResponseWriter
-	contentType string
-	filename    string
-	size        int64
-	filter      filter.FilterFunc
+type Streamer struct {
+	R           []file.SectionReader
+	W           http.ResponseWriter
+	ContentType string
+	Filename    string
+	Size        int64
+	Filter      filter.FilterFunc
 }
 
-func (s *streamer) stream() (err error) {
-	s.ws.Header().Set("Content-Type", s.contentType)
-	s.ws.Header().Set("Content-Disposition", fmt.Sprintf(" attachment; filename=%s", s.filename))
-	if s.size > 0 && s.filter == nil {
-		s.ws.Header().Set("Content-Length", fmt.Sprint(s.size))
+func (s *Streamer) Stream() (err error) {
+	s.W.Header().Set("Content-Type", s.ContentType)
+	s.W.Header().Set("Content-Disposition", fmt.Sprintf(" attachment; filename=%s", s.Filename))
+	if s.Size > 0 && s.Filter == nil {
+		s.W.Header().Set("Content-Length", fmt.Sprint(s.Size))
 	}
-	for _, sr := range s.rs {
+	for _, sr := range s.R {
 		var rs io.Reader
-		if s.filter != nil {
-			rs = s.filter(sr)
+		if s.Filter != nil {
+			rs = s.Filter(sr)
 		} else {
 			rs = sr
 		}
-		_, err := io.Copy(s.ws, rs)
+		_, err := io.Copy(s.W, rs)
 		if err != nil {
 			return err
 		}
@@ -41,7 +41,7 @@ func (s *streamer) stream() (err error) {
 	return
 }
 
-func (s *streamer) stream_samtools(filePath string, region string, args ...string) (err error) {
+func (s *Streamer) StreamSamtools(filePath string, region string, args ...string) (err error) {
 	//involking samtools in command line:
 	//samtools view [-c] [-H] [-f INT] ... filname.bam [region]
 
@@ -66,7 +66,7 @@ func (s *streamer) stream_samtools(filePath string, region string, args ...strin
 		return err
 	}
 
-	go io.Copy(s.ws, stdout)
+	go io.Copy(s.W, stdout)
 
 	err = cmd.Wait()
 	if err != nil {
