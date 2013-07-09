@@ -33,7 +33,6 @@ func Initialize() {
 	}
 	c.Session = s
 	c.DB = c.Session.DB(conf.Conf["mongodb-database"])
-	println(conf.Conf["mongodb-user"] + ":" + conf.Conf["mongodb-password"])
 	if conf.Conf["mongodb-user"] != "" && conf.Conf["mongodb-password"] != "" {
 		c.DB.Login(conf.Conf["mongodb-user"], conf.Conf["mongodb-password"])
 	}
