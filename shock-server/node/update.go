@@ -12,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 //Modification functions
@@ -173,9 +174,15 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 func (node *Node) Save() (err error) {
 	node.UpdateVersion()
 	if len(node.Revisions) == 0 || node.Revisions[len(node.Revisions)-1].Version != node.Version {
-		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages}
+		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified}
 		node.Revisions = append(node.Revisions, n)
 	}
+	if node.CreatedOn == "" {
+		node.CreatedOn = time.Now().Format(time.UnixDate)
+	} else {
+		node.LastModified = time.Now().Format(time.UnixDate)
+	}
+
 	bsonPath := fmt.Sprintf("%s/%s.bson", node.Path(), node.Id)
 	os.Remove(bsonPath)
 	nbson, err := bson.Marshal(node)

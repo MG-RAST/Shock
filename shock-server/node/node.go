@@ -25,6 +25,8 @@ type Node struct {
 	Tags         []string          `bson:"tags" json:"tags"`
 	Revisions    []Node            `bson:"revisions" json:"-"`
 	Linkages     []linkage         `bson:"linkage" json:"linkages"`
+	CreatedOn    string            `bson:"created_on" json:"created_on"`
+	LastModified string            `bson:"last_modified" json:"last_modified"`
 }
 
 type linkage struct {
@@ -54,6 +56,7 @@ func New() (node *Node) {
 	node.Indexes = make(map[string]IdxInfo)
 	node.File.Checksum = make(map[string]string)
 	node.setId()
+	node.LastModified = "-"
 	return
 }
 
