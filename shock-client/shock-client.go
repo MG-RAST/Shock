@@ -254,7 +254,6 @@ func main() {
 		if totalChunk < 1 {
 			totalChunk = 1
 		}
-
 		splits := conf.DOWNLOAD_THREADS
 		if ne(conf.Flags["threads"]) {
 			if th, err := strconv.Atoi(*conf.Flags["threads"]); err == nil {
@@ -266,12 +265,6 @@ func main() {
 		}
 
 		fmt.Printf("downloading using %d threads\n", splits)
-
-		split_size := totalChunk / splits
-		remainder := totalChunk % splits
-		if remainder > 0 {
-			split_size += 1
-		}
 
 		var filename string
 		if len(args) == 2 {
@@ -288,17 +281,26 @@ func main() {
 		oh.Close()
 
 		ch := make(chan int, 1)
+		split_size := totalChunk / splits
+		remainder := totalChunk % splits
+		//splitting, if total chunk is 10, each split will have 3,3,2,2 chunks respectively
 		for i := 0; i < splits; i++ {
-			start_chunk := i*split_size + 1
-			end_chunk := (i + 1) * split_size
-			if end_chunk > totalChunk {
-				end_chunk = totalChunk
+			var start, end int
+			if i < remainder {
+				start = (split_size+1)*i + 1
+				end = start + split_size
+			} else {
+				start = (split_size+1)*remainder + split_size*(i-remainder) + 1
+				end = start + split_size - 1
 			}
-			part_string := fmt.Sprintf("%d-%d", start_chunk, end_chunk)
+			part_string := fmt.Sprintf("%d-%d", start, end)
 			opts := lib.Opts{}
 			opts["index"] = "size"
 			opts["parts"] = part_string
-			start_offset := (int64(start_chunk) - 1) * conf.CHUNK_SIZE
+			//to-do: "chunksize" needs to be changed to "chunk_size" to match documents
+			opts["index_options"] = fmt.Sprintf("chunksize=%d", conf.CHUNK_SIZE)
+
+			start_offset := (int64(start) - 1) * conf.CHUNK_SIZE
 			go downloadChunk(n, opts, filename, start_offset, ch)
 		}
 		for i := 0; i < splits; i++ {
