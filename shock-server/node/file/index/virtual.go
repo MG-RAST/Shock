@@ -1,4 +1,4 @@
-package virtual
+package index
 
 import (
 	"errors"
@@ -29,7 +29,7 @@ type vIndex struct {
 	partF     partFunc
 }
 
-func New(t string, p string, s int64, c int64) *vIndex {
+func NewVirtual(t string, p string, s int64, c int64) *vIndex {
 	if partFunc, has := virtual[t]; has {
 		return &vIndex{
 			T:         "virtual",

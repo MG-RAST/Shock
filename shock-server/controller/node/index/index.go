@@ -1,6 +1,7 @@
-package node
+package index
 
 import (
+	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
@@ -14,9 +15,15 @@ import (
 	"os"
 )
 
-// PUT: /node/{id} -> multipart-form
-func (cr *Controller) Update(id string, cx *goweb.Context) {
-	// Log Request and check for Auth
+type getRes struct {
+	I interface{} `json:"indexes"`
+	A interface{} `json:"available_indexers"`
+}
+
+type m map[string]string
+
+// GET, POST, PUT, DELETE: /node/{nid}/index/{idxType}
+var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
 	request.Log(cx.Request)
 	u, err := request.Authenticate(cx.Request)
 	if err != nil && err.Error() != e.NoAuth {
@@ -24,14 +31,13 @@ func (cr *Controller) Update(id string, cx *goweb.Context) {
 		return
 	}
 
-	// Gather query params
-	query := util.Q(cx.Request.URL.Query())
-
 	// Fake public user
 	if u == nil {
 		u = &user.User{Uuid: ""}
 	}
 
+	// Load node and handle user unauthorized
+	id := cx.PathParams["nid"]
 	n, err := node.Load(id, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
@@ -43,20 +49,41 @@ func (cr *Controller) Update(id string, cx *goweb.Context) {
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			logger.Error("Err@node_Update:LoadNode: " + err.Error())
+			logger.Error("Err@index:LoadNode: " + err.Error())
 			cx.RespondWithError(http.StatusInternalServerError)
 			return
 		}
 	}
 
-	if query.Has("index") {
-		if conf.Bool(conf.Conf["perf-log"]) {
-			logger.Perf("START indexing: " + id)
+	idxType, hasType := cx.PathParams["type"]
+	query := util.Q(cx.Request.URL.Query())
+	switch cx.Request.Method {
+	case "GET":
+		if hasType {
+			if v, has := n.Indexes[idxType]; has {
+				cx.RespondWithData(map[string]interface{}{idxType: v})
+			} else {
+				cx.RespondWithErrorMessage(fmt.Sprintf("Node %s does not have index of type %s.", n.Id, idxType), http.StatusBadRequest)
+			}
+		} else {
+			cx.RespondWithData(getRes{I: n.Indexes, A: filteredIndexes(n.Indexes)})
 		}
 
+	case "POST", "PUT":
 		if !n.HasFile() {
-			cx.RespondWithErrorMessage("node file empty", http.StatusBadRequest)
+			cx.RespondWithErrorMessage("Node has no file", http.StatusBadRequest)
 			return
+		} else if !hasType {
+			cx.RespondWithErrorMessage("Index create requires type", http.StatusBadRequest)
+			return
+		}
+		if !contains(filteredIndexes(n.Indexes), idxType) {
+			cx.RespondWithErrorMessage(fmt.Sprintf("Index type %s unavailable", idxType), http.StatusBadRequest)
+			return
+		}
+
+		if conf.Bool(conf.Conf["perf-log"]) {
+			logger.Perf("START indexing: " + id)
 		}
 
 		if query.Value("index") == "bai" {
@@ -114,37 +141,33 @@ func (cr *Controller) Update(id string, cx *goweb.Context) {
 			logger.Perf("END indexing: " + id)
 		}
 
-		cx.RespondWithOK()
-		return
+	default:
+		cx.RespondWithError(http.StatusNotImplemented)
+	}
+	return
+}
 
-	} else {
-		if conf.Bool(conf.Conf["perf-log"]) {
-			logger.Perf("START PUT data: " + id)
+func contains(list []string, s string) bool {
+	for _, i := range list {
+		if i == s {
+			return true
 		}
-		params, files, err := request.ParseMultipartForm(cx.Request)
-		if err != nil {
-			logger.Error("err@node_ParseMultipartForm: " + err.Error())
-			cx.RespondWithError(http.StatusBadRequest)
-			return
-		}
+	}
+	return false
+}
 
-		err = n.Update(params, files)
-		if err != nil {
-			errors := []string{e.FileImut, e.AttrImut, "parts cannot be less than 1"}
-			for e := range errors {
-				if err.Error() == errors[e] {
-					cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
-					return
-				}
-			}
-			logger.Error("err@node_Update: " + id + ":" + err.Error())
-			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
-			return
+func filteredIndexes(i node.Indexes) (indexes []string) {
+	for _, name := range availIndexers() {
+		if _, has := i[name]; !has {
+			indexes = append(indexes, name)
 		}
-		cx.RespondWithData(n)
-		if conf.Bool(conf.Conf["perf-log"]) {
-			logger.Perf("END PUT data: " + id)
-		}
+	}
+	return indexes
+}
+
+func availIndexers() (indexers []string) {
+	for name, _ := range index.Indexers {
+		indexers = append(indexers, name)
 	}
 	return
 }

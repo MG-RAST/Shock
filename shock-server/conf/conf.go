@@ -63,18 +63,10 @@ func Initialize() {
 	Conf["anon-user"], _ = c.String("Anonymous", "create-user")
 
 	// Auth
-	Conf["auth-type"], _ = c.String("Auth", "type")
-	switch Conf["auth-type"] {
-	case "globus":
-		Conf["globus_token_url"], _ = c.String("Auth", "globus_token_url")
-		Conf["globus_profile_url"], _ = c.String("Auth", "globus_profile_url")
-	case "oauth":
-		Conf["oauth_request_token_url"], _ = c.String("Auth", "oauth_request_token_url")
-		Conf["oauth_auth_token_url"], _ = c.String("Auth", "oauth_auth_token_url")
-		Conf["oauth_access_token_url"], _ = c.String("Auth", "oauth_access_token_url")
-	case "basic":
-		// nothing yet
-	}
+	Conf["basic_auth"], _ = c.String("Auth", "basic")
+	Conf["globus_token_url"], _ = c.String("Auth", "globus_token_url")
+	Conf["globus_profile_url"], _ = c.String("Auth", "globus_profile_url")
+	Conf["mgrast_oauth_url"], _ = c.String("Auth", "mgrast_oauth_url")
 
 	// Admin
 	Conf["admin-email"], _ = c.String("Admin", "email")

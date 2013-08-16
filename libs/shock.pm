@@ -1,4 +1,4 @@
-package shock;
+package Shock;
 
 use strict;
 use warnings;

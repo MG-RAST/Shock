@@ -7,6 +7,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/user"
+	"github.com/MG-RAST/Shock/shock-server/util"
 	"github.com/jaredwilkening/goweb"
 	"net/http"
 	"strings"
@@ -184,7 +185,7 @@ var ControllerTyped goweb.ControllerFunc = func(cx *goweb.Context) {
 func parseAclRequest(cx *goweb.Context) (ids map[string][]string, err error) {
 	ids = map[string][]string{}
 	users := map[string][]string{}
-	query := request.Q(cx.Request.URL.Query())
+	query := util.Q(cx.Request.URL.Query())
 	params, _, err := request.ParseMultipartForm(cx.Request)
 	if err != nil && err.Error() == "request Content-Type isn't multipart/form-data" && (query.Has("all") || query.Has("read") || query.Has("write") || query.Has("delete")) {
 		if query.Has("all") {
@@ -235,7 +236,7 @@ func parseAclRequest(cx *goweb.Context) (ids map[string][]string, err error) {
 
 func parseAclRequestTyped(cx *goweb.Context) (ids []string, err error) {
 	var users []string
-	query := request.Q(cx.Request.URL.Query())
+	query := util.Q(cx.Request.URL.Query())
 	params, _, err := request.ParseMultipartForm(cx.Request)
 	if err != nil && err.Error() == "request Content-Type isn't multipart/form-data" && query.Has("users") {
 		users = strings.Split(query.Value("users"), ",")

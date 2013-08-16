@@ -27,7 +27,7 @@ func (cr *Controller) ReadMany(cx *goweb.Context) {
 	}
 
 	// Gather query params
-	query := request.Q(cx.Request.URL.Query())
+	query := util.Q(cx.Request.URL.Query())
 
 	// Setup query and nodes objects
 	q := bson.M{}

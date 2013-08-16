@@ -1,31 +1,30 @@
-package chunkrecord
+package index
 
 import (
 	"github.com/MG-RAST/Shock/shock-server/node/file/format/multi"
 	"github.com/MG-RAST/Shock/shock-server/node/file/format/seq"
-	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"io"
 	"os"
 )
 
-type indexer struct {
+type chunkRecord struct {
 	f     *os.File
 	r     seq.Reader
-	Index *index.Idx
+	Index *Idx
 	size  int64
 }
 
-func NewIndexer(f *os.File) index.Indexer {
+func NewChunkRecordIndexer(f *os.File) Indexer {
 	fi, _ := f.Stat()
-	return &indexer{
+	return &chunkRecord{
 		f:     f,
 		size:  fi.Size(),
 		r:     multi.NewReader(f),
-		Index: index.New(),
+		Index: New(),
 	}
 }
 
-func (i *indexer) Create() (count int64, err error) {
+func (i *chunkRecord) Create() (count int64, err error) {
 	curr := int64(0)
 	count = 0
 	for {
@@ -47,11 +46,11 @@ func (i *indexer) Create() (count int64, err error) {
 	return
 }
 
-func (i *indexer) Dump(f string) error {
+func (i *chunkRecord) Dump(f string) error {
 	return i.Index.Dump(f)
 }
 
-func (i *indexer) Close() (err error) {
+func (i *chunkRecord) Close() (err error) {
 	i.f.Close()
 	return
 }

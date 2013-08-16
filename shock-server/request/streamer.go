@@ -4,11 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/node/file"
+	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/node/filter"
+	"github.com/MG-RAST/Shock/shock-server/util"
 	"io"
 	"net/http"
 	"os/exec"
-	"path/filepath"
 )
 
 type Streamer struct {
@@ -54,7 +55,7 @@ func (s *Streamer) StreamSamtools(filePath string, region string, args ...string
 		argv = append(argv, region)
 	}
 
-	LoadBamIndex(filePath)
+	index.LoadBamIndex(filePath)
 
 	cmd := exec.Command("samtools", argv...)
 	stdout, err := cmd.StdoutPipe()
@@ -73,14 +74,14 @@ func (s *Streamer) StreamSamtools(filePath string, region string, args ...string
 		return err
 	}
 
-	UnLoadBamIndex(filePath)
+	index.UnLoadBamIndex(filePath)
 
 	return
 }
 
 //helper function to translate args in URL query to samtools args
 //manual: http://samtools.sourceforge.net/samtools.shtml
-func ParseSamtoolsArgs(query *Query) (argv []string, err error) {
+func ParseSamtoolsArgs(query *util.Query) (argv []string, err error) {
 
 	var (
 		filter_options = map[string]string{
@@ -113,44 +114,4 @@ func ParseSamtoolsArgs(query *Query) (argv []string, err error) {
 		}
 	}
 	return argv, nil
-}
-
-func CreateBamIndex(bamFile string) (err error) {
-	err = exec.Command("samtools", "index", bamFile).Run()
-	if err != nil {
-		return err
-	}
-
-	baiFile := fmt.Sprintf("%s.bai", bamFile)
-	idxPath := fmt.Sprintf("%s/idx/", filepath.Dir(bamFile))
-
-	err = exec.Command("mv", baiFile, idxPath).Run()
-	if err != nil {
-		return err
-	}
-
-	return
-}
-
-func LoadBamIndex(bamFile string) (err error) {
-	bamFileDir := filepath.Dir(bamFile)
-	bamFileName := filepath.Base(bamFile)
-	targetBai := fmt.Sprintf("%s/%s.bai", bamFileDir, bamFileName)
-	srcBai := fmt.Sprintf("%s/idx/%s.bai", bamFileDir, bamFileName)
-	err = exec.Command("ln", "-s", srcBai, targetBai).Run()
-	if err != nil {
-		return err
-	}
-	return
-}
-
-func UnLoadBamIndex(bamFile string) (err error) {
-	bamFileDir := filepath.Dir(bamFile)
-	bamFileName := filepath.Base(bamFile)
-	targetBai := fmt.Sprintf("%s/%s.bai", bamFileDir, bamFileName)
-	err = exec.Command("rm", targetBai).Run()
-	if err != nil {
-		return err
-	}
-	return
 }
