@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"github.com/MG-RAST/Shock/shock-server/auth/basic"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"io/ioutil"
@@ -23,6 +24,29 @@ type Token struct {
 	TokenId         string      `json:"token_id"`
 	TokeType        string      `json:"token_type"`
 	UserName        string      `json:"user_name"`
+}
+
+func AuthHeaderType(header string) string {
+	tmp := strings.Split(header, " ")
+	if len(tmp) > 1 {
+		return strings.ToLower(tmp[0])
+	}
+	return ""
+}
+
+func Auth(header string) (usr *user.User, err error) {
+	switch AuthHeaderType(header) {
+	case "globus-goauthtoken", "oauth":
+		return AuthToken(strings.Split(header, " ")[1])
+	case "basic":
+		if username, password, err := basic.DecodeHeader(header); err == nil {
+			return AuthUsernamePassword(username, password)
+		} else {
+			return nil, err
+		}
+	default:
+		return nil, errors.New("Invalid authentication header.")
+	}
 }
 
 func AuthUsernamePassword(u string, p string) (usr *user.User, err error) {

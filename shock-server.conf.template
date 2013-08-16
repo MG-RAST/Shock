@@ -11,9 +11,8 @@ create-user=false
 
 [Auth]
 # defaults to local user management with basis auth
-type=basic
-# comment line about and uncomment below to use Globus Online as auth provider
-#type=globus 
+basic=true
+# comment line above and uncomment below to use Globus Online as auth provider
 #globus_token_url=https://nexus.api.globusonline.org/goauth/token?grant_type=client_credentials
 #globus_profile_url=https://nexus.api.globusonline.org/users
 

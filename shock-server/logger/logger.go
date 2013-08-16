@@ -52,14 +52,15 @@ func New() *Logger {
 		os.Exit(1)
 	}
 	l.logs["perf"].AddFilter("perf", l4g.FINEST, perff.SetFormat("[%D %T] [%L] %M").SetRotate(true).SetRotateDaily(true))
-	return l
-}
 
-func (l *Logger) Handle() {
-	for {
-		m := <-l.queue
-		l.logs[m.log].Log(m.lvl, "", m.message)
-	}
+	go func() {
+		select {
+		case m := <-l.queue:
+			l.logs[m.log].Log(m.lvl, "", m.message)
+		}
+	}()
+
+	return l
 }
 
 func (l *Logger) Log(log string, lvl l4g.Level, message string) {

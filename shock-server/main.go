@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/MG-RAST/Shock/shock-server/auth"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/controller"
 	"github.com/MG-RAST/Shock/shock-server/db"
@@ -10,10 +11,6 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/jaredwilkening/goweb"
 	"os"
-)
-
-var (
-	log *logger.Logger
 )
 
 func launchSite(control chan int) {
@@ -45,6 +42,8 @@ func launchAPI(control chan int) {
 	r.MapFunc("/preauth/{id}", c.Preauth, goweb.GetMethod)
 	r.Map("/node/{nid}/acl/{type}", c.Acl["typed"])
 	r.Map("/node/{nid}/acl", c.Acl["base"])
+	r.Map("/node/{nid}/index/{type}", c.Index)
+	r.Map("/node/{nid}/index", c.Index)
 	r.MapRest("/node", c.Node)
 	r.MapFunc("*", ResourceDescription, goweb.GetMethod)
 	r.MapFunc("*", RespondOk, goweb.OptionsMethod)
@@ -65,13 +64,17 @@ func launchAPI(control chan int) {
 }
 
 func main() {
+	// init(s)
 	conf.Initialize()
 	logger.Initialize()
-	log = logger.Log
-	db.Initialize()
+	if err := db.Initialize(); err != nil {
+		logger.Error(err.Error())
+	}
 	user.Initialize()
 	node.Initialize()
+	auth.Initialize()
 
+	// print conf
 	printLogo()
 	conf.Print()
 
@@ -95,7 +98,6 @@ func main() {
 
 	//launch server
 	control := make(chan int)
-	go logger.Log.Handle()
 	go launchSite(control)
 	go launchAPI(control)
 	<-control //block till something dies

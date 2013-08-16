@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
+	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/jaredwilkening/goweb"
 	"net"
 	"net/http"
@@ -110,5 +111,5 @@ func LogRequest(req *http.Request) {
 	} else {
 		url = fmt.Sprintf("%s %s", req.Method, req.URL.Path)
 	}
-	log.Info("access", host+" \""+url+suffix+"\"")
+	logger.Info("access", host+" \""+url+suffix+"\"")
 }
