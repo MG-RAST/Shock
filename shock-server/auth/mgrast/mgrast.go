@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	client "github.com/jaredwilkening/httpclient"
 	"io/ioutil"
 	"strconv"
+	"strings"
 )
 
 type resErr struct {
@@ -22,8 +24,31 @@ type credentials struct {
 	Groups []string `json:"groups"`
 }
 
+func AuthHeaderType(header string) string {
+	tmp := strings.Split(header, " ")
+	if len(tmp) > 1 {
+		return strings.ToLower(tmp[0])
+	}
+	return ""
+}
+
+func Auth(header string) (*user.User, error) {
+	switch AuthHeaderType(header) {
+	case "mgrast", "oauth":
+		return AuthToken(strings.Split(header, " ")[1])
+	case "basic":
+		return nil, errors.New("This authentication method does not support username/password authentication. Please use MG-RAST your token.")
+	default:
+		return nil, errors.New("Invalid authentication header.")
+	}
+}
+
 func AuthToken(t string) (*user.User, error) {
-	url := ""
+	url := conf.Conf["mgrast_oauth_url"]
+	if url == "" {
+		return nil, errors.New("mgrast_oauth_url not set in configuration")
+	}
+
 	form := client.NewForm()
 	form.AddParam("token", t)
 	form.AddParam("action", "credentials")

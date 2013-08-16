@@ -9,6 +9,16 @@ import (
 	"strings"
 )
 
+type indexerFunc func(*os.File) Indexer
+
+var (
+	Indexers = map[string]indexerFunc{
+		"record":      NewRecordIndexer,
+		"size":        NewSizeIndexer,
+		"chunkrecord": NewChunkRecordIndexer,
+	}
+)
+
 type Indexer interface {
 	Dump(string) error
 	Create() (int64, error)

@@ -25,33 +25,6 @@ type checkSumCom struct {
 	checksum string
 }
 
-type Query struct {
-	list map[string][]string
-}
-
-func Q(l map[string][]string) *Query {
-	return &Query{list: l}
-}
-
-func (q *Query) Has(key string) bool {
-	if _, has := q.list[key]; has {
-		return true
-	}
-	return false
-}
-
-func (q *Query) Value(key string) string {
-	return q.list[key][0]
-}
-
-func (q *Query) List(key string) []string {
-	return q.list[key]
-}
-
-func (q *Query) All() map[string][]string {
-	return q.list
-}
-
 func Log(req *http.Request) {
 	host, _, _ := net.SplitHostPort(req.RemoteAddr)
 	// failed attempt to get the host in ipv4
@@ -85,12 +58,8 @@ func Authenticate(req *http.Request) (u *user.User, err error) {
 }
 
 func AuthError(err error, cx *goweb.Context) {
-	switch err.Error() {
-	case e.MongoDocNotFound:
-		cx.RespondWithErrorMessage("Invalid username or password", http.StatusBadRequest)
-		return
-	case e.InvalidAuth:
-		cx.RespondWithErrorMessage("Invalid Authorization header", http.StatusBadRequest)
+	if err.Error() == e.InvalidAuth {
+		cx.RespondWithErrorMessage("Invalid authorization header or content", http.StatusBadRequest)
 		return
 	}
 	logger.Error("Error at Auth: " + err.Error())

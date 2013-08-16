@@ -40,7 +40,7 @@ func (cr *Controller) Read(id string, cx *goweb.Context) {
 	}
 
 	// Gather query params
-	query := request.Q(cx.Request.URL.Query())
+	query := util.Q(cx.Request.URL.Query())
 
 	var fFunc filter.FilterFunc = nil
 	if query.Has("filter") {
@@ -134,10 +134,10 @@ func (cr *Controller) Read(id string, cx *goweb.Context) {
 
 			if idx.Type() == "virtual" {
 				csize := conf.CHUNK_SIZE
-				if query.Has("chunksize") {
-					csize, err = strconv.ParseInt(query.Value("chunksize"), 10, 64)
+				if query.Has("chunk_size") {
+					csize, err = strconv.ParseInt(query.Value("chunk_size"), 10, 64)
 					if err != nil {
-						cx.RespondWithErrorMessage("Invalid chunksize", http.StatusBadRequest)
+						cx.RespondWithErrorMessage("Invalid chunk_size", http.StatusBadRequest)
 						return
 					}
 				}

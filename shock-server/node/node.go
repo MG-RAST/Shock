@@ -7,7 +7,6 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node/acl"
 	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
-	"github.com/MG-RAST/Shock/shock-server/node/file/index/virtual"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
@@ -19,7 +18,7 @@ type Node struct {
 	Version      string            `bson:"version" json:"version"`
 	File         file.File         `bson:"file" json:"file"`
 	Attributes   interface{}       `bson:"attributes" json:"attributes"`
-	Indexes      indexes           `bson:"indexes" json:"indexes"`
+	Indexes      Indexes           `bson:"indexes" json:"indexes"`
 	Acl          acl.Acl           `bson:"acl" json:"-"`
 	VersionParts map[string]string `bson:"version_parts" json:"-"`
 	Tags         []string          `bson:"tags" json:"tags"`
@@ -35,7 +34,7 @@ type linkage struct {
 	Operation string   `bson:"operation" json:"operation"`
 }
 
-type indexes map[string]IdxInfo
+type Indexes map[string]IdxInfo
 
 type IdxInfo struct {
 	Type        string `bson:"index_type" json:"-"`
@@ -116,8 +115,8 @@ func (node *Node) FileReader() (reader file.ReaderAt, err error) {
 
 // Index functions
 func (node *Node) Index(name string) (idx index.Index, err error) {
-	if virtual.Has(name) {
-		idx = virtual.New(name, node.FilePath(), node.File.Size, 10240)
+	if index.Has(name) {
+		idx = index.NewVirtual(name, node.FilePath(), node.File.Size, 10240)
 	} else {
 		idx = index.New()
 		err = idx.Load(node.IndexPath() + "/" + name + ".idx")
