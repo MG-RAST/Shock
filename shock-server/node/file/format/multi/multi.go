@@ -1,3 +1,4 @@
+// Package to read and auto-detect format of fasta & fastq files
 package multi
 
 import (

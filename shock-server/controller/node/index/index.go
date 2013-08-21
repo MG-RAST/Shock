@@ -1,3 +1,4 @@
+// (UNFINISHED) Package index implements /node/:id/index resource
 package index
 
 import (

@@ -1,3 +1,4 @@
+// Package node implements /node resource
 package node
 
 import (
