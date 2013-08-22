@@ -57,18 +57,26 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 		delete(files, "upload")
 	} else if isPartialUpload {
-		if node.partsCount() > 0 {
+		if node.isVarLen() || node.partsCount() > 0 {
 			return errors.New("parts already set")
 		}
-		n, err := strconv.Atoi(params["parts"])
-		if err != nil {
-			return err
-		}
-		if n < 1 {
-			return errors.New("parts cannot be less than 1")
-		}
-		if err = node.initParts(n); err != nil {
-			return err
+		// Number of parts should be either a positive integer or string 'unknown'
+		// In the case of 'unknown', the last part will be called 'last'
+		if params["parts"] == "unknown" {
+			if err = node.initParts("unknown"); err != nil {
+				return err
+			}
+		} else {
+			n, err := strconv.Atoi(params["parts"])
+			if err != nil {
+				return errors.New("parts must be an integer or 'unknown'")
+			}
+			if n < 1 {
+				return errors.New("parts cannot be less than 1")
+			}
+			if err = node.initParts(params["parts"]); err != nil {
+				return err
+			}
 		}
 	} else if isVirtualNode {
 		if source, hasSource := params["source"]; hasSource {
@@ -107,22 +115,31 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	// handle part file
 	LockMgr.LockPartOp()
 	parts_count := node.partsCount()
-	if parts_count > 0 {
+	if parts_count > 0 || node.isVarLen() {
 		for key, file := range files {
 			if node.HasFile() {
 				LockMgr.UnlockPartOp()
 				return errors.New(e.FileImut)
 			}
-			keyn, errf := strconv.Atoi(key)
-			if errf == nil && keyn <= parts_count {
-				err = node.addPart(keyn-1, &file)
+			// either we add the last part of a variable length node or we just add the part
+			if key == "last" {
+				err = node.addPart(key, &file)
 				if err != nil {
 					LockMgr.UnlockPartOp()
 					return err
 				}
 			} else {
-				LockMgr.UnlockPartOp()
-				return errors.New("invalid file parameter")
+				keyn, errf := strconv.Atoi(key)
+				if errf == nil && (keyn <= parts_count || node.isVarLen()) {
+					err = node.addPart(strconv.Itoa(keyn-1), &file)
+					if err != nil {
+						LockMgr.UnlockPartOp()
+						return err
+					}
+				} else {
+					LockMgr.UnlockPartOp()
+					return errors.New("invalid file parameter")
+				}
 			}
 		}
 	}

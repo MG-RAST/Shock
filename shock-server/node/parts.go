@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"os"
+	"strconv"
 )
 
 type partsFile []string
@@ -17,6 +18,7 @@ type partsFile []string
 type partsList struct {
 	Count  int         `json:"count"`
 	Length int         `json:"length"`
+	VarLen bool        `json:"varlen"`
 	Parts  []partsFile `json:"parts"`
 }
 
@@ -48,9 +50,27 @@ func (node *Node) partsCount() int {
 	return p.Count
 }
 
-func (node *Node) initParts(count int) (err error) {
+func (node *Node) isVarLen() bool {
+	p, err := node.loadParts()
+	if err != nil {
+		return false
+	}
+	return p.VarLen
+}
+
+func (node *Node) initParts(partsCount string) (err error) {
+	// Function should only be called with a postive integer or string 'unknown'
+	count, cerr := strconv.Atoi(partsCount)
+	if partsCount != "unknown" && cerr != nil {
+		return cerr
+	}
+	p := &partsList{}
 	err = os.MkdirAll(fmt.Sprintf("%s/parts", node.Path()), 0777)
-	p := &partsList{Count: count, Length: 0, Parts: make([]partsFile, count)}
+	if partsCount == "unknown" {
+		p = &partsList{Count: 0, Length: 0, VarLen: true, Parts: make([]partsFile, 0)}
+	} else {
+		p = &partsList{Count: count, Length: 0, VarLen: false, Parts: make([]partsFile, count)}
+	}
 	err = node.writeParts(p)
 	return
 }
@@ -99,20 +119,42 @@ func (node *Node) addVirtualParts(ids []string) (err error) {
 	return
 }
 
-func (node *Node) addPart(n int, file *FormFile) (err error) {
+func (node *Node) addPart(partCount string, file *FormFile) (err error) {
 	// load
 	p, err := node.loadParts()
 	if err != nil {
 		return err
 	}
 
-	// modify
-	if len(p.Parts[n]) > 0 {
+	// partCount can be either a postive integer or 'last' for variable length nodes
+	var n int
+	if partCount == "last" {
+		n = p.Length
+	} else {
+		n, err = strconv.Atoi(partCount)
+		if err != nil {
+			return err
+		}
+	}
+
+	if p.VarLen && n > p.Length && partCount != "last" {
+		return errors.New("variable length node can only accept next part: " + strconv.Itoa(n) + " or 'last'")
+	} else if (p.VarLen && n < p.Length) || (!p.VarLen && len(p.Parts[n]) > 0) {
 		return errors.New(e.FileImut)
 	}
+
+	// create part
 	part := partsFile{file.Name, file.Checksum["md5"]}
-	p.Parts[n] = part
-	p.Length = p.Length + 1
+
+	// add part to node
+	if p.VarLen == true {
+		p.Parts = append(p.Parts, part)
+		p.Length = p.Length + 1
+		p.Count = p.Count + 1
+	} else {
+		p.Parts[n] = part
+		p.Length = p.Length + 1
+	}
 
 	if err = os.Rename(file.Path, fmt.Sprintf("%s/parts/%d", node.Path(), n)); err != nil {
 		return err
@@ -124,7 +166,7 @@ func (node *Node) addPart(n int, file *FormFile) (err error) {
 	}
 
 	// create file if done
-	if p.Length == p.Count {
+	if (!p.VarLen && p.Length == p.Count) || (p.VarLen == true && partCount == "last") {
 		if err = node.SetFileFromParts(p); err != nil {
 			return err
 		}
