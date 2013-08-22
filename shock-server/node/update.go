@@ -20,8 +20,9 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	// Exclusive conditions
 	// 1. has files[upload] (regular upload)
 	// 2. has params[parts] (partial upload support)
-	// 3. has params[type] & params[source] (v_node)
-	// 4. has params[path] (set from local path)
+	// 3. has params[close] (close variable-length partial upload)
+	// 4. has params[type] & params[source] (v_node)
+	// 5. has params[path] (set from local path)
 	//
 	// All condition allow setting of attributes
 
@@ -31,6 +32,8 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 
 	_, isRegularUpload := files["upload"]
 	_, isPartialUpload := params["parts"]
+	_, isEndOfPartial := params["close"]
+
 	isVirtualNode := false
 	if t, hasType := params["type"]; hasType && t == "virtual" {
 		isVirtualNode = true
@@ -38,16 +41,18 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	_, isPathUpload := params["path"]
 
 	// Check exclusive conditions
-	if (isRegularUpload && isPartialUpload) || (isRegularUpload && isVirtualNode) || (isRegularUpload && isPathUpload) {
-		return errors.New("upload parameter incompatible with parts, path and/or type parmeter(s)")
-	} else if (isPartialUpload && isVirtualNode) || (isPartialUpload && isPathUpload) {
-		return errors.New("parts parameter incompatible with type and/or path parmeter(s)")
-	} else if isVirtualNode && isPathUpload {
-		return errors.New("type parameter incompatible with path parmeter")
+	if (isRegularUpload && isPartialUpload) || (isRegularUpload && isVirtualNode) || (isRegularUpload && isPathUpload) || (isRegularUpload && isEndOfPartial) {
+		return errors.New("upload parameter incompatible with close, parts, path and/or type parmeter(s)")
+	} else if (isPartialUpload && isVirtualNode) || (isPartialUpload && isPathUpload) || (isPartialUpload && isEndOfPartial) {
+		return errors.New("parts parameter incompatible with close, type and/or path parmeter(s)")
+	} else if (isVirtualNode && isPathUpload) || (isVirtualNode && isEndOfPartial) {
+		return errors.New("type parameter incompatible with close and/or path parmeter")
+	} else if isPathUpload && isEndOfPartial {
+		return errors.New("path parameter incompatible with close parameter")
 	}
 
-	// Check if immutiable
-	if (isRegularUpload || isPartialUpload || isVirtualNode || isPathUpload) && node.HasFile() {
+	// Check if immutable
+	if (isRegularUpload || isPartialUpload || isEndOfPartial || isVirtualNode || isPathUpload) && node.HasFile() {
 		return errors.New(e.FileImut)
 	}
 
@@ -57,19 +62,28 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 		delete(files, "upload")
 	} else if isPartialUpload {
-		if node.partsCount() > 0 {
+		if node.isVarLen() || node.partsCount() > 0 {
 			return errors.New("parts already set")
 		}
-		n, err := strconv.Atoi(params["parts"])
-		if err != nil {
-			return err
+		// Number of parts should be either a positive integer or string 'unknown'
+		if params["parts"] == "unknown" {
+			if err = node.initParts("unknown"); err != nil {
+				return err
+			}
+		} else {
+			n, err := strconv.Atoi(params["parts"])
+			if err != nil {
+				return errors.New("parts must be an integer or 'unknown'")
+			}
+			if n < 1 {
+				return errors.New("parts cannot be less than 1")
+			}
+			if err = node.initParts(params["parts"]); err != nil {
+				return err
+			}
 		}
-		if n < 1 {
-			return errors.New("parts cannot be less than 1")
-		}
-		if err = node.initParts(n); err != nil {
-			return err
-		}
+	} else if isEndOfPartial {
+		node.closeVarLenPartial()
 	} else if isVirtualNode {
 		if source, hasSource := params["source"]; hasSource {
 			ids := strings.Split(source, ",")
@@ -107,14 +121,14 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	// handle part file
 	LockMgr.LockPartOp()
 	parts_count := node.partsCount()
-	if parts_count > 0 {
+	if parts_count > 0 || node.isVarLen() {
 		for key, file := range files {
 			if node.HasFile() {
 				LockMgr.UnlockPartOp()
 				return errors.New(e.FileImut)
 			}
 			keyn, errf := strconv.Atoi(key)
-			if errf == nil && keyn <= parts_count {
+			if errf == nil && (keyn <= parts_count || node.isVarLen()) {
 				err = node.addPart(keyn-1, &file)
 				if err != nil {
 					LockMgr.UnlockPartOp()

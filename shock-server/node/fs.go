@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"os"
+	"strconv"
 )
 
 func (node *Node) SetFile(file FormFile) (err error) {
@@ -64,7 +65,7 @@ func (node *Node) SetFileFromPath(path string) (err error) {
 	return
 }
 
-func (node *Node) SetFileFromParts(p *partsList) (err error) {
+func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
 	out, err := os.Create(fmt.Sprintf("%s/%s.data", node.Path(), node.Id))
 	if err != nil {
 		return
@@ -72,22 +73,29 @@ func (node *Node) SetFileFromParts(p *partsList) (err error) {
 	defer out.Close()
 	md5h := md5.New()
 	sha1h := sha1.New()
-	for i := 0; i < p.Count; i++ {
-		part, err := os.Open(fmt.Sprintf("%s/parts/%d", node.Path(), i))
-		if err != nil {
-			return err
-		}
-		for {
-			buffer := make([]byte, 10240)
-			n, err := part.Read(buffer)
-			if n == 0 || err != nil {
-				break
+	for i := 1; i <= p.Count; i++ {
+		filename := node.Path() + "/parts/" + strconv.Itoa(i)
+
+		// skip this portion unless either
+		// 1. file exists, or
+		// 2. file does not exist and allowEmpty == false
+		if _, errf := os.Stat(filename); errf == nil || (errf != nil && allowEmpty == false) {
+			part, err := os.Open(fmt.Sprintf("%s/parts/%d", node.Path(), i))
+			if err != nil {
+				return err
 			}
-			out.Write(buffer[0:n])
-			md5h.Write(buffer[0:n])
-			sha1h.Write(buffer[0:n])
+			for {
+				buffer := make([]byte, 10240)
+				n, err := part.Read(buffer)
+				if n == 0 || err != nil {
+					break
+				}
+				out.Write(buffer[0:n])
+				md5h.Write(buffer[0:n])
+				sha1h.Write(buffer[0:n])
+			}
+			part.Close()
 		}
-		part.Close()
 	}
 	fileStat, err := os.Stat(fmt.Sprintf("%s/%s.data", node.Path(), node.Id))
 	if err != nil {
