@@ -1,3 +1,4 @@
+// Package logger implements async log web api messages
 package logger
 
 import (
@@ -7,9 +8,7 @@ import (
 	"os"
 )
 
-var (
-	Log *Logger
-)
+var Log *Logger
 
 //type level int
 type m struct {
@@ -23,10 +22,31 @@ type Logger struct {
 	logs  map[string]l4g.Logger
 }
 
+// Initialialize sets up package var Log for use in Info(), Error(), and Perf()
 func Initialize() {
 	Log = New()
 }
 
+// Info is a short cut function that uses package initialized logger
+func Info(log string, message string) {
+	Log.Info(log, message)
+	return
+}
+
+// Error is a short cut function that uses package initialized logger and error log
+func Error(message string) {
+	Log.Error(message)
+	return
+}
+
+// Perf is a short cut function that uses package initialized logger and performance log
+func Perf(message string) {
+	Log.Perf(message)
+	return
+}
+
+// New configures and returns a new logger. It also kicks off the goroutine that
+// performs the log writing as messages queue.
 func New() *Logger {
 	l := &Logger{queue: make(chan m, 1024), logs: map[string]l4g.Logger{}}
 	l.logs["access"] = make(l4g.Logger)
@@ -78,23 +98,8 @@ func (l *Logger) Warning(log string, message string) {
 	return
 }
 
-func Info(log string, message string) {
-	Log.Log(log, l4g.INFO, message)
-	return
-}
-
 func (l *Logger) Info(log string, message string) {
 	l.Log(log, l4g.INFO, message)
-	return
-}
-
-func Error(message string) {
-	Log.Log("error", l4g.ERROR, message)
-	return
-}
-
-func (l *Logger) Error(message string) {
-	l.Log("error", l4g.ERROR, message)
 	return
 }
 
@@ -103,8 +108,8 @@ func (l *Logger) Critical(log string, message string) {
 	return
 }
 
-func Perf(message string) {
-	Log.Log("perf", l4g.INFO, message)
+func (l *Logger) Error(message string) {
+	l.Log("error", l4g.ERROR, message)
 	return
 }
 

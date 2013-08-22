@@ -1,3 +1,4 @@
+// Package contains error strings and patterns for common errors
 package errors
 
 import (

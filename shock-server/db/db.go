@@ -1,3 +1,4 @@
+// Package db to connect to mongodb
 package db
 
 import (

@@ -8,6 +8,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/db"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
+	"github.com/MG-RAST/Shock/shock-server/preauth"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/jaredwilkening/goweb"
 	"os"
@@ -72,6 +73,7 @@ func main() {
 	}
 	user.Initialize()
 	node.Initialize()
+	preauth.Initialize()
 	auth.Initialize()
 
 	// print conf

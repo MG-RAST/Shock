@@ -1,11 +1,12 @@
+// Package contains Node File struct and MultiReaderAt implementation
 package file
 
 import (
-	//"fmt"
 	"io"
 	"os"
 )
 
+// File is the Node file structure. Contains the json/bson marshalling controls.
 type File struct {
 	Name         string            `bson:"name" json:"name"`
 	Size         int64             `bson:"size" json:"size"`
@@ -16,29 +17,51 @@ type File struct {
 	VirtualParts []string          `bson:"virtual_parts" json:"virtual_parts"`
 }
 
+// SectionReader interface required for MultiReaderAt
 type SectionReader interface {
 	io.Reader
 	io.ReaderAt
 }
 
+// ReaderAt interface that is compatiable with os.File types.
 type ReaderAt interface {
-	io.Reader
-	io.ReaderAt
+	SectionReader
 	Stat() (os.FileInfo, error)
 }
 
-type multiReaderAt struct {
-	readers    []ReaderAt
-	boundaries []multifd
-	size       int64
-}
-
+// multifd contains file boundary information
 type multifd struct {
 	start int64
 	end   int64
 	size  int64
 }
 
+// multiReaderAt is private struct for the multi-file ReaderAt
+// that provides the ablity to use indexes with vitrual files.
+type multiReaderAt struct {
+	readers    []ReaderAt
+	boundaries []multifd
+	size       int64
+}
+
+// MultiReaderAt returns a ReaderAt that's the logical concatenation of
+// the provided input readers. BUG / KNOW-ISSUE: all file handles are opened
+// initially. May not be suitiable for large numbers of files.
+func MultiReaderAt(readers ...ReaderAt) ReaderAt {
+	mr := &multiReaderAt{readers: readers}
+	b := []multifd{}
+	start := int64(0)
+	for _, r := range mr.readers {
+		fi, _ := r.Stat()
+		b = append(b, multifd{start: start, end: start + fi.Size(), size: fi.Size()})
+		start = start + fi.Size()
+	}
+	mr.boundaries = b
+	mr.size = b[len(b)-1].end
+	return mr
+}
+
+// Read same as io.MultiReader
 func (mr *multiReaderAt) Read(p []byte) (n int, err error) {
 	for len(mr.readers) > 0 {
 		n, err = mr.readers[0].Read(p)
@@ -55,6 +78,7 @@ func (mr *multiReaderAt) Read(p []byte) (n int, err error) {
 	return 0, io.EOF
 }
 
+// ReadAt is the magic sauce. Heavily commented to include all logic.
 func (mr *multiReaderAt) ReadAt(p []byte, off int64) (n int, err error) {
 	startF, endF := 0, 0
 	startPos, endPos, length := int64(0), int64(0), int64(len(p))
@@ -134,24 +158,7 @@ func (mr *multiReaderAt) ReadAt(p []byte, off int64) (n int, err error) {
 	return
 }
 
-// do not use
+// Required for the ReaderAt interface but non-implemented
 func (mr *multiReaderAt) Stat() (fi os.FileInfo, err error) {
 	return
-}
-
-// MultiReader returns a Reader that's the logical concatenation of
-// the provided input readers.  They're read sequentially.  Once all
-// inputs are drained, Read will return EOF.
-func MultiReaderAt(readers ...ReaderAt) ReaderAt {
-	mr := &multiReaderAt{readers: readers}
-	b := []multifd{}
-	start := int64(0)
-	for _, r := range mr.readers {
-		fi, _ := r.Stat()
-		b = append(b, multifd{start: start, end: start + fi.Size(), size: fi.Size()})
-		start = start + fi.Size()
-	}
-	mr.boundaries = b
-	mr.size = b[len(b)-1].end
-	return mr
 }

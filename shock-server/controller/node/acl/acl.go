@@ -1,3 +1,4 @@
+//Package acl implements /node/:id/acl resource
 package acl
 
 import (

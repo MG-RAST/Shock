@@ -1,8 +1,8 @@
+// Package auth implements http request authentication
 package auth
 
 import (
 	"errors"
-	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/auth/basic"
 	"github.com/MG-RAST/Shock/shock-server/auth/globus"
 	"github.com/MG-RAST/Shock/shock-server/auth/mgrast"
@@ -11,6 +11,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/user"
 )
 
+// authCache is a
 var authCache cache
 var authMethods []func(string) (*user.User, error)
 
@@ -35,7 +36,6 @@ func Authenticate(header string) (u *user.User, err error) {
 		for _, auth := range authMethods {
 			if u, _ := auth(header); u != nil {
 				authCache.add(header, u)
-				fmt.Printf("user: %#v\n", u)
 				return u, nil
 			}
 		}
