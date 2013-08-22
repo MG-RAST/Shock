@@ -119,27 +119,18 @@ func (node *Node) addVirtualParts(ids []string) (err error) {
 	return
 }
 
-func (node *Node) addPart(partCount string, file *FormFile) (err error) {
+func (node *Node) addPart(n int, file *FormFile) (err error) {
 	// load
 	p, err := node.loadParts()
 	if err != nil {
 		return err
 	}
 
-	// partCount can be either a postive integer or 'last' for variable length nodes
-	var n int
-	if partCount == "last" {
-		n = p.Length
-	} else {
-		n, err = strconv.Atoi(partCount)
-		if err != nil {
-			return err
-		}
+	if n >= p.Count && !p.VarLen {
+		return errors.New("part number is greater than node length: " + strconv.Itoa(p.Length))
 	}
 
-	if p.VarLen && n > p.Length && partCount != "last" {
-		return errors.New("variable length node can only accept next part: " + strconv.Itoa(n) + " or 'last'")
-	} else if (p.VarLen && n < p.Length) || (!p.VarLen && len(p.Parts[n]) > 0) {
+	if n < p.Count && len(p.Parts[n]) > 0 {
 		return errors.New(e.FileImut)
 	}
 
@@ -147,15 +138,20 @@ func (node *Node) addPart(partCount string, file *FormFile) (err error) {
 	part := partsFile{file.Name, file.Checksum["md5"]}
 
 	// add part to node
-	if p.VarLen == true {
+	if p.VarLen == true && n >= p.Count {
+		for i := p.Count; i < n; i = i + 1 {
+			p.Parts = append(p.Parts, partsFile{})
+			p.Count = p.Count + 1
+		}
 		p.Parts = append(p.Parts, part)
-		p.Length = p.Length + 1
 		p.Count = p.Count + 1
+		p.Length = p.Length + 1
 	} else {
 		p.Parts[n] = part
 		p.Length = p.Length + 1
 	}
 
+	// put part into data directory
 	if err = os.Rename(file.Path, fmt.Sprintf("%s/parts/%d", node.Path(), n)); err != nil {
 		return err
 	}
@@ -165,11 +161,30 @@ func (node *Node) addPart(partCount string, file *FormFile) (err error) {
 		return err
 	}
 
-	// create file if done
-	if (!p.VarLen && p.Length == p.Count) || (p.VarLen == true && partCount == "last") {
-		if err = node.SetFileFromParts(p); err != nil {
+	// create file if done with non-variable length node
+	if !p.VarLen && p.Length == p.Count {
+		if err = node.SetFileFromParts(p, false); err == nil {
+			os.RemoveAll(node.Path() + "/parts/")
+		} else {
 			return err
 		}
+	}
+	return
+}
+
+func (node *Node) closeVarLenPartial() (err error) {
+	p, err := node.loadParts()
+	if err != nil {
+		return err
+	}
+
+	// Second param says we will allow empty parts in merging of those parts
+	if err = node.SetFileFromParts(p, true); err == nil {
+		errf := os.RemoveAll(node.Path() + "/parts/")
+		fmt.Fprintln(os.Stderr, errf)
+	} else {
+		fmt.Fprintln(os.Stderr, err)
+		return err
 	}
 	return
 }
