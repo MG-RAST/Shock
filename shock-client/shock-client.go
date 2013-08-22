@@ -297,8 +297,7 @@ func main() {
 			opts := lib.Opts{}
 			opts["index"] = "size"
 			opts["parts"] = part_string
-			//to-do: "chunksize" needs to be changed to "chunk_size" to match documents
-			opts["index_options"] = fmt.Sprintf("chunksize=%d", conf.CHUNK_SIZE)
+			opts["index_options"] = fmt.Sprintf("chunk_size=%d", conf.CHUNK_SIZE)
 
 			start_offset := (int64(start) - 1) * conf.CHUNK_SIZE
 			go downloadChunk(n, opts, filename, start_offset, ch)
