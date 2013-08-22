@@ -163,9 +163,10 @@ func (node *Node) addPart(n int, file *FormFile) (err error) {
 
 	// create file if done with non-variable length node
 	if !p.VarLen && p.Length == p.Count {
-		if err = node.SetFileFromParts(p, false); err == nil {
-			os.RemoveAll(node.Path() + "/parts/")
-		} else {
+		if err = node.SetFileFromParts(p, false); err != nil {
+			return err
+		}
+		if err = os.RemoveAll(node.Path() + "/parts/"); err != nil {
 			return err
 		}
 	}
@@ -179,11 +180,10 @@ func (node *Node) closeVarLenPartial() (err error) {
 	}
 
 	// Second param says we will allow empty parts in merging of those parts
-	if err = node.SetFileFromParts(p, true); err == nil {
-		errf := os.RemoveAll(node.Path() + "/parts/")
-		fmt.Fprintln(os.Stderr, errf)
-	} else {
-		fmt.Fprintln(os.Stderr, err)
+	if err = node.SetFileFromParts(p, true); err != nil {
+		return err
+	}
+	if err = os.RemoveAll(node.Path() + "/parts/"); err != nil {
 		return err
 	}
 	return
