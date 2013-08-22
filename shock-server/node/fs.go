@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"os"
-	"strconv"
 )
 
 func (node *Node) SetFile(file FormFile) (err error) {
@@ -74,13 +73,13 @@ func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
 	md5h := md5.New()
 	sha1h := sha1.New()
 	for i := 1; i <= p.Count; i++ {
-		filename := node.Path() + "/parts/" + strconv.Itoa(i)
+		filename := fmt.Sprintf("%s/parts/%d", node.Path(), i)
 
 		// skip this portion unless either
 		// 1. file exists, or
 		// 2. file does not exist and allowEmpty == false
 		if _, errf := os.Stat(filename); errf == nil || (errf != nil && allowEmpty == false) {
-			part, err := os.Open(fmt.Sprintf("%s/parts/%d", node.Path(), i))
+			part, err := os.Open(filename)
 			if err != nil {
 				return err
 			}
