@@ -1,3 +1,4 @@
+// Package auth implements http request authentication
 package auth
 
 import (
@@ -10,6 +11,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/user"
 )
 
+// authCache is a
 var authCache cache
 var authMethods []func(string) (*user.User, error)
 

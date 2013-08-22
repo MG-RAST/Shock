@@ -1,4 +1,4 @@
-// (UNFINISHED) Package index implements /node/:id/index resource
+// Package index implements /node/:id/index resource (UNFINISHED)
 package index
 
 import (

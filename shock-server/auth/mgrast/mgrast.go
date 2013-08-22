@@ -1,3 +1,4 @@
+// Package globus implements MG-RAST OAuth authentication
 package mgrast
 
 import (
@@ -24,7 +25,7 @@ type credentials struct {
 	Groups []string `json:"groups"`
 }
 
-func AuthHeaderType(header string) string {
+func authHeaderType(header string) string {
 	tmp := strings.Split(header, " ")
 	if len(tmp) > 1 {
 		return strings.ToLower(tmp[0])
@@ -32,10 +33,12 @@ func AuthHeaderType(header string) string {
 	return ""
 }
 
+// Auth takes the request authorization header and returns
+// user
 func Auth(header string) (*user.User, error) {
-	switch AuthHeaderType(header) {
+	switch authHeaderType(header) {
 	case "mgrast", "oauth":
-		return AuthToken(strings.Split(header, " ")[1])
+		return authToken(strings.Split(header, " ")[1])
 	case "basic":
 		return nil, errors.New("This authentication method does not support username/password authentication. Please use MG-RAST your token.")
 	default:
@@ -43,7 +46,8 @@ func Auth(header string) (*user.User, error) {
 	}
 }
 
-func AuthToken(t string) (*user.User, error) {
+// authToken validiates token by fetching user information.
+func authToken(t string) (*user.User, error) {
 	url := conf.Conf["mgrast_oauth_url"]
 	if url == "" {
 		return nil, errors.New("mgrast_oauth_url not set in configuration")
