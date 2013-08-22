@@ -152,7 +152,7 @@ func (node *Node) addPart(n int, file *FormFile) (err error) {
 	}
 
 	// put part into data directory
-	if err = os.Rename(file.Path, fmt.Sprintf("%s/parts/%d", node.Path(), n)); err != nil {
+	if err = os.Rename(file.Path, fmt.Sprintf("%s/parts/%d", node.Path(), n+1)); err != nil {
 		return err
 	}
 

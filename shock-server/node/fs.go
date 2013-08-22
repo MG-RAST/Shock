@@ -73,7 +73,7 @@ func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
 	defer out.Close()
 	md5h := md5.New()
 	sha1h := sha1.New()
-	for i := 0; i < p.Count; i++ {
+	for i := 1; i <= p.Count; i++ {
 		filename := node.Path() + "/parts/" + strconv.Itoa(i)
 
 		// skip this portion unless either
