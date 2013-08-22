@@ -84,8 +84,6 @@ func (cr *Controller) Read(id string, cx *goweb.Context) {
 			filename = query.Value("filename")
 		}
 
-		//_, chunksize :=
-		// ?index=foo
 		if query.Has("index") {
 			//handling bam file
 			if query.Value("index") == "bai" {

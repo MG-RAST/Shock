@@ -1,3 +1,4 @@
+// Package preauth implements /preauth resource
 package preauth
 
 import (

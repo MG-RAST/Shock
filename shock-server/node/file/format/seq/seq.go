@@ -1,3 +1,4 @@
+// Package contains interfaces for fasta & fastq & and multi packages
 package seq
 
 import (

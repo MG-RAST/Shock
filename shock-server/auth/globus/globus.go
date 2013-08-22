@@ -1,3 +1,4 @@
+// Package globus implements Globus Online Nexus authentication
 package globus
 
 import (
@@ -12,7 +13,8 @@ import (
 	"strings"
 )
 
-type Token struct {
+// Token response struct
+type token struct {
 	AccessToken     string      `json:"access_token"`
 	AccessTokenHash string      `json:"access_token_hash"`
 	ClientId        string      `json:"client_id"`
@@ -26,7 +28,7 @@ type Token struct {
 	UserName        string      `json:"user_name"`
 }
 
-func AuthHeaderType(header string) string {
+func authHeaderType(header string) string {
 	tmp := strings.Split(header, " ")
 	if len(tmp) > 1 {
 		return strings.ToLower(tmp[0])
@@ -34,13 +36,19 @@ func AuthHeaderType(header string) string {
 	return ""
 }
 
+// Auth takes the request authorization header and returns
+// user
 func Auth(header string) (usr *user.User, err error) {
-	switch AuthHeaderType(header) {
+	switch authHeaderType(header) {
 	case "globus-goauthtoken", "oauth":
-		return AuthToken(strings.Split(header, " ")[1])
+		return fetchProfile(strings.Split(header, " ")[1])
 	case "basic":
 		if username, password, err := basic.DecodeHeader(header); err == nil {
-			return AuthUsernamePassword(username, password)
+			if t, err := fetchToken(username, password); err == nil {
+				return fetchProfile(t.AccessToken)
+			} else {
+				return nil, err
+			}
 		} else {
 			return nil, err
 		}
@@ -49,20 +57,8 @@ func Auth(header string) (usr *user.User, err error) {
 	}
 }
 
-func AuthUsernamePassword(u string, p string) (usr *user.User, err error) {
-	if t, err := FetchToken(u, p); err == nil {
-		return FetchProfile(t.AccessToken)
-	} else {
-		return nil, err
-	}
-	return
-}
-
-func AuthToken(t string) (*user.User, error) {
-	return FetchProfile(t)
-}
-
-func FetchToken(u string, p string) (t *Token, err error) {
+// fetchToken takes username and password and then retrieves user token
+func fetchToken(u string, p string) (t *token, err error) {
 	client := &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
@@ -88,7 +84,8 @@ func FetchToken(u string, p string) (t *Token, err error) {
 	return
 }
 
-func FetchProfile(t string) (u *user.User, err error) {
+// fetchProfile validiates token by using it to fetch user profile
+func fetchProfile(t string) (u *user.User, err error) {
 	client := &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
@@ -126,8 +123,4 @@ func clientId(t string) string {
 		}
 	}
 	return ""
-}
-
-func ValidToken(header string) bool {
-	return strings.Contains(header, "Globus-Goauthtoken ") || strings.Contains(header, "Oauth ")
 }

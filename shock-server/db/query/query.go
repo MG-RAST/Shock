@@ -1,3 +1,4 @@
+// Package query to parse complex mongodb queries (UNFINISHED)
 package query
 
 /*

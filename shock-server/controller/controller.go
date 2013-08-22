@@ -1,3 +1,4 @@
+// Package controller contains web-api resource controller container
 package controller
 
 import (
@@ -15,6 +16,7 @@ type Controller struct {
 	Preauth func(*goweb.Context)
 }
 
+// New configures and returns web-api controller that will be used in routing
 func New() *Controller {
 	return &Controller{
 		Node:    new(node.Controller),

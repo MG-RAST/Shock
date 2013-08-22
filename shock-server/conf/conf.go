@@ -1,3 +1,4 @@
+// Package conf parses start up args and config file
 package conf
 
 import (
@@ -15,7 +16,6 @@ type idxOpts struct {
 	sparse   bool
 }
 
-// Setup conf variables
 var (
 	Conf = map[string]string{}
 
@@ -32,6 +32,9 @@ var (
 	CHUNK_SIZE int64 = 1048576
 )
 
+// Initialize is an explicit init. Enables outside use
+// of shock-server packages. Parses config and populates
+// the Conf variable.
 func Initialize() {
 	flag.StringVar(&CONFIG_FILE, "conf", "/usr/local/shock/conf/shock.cfg", "path to config file")
 	flag.StringVar(&RELOAD, "reload", "", "path or url to shock data. WARNING this will drop all current data.")
@@ -121,11 +124,13 @@ func Initialize() {
 	Conf["perf-log"], _ = c.String("Log", "perf_log")
 }
 
+// Bool is a convenience wrapper around strconv.ParseBool
 func Bool(s string) bool {
 	b, _ := strconv.ParseBool(s)
 	return b
 }
 
+// Print prints the configuration loads to stdout
 func Print() {
 	fmt.Printf("##### Admin #####\nemail:\t%s\nsecretkey:\t%s\n\n", Conf["admin-email"], Conf["admin-secret"])
 	fmt.Printf("####### Anonymous ######\nread:\t%s\nwrite:\t%s\ncreate-user:\t%s\n\n", Conf["anon-read"], Conf["anon-write"], Conf["anon-user"])
