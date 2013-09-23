@@ -473,11 +473,11 @@ Modify node, create index
 
 ##### bam index (bai) argument mapping from URL to samtools
 
-    <table border=1>
-        <tr>
-            <td>hello world!</td>
-        </tr>
-    </table>
+<table border=1>
+    <tr>
+        <td>hello world!</td>
+    </tr>
+</table>
 
 <br>
 License
