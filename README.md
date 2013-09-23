@@ -193,36 +193,18 @@ Data Types
 <br>
 ### Index:
 
-Currently there is support for two types of indices: virtual and file. 
+Currently there is support for two types of indices: virtual (for both size and record) and bam. 
 
 ##### virtual index:
 
 A virtual index is one that can be generated on the fly without support of precalculated data. The current working example of this 
 is the size virtual index. Based on the file size and desired chunksize the partitions become individually addressable. 
 
-##### file index:
+##### bam index (bai):
 
-Currently in early development the file index is a json file stored on disk in the node's directory.
+To use the bam index feature, the <a href="http://samtools.sourceforge.net/">SAMtools</a> package must be installed on the machine that is running the Shock server with the samtools executable in the path of the user that is running the Shock server.
 
-    # abstract form
-    {
-    	index_type : <type>,
-    	filename : <filename>,
-    	checksum_type : <type>,
-    	version : <version>,
-    	index : [
-    		[<position>,<length>,<optional_checksum>]...
-    	]
-    }
-    
-    # example
-    {
-    	"index_type" : "fasta",
-    	"filename" : "none",
-    	"checksum_type" : "none",
-    	"version" : 1,
-    	"index" : [[0,1861]]
-    }
+Also, in order to use this feature, you must sort your .bam file using the 'samtools sort' command before uploading the file into Shock.
 
 <br><br>
 
@@ -269,6 +251,16 @@ __Note__: Authentication is required for most of these commands
 
     # download Nth 10mb of file
     curl -X GET http://<host>[:<port>]/node/{id}/?download&index=size&chunk_size=10485760&part=N
+
+    # download entire bam file in human readable sam alignments
+    curl -X GET http://<host>[:<port>]/node/{id}/?download&index=bai
+
+    # download bam alignments overlapped with specified region (ref_id:start_pos-end_pos)
+    curl -X GET http://<host>[:<port>]/node/{id}/?download&index=bai&region=chr1:1-20000
+
+    # download bam alignments with selected arguments supported by "samtools view"
+    curl -X GET http://<host>[:<port>]/node/{id}/?download/index=bai&head&headonly&count&flag=[INT]&lib=[STR]&mapq=[INT]&readgroup=[STR]
+    (note: all the arguments are optional and can be used with or without the region, but the index=bai is required)
     
 <br>
 #### Node acls: 
@@ -465,7 +457,7 @@ Modify node, create index
 <br>
 **Create index:**
 
- - currently available index types: size, record (for sequence file types)
+ - currently available index types: size, record (for sequence file types), and bai (bam index)
 
 ##### example	
 
@@ -478,6 +470,14 @@ Modify node, create index
         "error": <error message or null>, 
         "status": <http status of request>
     }
+
+##### bam index (bai) argument mapping from URL to samtools
+
+    <table border=1>
+        <tr>
+            <td>hello world!</td>
+        </tr>
+    </table>
 
 <br>
 License
