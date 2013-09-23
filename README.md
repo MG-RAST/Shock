@@ -475,7 +475,16 @@ Modify node, create index
 
 <table border=1>
     <tr>
-        <td>hello world!</td>
+        <td><b>URL argument</b></td>
+        <td><b>value type</b></td>
+        <td><b>samtools argument</b></td>
+        <td><b>operation</b></td>
+    </tr>
+    <tr>
+        <td>head</td>
+        <td>no value</td>
+        <td>-h</td>
+        <td>Include the header in the output</td>
     </tr>
 </table>
 
