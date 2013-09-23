@@ -486,6 +486,42 @@ Modify node, create index
         <td>-h</td>
         <td>Include the header in the output</td>
     </tr>
+    <tr>
+        <td>headonly</td>
+        <td>no value</td>
+        <td>-H</td>
+        <td>Output the header only.</td>
+    </tr>
+    <tr>
+        <td>count</td>
+        <td>no value</td>
+        <td>-c</td>
+        <td>Instead of printing the alignments, only count them and print the total number.</td>
+    </tr>
+    <tr>
+        <td>flag</td>
+        <td>INT</td>
+        <td>-f</td>
+        <td>Only output alignments with all bits in INT present in the FLAG field.</td>
+    </tr>
+    <tr>
+        <td>lib</td>
+        <td>STR</td>
+        <td>-l</td>
+        <td>Only output reads in library STR</td>
+    </tr>
+    <tr>
+        <td>mapq</td>
+        <td>INT</td>
+        <td>-q</td>
+        <td>Skip alignments with MAPQ smaller than INT</td>
+    </tr>
+    <tr>
+        <td>readgroup</td>
+        <td>STR</td>
+        <td>-r</td>
+        <td>Only output reads in read group STR</td>
+    </tr>
 </table>
 
 <br>
