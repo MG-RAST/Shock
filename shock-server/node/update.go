@@ -40,11 +40,11 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 
 	// Check exclusive conditions
 	if (isRegularUpload && isPartialUpload) || (isRegularUpload && isVirtualNode) || (isRegularUpload && isPathUpload) {
-		return errors.New("upload parameter incompatible with parts, path and/or type parmeter(s)")
+		return errors.New("upload parameter incompatible with parts, path and/or type parameter(s)")
 	} else if (isPartialUpload && isVirtualNode) || (isPartialUpload && isPathUpload) {
-		return errors.New("parts parameter incompatible with type and/or path parmeter(s)")
+		return errors.New("parts parameter incompatible with type and/or path parameter(s)")
 	} else if isVirtualNode && isPathUpload {
-		return errors.New("type parameter incompatible with path parmeter")
+		return errors.New("type parameter incompatible with path parameter")
 	}
 
 	// Check if immutable
@@ -153,7 +153,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		if _, hasIds := params["ids"]; hasIds {
 			ids = params["ids"]
 		} else {
-			return errors.New("missing ids for updating relativs")
+			return errors.New("missing ids for updating relatives")
 		}
 		var operation string
 		if _, hasOp := params["operation"]; hasOp {
