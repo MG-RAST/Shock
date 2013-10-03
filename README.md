@@ -272,8 +272,6 @@ __Note__: Authentication is required for most of these commands
     curl -X GET http://<host>[:<port>]/node/{id}/acl/[ read | write | delete | owner ]
 
     # changing owner (chown)
-    curl -X PUT http://<host>[:<port>]/node/{id}/acl/?owner=<email-address_or_uuid>
-    or
     curl -X PUT http://<host>[:<port>]/node/{id}/acl/owner?users=<email-address_or_uuid>
 
     # adding user to all acls (expect owner)
