@@ -186,7 +186,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 func (node *Node) Save() (err error) {
 	node.UpdateVersion()
 	if len(node.Revisions) == 0 || node.Revisions[len(node.Revisions)-1].Version != node.Version {
-		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified}
+		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Public, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified}
 		node.Revisions = append(node.Revisions, n)
 	}
 	if node.CreatedOn == "" {
