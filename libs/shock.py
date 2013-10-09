@@ -17,6 +17,7 @@ import json
 import os
 import requests
 import subprocess
+import urllib
 
 #-----------------------------------------------------------------------------
 # Classes
@@ -53,7 +54,14 @@ class Client:
             raise Exception(u'Error setting auth token in shock-client: %s'%err)
                 
     def get_node(self, node):
-        url = self.shock_url+'/node/'+node
+        return self._get_node_data('/'+node)
+    
+    def query_node(self, query):
+        query_string = '?query&'+urllib.urlencode(query)
+        return self._get_node_data(query_string)
+    
+    def _get_node_data(self, path):
+        url = self.shock_url+'/node'+path
         try:
             rget = requests.get(url, headers=self.auth_header, allow_redirects=True)
         except Exception as e:
@@ -66,7 +74,7 @@ class Client:
         if rj['error']:
             raise Exception('Shock error: %d: %s'%(rj['status'], rj['error'][0]))
         return rj['data']
-        
+    
     def download_to_path(self, node, path):
         if node == '' or path == '':
             raise Exception(u'download_to_path requires non-empty node & path parameters')
