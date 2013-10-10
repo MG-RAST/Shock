@@ -117,7 +117,6 @@ class Client:
                     node = res['id']
                     data = ''
             method = 'post'
-            (data_hdl, attr_hdl) = ('', '')
             files = {}
             url = self.shock_url+'/node'
             if node != '':
@@ -157,12 +156,22 @@ class Client:
                 if 'Uploading' not in line: 
                     res += line             
             return json.loads(res)
-            
+    
+    # handles 3 cases
+    # 1. file path
+    # 2. file object (handle)
+    # 3. file content (string)
     def _get_handle(self, d):
-        if os.path.exists(d):
-            return (os.path.basename(d), open(d))            
-        else:
-            return ("n/a", cStringIO.StringIO(d))
+        try:
+            if os.path.exists(d):
+                return (os.path.basename(d), open(d))            
+            else:
+                return ("n/a", cStringIO.StringIO(d))
+        except TypeError:
+            try:
+                return (d.name, d)
+            except:
+                raise Exception(u'Error opening file handle for upload')
 
     def _cmd_exists(self, cmd):
         return subprocess.call("type " + cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0
