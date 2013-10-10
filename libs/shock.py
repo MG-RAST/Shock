@@ -109,6 +109,7 @@ class Client:
         return self.upload("", data, attr)
         
     def upload(self, node='', data='', attr=''):
+        try:
             if self.transport_method == 'shock-client' and node == '' and os.path.exists(data):
                 res = self._upload_shockclient(data)
                 if attr == '':
@@ -116,33 +117,36 @@ class Client:
                 else:
                     node = res['id']
                     data = ''
-            method = 'post'
-            files = {}
-            url = self.shock_url+'/node'
-            if node != '':
-                url = '%s/%s'%(url, node)
-                method = 'put'            
-            if data != '':
-                files['upload'] = self._get_handle(data)
-            if attr != '':
-                files['attributes'] = self._get_handle(attr)
-            try:
-                req = ""
-                if method == 'put':
-                    req = requests.put(url, headers=self.auth_header, files=files, allow_redirects=True, stream = True)
-                else:
-                    req = requests.post(url, headers=self.auth_header, files=files, allow_redirects=True, stream = True)
-                rj = req.json()
-            except Exception as e:
-                raise Exception(u'Unable to connect to Shock server %s: %s' %(url, e))
-            if not (req.ok):
-                raise Exception(u'Unable to connect to Shock server %s: %s' %(url, req.raise_for_status()))
-            if rj['error']:
-                raise Exception(u'Shock error %s : %s'%(rj['status'], rj['error'][0]))
+        except TypeError:
+            # data was file handle, we skip shock-client
+            pass
+        method = 'post'
+        files = {}
+        url = self.shock_url+'/node'
+        if node != '':
+            url = '%s/%s'%(url, node)
+            method = 'put'            
+        if data != '':
+            files['upload'] = self._get_handle(data)
+        if attr != '':
+            files['attributes'] = self._get_handle(attr)
+        try:
+            req = ""
+            if method == 'put':
+                req = requests.put(url, headers=self.auth_header, files=files, allow_redirects=True, stream = True)
             else:
-                return rj['data']  
+                req = requests.post(url, headers=self.auth_header, files=files, allow_redirects=True, stream = True)
+            rj = req.json()
+        except Exception as e:
+            raise Exception(u'Unable to connect to Shock server %s: %s' %(url, e))
+        if not (req.ok):
+            raise Exception(u'Unable to connect to Shock server %s: %s' %(url, req.raise_for_status()))
+        if rj['error']:
+            raise Exception(u'Shock error %s : %s'%(rj['status'], rj['error'][0]))
+        else:
+            return rj['data']  
 
-    def _upload_shockclient(self, path):        
+    def _upload_shockclient(self, path):       
         proc = subprocess.Popen("shock-client pcreate -threads=4 -full %s"%(path), shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         return_code = proc.wait()
         if return_code > 0:
