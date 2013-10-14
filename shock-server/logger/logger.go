@@ -25,6 +25,7 @@ type Logger struct {
 // Initialialize sets up package var Log for use in Info(), Error(), and Perf()
 func Initialize() {
 	Log = New()
+	go Log.Handle()
 }
 
 // Info is a short cut function that uses package initialized logger
@@ -81,6 +82,13 @@ func New() *Logger {
 	}()
 
 	return l
+}
+
+func (l *Logger) Handle() {
+	for {
+		m := <-l.queue
+		l.logs[m.log].Log(m.lvl, "", m.message)
+	}
 }
 
 func (l *Logger) Log(log string, lvl l4g.Level, message string) {
