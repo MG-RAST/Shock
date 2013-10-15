@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	DbTimeout = time.Duration(time.Second * 1)
+	DbTimeout = time.Duration(time.Second * 10)
 )
 
 var (
