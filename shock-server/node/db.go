@@ -27,7 +27,6 @@ func dbDelete(q bson.M) (err error) {
 func dbUpsert(n *Node) (err error) {
 	session := db.Connection.Session.Copy()
 	DB := session.DB(conf.Conf["mongodb-database"]).C("Nodes")
-	DB.EnsureIndex(mgo.Index{Key: []string{"id"}, Unique: true})
 	_, err = DB.Upsert(bson.M{"id": n.Id}, &n)
 	session.Close()
 	return
