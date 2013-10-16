@@ -10,6 +10,9 @@ import (
 	"path/filepath"
 )
 
+// Initialize creates a copy of the mongodb connection and then uses that connection to
+// create the Nodes collection in mongodb. Then, it ensures that there is a unique index
+// on the id key in this collection, creating the index if necessary.
 func Initialize() {
 	session := db.Connection.Session.Copy()
 	DB := session.DB(conf.Conf["mongodb-database"]).C("Nodes")

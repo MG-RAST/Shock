@@ -2,12 +2,11 @@ package user
 
 import (
 	"code.google.com/p/go-uuid/uuid"
+	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/db"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )
-
-var DB *mgo.Collection
 
 // Array of User
 type Users []User
@@ -23,6 +22,9 @@ type User struct {
 	CustomFields interface{} `bson:"custom_fields" json:"custom_fields"`
 }
 
+// Initialize creates a copy of the mongodb connection and then uses that connection to
+// create the Users collection in mongodb. Then, it ensures that there is a unique index
+// on the uuid key and the username key in this collection, creating the indexes if necessary.
 func Initialize() {
 	session := db.Connection.Session.Copy()
 	DB := session.DB(conf.Conf["mongodb-database"]).C("Users")
