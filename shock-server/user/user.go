@@ -7,8 +7,6 @@ import (
 	"labix.org/v2/mgo/bson"
 )
 
-var DB *mgo.Collection
-
 // Array of User
 type Users []User
 
