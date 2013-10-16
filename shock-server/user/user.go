@@ -24,7 +24,8 @@ type User struct {
 }
 
 func Initialize() {
-	DB = db.Connection.DB.C("Users")
+	session := db.Connection.Session.Copy()
+	DB := session.DB(conf.Conf["mongodb-database"]).C("Users")
 	DB.EnsureIndex(mgo.Index{Key: []string{"uuid"}, Unique: true})
 	DB.EnsureIndex(mgo.Index{Key: []string{"username"}, Unique: true})
 }
@@ -38,6 +39,8 @@ func New(username string, password string, isAdmin bool) (u *User, err error) {
 }
 
 func FindByUuid(uuid string) (u *User, err error) {
+	session := db.Connection.Session.Copy()
+	DB := session.DB(conf.Conf["mongodb-database"]).C("Users")
 	u = &User{Uuid: uuid}
 	if err = DB.Find(bson.M{"uuid": u.Uuid}).One(&u); err != nil {
 		return nil, err
@@ -46,6 +49,8 @@ func FindByUuid(uuid string) (u *User, err error) {
 }
 
 func FindByUsernamePassword(username string, password string) (u *User, err error) {
+	session := db.Connection.Session.Copy()
+	DB := session.DB(conf.Conf["mongodb-database"]).C("Users")
 	u = &User{}
 	if err = DB.Find(bson.M{"username": username, "password": password}).One(&u); err != nil {
 		return nil, err
@@ -54,6 +59,8 @@ func FindByUsernamePassword(username string, password string) (u *User, err erro
 }
 
 func AdminGet(u *Users) (err error) {
+	session := db.Connection.Session.Copy()
+	DB := session.DB(conf.Conf["mongodb-database"]).C("Users")
 	err = DB.Find(nil).All(u)
 	return
 }
@@ -72,6 +79,8 @@ func (u *User) SetUuid() (err error) {
 }
 
 func dbGetUuid(email string) (uuid string, err error) {
+	session := db.Connection.Session.Copy()
+	DB := session.DB(conf.Conf["mongodb-database"]).C("Users")
 	u := User{}
 	if err = DB.Find(bson.M{"email": email}).One(&u); err != nil {
 		return "", err
@@ -80,5 +89,7 @@ func dbGetUuid(email string) (uuid string, err error) {
 }
 
 func (u *User) Save() (err error) {
+	session := db.Connection.Session.Copy()
+	DB := session.DB(conf.Conf["mongodb-database"]).C("Users")
 	return DB.Insert(&u)
 }
