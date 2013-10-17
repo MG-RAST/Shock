@@ -47,6 +47,7 @@ func FindByUuid(uuid string) (u *User, err error) {
 	if err = DB.Find(bson.M{"uuid": u.Uuid}).One(&u); err != nil {
 		return nil, err
 	}
+	session.Close()
 	return
 }
 
@@ -57,6 +58,7 @@ func FindByUsernamePassword(username string, password string) (u *User, err erro
 	if err = DB.Find(bson.M{"username": username, "password": password}).One(&u); err != nil {
 		return nil, err
 	}
+	session.Close()
 	return
 }
 
@@ -64,6 +66,7 @@ func AdminGet(u *Users) (err error) {
 	session := db.Connection.Session.Copy()
 	DB := session.DB(conf.Conf["mongodb-database"]).C("Users")
 	err = DB.Find(nil).All(u)
+	session.Close()
 	return
 }
 
@@ -87,11 +90,13 @@ func dbGetUuid(email string) (uuid string, err error) {
 	if err = DB.Find(bson.M{"email": email}).One(&u); err != nil {
 		return "", err
 	}
+	session.Close()
 	return u.Uuid, nil
 }
 
 func (u *User) Save() (err error) {
 	session := db.Connection.Session.Copy()
 	DB := session.DB(conf.Conf["mongodb-database"]).C("Users")
+	session.Close()
 	return DB.Insert(&u)
 }
