@@ -66,7 +66,7 @@ func (cr *Controller) Read(id string, cx *goweb.Context) {
 			n, err = node.LoadFromDisk(id)
 			if err != nil {
 				logger.Error("Err@node_Read:LoadNodeFromDisk:" + id + ":" + err.Error())
-				cx.RespondWithError(http.StatusInternalServerError)
+				cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 				return
 			}
 		}
