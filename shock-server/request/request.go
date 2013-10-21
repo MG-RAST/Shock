@@ -99,6 +99,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 				*/
 				files[part.FormName()] = node.FormFile{Name: part.FileName(), Path: tmpPath, Checksum: make(map[string]string)}
 				if tmpFile, err := os.Create(tmpPath); err == nil {
+					defer tmpFile.Close()
 					md5c := make(chan checkSumCom)
 					sha1c := make(chan checkSumCom)
 					writeChecksum(md5.New, md5c)
@@ -119,7 +120,6 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 					sha1r := <-sha1c
 					files[part.FormName()].Checksum["md5"] = md5r.checksum
 					files[part.FormName()].Checksum["sha1"] = sha1r.checksum
-					tmpFile.Close()
 				} else {
 					return nil, nil, err
 				}
