@@ -27,6 +27,7 @@ type SectionReader interface {
 type ReaderAt interface {
 	SectionReader
 	Stat() (os.FileInfo, error)
+	Close() error
 }
 
 // multifd contains file boundary information
@@ -160,5 +161,10 @@ func (mr *multiReaderAt) ReadAt(p []byte, off int64) (n int, err error) {
 
 // Required for the ReaderAt interface but non-implemented
 func (mr *multiReaderAt) Stat() (fi os.FileInfo, err error) {
+	return
+}
+
+// Required for the ReaderAt interface but non-implemented
+func (mr *multiReaderAt) Close() (err error) {
 	return
 }
