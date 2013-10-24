@@ -47,9 +47,6 @@ func PreAuthRequest(cx *goweb.Context) {
 }
 
 func streamDownload(cx *goweb.Context, n *node.Node, filename string) {
-	// Set connection to close when done
-	cx.ResponseWriter.Header().Set("Connection", "close")
-
 	query := util.Q(cx.Request.URL.Query())
 	nf, err := n.FileReader()
 	defer nf.Close()

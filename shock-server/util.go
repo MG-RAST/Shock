@@ -78,19 +78,16 @@ func siteUrl(cx *goweb.Context) string {
 }
 
 func Site(cx *goweb.Context) {
-	cx.ResponseWriter.Header().Set("Connection", "close")
 	LogRequest(cx.Request)
 	http.ServeFile(cx.ResponseWriter, cx.Request, conf.Conf["site-path"]+"/pages/main.html")
 }
 
 func RawDir(cx *goweb.Context) {
-	cx.ResponseWriter.Header().Set("Connection", "close")
 	LogRequest(cx.Request)
 	http.ServeFile(cx.ResponseWriter, cx.Request, fmt.Sprintf("%s%s", conf.Conf["data-path"], cx.Request.URL.Path))
 }
 
 func AssetsDir(cx *goweb.Context) {
-	cx.ResponseWriter.Header().Set("Connection", "close")
 	LogRequest(cx.Request)
 	http.ServeFile(cx.ResponseWriter, cx.Request, conf.Conf["site-path"]+cx.Request.URL.Path)
 }
