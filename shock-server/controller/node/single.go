@@ -21,6 +21,9 @@ import (
 // GET: /node/{id}
 // ToDo: clean up this function. About to get unmanageable
 func (cr *Controller) Read(id string, cx *goweb.Context) {
+	// Set connection to close when done
+	cx.ResponseWriter.Header().Set("Connection", "close")
+
 	// Log Request and check for Auth
 	request.Log(cx.Request)
 	u, err := request.Authenticate(cx.Request)
