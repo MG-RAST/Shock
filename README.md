@@ -1,4 +1,4 @@
-![Shock](https://raw.github.com/jaredwilkening/Shock/master/shock-server/site/assets/img/shock_logo.png)
+![Shock](https://raw.github.com/MG-RAST/Shock/master/shock-server/site/assets/img/shock_logo.png)
 =====
 
 About:

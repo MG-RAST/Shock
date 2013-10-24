@@ -8,7 +8,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/util"
-	"github.com/jaredwilkening/goweb"
+	"github.com/MG-RAST/golib/goweb"
 	"labix.org/v2/mgo/bson"
 	"net/http"
 	"strings"

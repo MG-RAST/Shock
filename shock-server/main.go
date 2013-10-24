@@ -10,7 +10,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/preauth"
 	"github.com/MG-RAST/Shock/shock-server/user"
-	"github.com/jaredwilkening/goweb"
+	"github.com/MG-RAST/golib/goweb"
 	"os"
 )
 

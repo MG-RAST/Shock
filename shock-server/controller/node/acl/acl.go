@@ -9,7 +9,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
-	"github.com/jaredwilkening/goweb"
+	"github.com/MG-RAST/golib/goweb"
 	"net/http"
 	"strings"
 )

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/logger"
-	"github.com/jaredwilkening/goweb"
+	"github.com/MG-RAST/golib/goweb"
 	"net"
 	"net/http"
 	"strings"

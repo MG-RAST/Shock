@@ -5,7 +5,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/request"
-	"github.com/jaredwilkening/goweb"
+	"github.com/MG-RAST/golib/goweb"
 	"net/http"
 )
 
