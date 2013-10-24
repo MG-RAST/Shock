@@ -2,7 +2,7 @@ package util
 
 import (
 	"github.com/MG-RAST/Shock/shock-server/conf"
-	"github.com/jaredwilkening/goweb"
+	"github.com/MG-RAST/golib/goweb"
 	"math/rand"
 	"strconv"
 	"time"

@@ -3,7 +3,7 @@ package node
 
 import (
 	"github.com/MG-RAST/Shock/shock-server/request"
-	"github.com/jaredwilkening/goweb"
+	"github.com/MG-RAST/golib/goweb"
 	"net/http"
 )
 

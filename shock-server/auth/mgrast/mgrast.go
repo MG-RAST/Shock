@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/user"
-	client "github.com/jaredwilkening/httpclient"
+	client "github.com/MG-RAST/golib/httpclient"
 	"io/ioutil"
 	"strconv"
 	"strings"
