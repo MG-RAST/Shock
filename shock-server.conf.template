@@ -1,6 +1,5 @@
 [Admin]
 email=admin@host.com
-secretkey=supersecretkey
 
 [Anonymous]
 # Controls an anonymous user's ability to read/write

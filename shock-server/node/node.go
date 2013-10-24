@@ -61,9 +61,12 @@ func New() (node *Node) {
 }
 
 func LoadFromDisk(id string) (n *Node, err error) {
+	if len(id) < 6 {
+		return nil, errors.New("Node ID must be at least 6 characters in length")
+	}
 	path := getPath(id)
 	if nbson, err := ioutil.ReadFile(path + "/" + id + ".bson"); err != nil {
-		return nil, err
+		return nil, errors.New("Node does not exist")
 	} else {
 		n = new(Node)
 		if err = bson.Unmarshal(nbson, &n); err != nil {

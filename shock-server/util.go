@@ -72,7 +72,7 @@ func siteUrl(cx *goweb.Context) string {
 	if conf.Conf["site-url"] != "" {
 		return conf.Conf["site-url"]
 	} else if strings.Contains(cx.Request.Host, ":") {
-		return fmt.Sprintf("http://%s:%d", strings.Split(cx.Request.Host, ":")[0], conf.Conf["site-port"])
+		return fmt.Sprintf("http://%s:%s", strings.Split(cx.Request.Host, ":")[0], conf.Conf["site-port"])
 	}
 	return "http://" + cx.Request.Host
 }

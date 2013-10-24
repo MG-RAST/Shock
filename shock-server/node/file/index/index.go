@@ -86,10 +86,10 @@ func (i *Idx) Part(part string) (pos int64, length int64, err error) {
 
 func (i *Idx) Dump(file string) (err error) {
 	f, err := os.Create(file)
-	defer f.Close()
 	if err != nil {
 		return
 	}
+	defer f.Close()
 	for _, rec := range i.Idx {
 		binary.Write(f, binary.LittleEndian, rec[0])
 		binary.Write(f, binary.LittleEndian, rec[1])

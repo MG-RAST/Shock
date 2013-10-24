@@ -92,6 +92,7 @@ func (node *Node) addVirtualParts(ids []string) (err error) {
 		}
 	}
 	if reader, err := node.FileReader(); err == nil {
+		defer reader.Close()
 		md5h := md5.New()
 		sha1h := sha1.New()
 		buffer := make([]byte, 32*1024)
