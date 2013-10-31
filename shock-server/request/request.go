@@ -13,6 +13,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/golib/goweb"
 	"hash"
+	"io"
 	"math/rand"
 	"net"
 	"net/http"
@@ -64,6 +65,20 @@ func AuthError(err error, cx *goweb.Context) {
 	}
 	logger.Error("Error at Auth: " + err.Error())
 	cx.RespondWithError(http.StatusInternalServerError)
+	return
+}
+
+// helper function to create a node from an http data post
+func DataUpload(r *http.Request) (params map[string]string, files node.FormFiles, err error) {
+	params = make(map[string]string)
+	files = make(node.FormFiles)
+	tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.Conf["data-path"], rand.Int(), rand.Int())
+
+	files["upload"] = node.FormFile{Name: "filename", Path: tmpPath, Checksum: make(map[string]string)}
+	if tmpFile, err := os.Create(tmpPath); err == nil {
+		defer tmpFile.Close()
+		io.Copy(tmpFile, r.Body)
+	}
 	return
 }
 

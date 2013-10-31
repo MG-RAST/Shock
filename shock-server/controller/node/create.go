@@ -34,15 +34,32 @@ func (cr *Controller) Create(cx *goweb.Context) {
 	// Parse uploaded form
 	params, files, err := request.ParseMultipartForm(cx.Request)
 	if err != nil {
-		// If not multipart/form-data it will create an empty node.
-		// TODO: create another request parser for non-multipart request
-		// to handle this cleaner.
 		if err.Error() == "request Content-Type isn't multipart/form-data" {
-			n, err := node.CreateNodeUpload(u, params, files)
-			if err != nil {
-				logger.Error("Error at create empty: " + err.Error())
-				cx.RespondWithError(http.StatusInternalServerError)
-				return
+			// If not multipart/form-data it will try to read the Body of the
+			// request. If the Body is not empty it will create a file from
+			// the Body contents. If the Body is empty it will create an empty
+			// node.
+			if cx.Request.ContentLength != 0 {
+				params, files, err = request.DataUpload(cx.Request)
+				if err != nil {
+					logger.Error("Error uploading data from request body.\n")
+					cx.RespondWithError(http.StatusInternalServerError)
+					return
+				}
+			}
+
+			n, cn_err := node.CreateNodeUpload(u, params, files)
+			if cn_err != nil {
+				if cx.Request.ContentLength != 0 {
+					logger.Error("Error creating node from data upload: " + cn_err.Error())
+					cx.RespondWithError(http.StatusInternalServerError)
+					return
+				} else {
+					logger.Error("Error at create empty node: " + cn_err.Error())
+					cx.RespondWithError(http.StatusInternalServerError)
+					return
+				}
+
 			}
 			if n == nil {
 				// Not sure how you could get an empty node with no error
@@ -62,6 +79,7 @@ func (cr *Controller) Create(cx *goweb.Context) {
 			return
 		}
 	}
+
 	// Create node
 	n, err := node.CreateNodeUpload(u, params, files)
 	if err != nil {
