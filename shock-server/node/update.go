@@ -92,16 +92,19 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	} else if isPathUpload {
 		localpaths := strings.Split(conf.Conf["local-paths"], ",")
 		if len(localpaths) > 0 {
+			var success = false
 			for _, p := range localpaths {
 				if strings.HasPrefix(params["path"], p) {
 					if err = node.SetFileFromPath(params["path"]); err != nil {
 						return err
 					} else {
-						return nil
+						success = true
 					}
 				}
 			}
-			return errors.New("file not in local files path. Please contact your Shock administrator.")
+			if !success {
+				return errors.New("file not in local files path. Please contact your Shock administrator.")
+			}
 		} else {
 			return errors.New("local files path uploads must be configured. Please contact your Shock administrator.")
 		}
