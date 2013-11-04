@@ -2,7 +2,6 @@ package request
 
 import (
 	"crypto/md5"
-	"crypto/sha1"
 	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/auth"
@@ -116,25 +115,19 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 				if tmpFile, err := os.Create(tmpPath); err == nil {
 					defer tmpFile.Close()
 					md5c := make(chan checkSumCom)
-					sha1c := make(chan checkSumCom)
 					writeChecksum(md5.New, md5c)
-					writeChecksum(sha1.New, sha1c)
 					for {
 						buffer := make([]byte, 32*1024)
 						n, err := part.Read(buffer)
 						if n == 0 || err != nil {
 							md5c <- checkSumCom{n: 0}
-							sha1c <- checkSumCom{n: 0}
 							break
 						}
 						md5c <- checkSumCom{buf: buffer[0:n], n: n}
-						sha1c <- checkSumCom{buf: buffer[0:n], n: n}
 						tmpFile.Write(buffer[0:n])
 					}
 					md5r := <-md5c
-					sha1r := <-sha1c
 					files[part.FormName()].Checksum["md5"] = md5r.checksum
-					files[part.FormName()].Checksum["sha1"] = sha1r.checksum
 				} else {
 					return nil, nil, err
 				}

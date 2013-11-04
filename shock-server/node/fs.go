@@ -2,7 +2,6 @@ package node
 
 import (
 	"crypto/md5"
-	"crypto/sha1"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"os"
@@ -43,7 +42,6 @@ func (node *Node) SetFileFromPath(path string) (err error) {
 	node.File.Path = path
 
 	md5h := md5.New()
-	sha1h := sha1.New()
 	f, err := os.Open(path)
 	if err != nil {
 		return err
@@ -56,10 +54,8 @@ func (node *Node) SetFileFromPath(path string) (err error) {
 			break
 		}
 		md5h.Write(buffer[0:n])
-		sha1h.Write(buffer[0:n])
 	}
 	node.File.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
-	node.File.Checksum["sha1"] = fmt.Sprintf("%x", sha1h.Sum(nil))
 	err = node.Save()
 	return
 }
@@ -71,7 +67,6 @@ func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
 	}
 	defer out.Close()
 	md5h := md5.New()
-	sha1h := sha1.New()
 	for i := 1; i <= p.Count; i++ {
 		filename := fmt.Sprintf("%s/parts/%d", node.Path(), i)
 
@@ -91,7 +86,6 @@ func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
 				}
 				out.Write(buffer[0:n])
 				md5h.Write(buffer[0:n])
-				sha1h.Write(buffer[0:n])
 			}
 			part.Close()
 		}
@@ -103,7 +97,6 @@ func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
 	node.File.Name = node.Id
 	node.File.Size = fileStat.Size()
 	node.File.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
-	node.File.Checksum["sha1"] = fmt.Sprintf("%x", sha1h.Sum(nil))
 	err = node.Save()
 	return
 }
