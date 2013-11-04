@@ -12,7 +12,6 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/golib/goweb"
 	"hash"
-	"io"
 	"math/rand"
 	"net"
 	"net/http"
@@ -76,8 +75,24 @@ func DataUpload(r *http.Request) (params map[string]string, files node.FormFiles
 	files["upload"] = node.FormFile{Name: "filename", Path: tmpPath, Checksum: make(map[string]string)}
 	if tmpFile, err := os.Create(tmpPath); err == nil {
 		defer tmpFile.Close()
-		io.Copy(tmpFile, r.Body)
+		md5c := make(chan checkSumCom)
+		writeChecksum(md5.New, md5c)
+		for {
+			buffer := make([]byte, 32*1024)
+			n, err := r.Body.Read(buffer)
+			if n == 0 || err != nil {
+				md5c <- checkSumCom{n: 0}
+				break
+			}
+			md5c <- checkSumCom{buf: buffer[0:n], n: n}
+			tmpFile.Write(buffer[0:n])
+		}
+		md5r := <-md5c
+		files["upload"].Checksum["md5"] = md5r.checksum
+	} else {
+		return nil, nil, err
 	}
+
 	return
 }
 
