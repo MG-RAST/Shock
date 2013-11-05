@@ -12,6 +12,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/golib/goweb"
 	"os"
+	"runtime"
 )
 
 func launchSite(control chan int) {
@@ -97,6 +98,21 @@ func main() {
 		}
 		fmt.Println("Done")
 	}
+	
+	// increased cpu usage
+	var max int
+	avail := runtime.NumCPU()
+	if avail <= 2 {
+		max = 1
+	} else if avail == 3 {
+		max = 2
+	} else {
+		max = avail - 2
+	}
+	runtime.GOMAXPROCS(max)
+	fmt.Fprintf(os.Stderr, "Number of available CPUs = %d\n", avail)
+	fmt.Fprintf(os.Stderr, "Running Shock server using %d CPUs\n", max)
+	
 
 	//launch server
 	control := make(chan int)
