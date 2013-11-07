@@ -72,7 +72,7 @@ func AdminGet(u *Users) (err error) {
 }
 
 func (u *User) SetUuid() (err error) {
-	if uu, err := dbGetUuid(u.Email); err == nil {
+	if uu, err := dbGetUuid(u.Username); err == nil {
 		u.Uuid = uu
 		return nil
 	} else {
@@ -84,12 +84,12 @@ func (u *User) SetUuid() (err error) {
 	return
 }
 
-func dbGetUuid(email string) (uuid string, err error) {
+func dbGetUuid(username string) (uuid string, err error) {
 	session := db.Connection.Session.Copy()
 	defer session.Close()
 	c := session.DB(conf.Conf["mongodb-database"]).C("Users")
 	u := User{}
-	if err = c.Find(bson.M{"email": email}).One(&u); err != nil {
+	if err = c.Find(bson.M{"username": username}).One(&u); err != nil {
 		return "", err
 	}
 	return u.Uuid, nil
