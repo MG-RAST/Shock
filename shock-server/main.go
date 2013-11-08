@@ -98,7 +98,7 @@ func main() {
 		}
 		fmt.Println("Done")
 	}
-	
+
 	// increased cpu usage
 	var max int
 	avail := runtime.NumCPU()
@@ -112,7 +112,6 @@ func main() {
 	runtime.GOMAXPROCS(max)
 	fmt.Fprintf(os.Stderr, "Number of available CPUs = %d\n", avail)
 	fmt.Fprintf(os.Stderr, "Running Shock server using %d CPUs\n", max)
-	
 
 	//launch server
 	control := make(chan int)
