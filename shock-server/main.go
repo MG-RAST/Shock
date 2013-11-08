@@ -13,6 +13,7 @@ import (
 	"github.com/MG-RAST/golib/goweb"
 	"os"
 	"runtime"
+	"strconv"
 )
 
 func launchSite(control chan int) {
@@ -99,19 +100,36 @@ func main() {
 		fmt.Println("Done")
 	}
 
-	// increased cpu usage
-	var max int
+	// setting GOMAXPROCS
+	var procs int
 	avail := runtime.NumCPU()
 	if avail <= 2 {
-		max = 1
+		procs = 1
 	} else if avail == 3 {
-		max = 2
+		procs = 2
 	} else {
-		max = avail - 2
+		procs = avail - 2
 	}
-	runtime.GOMAXPROCS(max)
+
+	fmt.Fprintf(os.Stderr, "##### Procs #####\n")
 	fmt.Fprintf(os.Stderr, "Number of available CPUs = %d\n", avail)
-	fmt.Fprintf(os.Stderr, "Running Shock server using %d CPUs\n", max)
+	if conf.Conf["GOMAXPROCS"] != "" {
+		if setting, err := strconv.Atoi(conf.Conf["GOMAXPROCS"]); err != nil {
+			fmt.Fprintf(os.Stderr, "Could not interpret configured GOMAXPROCS value as integer.")
+		} else {
+			procs = setting
+		}
+	}
+
+	if procs <= avail {
+		fmt.Fprintf(os.Stderr, "Running Shock server with GOMAXPROCS = %d\n", procs)
+		runtime.GOMAXPROCS(procs)
+	} else {
+		fmt.Fprintf(os.Stderr, "GOMAXPROCS config value is greater than available number of CPUs.\n")
+		fmt.Fprintf(os.Stderr, "Running Shock server with GOMAXPROCS = %d\n", avail)
+		runtime.GOMAXPROCS(avail)
+	}
+	fmt.Fprintf(os.Stderr, "\n")
 
 	//launch server
 	control := make(chan int)

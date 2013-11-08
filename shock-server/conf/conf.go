@@ -81,6 +81,9 @@ func Initialize() {
 	Conf["logs-path"], _ = c.String("Directories", "logs")
 	Conf["local-paths"], _ = c.String("Directories", "local_paths")
 
+	// Runtime
+	Conf["GOMAXPROCS"], _ = c.String("Runtime", "GOMAXPROCS")
+
 	// Mongodb
 	Conf["mongodb-hosts"], _ = c.String("Mongodb", "hosts")
 	if Conf["mongodb-database"], err = c.String("Mongodb", "database"); err != nil {
