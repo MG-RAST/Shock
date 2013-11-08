@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
+	"math/rand"
 	"os"
 )
 
@@ -32,14 +33,36 @@ func (node *Node) SetFile(file FormFile) (err error) {
 	return
 }
 
-func (node *Node) SetFileFromPath(path string) (err error) {
+func (node *Node) SetFileFromPath(path string, action string) (err error) {
 	fileStat, err := os.Stat(path)
 	if err != nil {
 		return
 	}
 	node.File.Name = fileStat.Name()
 	node.File.Size = fileStat.Size()
-	node.File.Path = path
+
+	tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.Conf["data-path"], rand.Int(), rand.Int())
+
+	// Kind of a bad hack for testing if the file is on same partition. If it is, then
+	// renaming the file will take very little time and we can put the file back in its
+	// original location until after the checksum is done being calculated. If there's
+	// a more straight forward operation to determine if two file paths are on the
+	// same partition, then this should be changed.
+	if action == "move_file" {
+		if err = os.Rename(path, tmpPath); err != nil {
+			return err
+		} else {
+			os.Rename(tmpPath, path)
+		}
+	}
+
+	var tmpFile *os.File
+	if action == "copy_file" {
+		if tmpFile, err = os.Create(tmpPath); err != nil {
+			return err
+		}
+		defer tmpFile.Close()
+	}
 
 	md5h := md5.New()
 	f, err := os.Open(path)
@@ -47,6 +70,7 @@ func (node *Node) SetFileFromPath(path string) (err error) {
 		return err
 	}
 	defer f.Close()
+
 	for {
 		buffer := make([]byte, 10240)
 		n, err := f.Read(buffer)
@@ -54,8 +78,19 @@ func (node *Node) SetFileFromPath(path string) (err error) {
 			break
 		}
 		md5h.Write(buffer[0:n])
+		if action == "copy_file" {
+			tmpFile.Write(buffer[0:n])
+		}
 	}
 	node.File.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
+
+	if action == "copy_file" {
+		os.Rename(tmpPath, node.FilePath())
+	} else if action == "move_file" {
+		os.Rename(path, node.FilePath())
+	} else {
+		node.File.Path = path
+	}
 	err = node.Save()
 	return
 }
