@@ -197,18 +197,12 @@ sub upload {
     $HTTP::Request::Common::DYNAMIC_FILE_UPLOAD = 1;
     eval {
         my $res = undef;
+		my @auth = ($self->token)?('Authorization' , "OAuth ".$self->token):();
+		
         if ($method eq 'POST') {
-            if ($self->token) {
-                $res = $self->agent->post($url, Content_Type => 'multipart/form-data', Authorization => "OAuth ".$self->token, Content => $content);
-            } else {
-                $res = $self->agent->post($url, Content_Type => 'multipart/form-data', Content => $content);
-            }
-        } else {
-            if ($self->token) {
-                $res = $self->agent->put($url, Content_Type => 'multipart/form-data', Authorization => "OAuth ".$self->token, Content => $content);
-            } else {
-                $res = $self->agent->put($url, Content_Type => 'multipart/form-data', Content => $content);
-            }
+			$res = $self->agent->post($url, Content_Type => 'multipart/form-data', @auth, Content => $content);
+		} else {
+			$res = $self->agent->put($url, Content_Type => 'multipart/form-data', @auth, Content => $content);
         }
         $response = $self->json->decode( $res->content );
     };
@@ -253,4 +247,26 @@ sub _get_handle {
     }
 }
 
+sub delete {
+    my ($self, $node) = @_;
+    
+	my $url = $self->shock_url.'/node/'.$node;
+	my $response = undef;
+	
+	eval {
+		my	$res = $self->agent->delete($url, ($self->token)?('Authorization' , "OAuth ".$self->token):() );
+		$response = $self->json->decode( $res->content );
+	};
+	#print Dumper($res);
+	
+	if ($@ || (! ref($response))) {
+        print STDERR "[error] unable to connect to Shock ".$self->shock_url."\n";
+        return undef;
+    } elsif (exists($response->{error}) && $response->{error}) {
+        print STDERR "[error] unable to delete data from Shock: ".$response->{error}[0]."\n";
+    } else {
+        return $response;
+    }
+
+}
 
