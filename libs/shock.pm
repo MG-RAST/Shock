@@ -189,7 +189,8 @@ sub upload {
     }
     if ($data) {
         $content->{upload} = $self->_get_handle($data);
-    } elsif ($attr) {
+    }
+	if ($attr) {
         $content->{attributes} = $self->_get_handle($attr);
     }
     
