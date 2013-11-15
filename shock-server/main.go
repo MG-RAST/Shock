@@ -14,6 +14,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"syscall"
 )
 
 func launchSite(control chan int) {
@@ -135,5 +136,18 @@ func main() {
 	control := make(chan int)
 	go launchSite(control)
 	go launchAPI(control)
+
+	if conf.Conf["uid"] != "" && conf.Conf["gid"] != "" {
+		err = syscall.Setuid(conf.Conf["uid"])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Setuid error: %v\n", err)
+			os.Exit(1)
+		}
+		err := syscall.Setgid(conf.Conf["gid"])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Setgid error: %v\n", err)
+			os.Exit(1)
+		}
+	}
 	<-control //block till something dies
 }
