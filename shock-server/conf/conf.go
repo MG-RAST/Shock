@@ -83,18 +83,6 @@ func Initialize() {
 
 	// Runtime
 	Conf["GOMAXPROCS"], _ = c.String("Runtime", "GOMAXPROCS")
-	Conf["uid"], _ = c.String("Runtime", "uid")
-	Conf["gid"], _ = c.String("Runtime", "gid")
-	if Conf["uid"] != "" || Conf["gid"] != "" {
-		if os.Getuid() != 0 {
-			fmt.Fprint(os.Stderr, "ERROR: Must be running Shock server as root to set uid and gid in config file.")
-			os.Exit(1)
-		}
-		if Conf["uid"] == "" || Conf["gid"] == "" {
-			fmt.Fprint(os.Stderr, "ERROR: Must set uid and gid in config file, or set neither.")
-			os.Exit(1)
-		}
-	}
 
 	// Mongodb
 	Conf["mongodb-hosts"], _ = c.String("Mongodb", "hosts")

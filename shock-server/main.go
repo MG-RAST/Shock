@@ -15,7 +15,6 @@ import (
 	"os"
 	"runtime"
 	"strconv"
-	"syscall"
 	"time"
 )
 
@@ -70,39 +69,8 @@ func launchAPI(control chan int) {
 }
 
 func main() {
-	conf.Initialize()
-
-	//launch server
-	control := make(chan int)
-	go launchSite(control)
-	go launchAPI(control)
-
-	time.Sleep(10 * time.Second)
-
-	if conf.Conf["uid"] != "" && conf.Conf["gid"] != "" {
-		var uid, gid int
-		var err error
-		if uid, err = strconv.Atoi(conf.Conf["uid"]); err != nil {
-			fmt.Fprint(os.Stderr, "ERROR: uid in config file must be numeric.")
-			os.Exit(1)
-		}
-		if gid, err = strconv.Atoi(conf.Conf["gid"]); err != nil {
-			fmt.Fprint(os.Stderr, "ERROR: gid in config file must be numeric.")
-			os.Exit(1)
-		}
-		err = syscall.Setgid(gid)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Setgid error: %v\n", err)
-			os.Exit(1)
-		}
-		err = syscall.Setuid(uid)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Setuid error: %v\n", err)
-			os.Exit(1)
-		}
-	}
-
 	// init(s)
+	conf.Initialize()
 	logger.Initialize()
 	if err := db.Initialize(); err != nil {
 		logger.Error(err.Error())
@@ -164,6 +132,11 @@ func main() {
 		runtime.GOMAXPROCS(avail)
 	}
 
+	//launch server
+	control := make(chan int)
+	go launchSite(control)
+	go launchAPI(control)
+
 	//checking to make sure that server has launched
 	connect := false
 	for i := 0; i < 10; i++ {
@@ -184,5 +157,6 @@ func main() {
 	}
 
 	fmt.Println("\nReady to receive requests...")
+
 	<-control //block till something dies
 }
