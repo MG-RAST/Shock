@@ -15,7 +15,6 @@ import (
 	"os"
 	"runtime"
 	"strconv"
-	"syscall"
 	"time"
 )
 
@@ -157,28 +156,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if conf.Conf["uid"] != "" && conf.Conf["gid"] != "" {
-		var uid, gid int
-		var err error
-		if uid, err = strconv.Atoi(conf.Conf["uid"]); err != nil {
-			fmt.Fprint(os.Stderr, "ERROR: uid in config file must be numeric.")
-			os.Exit(1)
-		}
-		if gid, err = strconv.Atoi(conf.Conf["gid"]); err != nil {
-			fmt.Fprint(os.Stderr, "ERROR: gid in config file must be numeric.")
-			os.Exit(1)
-		}
-		err = syscall.Setgid(gid)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Setgid error: %v\n", err)
-			os.Exit(1)
-		}
-		err = syscall.Setuid(uid)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Setuid error: %v\n", err)
-			os.Exit(1)
-		}
-	}
 	fmt.Println("\nReady to receive requests...")
+
 	<-control //block till something dies
 }
