@@ -240,11 +240,14 @@ sub _upload_shockclient {
 sub _get_handle {
     my ($self, $item) = @_;
     
-    if (-s $item) {
-        return [$item];
-    } else {
-        return [undef, "n/a", Content => $item];
-    }
+	eval {
+		if (-s $item) {
+			return [$item];
+		}
+	};
+	# TODO: this is ugly.
+	
+	return [undef, "n/a", Content => $item];
 }
 
 sub delete {
