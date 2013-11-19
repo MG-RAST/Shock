@@ -9,7 +9,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
-	"github.com/jaredwilkening/goweb"
+	"github.com/MG-RAST/golib/goweb"
 	"net/http"
 	"strings"
 )
@@ -207,21 +207,19 @@ func parseAclRequest(cx *goweb.Context) (ids map[string][]string, err error) {
 		users["write"] = strings.Split(params["write"], ",")
 		users["delete"] = strings.Split(params["delete"], ",")
 	} else {
-		return nil, errors.New("Action requires list of comma seperated email address in 'all', 'read', 'write', and/or 'delete' parameter")
+		return nil, errors.New("Action requires list of comma separated usernames in 'all', 'read', 'write', and/or 'delete' parameter")
 	}
 	for k, _ := range users {
 		for _, v := range users[k] {
 			if v != "" {
-				if isEmail(v) {
-					u := user.User{Username: v, Email: v}
+				if isUuid(v) {
+					ids[k] = append(ids[k], v)
+				} else {
+					u := user.User{Username: v}
 					if err := u.SetUuid(); err != nil {
 						return nil, err
 					}
 					ids[k] = append(ids[k], u.Uuid)
-				} else if isUuid(v) {
-					ids[k] = append(ids[k], v)
-				} else {
-					return nil, errors.New("Unknown user id. Must be uuid or email address")
 				}
 			}
 		}
@@ -244,26 +242,20 @@ func parseAclRequestTyped(cx *goweb.Context) (ids []string, err error) {
 	} else if params["users"] != "" {
 		users = strings.Split(params["users"], ",")
 	} else {
-		return nil, errors.New("Action requires list of comma seperated email address in 'users' parameter")
+		return nil, errors.New("Action requires list of comma separated usernames in 'users' parameter")
 	}
 	for _, v := range users {
-		if isEmail(v) {
-			u := user.User{Username: v, Email: v}
+		if isUuid(v) {
+			ids = append(ids, v)
+		} else {
+			u := user.User{Username: v}
 			if err := u.SetUuid(); err != nil {
 				return nil, err
 			}
 			ids = append(ids, u.Uuid)
-		} else if isUuid(v) {
-			ids = append(ids, v)
-		} else {
-			return nil, errors.New("Unknown user id. Must be uuid or email address")
 		}
 	}
 	return ids, nil
-}
-
-func isEmail(s string) bool {
-	return (strings.Contains(s, "@") && strings.Contains(s, "."))
 }
 
 func isUuid(s string) bool {

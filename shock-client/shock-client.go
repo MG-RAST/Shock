@@ -26,33 +26,34 @@ create [options...]
     -parts=<p>                  Number of parts to be uploaded
     -virtual_file=<s>           Comma seperated list of node ids
     -remote_path=<p>            Remote file path
-    
+
+
 pcreate [options...]
     -full=<u>                   Path to file
     -threads=<i>                number of threads to use for uploading (default 4)
-    
+
     Note: parallel uploading for the whole file.
 
 update [options...] <id>
     -part=<p> -file=<f>         The part number to be uploaded and path to file
                                 Note: parts must be set
     Note: With the inclusion of part update options are the same as create.
-    
+
 get <id>
-    
+
 download [options...] <id> [<output>]
     -index=<i>                  Name of index (must be used with -parts)
     -parts={p}                  Part(s) from index, may be a range eg. 1-10
     -index_options=<o>          Additional index options. Varies by index type
-    
+
     Note: if output is not present the download will be written to stdout.
-    
+
 pdownload [options...] <id> [<output>]
     -threads=<i>                number of threads to use for downloading (default 4)
-    
+
     Note: parallel download for the whole file. if output is not present the download will 
           be written to a file named as the shock node id.
-    
+
 acl <add/rm> <all/read/write/delete> <users> <id>
     Note: users are in the form of comma delimited list of email address or uuids 
 
@@ -63,7 +64,7 @@ auth show                       Displays username of currently authenticated use
      set                        Prompts for user authentication and store credentials 
      set-token <token>          Stores credentials from token
      unset                      Deletes stored credentials
-     
+
 `
 
 // print help & die

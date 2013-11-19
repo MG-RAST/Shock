@@ -11,7 +11,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
-	"github.com/jaredwilkening/goweb"
+	"github.com/MG-RAST/golib/goweb"
 	"io"
 	"net/http"
 	"strconv"
@@ -66,7 +66,7 @@ func (cr *Controller) Read(id string, cx *goweb.Context) {
 			n, err = node.LoadFromDisk(id)
 			if err != nil {
 				logger.Error("Err@node_Read:LoadNodeFromDisk:" + id + ":" + err.Error())
-				cx.RespondWithError(http.StatusInternalServerError)
+				cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 				return
 			}
 		}
@@ -118,6 +118,7 @@ func (cr *Controller) Read(id string, cx *goweb.Context) {
 			}
 			// open file
 			r, err := n.FileReader()
+			defer r.Close()
 			if err != nil {
 				logger.Error("Err@node_Read:Open: " + err.Error())
 				cx.RespondWithError(http.StatusInternalServerError)
@@ -161,6 +162,7 @@ func (cr *Controller) Read(id string, cx *goweb.Context) {
 			}
 		} else {
 			nf, err := n.FileReader()
+			defer nf.Close()
 			if err != nil {
 				// File not found or some sort of file read error.
 				// Probably deserves more checking

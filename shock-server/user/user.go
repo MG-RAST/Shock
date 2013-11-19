@@ -2,12 +2,11 @@ package user
 
 import (
 	"code.google.com/p/go-uuid/uuid"
+	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/db"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )
-
-var DB *mgo.Collection
 
 // Array of User
 type Users []User
@@ -23,10 +22,15 @@ type User struct {
 	CustomFields interface{} `bson:"custom_fields" json:"custom_fields"`
 }
 
+// Initialize creates a copy of the mongodb connection and then uses that connection to
+// create the Users collection in mongodb. Then, it ensures that there is a unique index
+// on the uuid key and the username key in this collection, creating the indexes if necessary.
 func Initialize() {
-	DB = db.Connection.DB.C("Users")
-	DB.EnsureIndex(mgo.Index{Key: []string{"uuid"}, Unique: true})
-	DB.EnsureIndex(mgo.Index{Key: []string{"username"}, Unique: true})
+	session := db.Connection.Session.Copy()
+	defer session.Close()
+	c := session.DB(conf.Conf["mongodb-database"]).C("Users")
+	c.EnsureIndex(mgo.Index{Key: []string{"uuid"}, Unique: true})
+	c.EnsureIndex(mgo.Index{Key: []string{"username"}, Unique: true})
 }
 
 func New(username string, password string, isAdmin bool) (u *User, err error) {
@@ -38,28 +42,37 @@ func New(username string, password string, isAdmin bool) (u *User, err error) {
 }
 
 func FindByUuid(uuid string) (u *User, err error) {
+	session := db.Connection.Session.Copy()
+	defer session.Close()
+	c := session.DB(conf.Conf["mongodb-database"]).C("Users")
 	u = &User{Uuid: uuid}
-	if err = DB.Find(bson.M{"uuid": u.Uuid}).One(&u); err != nil {
+	if err = c.Find(bson.M{"uuid": u.Uuid}).One(&u); err != nil {
 		return nil, err
 	}
 	return
 }
 
 func FindByUsernamePassword(username string, password string) (u *User, err error) {
+	session := db.Connection.Session.Copy()
+	defer session.Close()
+	c := session.DB(conf.Conf["mongodb-database"]).C("Users")
 	u = &User{}
-	if err = DB.Find(bson.M{"username": username, "password": password}).One(&u); err != nil {
+	if err = c.Find(bson.M{"username": username, "password": password}).One(&u); err != nil {
 		return nil, err
 	}
 	return
 }
 
 func AdminGet(u *Users) (err error) {
-	err = DB.Find(nil).All(u)
+	session := db.Connection.Session.Copy()
+	defer session.Close()
+	c := session.DB(conf.Conf["mongodb-database"]).C("Users")
+	err = c.Find(nil).All(u)
 	return
 }
 
 func (u *User) SetUuid() (err error) {
-	if uu, err := dbGetUuid(u.Email); err == nil {
+	if uu, err := dbGetUuid(u.Username); err == nil {
 		u.Uuid = uu
 		return nil
 	} else {
@@ -71,14 +84,20 @@ func (u *User) SetUuid() (err error) {
 	return
 }
 
-func dbGetUuid(email string) (uuid string, err error) {
+func dbGetUuid(username string) (uuid string, err error) {
+	session := db.Connection.Session.Copy()
+	defer session.Close()
+	c := session.DB(conf.Conf["mongodb-database"]).C("Users")
 	u := User{}
-	if err = DB.Find(bson.M{"email": email}).One(&u); err != nil {
+	if err = c.Find(bson.M{"username": username}).One(&u); err != nil {
 		return "", err
 	}
 	return u.Uuid, nil
 }
 
 func (u *User) Save() (err error) {
-	return DB.Insert(&u)
+	session := db.Connection.Session.Copy()
+	defer session.Close()
+	c := session.DB(conf.Conf["mongodb-database"]).C("Users")
+	return c.Insert(&u)
 }

@@ -58,10 +58,6 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 		delete(files, "upload")
 	} else if isPartialUpload {
-		if node.isVarLen() || node.partsCount() > 0 {
-			return errors.New("parts already set")
-		}
-		// Number of parts should be either a positive integer or string 'unknown'
 		if params["parts"] == "unknown" {
 			if err = node.initParts("unknown"); err != nil {
 				return err
@@ -70,6 +66,8 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			if err = node.closeVarLenPartial(); err != nil {
 				return err
 			}
+		} else if node.isVarLen() || node.partsCount() > 0 {
+			return errors.New("parts already set")
 		} else {
 			n, err := strconv.Atoi(params["parts"])
 			if err != nil {
@@ -90,20 +88,25 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			return errors.New("type virtual requires source parameter")
 		}
 	} else if isPathUpload {
+		if action, hasAction := params["action"]; !hasAction || (action != "copy_file" && action != "move_file" && action != "keep_file") {
+			return errors.New("path upload requires action field equal to copy_file, move_file or keep_file")
+		}
 		localpaths := strings.Split(conf.Conf["local-paths"], ",")
-		if len(localpaths) > 0 {
-			for _, p := range localpaths {
-				if strings.HasPrefix(params["path"], p) {
-					if err = node.SetFileFromPath(params["path"]); err != nil {
-						return err
-					} else {
-						return nil
-					}
+		if len(localpaths) <= 0 {
+			return errors.New("local files path uploads must be configured. Please contact your Shock administrator.")
+		}
+		var success = false
+		for _, p := range localpaths {
+			if strings.HasPrefix(params["path"], p) {
+				if err = node.SetFileFromPath(params["path"], params["action"]); err != nil {
+					return err
+				} else {
+					success = true
 				}
 			}
+		}
+		if !success {
 			return errors.New("file not in local files path. Please contact your Shock administrator.")
-		} else {
-			return errors.New("local files path uploads must be configured. Please contact your Shock administrator.")
 		}
 	}
 

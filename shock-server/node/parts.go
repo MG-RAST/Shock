@@ -2,7 +2,6 @@ package node
 
 import (
 	"crypto/md5"
-	"crypto/sha1"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -92,8 +91,8 @@ func (node *Node) addVirtualParts(ids []string) (err error) {
 		}
 	}
 	if reader, err := node.FileReader(); err == nil {
+		defer reader.Close()
 		md5h := md5.New()
-		sha1h := sha1.New()
 		buffer := make([]byte, 32*1024)
 		size := 0
 		for {
@@ -102,15 +101,12 @@ func (node *Node) addVirtualParts(ids []string) (err error) {
 				break
 			}
 			md5h.Write(buffer[0:n])
-			sha1h.Write(buffer[0:n])
 			size = size + n
 		}
 
-		var md5s, sha1s []byte
+		var md5s []byte
 		md5s = md5h.Sum(md5s)
-		sha1s = sha1h.Sum(sha1s)
 		node.File.Checksum["md5"] = fmt.Sprintf("%x", md5s)
-		node.File.Checksum["sha1"] = fmt.Sprintf("%x", sha1s)
 		node.File.Size = int64(size)
 	} else {
 		return err

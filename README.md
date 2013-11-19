@@ -1,4 +1,4 @@
-![Shock](https://raw.github.com/jaredwilkening/Shock/master/shock-server/site/assets/img/shock_logo.png)
+![Shock](https://raw.github.com/MG-RAST/Shock/master/shock-server/site/assets/img/shock_logo.png)
 =====
 
 About:
@@ -278,7 +278,7 @@ __Note__: Authentication is required for most of these commands
     curl -X PUT http://<host>[:<port>]/node/{id}/acl/?all=<list_of_email-addresses_or_uuids>
 
     # adding user to specific acls
-    curl -X PUT http://<host>[:<port>]/node/{id}/acl/[ read | write | delete | owner ]?users=<list_of_email-addresses_or_uuids>
+    curl -X PUT http://<host>[:<port>]/node/{id}/acl/[ read | write | delete ]?users=<list_of_email-addresses_or_uuids>
     or
     curl -X PUT http://<host>[:<port>]/node/{id}/acl/?[ read | write | delete ]=<list_of_email-addresses_or_uuids>
     

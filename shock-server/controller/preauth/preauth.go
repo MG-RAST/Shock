@@ -9,7 +9,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/preauth"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/util"
-	"github.com/jaredwilkening/goweb"
+	"github.com/MG-RAST/golib/goweb"
 	"net/http"
 )
 
@@ -49,6 +49,7 @@ func PreAuthRequest(cx *goweb.Context) {
 func streamDownload(cx *goweb.Context, n *node.Node, filename string) {
 	query := util.Q(cx.Request.URL.Query())
 	nf, err := n.FileReader()
+	defer nf.Close()
 	if err != nil {
 		// File not found or some sort of file read error.
 		// Probably deserves more checking

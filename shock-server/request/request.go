@@ -2,7 +2,6 @@ package request
 
 import (
 	"crypto/md5"
-	"crypto/sha1"
 	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/auth"
@@ -11,7 +10,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/user"
-	"github.com/jaredwilkening/goweb"
+	"github.com/MG-RAST/golib/goweb"
 	"hash"
 	"math/rand"
 	"net"
@@ -67,6 +66,36 @@ func AuthError(err error, cx *goweb.Context) {
 	return
 }
 
+// helper function to create a node from an http data post
+func DataUpload(r *http.Request) (params map[string]string, files node.FormFiles, err error) {
+	params = make(map[string]string)
+	files = make(node.FormFiles)
+	tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.Conf["data-path"], rand.Int(), rand.Int())
+
+	files["upload"] = node.FormFile{Name: "filename", Path: tmpPath, Checksum: make(map[string]string)}
+	if tmpFile, err := os.Create(tmpPath); err == nil {
+		defer tmpFile.Close()
+		md5c := make(chan checkSumCom)
+		writeChecksum(md5.New, md5c)
+		for {
+			buffer := make([]byte, 32*1024)
+			n, err := r.Body.Read(buffer)
+			if n == 0 || err != nil {
+				md5c <- checkSumCom{n: 0}
+				break
+			}
+			md5c <- checkSumCom{buf: buffer[0:n], n: n}
+			tmpFile.Write(buffer[0:n])
+		}
+		md5r := <-md5c
+		files["upload"].Checksum["md5"] = md5r.checksum
+	} else {
+		return nil, nil, err
+	}
+
+	return
+}
+
 // helper function for create & update
 func ParseMultipartForm(r *http.Request) (params map[string]string, files node.FormFiles, err error) {
 	params = make(map[string]string)
@@ -99,27 +128,21 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 				*/
 				files[part.FormName()] = node.FormFile{Name: part.FileName(), Path: tmpPath, Checksum: make(map[string]string)}
 				if tmpFile, err := os.Create(tmpPath); err == nil {
+					defer tmpFile.Close()
 					md5c := make(chan checkSumCom)
-					sha1c := make(chan checkSumCom)
 					writeChecksum(md5.New, md5c)
-					writeChecksum(sha1.New, sha1c)
 					for {
 						buffer := make([]byte, 32*1024)
 						n, err := part.Read(buffer)
 						if n == 0 || err != nil {
 							md5c <- checkSumCom{n: 0}
-							sha1c <- checkSumCom{n: 0}
 							break
 						}
 						md5c <- checkSumCom{buf: buffer[0:n], n: n}
-						sha1c <- checkSumCom{buf: buffer[0:n], n: n}
 						tmpFile.Write(buffer[0:n])
 					}
 					md5r := <-md5c
-					sha1r := <-sha1c
 					files[part.FormName()].Checksum["md5"] = md5r.checksum
-					files[part.FormName()].Checksum["sha1"] = sha1r.checksum
-					tmpFile.Close()
 				} else {
 					return nil, nil, err
 				}

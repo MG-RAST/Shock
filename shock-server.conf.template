@@ -1,6 +1,5 @@
 [Admin]
 email=admin@host.com
-secretkey=supersecretkey
 
 [Anonymous]
 # Controls an anonymous user's ability to read/write
@@ -11,7 +10,7 @@ create-user=false
 
 [Auth]
 # defaults to local user management with basis auth
-basic=true
+basic_auth=true
 # comment line above and uncomment below to use Globus Online as auth provider
 #globus_token_url=https://nexus.api.globusonline.org/goauth/token?grant_type=client_credentials
 #globus_profile_url=https://nexus.api.globusonline.org/users
@@ -53,3 +52,5 @@ id=unique:true
 site-port=7444
 api-port=7445
 
+[Runtime]
+GOMAXPROCS=

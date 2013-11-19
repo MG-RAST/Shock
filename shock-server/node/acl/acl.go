@@ -62,6 +62,7 @@ func (a *Acl) Check(uuid string) (r Rights) {
 }
 
 func del(arr []string, s string) (narr []string) {
+	narr = []string{}
 	for i, item := range arr {
 		if item != s {
 			narr = append(narr, item)

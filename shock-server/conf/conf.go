@@ -4,7 +4,7 @@ package conf
 import (
 	"flag"
 	"fmt"
-	"github.com/jaredwilkening/goconfig/config"
+	"github.com/MG-RAST/golib/goconfig/config"
 	"os"
 	"strconv"
 	"strings"
@@ -80,6 +80,9 @@ func Initialize() {
 	Conf["data-path"], _ = c.String("Directories", "data")
 	Conf["logs-path"], _ = c.String("Directories", "logs")
 	Conf["local-paths"], _ = c.String("Directories", "local_paths")
+
+	// Runtime
+	Conf["GOMAXPROCS"], _ = c.String("Runtime", "GOMAXPROCS")
 
 	// Mongodb
 	Conf["mongodb-hosts"], _ = c.String("Mongodb", "hosts")

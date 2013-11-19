@@ -6,7 +6,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/controller/node/acl"
 	"github.com/MG-RAST/Shock/shock-server/controller/node/index"
 	"github.com/MG-RAST/Shock/shock-server/controller/preauth"
-	"github.com/jaredwilkening/goweb"
+	"github.com/MG-RAST/golib/goweb"
 )
 
 type Controller struct {
