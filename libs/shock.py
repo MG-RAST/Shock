@@ -1,6 +1,4 @@
-"""A basic Shock(https://github.com/MG-RAST/Shock) python access class. 
-Uses shock-client for high performance uploads and download if it is in 
-the users path.
+"""A basic Shock (https://github.com/MG-RAST/Shock) python access class.
 
 Authors:
 
@@ -13,10 +11,8 @@ Authors:
 #-----------------------------------------------------------------------------
 
 import cStringIO
-import json
 import os
 import requests
-import subprocess
 import urllib
 
 #-----------------------------------------------------------------------------
@@ -26,7 +22,6 @@ import urllib
 class Client:
     
     shock_url = ''
-    transport_method = ''
     auth_header = {}
     token = ''
     template = "An exception of type {0} occured. Arguments:\n{1!r}"
@@ -35,38 +30,23 @@ class Client:
         self.shock_url = shock_url
         if token != '':
             self.set_auth(token)
-        if self._cmd_exists('shock-client'):
-            self.transport_method = 'shock-client'
-        else:
-            self.transport_method = 'requests'
         
     def set_auth(self, token):
         self.auth_header = {'Authorization': 'OAuth %s'%token}
-        if self.transport_method == 'shock-client':
-            self._set_shockclient_auth(token)
-    
-    def _set_shockclient_auth(self, token):
-        proc = subprocess.Popen("shock-client auth set-token \'{\"access_token\": \"%s\"}\'"%(token), shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-        return_code = proc.wait()
-        if return_code > 0:
-            err = ""
-            for line in proc.stderr:
-                err += line
-            raise Exception(u'Error setting auth token in shock-client: %s'%err)
     
     def get_acl(self, node):
         return self._manage_acl(node, 'get')
     
-    def add_acl(self, node, acl, email):
-        return self._manage_acl(node, 'put', acl, email)
+    def add_acl(self, node, acl, user):
+        return self._manage_acl(node, 'put', acl, user)
     
-    def delete_acl(self, node, acl, email):
-        return self._manage_acl(node, 'delete', acl, email)
+    def delete_acl(self, node, acl, user):
+        return self._manage_acl(node, 'delete', acl, user)
     
-    def _manage_acl(self, node, method, acl=None, email=None):
+    def _manage_acl(self, node, method, acl=None, user=None):
         url = self.shock_url+'/node/'+node+'/acl'
-        if acl and email:
-            url += '?'+acl+'='+urllib.quote(email)
+        if acl and user:
+            url += '?'+acl+'='+urllib.quote(user)
         try:
             if method == 'get':
                 req = requests.get(url, headers=self.auth_header)
@@ -109,12 +89,14 @@ class Client:
             raise Exception('Shock error: %d: %s'%(rj['status'], rj['error'][0]))
         return rj['data']
     
-    def download_to_path(self, node, path):
+    def download_to_path(self, node, path, index=None, part=None, chunk=None):
         if node == '' or path == '':
             raise Exception(u'download_to_path requires non-empty node & path parameters')
-        if self.transport_method == 'shock-client':
-            return self._download_shockclient(node, path)
         url = '%s/node/%s?download'%(self.shock_url, node)
+        if index and part:
+            url += '&index='+index+'&part='+str(part)
+            if chunk:
+                url += '&chunk_size='+str(chunk)
         try:
             rget = requests.get(url, headers=self.auth_header, allow_redirects=True, stream=True)
         except Exception as ex:
@@ -128,73 +110,76 @@ class Client:
                     f.write(chunk)
                     f.flush()
         return path
-
-    def _download_shockclient(self, node, path):
-        proc = subprocess.Popen("shock-client pdownload -threads=4 %s %s"%(node,path), shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-        return_code = proc.wait()
-        if return_code > 0:
-            err = ""
-            for line in proc.stderr:
-                err += line
-            raise Exception(u'Error downloading via shock-client: %s => %s: error: %s' %(node, path, err))
-        else: 
-            return path
+    
+    def delete_node(self, node):
+        url = self.shock_url+'/node/'+node
+        try:
+            req = requests.delete(url, headers=self.auth_header)
+            rj  = req.json()
+        except Exception as ex:
+            message = self.template.format(type(ex).__name__, ex.args)
+            raise Exception(u'Unable to connect to Shock server %s\n%s' %(url, message))
+        if rj['error']:
+            raise Exception(u'Shock error %s : %s'%(rj['status'], rj['error'][0]))
+        return rj
+    
+    def index_node(self, node, index):
+        url = self.shock_url+'/node/'+node+'?index='+index
+        try:
+            req = requests.put(url, headers=self.auth_header)
+            rj  = req.json()
+        except Exception as ex:
+            message = self.template.format(type(ex).__name__, ex.args)
+            raise Exception(u'Unable to connect to Shock server %s\n%s' %(url, message))
+        if rj['error']:
+            raise Exception(u'Shock error %s : %s'%(rj['status'], rj['error'][0]))
+        return rj
     
     def create_node(self, data='', attr='', data_name=''):
         return self.upload("", data, attr, data_name)
-        
-    def upload(self, node='', data='', attr='', data_name=''):
-        try:
-            if self.transport_method == 'shock-client' and node == '' and os.path.exists(data):
-                res = self._upload_shockclient(data)
-                if attr == '':
-                    return res
-                else:
-                    node = res['id']
-                    data = ''
-        except TypeError:
-            # data was file handle, we skip shock-client
-            pass
-        method = 'post'
+
+    # file_name is name of data file
+    # form == True for multi-part form
+    # form == False for data POST of file
+    def upload(self, node='', data='', attr='', file_name='', form=True):
+        method = 'POST'
         files = {}
         url = self.shock_url+'/node'
         if node != '':
             url = '%s/%s'%(url, node)
-            method = 'put'
+            method = 'PUT'
         if data != '':
-            files['upload'] = self._get_handle(data, data_name)
+            files['upload'] = self._get_handle(data, file_name)
         if attr != '':
             files['attributes'] = self._get_handle(attr)
-        try:
-            if method == 'put':
-                req = requests.put(url, headers=self.auth_header, files=files, allow_redirects=True)
-            else:
-                req = requests.post(url, headers=self.auth_header, files=files, allow_redirects=True)
-            rj = req.json()
-        except Exception as ex:
-            message = self.template.format(type(ex).__name__, ex.args)
-            raise Exception(u'Unable to connect to Shock server %s\n%s' %(url, message))
+        if form:
+            try:
+                if method == 'PUT':
+                    req = requests.put(url, headers=self.auth_header, files=files, allow_redirects=True)
+                else:
+                    req = requests.post(url, headers=self.auth_header, files=files, allow_redirects=True)
+                rj = req.json()
+            except Exception as ex:
+                message = self.template.format(type(ex).__name__, ex.args)
+                raise Exception(u'Unable to connect to Shock server %s\n%s' %(url, message))
+        elif (not form) and data:
+            try:
+                if method == 'PUT':
+                    req = requests.put(url, headers=self.auth_header, data=files['upload'][1], allow_redirects=True)
+                else:
+                    req = requests.post(url, headers=self.auth_header, data=files['upload'][1], allow_redirects=True)
+                rj = req.json()
+            except Exception as ex:
+                message = self.template.format(type(ex).__name__, ex.args)
+                raise Exception(u'Unable to connect to Shock server %s\n%s' %(url, message))
+        else:
+            raise Exception(u'No data specificed for %s body'%method)
         if not (req.ok):
             raise Exception(u'Unable to connect to Shock server %s: %s' %(url, req.raise_for_status()))
         if rj['error']:
             raise Exception(u'Shock error %s : %s'%(rj['status'], rj['error'][0]))
         else:
-            return rj['data']  
-
-    def _upload_shockclient(self, path):       
-        proc = subprocess.Popen("shock-client pcreate -threads=4 -full %s"%(path), shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-        return_code = proc.wait()
-        if return_code > 0:
-            err = ""
-            for line in proc.stderr:
-                err += line
-            raise Exception(u'Error uploading via shock-client: %s: error: %s' %(path, err))
-        else:
-            res = ""
-            for line in proc.stdout:
-                if 'Uploading' not in line: 
-                    res += line             
-            return json.loads(res)
+            return rj['data']
     
     # handles 3 cases
     # 1. file path
@@ -206,7 +191,7 @@ class Client:
                 name = n if n else os.path.basename(d)
                 return (name, open(d))            
             else:
-                name = n if n else "n/a"
+                name = n if n else "unknown"
                 return (name, cStringIO.StringIO(d))
         except TypeError:
             try:
@@ -214,6 +199,3 @@ class Client:
                 return (name, d)
             except:
                 raise Exception(u'Error opening file handle for upload')
-
-    def _cmd_exists(self, cmd):
-        return subprocess.call("type " + cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0
