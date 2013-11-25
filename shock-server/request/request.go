@@ -16,6 +16,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 type checkSumCom struct {
@@ -106,6 +107,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 	}
 	for {
 		if part, err := reader.NextPart(); err == nil {
+			// params don't have a FileName() and files must have FormName() of either "upload", "attributes", or an integer
 			if part.FileName() == "" {
 				buffer := make([]byte, 32*1024)
 				n, err := part.Read(buffer)
@@ -113,7 +115,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 					break
 				}
 				params[part.FormName()] = fmt.Sprintf("%s", buffer[0:n])
-			} else {
+			} else if _, er := strconv.Atoi(part.FormName()); part.FormName() == "upload" || part.FormName() == "attributes" || er == nil {
 				tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.Conf["data-path"], rand.Int(), rand.Int())
 				/*
 					if fname[len(fname)-3:] == ".gz" && params["decompress"] == "true" {
@@ -146,9 +148,10 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 				} else {
 					return nil, nil, err
 				}
+			} else {
+				return nil, nil, errors.New("file path uploads are allowed for fields named 'upload', 'attributes', or an integer value for uploading to a node in parts but not allowed for: " + part.FormName())
 			}
 		} else if err.Error() != "EOF" {
-			fmt.Println("err here")
 			return nil, nil, err
 		} else {
 			break

@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	Regex = regexp.MustCompile(`\s*> *[\S ]+[\n\r]+[[A-Za-z\n\r]+`)
+	Regex = regexp.MustCompile(`\s*>\S+[\S\t ]*[\n\r]+[A-Za-z\n\r]+`)
 )
 
 // Fasta sequence format reader type.
