@@ -79,7 +79,7 @@ func (cr *Controller) Create(cx *goweb.Context) {
 			// could be a lost db connection between user lookup and parsing.
 			// Blame the user, Its probaby their fault anyway.
 			logger.Error("Error parsing form: " + err.Error())
-			cx.RespondWithError(http.StatusBadRequest)
+			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 			return
 		}
 	}
