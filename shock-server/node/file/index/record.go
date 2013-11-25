@@ -25,8 +25,7 @@ func (i *record) Create() (count int64, err error) {
 	curr := int64(0)
 	count = 0
 	for {
-		buf := make([]byte, 32*1024)
-		n, er := i.r.ReadRaw(buf)
+		n, er := i.r.GetReadOffset()
 		if er != nil {
 			if er != io.EOF {
 				err = er

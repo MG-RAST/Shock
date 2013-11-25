@@ -138,6 +138,44 @@ func (self *Reader) ReadRaw(p []byte) (n int, err error) {
 	return
 }
 
+// Read a single sequence and return read offset for indexing.
+func (self *Reader) GetReadOffset() (n int, err error) {
+	if self.r == nil {
+		self.r = bufio.NewReader(self.f)
+	}
+	curr := 0
+	id, err := self.r.ReadBytes('\n')
+	if err != nil {
+		return 0, err
+	} else if !bytes.HasPrefix(id, []byte{'@'}) {
+		return 0, errors.New("Invalid format: id line does not start with @")
+	}
+	curr += len(id)
+
+	seq, err := self.r.ReadBytes('\n')
+	if err != nil {
+		return 0, err
+	}
+	curr += len(seq)
+
+	plus, err := self.r.ReadBytes('\n')
+	if err != nil {
+		return 0, err
+	} else if !bytes.HasPrefix(plus, []byte{'+'}) {
+		return 0, errors.New("Invalid format: plus line does not start with +")
+	}
+	curr += len(plus)
+
+	qual, err := self.r.ReadBytes('\n')
+	if err != nil {
+		return 0, err
+	} else if len(seq) != len(qual) {
+		return 0, errors.New("Invalid format: length of sequence and quality lines do not match")
+	}
+	n = curr + len(qual)
+	return
+}
+
 // seek sequences which add up to a size close to the configured chunk size (conf.CHUNK_SIZE, e.g. 1M)
 func (self *Reader) SeekChunk(offSet int64) (n int64, err error) {
 	r := io.NewSectionReader(self.f, offSet+conf.CHUNK_SIZE-32768, 32768)

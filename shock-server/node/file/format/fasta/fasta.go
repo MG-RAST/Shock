@@ -82,6 +82,25 @@ func (self *Reader) ReadRaw(p []byte) (n int, err error) {
 	return
 }
 
+// Read a single sequence and return read offset for indexing.
+func (self *Reader) GetReadOffset() (n int, err error) {
+	if self.r == nil {
+		self.r = bufio.NewReader(self.f)
+	}
+	n = 1
+	for {
+		read, er := self.r.ReadBytes('>')
+		if len(read) > 1 {
+			n += len(read) - 1
+			break
+		} else if er != nil {
+			err = er
+			break
+		}
+	}
+	return
+}
+
 // seek sequences which add up to a size close to the configured chunk size (conf.CHUNK_SIZE, e.g. 1M)
 func (self *Reader) SeekChunk(offSet int64) (n int64, err error) {
 	r := io.NewSectionReader(self.f, offSet+conf.CHUNK_SIZE-32768, 32768)

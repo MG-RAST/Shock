@@ -82,6 +82,16 @@ func (r *Reader) ReadRaw(p []byte) (n int, err error) {
 	return r.r.ReadRaw(p)
 }
 
+func (r *Reader) GetReadOffset() (n int, err error) {
+	if r.r == nil {
+		err := r.DetermineFormat()
+		if err != nil {
+			return 0, err
+		}
+	}
+	return r.r.GetReadOffset()
+}
+
 func (r *Reader) SeekChunk(carryOver int64) (n int64, err error) {
 	if r.r == nil {
 		err := r.DetermineFormat()
