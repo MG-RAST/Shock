@@ -119,28 +119,29 @@ sub download_to_path {
     eval {
         my $get = undef;
         open(OUTF, ">$path") || die "Can not open file $path: $!\n";
-        if ($self->token) {
-            $get = $self->agent->get( $self->shock_url.'/node/'.$node.'?download',
-                                      'Authorization'   => "OAuth ".$self->token,
+		
+		my @auth = ($self->token)?('Authorization' , "OAuth ".$self->token):();
+		
+        
+        $get = $self->agent->get( $self->shock_url.'/node/'.$node.'?download',
+                                      @auth,
                                       ':read_size_hint' => 8192,
                                       ':content_cb'     => sub{ my ($chunk) = @_; print OUTF $chunk; } );
-        } else {
-            $get = $self->agent->get( $self->shock_url.'/node/'.$node.'?download',
-                                      ':read_size_hint' => 8192,
-                                      ':content_cb'     => sub{ my ($chunk) = @_; print OUTF $chunk; } );
-        }
         close OUTF;
         $content = $get->content;
     };
     
     if ($@) {
         print STDERR "[error] unable to connect to Shock ".$self->shock_url."\n";
+		unlink($path);
         return undef;
     } elsif (ref($content) && exists($content->{error}) && $content->{error}) {
         print STDERR "[error] unable to GET file $node from Shock: ".$content->{error}[0]."\n";
+		unlink($path);
         return undef;
     } elsif (! -s $path) {
         print STDERR "[error] unable to download to $path: $!\n";
+		unlink($path);
         return undef;
     } else {
         return $path;
@@ -192,6 +193,55 @@ sub upload {
     }
 	if ($attr) {
         $content->{attributes} = $self->_get_handle($attr);
+    }
+    
+    $HTTP::Request::Common::DYNAMIC_FILE_UPLOAD = 1;
+    eval {
+        my $res = undef;
+		my @auth = ($self->token)?('Authorization' , "OAuth ".$self->token):();
+		
+        if ($method eq 'POST') {
+			$res = $self->agent->post($url, Content_Type => 'multipart/form-data', @auth, Content => $content);
+		} else {
+			$res = $self->agent->put($url, Content_Type => 'multipart/form-data', @auth, Content => $content);
+        }
+        $response = $self->json->decode( $res->content );
+    };
+    if ($@ || (! ref($response))) {
+        print STDERR "[error] unable to connect to Shock ".$self->shock_url."\n";
+        return undef;
+    } elsif (exists($response->{error}) && $response->{error}) {
+        print STDERR "[error] unable to $method data to Shock: ".$response->{error}[0]."\n";
+    } else {
+        return $response->{data};
+    }
+}
+
+sub upload_h {
+    my ($self, %hash) = @_;
+	
+    my $response = undef;
+    my $content = {};
+    my $url = $self->shock_url.'/node';
+    my $method = 'POST';
+    if ($hash{'node'}) {
+        $url = $url.'/'.$hash{'node'};
+        $method = 'PUT';
+    }
+	
+	if (defined $hash{file}) {
+		unless (-s $hash{file}) {
+			die "file not found";
+		}
+		$content->{upload} = [$hash{file}]
+	}
+	if (defined $hash{data}) {
+		$content->{upload} = [undef, "n/a", Content => $hash{data}]
+	}
+	
+   
+	if (defined $hash{attr}) {
+        $content->{attributes} = $self->_get_handle($hash{attr});
     }
     
     $HTTP::Request::Common::DYNAMIC_FILE_UPLOAD = 1;
