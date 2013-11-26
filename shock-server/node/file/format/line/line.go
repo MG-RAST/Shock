@@ -1,4 +1,4 @@
-// Package to read and write lines of a file
+// Package to read and index lines of a file
 package line
 
 import (
@@ -9,7 +9,7 @@ import (
 
 type Reader struct {
 	f io.Reader
-	r *bufio.Reader
+	s *bufio.Scanner
 }
 
 type LineReader interface {
@@ -20,22 +20,27 @@ type LineReader interface {
 func NewReader(f file.SectionReader) LineReader {
 	return &Reader{
 		f: f,
-		r: bufio.NewReader(f),
+		s: bufio.NewScanner(f),
 	}
 }
 
 // Read a single line and return it or an error.
 func (self *Reader) ReadRaw(p []byte) (n int, err error) {
-	if self.r == nil {
-		self.r = bufio.NewReader(self.f)
+	if self.s == nil {
+		self.s = bufio.NewScanner(self.f)
 	}
 	for {
-		read, er := self.r.ReadBytes('\n')
-		n += len(read)
-		if len(read) > 1 {
-			copy(p[0:len(read)], read[0:len(read)])
+		if self.s.Scan() == false {
+			err = io.EOF
 			break
-		} else if er != nil {
+		}
+		line := self.s.Text()
+		length := len(line)
+		n += length + 1
+		if length > 0 {
+			copy(p[0:length], line[0:length])
+			break
+		} else if er := self.s.Err(); er != nil {
 			err = er
 			break
 		}
@@ -45,15 +50,20 @@ func (self *Reader) ReadRaw(p []byte) (n int, err error) {
 
 // Read a single line and return the offset for indexing.
 func (self *Reader) GetReadOffset() (n int, err error) {
-	if self.r == nil {
-		self.r = bufio.NewReader(self.f)
+	if self.s == nil {
+		self.s = bufio.NewScanner(self.f)
 	}
 	for {
-		read, er := self.r.ReadBytes('\n')
-		n += len(read)
-		if len(read) > 1 {
+		if self.s.Scan() == false {
+			err = io.EOF
 			break
-		} else if er != nil {
+		}
+		line := self.s.Text()
+		length := len(line)
+		n += length + 1
+		if length > 0 {
+			break
+		} else if er := self.s.Err(); er != nil {
 			err = er
 			break
 		}
