@@ -167,67 +167,20 @@ sub create_node {
     return $self->upload(undef, $data, $attr);
 }
 
+#example:     upload(data => 'hello world')
+#example:  or upload(file => 'myworld.txt')
+# TODO implement PUT here or in another function
 sub upload {
-    my ($self, $node, $data, $attr) = @_;
-    
-    if (($self->transport_method eq 'shock-client') && (! $node) && (-s $data)) {
-        my $res = $self->_upload_shockclient($data);
-        if (! $attr) {
-            return $res;
-        } else {
-            $node = $res->{id};
-            $data = undef;
-        }
-    }
-    
-    my $response = undef;
-    my $content = {};
-    my $url = $self->shock_url.'/node';
-    my $method = 'POST';
-    if ($node) {
-        $url = $url.'/'.$node;
-        $method = 'PUT';
-    }
-    if ($data) {
-        $content->{upload} = $self->_get_handle($data);
-    }
-	if ($attr) {
-        $content->{attributes} = $self->_get_handle($attr);
-    }
-    
-    $HTTP::Request::Common::DYNAMIC_FILE_UPLOAD = 1;
-    eval {
-        my $res = undef;
-		my @auth = ($self->token)?('Authorization' , "OAuth ".$self->token):();
-		
-        if ($method eq 'POST') {
-			$res = $self->agent->post($url, Content_Type => 'multipart/form-data', @auth, Content => $content);
-		} else {
-			$res = $self->agent->put($url, Content_Type => 'multipart/form-data', @auth, Content => $content);
-        }
-        $response = $self->json->decode( $res->content );
-    };
-    if ($@ || (! ref($response))) {
-        print STDERR "[error] unable to connect to Shock ".$self->shock_url."\n";
-        return undef;
-    } elsif (exists($response->{error}) && $response->{error}) {
-        print STDERR "[error] unable to $method data to Shock: ".$response->{error}[0]."\n";
-    } else {
-        return $response->{data};
-    }
-}
-
-sub upload_h {
     my ($self, %hash) = @_;
 	
     my $response = undef;
     my $content = {};
     my $url = $self->shock_url.'/node';
     my $method = 'POST';
-    if ($hash{'node'}) {
-        $url = $url.'/'.$hash{'node'};
-        $method = 'PUT';
-    }
+    #if ($hash{'node'}) {
+    #    $url = $url.'/'.$hash{'node'};
+    #    $method = 'PUT';
+    #}
 	
 	if (defined $hash{file}) {
 		unless (-s $hash{file}) {
