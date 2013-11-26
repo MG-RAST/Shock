@@ -124,7 +124,7 @@ func (cr *Controller) Update(id string, cx *goweb.Context) {
 		params, files, err := request.ParseMultipartForm(cx.Request)
 		if err != nil {
 			logger.Error("err@node_ParseMultipartForm: " + err.Error())
-			cx.RespondWithError(http.StatusBadRequest)
+			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 			return
 		}
 
