@@ -85,8 +85,9 @@ func (cr *Controller) ReadMany(cx *goweb.Context) {
 	// Get nodes from db
 	count, err := nodes.GetPaginated(q, limit, offset)
 	if err != nil {
-		logger.Error("err " + err.Error())
-		cx.RespondWithError(http.StatusBadRequest)
+		err_msg := "err " + err.Error()
+		logger.Error(err_msg)
+		cx.RespondWithErrorMessage(err_msg, http.StatusBadRequest)
 		return
 	}
 	cx.RespondWithPaginatedData(nodes, limit, offset, count)

@@ -42,8 +42,9 @@ func (cr *Controller) Create(cx *goweb.Context) {
 			if cx.Request.ContentLength != 0 {
 				params, files, err = request.DataUpload(cx.Request)
 				if err != nil {
-					logger.Error("Error uploading data from request body.\n")
-					cx.RespondWithError(http.StatusInternalServerError)
+					err_msg := "Error uploading data from request body:" + err.Error()
+					logger.Error(err_msg)
+					cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
 					return
 				}
 			}
@@ -55,12 +56,15 @@ func (cr *Controller) Create(cx *goweb.Context) {
 			// a data upload but the file happened to be empty.
 			if cn_err != nil {
 				if cx.Request.ContentLength != 0 {
-					logger.Error("Error creating node from data upload: " + cn_err.Error())
-					cx.RespondWithError(http.StatusInternalServerError)
+					err_msg := "Error at create empty node: " + cn_err.Error()
+					logger.Error(err_msg)
+					cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
+
 					return
 				} else {
-					logger.Error("Error at create empty node: " + cn_err.Error())
-					cx.RespondWithError(http.StatusInternalServerError)
+					err_msg := "Error at create empty node: " + cn_err.Error()
+					logger.Error(err_msg)
+					cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
 					return
 				}
 
@@ -68,7 +72,7 @@ func (cr *Controller) Create(cx *goweb.Context) {
 			if n == nil {
 				// Not sure how you could get an empty node with no error
 				// Assume it's the user's fault
-				cx.RespondWithError(http.StatusBadRequest)
+				cx.RespondWithErrorMessage("Error, could not create node.", http.StatusBadRequest)
 				return
 			} else {
 				cx.RespondWithData(n)
@@ -92,5 +96,11 @@ func (cr *Controller) Create(cx *goweb.Context) {
 		return
 	}
 	cx.RespondWithData(n)
+	return
+}
+
+// POST: /node/{id}  This is not implemented but was added to provide user with a useful error message.
+func (cr *Controller) CreateWithId(id string, cx *goweb.Context) {
+	cx.RespondWithErrorMessage("Node creation with an id is not supported.  Did you POST when you meant to PUT?", http.StatusBadRequest)
 	return
 }

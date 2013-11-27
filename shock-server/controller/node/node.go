@@ -20,11 +20,11 @@ func (cr *Controller) Options(cx *goweb.Context) {
 // PUT: /node
 func (cr *Controller) UpdateMany(cx *goweb.Context) {
 	request.Log(cx.Request)
-	cx.RespondWithError(http.StatusNotImplemented)
+	cx.RespondWithErrorMessage("This request type is not implemented.", http.StatusNotImplemented)
 }
 
 // DELETE: /node
 func (cr *Controller) DeleteMany(cx *goweb.Context) {
 	request.Log(cx.Request)
-	cx.RespondWithError(http.StatusNotImplemented)
+	cx.RespondWithErrorMessage("This request type is not implemented.", http.StatusNotImplemented)
 }

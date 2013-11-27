@@ -26,7 +26,7 @@ func (cr *Controller) Delete(id string, cx *goweb.Context) {
 	n, err := node.Load(id, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
-			cx.RespondWithError(http.StatusUnauthorized)
+			cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
 			return
 		} else if err.Error() == e.MongoDocNotFound {
 			cx.RespondWithNotFound()
@@ -34,8 +34,9 @@ func (cr *Controller) Delete(id string, cx *goweb.Context) {
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			logger.Error("Err@node_Read:Delete: " + err.Error())
-			cx.RespondWithError(http.StatusInternalServerError)
+			err_msg := "Err@node_Read:Delete: " + err.Error()
+			logger.Error(err_msg)
+			cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
 			return
 		}
 	}
@@ -44,8 +45,9 @@ func (cr *Controller) Delete(id string, cx *goweb.Context) {
 		cx.RespondWithOK()
 		return
 	} else {
-		logger.Error("Err@node_Delet:Delete: " + err.Error())
-		cx.RespondWithError(http.StatusInternalServerError)
+		err_msg := "Err@node_Delet:Delete: " + err.Error()
+		logger.Error(err_msg)
+		cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
 	}
 	return
 }

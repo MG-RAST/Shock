@@ -63,8 +63,9 @@ func AuthError(err error, cx *goweb.Context) {
 		cx.RespondWithErrorMessage("Invalid authorization header or content", http.StatusBadRequest)
 		return
 	}
-	logger.Error("Error at Auth: " + err.Error())
-	cx.RespondWithError(http.StatusInternalServerError)
+	err_msg := "Error at Auth: " + err.Error()
+	logger.Error(err_msg)
+	cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
 	return
 }
 
