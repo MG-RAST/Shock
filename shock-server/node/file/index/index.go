@@ -13,6 +13,7 @@ type indexerFunc func(*os.File) Indexer
 
 var (
 	Indexers = map[string]indexerFunc{
+		"line":        NewLineIndexer,
 		"record":      NewRecordIndexer,
 		"size":        NewSizeIndexer,
 		"chunkrecord": NewChunkRecordIndexer,

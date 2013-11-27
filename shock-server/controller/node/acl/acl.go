@@ -38,7 +38,7 @@ var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
 	n, err := node.Load(id, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
-			cx.RespondWithError(http.StatusUnauthorized)
+			cx.RespondWithErrorMessage(err.Error(), http.StatusUnauthorized)
 			return
 		} else if err.Error() == e.MongoDocNotFound {
 			cx.RespondWithNotFound()
@@ -46,8 +46,9 @@ var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			logger.Error("Err@node_Read:LoadNode: " + err.Error())
-			cx.RespondWithError(http.StatusInternalServerError)
+			err_msg := "Err@node_Read:LoadNode: " + err.Error()
+			logger.Error(err_msg)
+			cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
 			return
 		}
 	}
@@ -74,7 +75,7 @@ var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
 			}
 			n.Save()
 		} else {
-			cx.RespondWithError(http.StatusUnauthorized)
+			cx.RespondWithErrorMessage(e.UnAuth, http.StatusUnauthorized)
 			return
 		}
 	}
@@ -82,7 +83,7 @@ var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
 	if u.Uuid == n.Acl.Owner || rights["read"] {
 		cx.RespondWithData(n.Acl)
 	} else {
-		cx.RespondWithError(http.StatusUnauthorized)
+		cx.RespondWithErrorMessage(e.UnAuth, http.StatusUnauthorized)
 		return
 	}
 	return
@@ -114,7 +115,7 @@ var ControllerTyped goweb.ControllerFunc = func(cx *goweb.Context) {
 	n, err := node.Load(id, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
-			cx.RespondWithError(http.StatusUnauthorized)
+			cx.RespondWithErrorMessage(err.Error(), http.StatusUnauthorized)
 			return
 		} else if err.Error() == e.MongoDocNotFound {
 			cx.RespondWithNotFound()
@@ -122,8 +123,9 @@ var ControllerTyped goweb.ControllerFunc = func(cx *goweb.Context) {
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			logger.Error("Err@node_Read:LoadNode: " + err.Error())
-			cx.RespondWithError(http.StatusInternalServerError)
+			err_msg := "Err@node_Read:LoadNode: " + err.Error()
+			logger.Error(err_msg)
+			cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
 			return
 		}
 	}
@@ -160,7 +162,7 @@ var ControllerTyped goweb.ControllerFunc = func(cx *goweb.Context) {
 			}
 			n.Save()
 		} else {
-			cx.RespondWithError(http.StatusUnauthorized)
+			cx.RespondWithErrorMessage(e.UnAuth, http.StatusUnauthorized)
 			return
 		}
 	}
@@ -177,7 +179,7 @@ var ControllerTyped goweb.ControllerFunc = func(cx *goweb.Context) {
 			cx.RespondWithData(map[string]string{"owner": n.Acl.Owner})
 		}
 	} else {
-		cx.RespondWithError(http.StatusUnauthorized)
+		cx.RespondWithErrorMessage(e.UnAuth, http.StatusUnauthorized)
 		return
 	}
 	return

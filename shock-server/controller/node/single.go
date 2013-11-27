@@ -53,7 +53,7 @@ func (cr *Controller) Read(id string, cx *goweb.Context) {
 	n, err := node.Load(id, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
-			cx.RespondWithError(http.StatusUnauthorized)
+			cx.RespondWithErrorMessage(err.Error(), http.StatusUnauthorized)
 			return
 		} else if err.Error() == e.MongoDocNotFound {
 			cx.RespondWithNotFound()
@@ -120,8 +120,9 @@ func (cr *Controller) Read(id string, cx *goweb.Context) {
 			r, err := n.FileReader()
 			defer r.Close()
 			if err != nil {
-				logger.Error("Err@node_Read:Open: " + err.Error())
-				cx.RespondWithError(http.StatusInternalServerError)
+				err_msg := "Err@node_Read:Open: " + err.Error()
+				logger.Error(err_msg)
+				cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
 				return
 			}
 			// load index
@@ -166,8 +167,9 @@ func (cr *Controller) Read(id string, cx *goweb.Context) {
 			if err != nil {
 				// File not found or some sort of file read error.
 				// Probably deserves more checking
-				logger.Error("err:@node_Read node.FileReader: " + err.Error())
-				cx.RespondWithError(http.StatusBadRequest)
+				err_msg := "err:@node_Read node.FileReader: " + err.Error()
+				logger.Error(err_msg)
+				cx.RespondWithErrorMessage(err_msg, http.StatusBadRequest)
 				return
 			}
 			s := &request.Streamer{R: []file.SectionReader{nf}, W: cx.ResponseWriter, ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc}
@@ -192,8 +194,9 @@ func (cr *Controller) Read(id string, cx *goweb.Context) {
 				options["filename"] = query.Value("filename")
 			}
 			if p, err := preauth.New(util.RandString(20), "download", n.Id, options); err != nil {
-				cx.RespondWithError(http.StatusInternalServerError)
-				logger.Error("err:@node_Read download_url: " + err.Error())
+				err_msg := "err:@node_Read download_url: " + err.Error()
+				logger.Error(err_msg)
+				cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
 			} else {
 				cx.RespondWithData(util.UrlResponse{Url: util.ApiUrl(cx) + "/preauth/" + p.Id, ValidTill: p.ValidTill.Format(time.ANSIC)})
 			}
