@@ -78,7 +78,7 @@ func LoadFromDisk(id string) (n *Node, err error) {
 }
 
 func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (node *Node, err error) {
-	validParams := []string{"parts", "path"}
+	validParams := []string{"action", "format", "ids", "linkage", "operation", "parts", "path", "read", "source", "tags", "type", "users", "write"}
 	validFiles := []string{"attributes", "upload"}
 
 	for param := range params {
