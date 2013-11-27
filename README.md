@@ -8,95 +8,31 @@ Shock is a platform to support computation, storage, and distribution. Designed 
 
 Shock is RESTful. Accessible from desktops, HPC systems, exotic hardware, the cloud and your smartphone.
 
-Shock is for scientific data. One of the challenges of large volume scientific data is that without often complex metadata it is of little to no value. Store and query(in development) complex metadata.   
+Shock is for scientific data. One of the challenges of large volume scientific data is that without often complex metadata it is of little to no value. Shock allows storage and querying of complex metadata.   
 
-Shock is an data management system. Annotate, anonymize, convert, filter, quality control, statically subsample at line speed bioinformatics sequence data. Extensible plug-in architecture(in development).
+Shock is a data management system. The long term goals of Shock include the ability to annotate, anonymize, convert, filter, perform quality control, and statically subsample at line speed bioinformatics sequence data. Extensible plug-in architecture is in development.
 
 **Most importantly Shock is still very much in development. Be patient and contribute.**
 
 Shock is actively being developed at [github.com/MG-RAST/Shock](http://github.com/MG-RAST/Shock).
 
-<br>
 Building:
 ---------
-Shock (requires go=>1.1.0 [golang.org](http://golang.org/), git, mercurial, bazaar):
+Shock (requires mongodb=>2.0.3, go=>1.1.0 [golang.org](http://golang.org/), git, mercurial, bazaar):
 
     go get github.com/MG-RAST/Shock/...
 
-Built binary will be located in env configured $GOPATH or $GOROOT depending on Go configuration.
+Built binary will be located in env configured $GOPATH or $GOROOT depending on the Go configuration.
 
-<br>
 Configuration:
 --------------
 The Shock configuration file is in INI file format. There is a template of the config file located at the root level of the repository.
 
-    [Admin]
-    email=admin@host.com
-    secretkey=supersecretkey
-
-    [Anonymous]
-    # Controls an anonymous user's ability to read/write
-    # values: true/false
-    read=true
-    write=false
-    create-user=false
-
-    [Auth]
-    # defaults to local user management with basis auth
-    type=basic
-    # comment line about and uncomment below to use Globus Online as auth provider
-    #type=globus 
-    #globus_token_url=https://nexus.api.globusonline.org/goauth/token?grant_type=client_credentials
-    #globus_profile_url=https://nexus.api.globusonline.org/users
-
-    [Directories]
-    # See documentation for details of deploying Shock
-    site=/usr/local/shock/site
-    data=/usr/local/shock
-    logs=/var/log/shock
-    
-    # Comma delimited search path available for remote path uploads. Only remote paths that prefix 
-    # match one of the following will be allowed. Note: poor choices can result in security concerns.
-    local_paths=N/A
-
-    [External]
-    site-url=http://localhost
-    
-    [SSL]
-    enable=false
-    #key=<path_to_key_file>
-    #cert=<path_to_cert_file>
-
-    [Mongodb]
-    # Mongodb configuration:
-    # Hostnames and ports hosts=host1[,host2:port,...,hostN]
-    hosts=localhost
-    database=ShockDB
-    user=
-    password=
-
-    [Mongodb-Node-Indices]
-    # See http://www.mongodb.org/display/DOCS/Indexes#Indexes-CreationOptions for more info on mongodb index options.
-    # key=unique:true/false[,dropDups:true/false][,sparse:true/false]
-    id=unique:true
-
-    [Ports]
-    # Ports for site/api
-    # Note: use of port 80 may require root access
-    site-port=7444
-    api-port=7445
-
-
-<a name="auth"/>
-<br>
-
 Running:
 --------------
-To run (additional requires mongodb=>2.0.3):
+To run:
   
     shock-server -conf <path_to_config_file>
-
-<br>
 
 Routes Overview
 ---------------
@@ -269,33 +205,23 @@ __Note__: Authentication is required for most of these commands
     curl -X GET http://<host>[:<port>]/node/{id}/acl/
 
     # view specific acls
-    curl -X GET http://<host>[:<port>]/node/{id}/acl/[ read | write | delete | owner ]
+    curl -X GET http://<host>[:<port>]/node/{id}/acl/[ all | read | write | delete | owner ]
 
     # changing owner (chown)
-    curl -X PUT http://<host>[:<port>]/node/{id}/acl/owner?users=<email-address_or_uuid>
+    curl -X PUT http://<host>[:<port>]/node/{id}/acl/owner?users=<user-id_or_uuid>
 
-    # adding user to all acls (expect owner)
-    curl -X PUT http://<host>[:<port>]/node/{id}/acl/?all=<list_of_email-addresses_or_uuids>
+    # adding user to all acls (except owner)
+    curl -X PUT http://<host>[:<port>]/node/{id}/acl/all?users=<user-ids_or_uuids>
 
     # adding user to specific acls
-    curl -X PUT http://<host>[:<port>]/node/{id}/acl/[ read | write | delete ]?users=<list_of_email-addresses_or_uuids>
-    or
-    curl -X PUT http://<host>[:<port>]/node/{id}/acl/?[ read | write | delete ]=<list_of_email-addresses_or_uuids>
+    curl -X PUT http://<host>[:<port>]/node/{id}/acl/[ read | write | delete ]?users=<user-ids_or_uuids>
     
-    # adding users to both read and write acls:
-    curl -X PUT http://<host>[:<port>]/node/{id}/acl/?read=<list_of_email-addresses_or_uuids>&write=<list_of_email-addresses_or_uuids>
-    
-    # deleting user from all acls (expect owner)
-    curl -X DELETE http://<host>[:<port>]/node/{id}/acl/?all=<list_of_email-addresses_or_uuids>    
+    # deleting user from all acls (except owner)
+    curl -X DELETE http://<host>[:<port>]/node/{id}/acl/all?users=<user-ids_or_uuids>    
     
     # deleting user to specific acls
-    curl -X DELETE http://<host>[:<port>]/node/{id}/acl/[ read | write | delete ]?users=<list_of_email-addresses_or_uuids>
-    or
-    curl -X DELETE http://<host>[:<port>]/node/{id}/acl/?[ read | write | delete ]=<list_of_email-addresses_or_uuids>
+    curl -X DELETE http://<host>[:<port>]/node/{id}/acl/[ read | write | delete ]?users=<user-ids_or_uuids>
     
-    # deleting users to both read and write acls:
-    curl -X DELETE http://<host>[:<port>]/node/{id}/acl/?read=<list_of_email-addresses_or_uuids>&write=<list_of_email-addresses_or_uuids>
-
 <br>
 #### Querying ([details](#get_nodes)):
 

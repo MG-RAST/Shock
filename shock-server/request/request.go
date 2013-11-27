@@ -110,7 +110,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 
 	// arrays to check for valid param and file form names for node creation and updating, and also acl modification
 	// Note: indexing and querying do not use this function and thus we don't have to accept those field names.
-	validParams := []string{"all", "delete", "owner", "parts", "path", "read", "users", "write"}
+	validParams := []string{"action", "all", "delete", "format", "ids", "linkage", "operation", "owner", "parts", "path", "read", "source", "tags", "type", "users", "write"}
 	validFiles := []string{"attributes", "upload"}
 
 	for {
