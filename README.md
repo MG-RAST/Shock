@@ -205,18 +205,18 @@ __Note__: Authentication is required for most of these commands
     curl -X GET http://<host>[:<port>]/node/{id}/acl/
 
     # view specific acls
-    curl -X GET http://<host>[:<port>]/node/{id}/acl/[ read | write | delete | owner ]
+    curl -X GET http://<host>[:<port>]/node/{id}/acl/[ all | read | write | delete | owner ]
 
     # changing owner (chown)
     curl -X PUT http://<host>[:<port>]/node/{id}/acl/owner?users=<user-id_or_uuid>
 
-    # adding user to all acls (expect owner)
+    # adding user to all acls (except owner)
     curl -X PUT http://<host>[:<port>]/node/{id}/acl/all?users=<user-ids_or_uuids>
 
     # adding user to specific acls
     curl -X PUT http://<host>[:<port>]/node/{id}/acl/[ read | write | delete ]?users=<user-ids_or_uuids>
     
-    # deleting user from all acls (expect owner)
+    # deleting user from all acls (except owner)
     curl -X DELETE http://<host>[:<port>]/node/{id}/acl/all?users=<user-ids_or_uuids>    
     
     # deleting user to specific acls
