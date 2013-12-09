@@ -46,7 +46,7 @@ class Client:
     def _manage_acl(self, node, method, acl=None, user=None):
         url = self.shock_url+'/node/'+node+'/acl'
         if acl and user:
-            url += '?'+acl+'='+urllib.quote(user)
+            url += '/'+acl+'?users='+urllib.quote(user)
         try:
             if method == 'get':
                 req = requests.get(url, headers=self.auth_header)
