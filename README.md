@@ -53,9 +53,10 @@ Routes Overview
 
 #####PUT
 
-- [/node/{id}](#put_node)  modify node, create index
+- [/node/{id}](#put_node)  modify node
 - [/node/{id}/acl]()  modify node acls
 - [/node/{id}/acl/{type}]()  modify node acls of type {type}
+- [/node/{id}/index/{type}]()  create node indexes
 
 #####POST
  
@@ -157,18 +158,30 @@ __Note__: Authentication is required for most of these commands
     # with attributes
     curl -X POST -F "attributes=@<path_to_json_file>" http://<host>[:<port>]/node
     
-    # with file
+    # with file, using multipart form
     curl -X POST -F "upload=@<path_to_data_file>" http://<host>[:<port>]/node
 
+	# with file, without using multipart form
+	curl -X POST --data-binary @<path_to_data_file> http://<host>[:<port>]/node
+	(note: Posting an empty file in this way will result in an empty node with no file rather than an empty node with an empty file)
+
     # with file local to the shock server
-    curl -X POST -F "path=<path_to_data_file>" http://<host>[:<port>]/node
+    curl -X POST -F "path=<path_to_data_file>" -F "action=<action_type>" http://<host>[:<port>]/node
+	(note: The action_type is one of keep_file (node points to file path given), copy_file (file is copied to shock data directory), move_file (file is moved to shock data directory).  The move_file action only works if user running Shock has permissions to move the file.)
     
-    # with file upload in N parts (part uploads may be done in parallel)
+    # with file upload in N parts (part uploads may be done in parallel and out of order)
     curl -X POST -F "parts=N" http://<host>[:<port>]/node
     curl -X PUT -F "1=@<file_part_1>" http://<host>[:<port>]/node/<node_id>
     curl -X PUT -F "2=@<file_part_2>" http://<host>[:<port>]/node/<node_id>
     ...
     curl -X PUT -F "N=@<file_part_N>" http://<host>[:<port>]/node/<node_id>
+	
+	# with file upload in N parts where N is unknown at node creation time (part uploads may be done in parallel and out of order)
+	curl -X POST -F "parts=unknown" http://<host>[:<port>]/node
+    curl -X PUT -F "1=@<file_part_1>" http://<host>[:<port>]/node/<node_id>
+    curl -X PUT -F "2=@<file_part_2>" http://<host>[:<port>]/node/<node_id>
+    ...
+    curl -X PUT -F "parts=close" http://<host>[:<port>]/node/<node_id>
 
 <br>
 #### Node retrieval ([details](#get_node)):
@@ -196,7 +209,7 @@ __Note__: Authentication is required for most of these commands
 
     # download bam alignments with selected arguments supported by "samtools view"
     curl -X GET http://<host>[:<port>]/node/{id}/?download/index=bai&head&headonly&count&flag=[INT]&lib=[STR]&mapq=[INT]&readgroup=[STR]
-    (note: all the arguments are optional and can be used with or without the region, but the index=bai is required)
+    (note: All the arguments are optional and can be used with or without the region, but the index=bai is required)
     
 <br>
 #### Node acls: 
