@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	dirExp, _ = regexp.Compile("[a-f0-9]{2}/[a-f0-9]{2}/[a-f0-9]{32}$")
+	dirExp, _ = regexp.Compile("(?i)([a-f0-9]{2}/){3}[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$")
 )
 
 func reload(source string) (err error) {

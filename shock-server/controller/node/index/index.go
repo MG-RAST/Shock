@@ -42,7 +42,7 @@ var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
 	n, err := node.Load(id, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
-			cx.RespondWithError(http.StatusUnauthorized)
+			cx.RespondWithErrorMessage(err.Error(), http.StatusUnauthorized)
 			return
 		} else if err.Error() == e.MongoDocNotFound {
 			cx.RespondWithNotFound()
@@ -50,8 +50,9 @@ var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			logger.Error("Err@index:LoadNode: " + err.Error())
-			cx.RespondWithError(http.StatusInternalServerError)
+			err_msg := "Err@index:LoadNode: " + err.Error()
+			logger.Error(err_msg)
+			cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
 			return
 		}
 	}
@@ -143,7 +144,7 @@ var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
 		}
 
 	default:
-		cx.RespondWithError(http.StatusNotImplemented)
+		cx.RespondWithErrorMessage("This request type is not implemented", http.StatusNotImplemented)
 	}
 	return
 }

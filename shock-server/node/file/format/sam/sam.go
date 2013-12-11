@@ -97,6 +97,24 @@ func (self *Reader) ReadRaw(p []byte) (n int, err error) {
 	return
 }
 
+// Read a single sequence and return read offset for indexing.
+func (self *Reader) GetReadOffset() (n int, err error) {
+	for {
+		read, er := self.r.ReadBytes('\n')
+		n += len(read)
+		if len(read) > 1 {
+			if read[0] == '@' {
+				continue
+			}
+			break
+		} else if er != nil {
+			err = er
+			break
+		}
+	}
+	return
+}
+
 func (self *Reader) SeekChunk(offSet int64) (n int64, err error) {
 	return
 }

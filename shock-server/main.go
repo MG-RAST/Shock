@@ -11,9 +11,11 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/preauth"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/golib/goweb"
+	"net/http"
 	"os"
 	"runtime"
 	"strconv"
+	"time"
 )
 
 func launchSite(control chan int) {
@@ -111,29 +113,50 @@ func main() {
 		procs = avail - 2
 	}
 
-	fmt.Fprintf(os.Stderr, "##### Procs #####\n")
-	fmt.Fprintf(os.Stderr, "Number of available CPUs = %d\n", avail)
+	fmt.Println("##### Procs #####")
+	fmt.Printf("Number of available CPUs = %d\n", avail)
 	if conf.Conf["GOMAXPROCS"] != "" {
 		if setting, err := strconv.Atoi(conf.Conf["GOMAXPROCS"]); err != nil {
-			fmt.Fprintf(os.Stderr, "Could not interpret configured GOMAXPROCS value as integer.")
+			fmt.Fprintf(os.Stderr, "ERROR: could not interpret configured GOMAXPROCS value as integer.")
 		} else {
 			procs = setting
 		}
 	}
 
 	if procs <= avail {
-		fmt.Fprintf(os.Stderr, "Running Shock server with GOMAXPROCS = %d\n", procs)
+		fmt.Printf("Running Shock server with GOMAXPROCS = %d\n", procs)
 		runtime.GOMAXPROCS(procs)
 	} else {
-		fmt.Fprintf(os.Stderr, "GOMAXPROCS config value is greater than available number of CPUs.\n")
-		fmt.Fprintf(os.Stderr, "Running Shock server with GOMAXPROCS = %d\n", avail)
+		fmt.Println("GOMAXPROCS config value is greater than available number of CPUs.")
+		fmt.Printf("Running Shock server with GOMAXPROCS = %d\n", avail)
 		runtime.GOMAXPROCS(avail)
 	}
-	fmt.Fprintf(os.Stderr, "\n")
 
 	//launch server
 	control := make(chan int)
 	go launchSite(control)
 	go launchAPI(control)
+
+	//checking to make sure that server has launched
+	connect := false
+	for i := 0; i < 10; i++ {
+		time.Sleep(100 * time.Millisecond)
+		_, err := http.Get("http://localhost:" + conf.Conf["api-port"])
+		if err == nil {
+			connect = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	//exiting if server could not be reached after 1 second
+	if connect != true {
+		fmt.Fprintln(os.Stderr, "ERROR: server could not be reached at "+"http://localhost:"+conf.Conf["api-port"])
+		fmt.Fprintln(os.Stderr, "Exiting!")
+		os.Exit(1)
+	}
+
+	fmt.Println("\nReady to receive requests...")
+
 	<-control //block till something dies
 }

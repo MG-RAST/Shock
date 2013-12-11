@@ -14,18 +14,16 @@ import (
 )
 
 //the order matters as it determines the order for checking format.
-var valid_format = [3]string{"sam", "fastq", "fasta"}
+var validators = map[string]*regexp.Regexp{
+	"fasta": fasta.Regex,
+	"fastq": fastq.Regex,
+	"sam":   sam.Regex,
+}
 
 var readers = map[string]func(f file.SectionReader) seq.ReadRewinder{
 	"fasta": fasta.NewReader,
 	"fastq": fastq.NewReader,
 	"sam":   sam.NewReader,
-}
-
-var validators = map[string]*regexp.Regexp{
-	"fasta": fasta.Regex,
-	"fastq": fastq.Regex,
-	"sam":   sam.Regex,
 }
 
 type Reader struct {
@@ -46,9 +44,10 @@ func (r *Reader) DetermineFormat() error {
 	if r.format != "" && r.r != nil {
 		return nil
 	}
+
 	reader := io.NewSectionReader(r.f, 0, 32768)
 	buf := make([]byte, 32768)
-	if _, err := reader.Read(buf); err != nil {
+	if _, err := reader.Read(buf); err != nil && err != io.EOF {
 		return err
 	}
 
@@ -80,6 +79,16 @@ func (r *Reader) ReadRaw(p []byte) (n int, err error) {
 		}
 	}
 	return r.r.ReadRaw(p)
+}
+
+func (r *Reader) GetReadOffset() (n int, err error) {
+	if r.r == nil {
+		err := r.DetermineFormat()
+		if err != nil {
+			return 0, err
+		}
+	}
+	return r.r.GetReadOffset()
 }
 
 func (r *Reader) SeekChunk(carryOver int64) (n int64, err error) {

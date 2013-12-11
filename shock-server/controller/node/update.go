@@ -35,7 +35,7 @@ func (cr *Controller) Update(id string, cx *goweb.Context) {
 	n, err := node.Load(id, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
-			cx.RespondWithError(http.StatusUnauthorized)
+			cx.RespondWithErrorMessage(err.Error(), http.StatusUnauthorized)
 			return
 		} else if err.Error() == e.MongoDocNotFound {
 			cx.RespondWithNotFound()
@@ -43,8 +43,9 @@ func (cr *Controller) Update(id string, cx *goweb.Context) {
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			logger.Error("Err@node_Update:LoadNode: " + err.Error())
-			cx.RespondWithError(http.StatusInternalServerError)
+			err_msg := "Err@node_Update:LoadNode: " + err.Error()
+			logger.Error(err_msg)
+			cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
 			return
 		}
 	}
@@ -124,7 +125,7 @@ func (cr *Controller) Update(id string, cx *goweb.Context) {
 		params, files, err := request.ParseMultipartForm(cx.Request)
 		if err != nil {
 			logger.Error("err@node_ParseMultipartForm: " + err.Error())
-			cx.RespondWithError(http.StatusBadRequest)
+			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 			return
 		}
 

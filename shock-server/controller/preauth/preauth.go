@@ -20,8 +20,9 @@ func PreAuthRequest(cx *goweb.Context) {
 		if err.Error() == e.MongoDocNotFound {
 			cx.RespondWithNotFound()
 		} else {
-			cx.RespondWithError(http.StatusInternalServerError)
-			logger.Error("err:@preAuth load: " + err.Error())
+			err_msg := "err:@preAuth load: " + err.Error()
+			logger.Error(err_msg)
+			cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
 		}
 		return
 	} else {
@@ -36,11 +37,12 @@ func PreAuthRequest(cx *goweb.Context) {
 				preauth.Delete(id)
 				return
 			default:
-				cx.RespondWithError(http.StatusInternalServerError)
+				cx.RespondWithErrorMessage("Preauthorization type not supported: "+p.Type, http.StatusInternalServerError)
 			}
 		} else {
-			cx.RespondWithError(http.StatusInternalServerError)
-			logger.Error("err:@preAuth loadnode: " + err.Error())
+			err_msg := "err:@preAuth loadnode: " + err.Error()
+			logger.Error(err_msg)
+			cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
 		}
 	}
 	return
@@ -53,8 +55,9 @@ func streamDownload(cx *goweb.Context, n *node.Node, filename string) {
 	if err != nil {
 		// File not found or some sort of file read error.
 		// Probably deserves more checking
-		logger.Error("err:@preAuth node.FileReader: " + err.Error())
-		cx.RespondWithError(http.StatusBadRequest)
+		err_msg := "err:@preAuth node.FileReader: " + err.Error()
+		logger.Error(err_msg)
+		cx.RespondWithErrorMessage(err_msg, http.StatusBadRequest)
 		return
 	}
 	if query.Has("filename") {

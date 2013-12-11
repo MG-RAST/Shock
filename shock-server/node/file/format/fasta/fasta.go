@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	Regex = regexp.MustCompile(`\s*> *[\S ]+[\n\r]+[[A-Za-z\n\r]+`)
+	Regex = regexp.MustCompile(`\s*>\S+[\S\t ]*[\n\r]+[A-Za-z\n\r]+`)
 )
 
 // Fasta sequence format reader type.
@@ -72,6 +72,25 @@ func (self *Reader) ReadRaw(p []byte) (n int, err error) {
 		read, er := self.r.ReadBytes('>')
 		if len(read) > 1 {
 			copy(p[n:n+len(read)-1], read[0:len(read)-1])
+			n += len(read) - 1
+			break
+		} else if er != nil {
+			err = er
+			break
+		}
+	}
+	return
+}
+
+// Read a single sequence and return read offset for indexing.
+func (self *Reader) GetReadOffset() (n int, err error) {
+	if self.r == nil {
+		self.r = bufio.NewReader(self.f)
+	}
+	n = 1
+	for {
+		read, er := self.r.ReadBytes('>')
+		if len(read) > 1 {
 			n += len(read) - 1
 			break
 		} else if er != nil {

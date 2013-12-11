@@ -8,6 +8,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/user"
+	"github.com/MG-RAST/Shock/shock-server/util"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"os"
@@ -77,6 +78,24 @@ func LoadFromDisk(id string) (n *Node, err error) {
 }
 
 func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (node *Node, err error) {
+	validParams := []string{"action", "format", "ids", "linkage", "operation", "parts", "path", "read", "source", "tags", "type", "users", "write"}
+	validFiles := []string{"attributes", "upload"}
+
+	for param := range params {
+		if !util.StringInSlice(param, validParams) {
+			return nil, errors.New("invalid param: " + param)
+		}
+		if param == "parts" && params[param] == "close" {
+			return nil, errors.New("Cannot set parts=close when creating a node, did you do a POST when you meant to PUT?")
+		}
+	}
+
+	for file := range files {
+		if !util.StringInSlice(file, validFiles) {
+			return nil, errors.New("invalid file param: " + file)
+		}
+	}
+
 	node = New()
 	if u.Uuid != "" {
 		node.Acl.SetOwner(u.Uuid)

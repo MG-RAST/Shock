@@ -10,12 +10,14 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/user"
+	"github.com/MG-RAST/Shock/shock-server/util"
 	"github.com/MG-RAST/golib/goweb"
 	"hash"
 	"math/rand"
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 type checkSumCom struct {
@@ -61,8 +63,9 @@ func AuthError(err error, cx *goweb.Context) {
 		cx.RespondWithErrorMessage("Invalid authorization header or content", http.StatusBadRequest)
 		return
 	}
-	logger.Error("Error at Auth: " + err.Error())
-	cx.RespondWithError(http.StatusInternalServerError)
+	err_msg := "Error at Auth: " + err.Error()
+	logger.Error(err_msg)
+	cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
 	return
 }
 
@@ -104,9 +107,19 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 	if err != nil {
 		return
 	}
+
+	// arrays to check for valid param and file form names for node creation and updating, and also acl modification
+	// Note: indexing and querying do not use this function and thus we don't have to accept those field names.
+	validParams := []string{"action", "all", "delete", "format", "ids", "linkage", "operation", "owner", "parts", "path", "read", "source", "tags", "type", "users", "write"}
+	validFiles := []string{"attributes", "upload"}
+
 	for {
 		if part, err := reader.NextPart(); err == nil {
+			// params don't have a FileName() and files must have FormName() of either "upload", "attributes", or an integer
 			if part.FileName() == "" {
+				if !util.StringInSlice(part.FormName(), validParams) {
+					return nil, nil, errors.New("invalid param: " + part.FormName())
+				}
 				buffer := make([]byte, 32*1024)
 				n, err := part.Read(buffer)
 				if n == 0 || err != nil {
@@ -114,6 +127,9 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 				}
 				params[part.FormName()] = fmt.Sprintf("%s", buffer[0:n])
 			} else {
+				if _, er := strconv.Atoi(part.FormName()); er != nil && !util.StringInSlice(part.FormName(), validFiles) {
+					return nil, nil, errors.New("invalid file param: " + part.FormName())
+				}
 				tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.Conf["data-path"], rand.Int(), rand.Int())
 				/*
 					if fname[len(fname)-3:] == ".gz" && params["decompress"] == "true" {
@@ -148,7 +164,6 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 				}
 			}
 		} else if err.Error() != "EOF" {
-			fmt.Println("err here")
 			return nil, nil, err
 		} else {
 			break
