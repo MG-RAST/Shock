@@ -398,7 +398,8 @@ Modify node, create index
 
 ##### example	
 
-	curl -X PUT [ see Authentication ] http://<host>[:<port>]/node/{id}?index=<type>
+	curl -X PUT [ see Authentication ] http://<host>[:<port>]/node/{id}/index/<type>
+	curl -X PUT [ see Authentication ] http://<host>[:<port>]/node/{id}?index=<type> (deprecated)
 
 ##### returns
 
