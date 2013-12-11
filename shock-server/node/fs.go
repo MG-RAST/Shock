@@ -2,6 +2,7 @@ package node
 
 import (
 	"crypto/md5"
+	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"math/rand"
@@ -42,6 +43,10 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 	node.File.Size = fileStat.Size()
 
 	tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.Conf["data-path"], rand.Int(), rand.Int())
+
+	if action != "copy_file" && action != "move_file" && action != "keep_file" {
+		return errors.New("setting file from path requires action field equal to copy_file, move_file or keep_file")
+	}
 
 	// Kind of a bad hack for testing if the file is on same partition. If it is, then
 	// renaming the file will take very little time and we can put the file back in its
