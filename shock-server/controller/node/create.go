@@ -51,23 +51,12 @@ func (cr *Controller) Create(cx *goweb.Context) {
 
 			n, cn_err := node.CreateNodeUpload(u, params, files)
 
-			// Print different error message, depending on whether this was an
-			// attempt to create an empty node or this was an attempt to perform
-			// a data upload but the file happened to be empty.
 			if cn_err != nil {
-				if cx.Request.ContentLength != 0 {
-					err_msg := "Error at create empty node: " + cn_err.Error()
-					logger.Error(err_msg)
-					cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
+				err_msg := "Error at create empty node: " + cn_err.Error()
+				logger.Error(err_msg)
+				cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
 
-					return
-				} else {
-					err_msg := "Error at create empty node: " + cn_err.Error()
-					logger.Error(err_msg)
-					cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
-					return
-				}
-
+				return
 			}
 			if n == nil {
 				// Not sure how you could get an empty node with no error
