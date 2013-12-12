@@ -78,11 +78,8 @@ func LoadFromDisk(id string) (n *Node, err error) {
 }
 
 func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (node *Node, err error) {
-	validParams := []string{"action", "format", "ids", "linkage", "operation", "parts", "path", "read", "source", "tags", "type", "users", "write"}
-	validFiles := []string{"attributes", "upload"}
-
 	for param := range params {
-		if !util.StringInSlice(param, validParams) {
+		if !util.IsValidParamName(param) {
 			return nil, errors.New("invalid param: " + param)
 		}
 		if param == "parts" && params[param] == "close" {
@@ -91,8 +88,15 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 	}
 
 	for file := range files {
-		if !util.StringInSlice(file, validFiles) {
+		if !util.IsValidFileName(file) {
 			return nil, errors.New("invalid file param: " + file)
+		}
+	}
+
+	if _, hasCopyData := params["copy_data"]; hasCopyData {
+		_, err = Load(params["copy_data"], u.Uuid)
+		if err != nil {
+			return
 		}
 	}
 
@@ -105,14 +109,17 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 		node.Acl = acl.Acl{Owner: "", Read: make([]string, 0), Write: make([]string, 0), Delete: make([]string, 0)}
 		node.Public = true
 	}
+
 	err = node.Mkdir()
 	if err != nil {
 		return
 	}
+
 	err = node.Update(params, files)
 	if err != nil {
 		return
 	}
+
 	err = node.Save()
 	return
 }
