@@ -1,6 +1,7 @@
 package node
 
 import (
+	"code.google.com/p/go-uuid/uuid"
 	"crypto/md5"
 	"encoding/json"
 	"errors"
@@ -37,18 +38,21 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		isVirtualNode = true
 	}
 	_, isPathUpload := params["path"]
+	_, isCopyUpload := params["copy_data"]
 
 	// Check exclusive conditions
-	if (isRegularUpload && isPartialUpload) || (isRegularUpload && isVirtualNode) || (isRegularUpload && isPathUpload) {
-		return errors.New("upload parameter incompatible with parts, path and/or type parameter(s)")
-	} else if (isPartialUpload && isVirtualNode) || (isPartialUpload && isPathUpload) {
-		return errors.New("parts parameter incompatible with type and/or path parameter(s)")
-	} else if isVirtualNode && isPathUpload {
-		return errors.New("type parameter incompatible with path parameter")
+	if (isRegularUpload && isPartialUpload) || (isRegularUpload && isVirtualNode) || (isRegularUpload && isPathUpload) || (isRegularUpload && isCopyUpload) {
+		return errors.New("upload parameter incompatible with parts, path, type and/or copy_data parameter(s)")
+	} else if (isPartialUpload && isVirtualNode) || (isPartialUpload && isPathUpload) || (isPartialUpload && isCopyUpload) {
+		return errors.New("parts parameter incompatible with type, path and/or copy_data parameter(s)")
+	} else if (isVirtualNode && isPathUpload) || (isVirtualNode && isCopyUpload) {
+		return errors.New("type parameter incompatible with path and/or copy_data parameter")
+	} else if isPathUpload && isCopyUpload {
+		return errors.New("path parameter incompatible with copy_data parameter")
 	}
 
 	// Check if immutable
-	if (isRegularUpload || isPartialUpload || isVirtualNode || isPathUpload) && node.HasFile() {
+	if (isRegularUpload || isPartialUpload || isVirtualNode || isPathUpload || isCopyUpload) && node.HasFile() {
 		return errors.New(e.FileImut)
 	}
 
@@ -107,6 +111,28 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 		if !success {
 			return errors.New("file not in local files path. Please contact your Shock administrator.")
+		}
+	} else if isCopyUpload {
+		var n *Node
+		n, err = LoadUnauth(params["copy_data"])
+		if err != nil {
+			return err
+		}
+
+		if n.File.Virtual {
+			return errors.New("copy_data parameter points to a virtual node, invalid operation.")
+		}
+
+		// Copy node file information
+		node.File.Name = n.File.Name
+		node.File.Size = n.File.Size
+		node.File.Checksum = n.File.Checksum
+		node.File.Format = n.File.Format
+
+		if n.File.Path == "" {
+			node.File.Path = fmt.Sprintf("%s/%s.data", getPath(params["copy_data"]), params["copy_data"])
+		} else {
+			node.File.Path = n.File.Path
 		}
 	}
 
