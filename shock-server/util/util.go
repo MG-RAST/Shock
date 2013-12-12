@@ -10,6 +10,11 @@ import (
 
 const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"
 
+// Arrays to check for valid param and file form names for node creation and updating, and also acl modification.
+// Note: indexing and querying do not use functions that use these arrays and thus we don't have to include those field names.
+var validParams = []string{"action", "all", "copy_data", "delete", "format", "ids", "linkage", "operation", "owner", "parts", "path", "read", "source", "tags", "type", "users", "write"}
+var validFiles = []string{"attributes", "upload"}
+
 type UrlResponse struct {
 	Url       string `json:"url"`
 	ValidTill string `json:"validtill"`
@@ -65,6 +70,24 @@ func ApiUrl(cx *goweb.Context) string {
 
 func StringInSlice(a string, list []string) bool {
 	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+func IsValidParamName(a string) bool {
+	for _, b := range validParams {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+func IsValidFileName(a string) bool {
+	for _, b := range validFiles {
 		if b == a {
 			return true
 		}
