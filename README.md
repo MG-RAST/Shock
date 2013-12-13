@@ -161,13 +161,16 @@ __Note__: Authentication is required for most of these commands
     # with file, using multipart form
     curl -X POST -F "upload=@<path_to_data_file>" http://<host>[:<port>]/node
 
-	# with file, without using multipart form
-	curl -X POST --data-binary @<path_to_data_file> http://<host>[:<port>]/node
-	(note: Posting an empty file in this way will result in an empty node with no file rather than an empty node with an empty file)
+    # with file, without using multipart form
+    curl -X POST --data-binary @<path_to_data_file> http://<host>[:<port>]/node
+        (note: Posting an empty file in this way will result in an empty node with no file rather than an empty node with an empty file)
+
+    # copying data file from another node
+    curl -X POST -F "copy_data=<copy_node_id>" http://<host>[:<port>]/node
 
     # with file local to the shock server
     curl -X POST -F "path=<path_to_data_file>" -F "action=<action_type>" http://<host>[:<port>]/node
-	(note: The action_type is one of keep_file (node points to file path given), copy_file (file is copied to shock data directory), or move_file (file is moved to shock data directory).  The move_file action only works if user running Shock has permissions to move the file.)
+        (note: The action_type is one of keep_file (node points to file path given), copy_file (file is copied to shock data directory), or move_file (file is moved to shock data directory).  The move_file action only works if user running Shock has permissions to move the file.)
     
     # with file upload in N parts (part uploads may be done in parallel and out of order)
     curl -X POST -F "parts=N" http://<host>[:<port>]/node
@@ -176,8 +179,8 @@ __Note__: Authentication is required for most of these commands
     ...
     curl -X PUT -F "N=@<file_part_N>" http://<host>[:<port>]/node/<node_id>
 	
-	# with file upload in N parts where N is unknown at node creation time (part uploads may be done in parallel and out of order)
-	curl -X POST -F "parts=unknown" http://<host>[:<port>]/node
+    # with file upload in N parts where N is unknown at node creation time (part uploads may be done in parallel and out of order)
+    curl -X POST -F "parts=unknown" http://<host>[:<port>]/node
     curl -X PUT -F "1=@<file_part_1>" http://<host>[:<port>]/node/<node_id>
     curl -X PUT -F "2=@<file_part_2>" http://<host>[:<port>]/node/<node_id>
     ...
