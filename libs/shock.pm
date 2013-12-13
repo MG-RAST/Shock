@@ -119,28 +119,29 @@ sub download_to_path {
     eval {
         my $get = undef;
         open(OUTF, ">$path") || die "Can not open file $path: $!\n";
-        if ($self->token) {
-            $get = $self->agent->get( $self->shock_url.'/node/'.$node.'?download',
-                                      'Authorization'   => "OAuth ".$self->token,
+		
+		my @auth = ($self->token)?('Authorization' , "OAuth ".$self->token):();
+		
+        
+        $get = $self->agent->get( $self->shock_url.'/node/'.$node.'?download',
+                                      @auth,
                                       ':read_size_hint' => 8192,
                                       ':content_cb'     => sub{ my ($chunk) = @_; print OUTF $chunk; } );
-        } else {
-            $get = $self->agent->get( $self->shock_url.'/node/'.$node.'?download',
-                                      ':read_size_hint' => 8192,
-                                      ':content_cb'     => sub{ my ($chunk) = @_; print OUTF $chunk; } );
-        }
         close OUTF;
         $content = $get->content;
     };
     
     if ($@) {
         print STDERR "[error] unable to connect to Shock ".$self->shock_url."\n";
+		unlink($path);
         return undef;
     } elsif (ref($content) && exists($content->{error}) && $content->{error}) {
         print STDERR "[error] unable to GET file $node from Shock: ".$content->{error}[0]."\n";
+		unlink($path);
         return undef;
     } elsif (! -s $path) {
         print STDERR "[error] unable to download to $path: $!\n";
+		unlink($path);
         return undef;
     } else {
         return $path;
@@ -166,32 +167,34 @@ sub create_node {
     return $self->upload(undef, $data, $attr);
 }
 
+#example:     upload(data => 'hello world')
+#example:  or upload(file => 'myworld.txt')
+# TODO implement PUT here or in another function
 sub upload {
-    my ($self, $node, $data, $attr) = @_;
-    
-    if (($self->transport_method eq 'shock-client') && (! $node) && (-s $data)) {
-        my $res = $self->_upload_shockclient($data);
-        if (! $attr) {
-            return $res;
-        } else {
-            $node = $res->{id};
-            $data = undef;
-        }
-    }
-    
+    my ($self, %hash) = @_;
+	
     my $response = undef;
     my $content = {};
     my $url = $self->shock_url.'/node';
     my $method = 'POST';
-    if ($node) {
-        $url = $url.'/'.$node;
-        $method = 'PUT';
-    }
-    if ($data) {
-        $content->{upload} = $self->_get_handle($data);
-    }
-	if ($attr) {
-        $content->{attributes} = $self->_get_handle($attr);
+    #if ($hash{'node'}) {
+    #    $url = $url.'/'.$hash{'node'};
+    #    $method = 'PUT';
+    #}
+	
+	if (defined $hash{file}) {
+		unless (-s $hash{file}) {
+			die "file not found";
+		}
+		$content->{upload} = [$hash{file}]
+	}
+	if (defined $hash{data}) {
+		$content->{upload} = [undef, "n/a", Content => $hash{data}]
+	}
+	
+   
+	if (defined $hash{attr}) {
+        $content->{attributes} = $self->_get_handle($hash{attr});
     }
     
     $HTTP::Request::Common::DYNAMIC_FILE_UPLOAD = 1;
