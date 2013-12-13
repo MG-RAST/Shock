@@ -108,16 +108,12 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 		return
 	}
 
-	// arrays to check for valid param and file form names for node creation and updating, and also acl modification
-	// Note: indexing and querying do not use this function and thus we don't have to accept those field names.
-	validParams := []string{"action", "all", "delete", "format", "ids", "linkage", "operation", "owner", "parts", "path", "read", "source", "tags", "type", "users", "write"}
-	validFiles := []string{"attributes", "upload"}
-
+	tmpPath := ""
 	for {
 		if part, err := reader.NextPart(); err == nil {
 			// params don't have a FileName() and files must have FormName() of either "upload", "attributes", or an integer
 			if part.FileName() == "" {
-				if !util.StringInSlice(part.FormName(), validParams) {
+				if !util.IsValidParamName(part.FormName()) {
 					return nil, nil, errors.New("invalid param: " + part.FormName())
 				}
 				buffer := make([]byte, 32*1024)
@@ -127,10 +123,10 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 				}
 				params[part.FormName()] = fmt.Sprintf("%s", buffer[0:n])
 			} else {
-				if _, er := strconv.Atoi(part.FormName()); er != nil && !util.StringInSlice(part.FormName(), validFiles) {
+				if _, er := strconv.Atoi(part.FormName()); er != nil && !util.IsValidFileName(part.FormName()) {
 					return nil, nil, errors.New("invalid file param: " + part.FormName())
 				}
-				tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.Conf["data-path"], rand.Int(), rand.Int())
+				tmpPath = fmt.Sprintf("%s/temp/%d%d", conf.Conf["data-path"], rand.Int(), rand.Int())
 				/*
 					if fname[len(fname)-3:] == ".gz" && params["decompress"] == "true" {
 						fname = fname[:len(fname)-3]
@@ -168,6 +164,14 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 		} else {
 			break
 		}
+	}
+
+	_, hasUpload := files["upload"]
+	_, hasCopyData := params["copy_data"]
+	if hasUpload && hasCopyData {
+		os.Remove(tmpPath)
+		err = errors.New("Cannot specify upload file path and copy_data node in same request.")
+		return nil, nil, err
 	}
 	return
 }

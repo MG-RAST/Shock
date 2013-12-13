@@ -3,12 +3,19 @@ package util
 import (
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/golib/goweb"
+	"io"
 	"math/rand"
+	"os"
 	"strconv"
 	"time"
 )
 
 const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"
+
+// Arrays to check for valid param and file form names for node creation and updating, and also acl modification.
+// Note: indexing and querying do not use functions that use these arrays and thus we don't have to include those field names.
+var validParams = []string{"action", "all", "copy_data", "delete", "format", "ids", "linkage", "operation", "owner", "parts", "path", "read", "source", "tags", "type", "users", "write"}
+var validFiles = []string{"attributes", "upload"}
 
 type UrlResponse struct {
 	Url       string `json:"url"`
@@ -70,4 +77,36 @@ func StringInSlice(a string, list []string) bool {
 		}
 	}
 	return false
+}
+
+func IsValidParamName(a string) bool {
+	for _, b := range validParams {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+func IsValidFileName(a string) bool {
+	for _, b := range validFiles {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+func CopyFile(src string, dst string) (int64, error) {
+	sf, err := os.Open(src)
+	if err != nil {
+		return 0, err
+	}
+	defer sf.Close()
+	df, err := os.Create(dst)
+	if err != nil {
+		return 0, err
+	}
+	defer df.Close()
+	return io.Copy(df, sf)
 }

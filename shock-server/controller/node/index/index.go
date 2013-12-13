@@ -23,7 +23,7 @@ type getRes struct {
 
 type m map[string]string
 
-// GET, POST, PUT, DELETE: /node/{nid}/index/{idxType}
+// GET, PUT, DELETE: /node/{nid}/index/{idxType}
 var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
 	request.Log(cx.Request)
 	u, err := request.Authenticate(cx.Request)
@@ -71,7 +71,7 @@ var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
 			cx.RespondWithData(getRes{I: n.Indexes, A: filteredIndexes(n.Indexes)})
 		}
 
-	case "POST", "PUT":
+	case "PUT":
 		if !n.HasFile() {
 			cx.RespondWithErrorMessage("Node has no file", http.StatusBadRequest)
 			return
@@ -95,6 +95,7 @@ var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
 					cx.RespondWithErrorMessage("Error while creating bam index", http.StatusBadRequest)
 					return
 				}
+				cx.RespondWithOK()
 				return
 			} else {
 				cx.RespondWithErrorMessage("Index type bai requires .bam file", http.StatusBadRequest)

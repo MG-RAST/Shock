@@ -3,6 +3,7 @@ package node
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/node/acl"
 	"github.com/MG-RAST/Shock/shock-server/node/file"
@@ -78,11 +79,8 @@ func LoadFromDisk(id string) (n *Node, err error) {
 }
 
 func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (node *Node, err error) {
-	validParams := []string{"action", "format", "ids", "linkage", "operation", "parts", "path", "read", "source", "tags", "type", "users", "write"}
-	validFiles := []string{"attributes", "upload"}
-
 	for param := range params {
-		if !util.StringInSlice(param, validParams) {
+		if !util.IsValidParamName(param) {
 			return nil, errors.New("invalid param: " + param)
 		}
 		if param == "parts" && params[param] == "close" {
@@ -91,8 +89,15 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 	}
 
 	for file := range files {
-		if !util.StringInSlice(file, validFiles) {
+		if !util.IsValidFileName(file) {
 			return nil, errors.New("invalid file param: " + file)
+		}
+	}
+
+	if _, hasCopyData := params["copy_data"]; hasCopyData {
+		_, err = Load(params["copy_data"], u.Uuid)
+		if err != nil {
+			return
 		}
 	}
 
@@ -105,14 +110,17 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 		node.Acl = acl.Acl{Owner: "", Read: make([]string, 0), Write: make([]string, 0), Delete: make([]string, 0)}
 		node.Public = true
 	}
+
 	err = node.Mkdir()
 	if err != nil {
 		return
 	}
+
 	err = node.Update(params, files)
 	if err != nil {
 		return
 	}
+
 	err = node.Save()
 	return
 }
@@ -151,16 +159,46 @@ func (node *Node) Index(name string) (idx index.Index, err error) {
 
 func (node *Node) Delete() (err error) {
 	// check to make sure this node isn't referenced by a vnode
-	nodes := Nodes{}
-	if _, err = dbFind(bson.M{"virtual_parts": node.Id}, &nodes, nil); err != nil {
+	virtualNodes := Nodes{}
+	if _, err = dbFind(bson.M{"virtual_parts": node.Id}, &virtualNodes, nil); err != nil {
 		return err
 	}
-	if len(nodes) != 0 {
+	if len(virtualNodes) != 0 {
 		return errors.New(e.NodeReferenced)
-	} else {
-		if err = dbDelete(bson.M{"id": node.Id}); err != nil {
-			return err
+	}
+
+	// Check to see if this node has a data file and if it's referenced by another node.
+	// If it is, we will move the data file to the first node we find, and point all other nodes to that node's path
+	dataFilePath := fmt.Sprintf("%s/%s.data", getPath(node.Id), node.Id)
+	dataFileExists := true
+	if _, ferr := os.Stat(dataFilePath); os.IsNotExist(ferr) {
+		dataFileExists = false
+	}
+	newDataFilePath := ""
+	copiedNodes := Nodes{}
+	if _, err = dbFind(bson.M{"file.path": dataFilePath}, &copiedNodes, nil); err != nil {
+		return err
+	}
+	if len(copiedNodes) != 0 && dataFileExists {
+		for index, copiedNode := range copiedNodes {
+			if index == 0 {
+				newDataFilePath = fmt.Sprintf("%s/%s.data", getPath(copiedNode.Id), copiedNode.Id)
+				if rerr := os.Rename(dataFilePath, newDataFilePath); rerr != nil {
+					if _, cerr := util.CopyFile(dataFilePath, newDataFilePath); cerr != nil {
+						return errors.New("This node has a data file linked to another node and the data file could not be copied elsewhere to allow for node deletion.")
+					}
+				}
+				copiedNode.File.Path = ""
+				copiedNode.Save()
+			} else {
+				copiedNode.File.Path = newDataFilePath
+				copiedNode.Save()
+			}
 		}
+	}
+
+	if err = dbDelete(bson.M{"id": node.Id}); err != nil {
+		return err
 	}
 	return node.Rmdir()
 }

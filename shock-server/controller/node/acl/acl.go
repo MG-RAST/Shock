@@ -2,6 +2,7 @@
 package acl
 
 import (
+	"code.google.com/p/go-uuid/uuid"
 	"errors"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
@@ -195,7 +196,7 @@ func parseAclRequestTyped(cx *goweb.Context) (ids []string, err error) {
 		return nil, errors.New("Action requires list of comma separated usernames in 'users' parameter")
 	}
 	for _, v := range users {
-		if isUuid(v) {
+		if uuid.Parse(v) != nil {
 			ids = append(ids, v)
 		} else {
 			u := user.User{Username: v}
@@ -206,11 +207,4 @@ func parseAclRequestTyped(cx *goweb.Context) (ids []string, err error) {
 		}
 	}
 	return ids, nil
-}
-
-func isUuid(s string) bool {
-	if strings.Count(s, "-") == 4 {
-		return true
-	}
-	return false
 }
