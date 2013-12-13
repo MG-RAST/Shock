@@ -7,6 +7,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"math/rand"
 	"os"
+	"syscall"
 )
 
 func (node *Node) SetFile(file FormFile) (err error) {
@@ -48,16 +49,30 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 		return errors.New("setting file from path requires action field equal to copy_file, move_file or keep_file")
 	}
 
-	// Kind of a bad hack for testing if the file is on same partition. If it is, then
-	// renaming the file will take very little time and we can put the file back in its
-	// original location until after the checksum is done being calculated. If there's
-	// a more straight forward operation to determine if two file paths are on the
-	// same partition, then this should be changed.
 	if action == "move_file" {
-		if err = os.Rename(path, tmpPath); err != nil {
-			return err
+		// Determine if device ID of src and target are the same before proceeding.
+		var devID1 uint64
+		var f, _ = os.Open(path)
+		var fi, _ = f.Stat()
+		s := fi.Sys()
+		if s, ok := s.(*syscall.Stat_t); ok {
+			devID1 = uint64(s.Dev)
 		} else {
-			os.Rename(tmpPath, path)
+			return errors.New("Could not determine device ID of data input file, try copy_file action instead.")
+		}
+
+		var devID2 uint64
+		var f2, _ = os.Open(tmpPath)
+		var fi2, _ = f2.Stat()
+		s2 := fi2.Sys()
+		if s2, ok := s2.(*syscall.Stat_t); ok {
+			devID2 = uint64(s2.Dev)
+		} else {
+			return errors.New("Could not complete move_file action, try copy_file action instead.")
+		}
+
+		if devID1 != devID2 {
+			return errors.New("Will not be able to rename file because data input file is on a different device than Shock data directory, try copy_file action instead.")
 		}
 	}
 
