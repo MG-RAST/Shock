@@ -3,7 +3,9 @@ package util
 import (
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/golib/goweb"
+	"io"
 	"math/rand"
+	"os"
 	"strconv"
 	"time"
 )
@@ -93,4 +95,18 @@ func IsValidFileName(a string) bool {
 		}
 	}
 	return false
+}
+
+func CopyFile(src string, dst string) (int64, error) {
+	sf, err := os.Open(src)
+	if err != nil {
+		return 0, err
+	}
+	defer sf.Close()
+	df, err := os.Create(dst)
+	if err != nil {
+		return 0, err
+	}
+	defer df.Close()
+	return io.Copy(df, sf)
 }
