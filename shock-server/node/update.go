@@ -1,7 +1,6 @@
 package node
 
 import (
-	"code.google.com/p/go-uuid/uuid"
 	"crypto/md5"
 	"encoding/json"
 	"errors"
