@@ -10,7 +10,6 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/user"
-	"github.com/MG-RAST/Shock/shock-server/util"
 	"github.com/MG-RAST/golib/goweb"
 	"net/http"
 	"os"
@@ -58,7 +57,6 @@ var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
 	}
 
 	idxType, hasType := cx.PathParams["type"]
-	query := util.Q(cx.Request.URL.Query())
 	switch cx.Request.Method {
 	case "GET":
 		if hasType {
@@ -79,8 +77,12 @@ var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
 			cx.RespondWithErrorMessage("Index create requires type", http.StatusBadRequest)
 			return
 		}
-		if !contains(filteredIndexes(n.Indexes), idxType) {
+		if _, ok := index.Indexers[idxType]; !ok {
 			cx.RespondWithErrorMessage(fmt.Sprintf("Index type %s unavailable", idxType), http.StatusBadRequest)
+			return
+		}
+		if idxType == "size" {
+			cx.RespondWithErrorMessage(fmt.Sprintf("Index type size is a virtual index and does not require index building."), http.StatusBadRequest)
 			return
 		}
 
@@ -88,7 +90,7 @@ var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
 			logger.Perf("START indexing: " + id)
 		}
 
-		if query.Value("index") == "bai" {
+		if idxType == "bai" {
 			//bam index is created by the command-line tool samtools
 			if ext := n.FileExt(); ext == ".bam" {
 				if err := index.CreateBamIndex(n.FilePath()); err != nil {
@@ -103,46 +105,37 @@ var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
 			}
 		}
 
-		idxtype := query.Value("index")
-		if _, ok := index.Indexers[idxtype]; !ok {
-			cx.RespondWithErrorMessage("invalid index type", http.StatusBadRequest)
-			return
-		}
-
-		newIndexer := index.Indexers[idxtype]
+		newIndexer := index.Indexers[idxType]
 		f, _ := os.Open(n.FilePath())
 		defer f.Close()
 		idxer := newIndexer(f)
-		count, err := idxer.Create()
+		count, err := idxer.Create(n.IndexPath() + "/" + idxType + ".idx")
 		if err != nil {
 			logger.Error("err " + err.Error())
 			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		if err := idxer.Dump(n.IndexPath() + "/" + query.Value("index") + ".idx"); err != nil {
-			logger.Error("err " + err.Error())
-			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
-			return
-		}
-
 		idxInfo := node.IdxInfo{
-			Type:        query.Value("index"),
+			Type:        idxType,
 			TotalUnits:  count,
 			AvgUnitSize: n.File.Size / count,
 		}
 
-		if idxtype == "chunkrecord" {
+		if idxType == "chunkrecord" {
 			idxInfo.AvgUnitSize = conf.CHUNK_SIZE
 		}
 
-		if err := n.SetIndexInfo(query.Value("index"), idxInfo); err != nil {
+		if err := n.SetIndexInfo(idxType, idxInfo); err != nil {
 			logger.Error("err@node.SetIndexInfo: " + err.Error())
 		}
 
 		if conf.Bool(conf.Conf["perf-log"]) {
 			logger.Perf("END indexing: " + id)
 		}
+
+		cx.RespondWithOK()
+		return
 
 	default:
 		cx.RespondWithErrorMessage("This request type is not implemented", http.StatusNotImplemented)
