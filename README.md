@@ -130,7 +130,7 @@ Data Types
 <br>
 ### Index:
 
-Currently there is support for two types of indices: virtual (for both size and record) and bam. 
+Currently available index types include: size (virtual, does not require index creation), line, chunkrecord and record (for sequence file types), and bai (bam index)
 
 ##### virtual index:
 
@@ -397,7 +397,7 @@ Modify node, create index
 <br>
 **Create index:**
 
- - currently available index types: size, record (for sequence file types), and bai (bam index)
+ - Currently available index types include: size (virtual, does not require index creation), line, chunkrecord and record (for sequence file types), and bai (bam index)
 
 ##### example	
 
