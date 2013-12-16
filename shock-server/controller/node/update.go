@@ -84,14 +84,9 @@ func (cr *Controller) Update(id string, cx *goweb.Context) {
 		f, _ := os.Open(n.FilePath())
 		defer f.Close()
 		idxer := newIndexer(f)
-		count, err := idxer.Create()
-		if err != nil {
-			logger.Error("err " + err.Error())
-			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
-			return
-		}
 
-		if err := idxer.Dump(n.IndexPath() + "/" + query.Value("index") + ".idx"); err != nil {
+		count, err := idxer.Create(n.IndexPath() + "/" + query.Value("index") + ".idx")
+		if err != nil {
 			logger.Error("err " + err.Error())
 			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
 			return
