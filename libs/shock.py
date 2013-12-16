@@ -124,7 +124,7 @@ class Client:
         return rj
     
     def index_node(self, node, index):
-        url = self.shock_url+'/node/'+node+'?index='+index
+        url = "%s/node/%s/index/%s"%(self.shock_url, node, index)
         try:
             req = requests.put(url, headers=self.auth_header)
             rj  = req.json()
