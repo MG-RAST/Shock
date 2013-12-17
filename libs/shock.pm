@@ -74,6 +74,41 @@ sub _set_shockclient_auth {
     }
 }
 
+
+sub query { # https://github.com/MG-RAST/Shock#get_nodes
+		
+	my ($self, %h) = @_;
+	
+	my $url = $self->shock_url.'/node?query';
+	
+	my @pairs = %h;
+	if (@pairs > 0) {
+		for (my $i = 0 ; $i < @pairs ; $i+=2) {
+			$url .= '&'.$pairs[$i].'='.$pairs[$i+1];
+		}
+	}
+
+	#print "url: $url\n";
+	
+	my $response = undef;
+	
+	eval {
+		my	$res = $self->agent->get($url, ($self->token)?('Authorization' , "OAuth ".$self->token):() );
+		$response = $self->json->decode( $res->content );
+	};
+	#print Dumper($res);
+	
+	if ($@ || (! ref($response))) {
+        print STDERR "[error] unable to connect to Shock ".$self->shock_url."\n";
+        return undef;
+    } elsif (exists($response->{error}) && $response->{error}) {
+        print STDERR "[error] unable to query Shock: ".$response->{error}[0]."\n";
+    } else {
+        return $response;
+    }
+	
+}
+
 sub get_node {
     my ($self, $node) = @_;
     
@@ -169,6 +204,7 @@ sub create_node {
 
 #example:     upload(data => 'hello world')
 #example:  or upload(file => 'myworld.txt')
+#example:  or upload(file => 'myworld.txt', attr => {some hash})
 # TODO implement PUT here or in another function
 sub upload {
     my ($self, %hash) = @_;
@@ -184,17 +220,19 @@ sub upload {
 	
 	if (defined $hash{file}) {
 		unless (-s $hash{file}) {
-			die "file not found";
+			die "file not found".$hash{'file'};
 		}
-		$content->{upload} = [$hash{file}]
+		$content->{'upload'} = [$hash{'file'}]
 	}
 	if (defined $hash{data}) {
-		$content->{upload} = [undef, "n/a", Content => $hash{data}]
+		$content->{'upload'} = [undef, "n/a", Content => $hash{'data'}]
 	}
 	
    
-	if (defined $hash{attr}) {
-        $content->{attributes} = $self->_get_handle($hash{attr});
+	if (defined $hash{'attr'}) {
+		# get_handle is not good
+        #$content->{attributes} = $self->_get_handle($hash{attr});
+		$content->{'attributes'} = [undef, "n/a", Content => $hash{'attr'}]
     }
     
     $HTTP::Request::Common::DYNAMIC_FILE_UPLOAD = 1;
@@ -218,6 +256,54 @@ sub upload {
         return $response->{data};
     }
 }
+
+
+#upload multiple files/data with attribute "temporary" to shock
+#argument is a hash reference:
+#example: $files->{'object1'}->{'file'} = './mylocalfile.txt';
+#example: $files->{'object2'}->{'data'} = 'this is data';
+#it adds  $files->{'object1'}->{'node'} = <shock node id>
+sub upload_temporary_files {
+	my ($self, $job_input) = @_;
+
+	
+	#and upload job input to shock
+	foreach my $input (keys(%$job_input)) {
+		my $input_h = $job_input->{$input};
+		
+		
+		my $attr = '{"temporary" : "1"}'; # I can find them later and delete them! ;-)
+		
+		my $node_obj;
+		if (defined($input_h->{'file'})) {
+			print "uploading ".$input_h->{'file'}." to shock...\n";
+			$node_obj = $self->upload('file' => $input_h->{'file'}, 'attr' => $attr);
+		} elsif (defined($input_h->{'data'})) {
+			print "uploading data to shock...\n";
+			$node_obj = $self->upload('data' => $input_h->{'data'}, 'attr' => $attr);
+		} else {
+			die "not data or file found";
+		}
+		
+		unless (defined($node_obj)) {
+			die "could not upload to shock server";
+		}
+		my $node = $node_obj->{'id'};
+		unless (defined($node)) {
+			die;
+		}
+		
+		#print Dumper($node_obj)."\n";
+		#exit(0);
+		
+		$input_h->{'node'} = $node;
+		$input_h->{'shockhost'} = $self->shock_url();
+		
+	}
+	
+	return;
+}
+
 
 sub _upload_shockclient {
     my ($self, $path) = @_;
