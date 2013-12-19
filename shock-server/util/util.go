@@ -2,7 +2,7 @@ package util
 
 import (
 	"github.com/MG-RAST/Shock/shock-server/conf"
-	"github.com/MG-RAST/golib/goweb"
+	"github.com/stretchr/goweb/context"
 	"io"
 	"math/rand"
 	"os"
@@ -63,11 +63,11 @@ func ToInt(s string) (i int) {
 	return
 }
 
-func ApiUrl(cx *goweb.Context) string {
+func ApiUrl(ctx context.Context) string {
 	if conf.Conf["api-url"] != "" {
 		return conf.Conf["api-url"]
 	}
-	return "http://" + cx.Request.Host
+	return "http://" + ctx.HttpRequest().Host
 }
 
 func StringInSlice(a string, list []string) bool {

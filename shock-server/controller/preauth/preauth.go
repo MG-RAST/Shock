@@ -2,28 +2,21 @@
 package preauth
 
 import (
-	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/preauth"
 	"github.com/MG-RAST/Shock/shock-server/request"
-	"github.com/MG-RAST/Shock/shock-server/util"
-	"github.com/MG-RAST/golib/goweb"
-	"net/http"
+	"github.com/MG-RAST/Shock/shock-server/responder"
+	"github.com/stretchr/goweb/context"
 )
 
-func PreAuthRequest(cx *goweb.Context) {
-	request.Log(cx.Request)
-	id := cx.PathParams["id"]
+func PreAuthRequest(ctx context.Context) {
+	id := ctx.PathValue("id")
 	if p, err := preauth.Load(id); err != nil {
-		if err.Error() == e.MongoDocNotFound {
-			cx.RespondWithNotFound()
-		} else {
-			err_msg := "err:@preAuth load: " + err.Error()
-			logger.Error(err_msg)
-			cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
-		}
+		err_msg := "err:@preAuth load: " + err.Error()
+		logger.Error(err_msg)
+		responder.RespondWithError(ctx, 500, err_msg)
 		return
 	} else {
 		if n, err := node.LoadUnauth(p.NodeId); err == nil {
@@ -33,23 +26,22 @@ func PreAuthRequest(cx *goweb.Context) {
 				if fn, has := p.Options["filename"]; has {
 					filename = fn
 				}
-				streamDownload(cx, n, filename)
+				streamDownload(ctx, n, filename)
 				preauth.Delete(id)
 				return
 			default:
-				cx.RespondWithErrorMessage("Preauthorization type not supported: "+p.Type, http.StatusInternalServerError)
+				responder.RespondWithError(ctx, 500, "Preauthorization type not supported: "+p.Type)
 			}
 		} else {
 			err_msg := "err:@preAuth loadnode: " + err.Error()
 			logger.Error(err_msg)
-			cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
+			responder.RespondWithError(ctx, 500, err_msg)
 		}
 	}
 	return
 }
 
-func streamDownload(cx *goweb.Context, n *node.Node, filename string) {
-	query := util.Q(cx.Request.URL.Query())
+func streamDownload(ctx context.Context, n *node.Node, filename string) {
 	nf, err := n.FileReader()
 	defer nf.Close()
 	if err != nil {
@@ -57,17 +49,15 @@ func streamDownload(cx *goweb.Context, n *node.Node, filename string) {
 		// Probably deserves more checking
 		err_msg := "err:@preAuth node.FileReader: " + err.Error()
 		logger.Error(err_msg)
-		cx.RespondWithErrorMessage(err_msg, http.StatusBadRequest)
+		responder.RespondWithError(ctx, 500, err_msg)
 		return
 	}
-	if query.Has("filename") {
-		filename = query.Value("filename")
-	}
-	s := &request.Streamer{R: []file.SectionReader{nf}, W: cx.ResponseWriter, ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: nil}
+	s := &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: nil}
 	err = s.Stream()
 	if err != nil {
 		// causes "multiple response.WriteHeader calls" error but better than no response
-		cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
-		logger.Error("err:@preAuth: s.stream: " + err.Error())
+		err_msg := "err:@preAuth: s.stream: " + err.Error()
+		logger.Error(err_msg)
+		responder.RespondWithError(ctx, 500, err_msg)
 	}
 }

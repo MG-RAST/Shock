@@ -4,68 +4,94 @@ import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/auth"
 	"github.com/MG-RAST/Shock/shock-server/conf"
-	"github.com/MG-RAST/Shock/shock-server/controller"
+	ncon "github.com/MG-RAST/Shock/shock-server/controller/node"
+	acon "github.com/MG-RAST/Shock/shock-server/controller/node/acl"
+	icon "github.com/MG-RAST/Shock/shock-server/controller/node/index"
+	pcon "github.com/MG-RAST/Shock/shock-server/controller/preauth"
 	"github.com/MG-RAST/Shock/shock-server/db"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/preauth"
+	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
-	"github.com/MG-RAST/golib/goweb"
+	"github.com/MG-RAST/Shock/shock-server/util"
+	"github.com/stretchr/goweb"
+	"github.com/stretchr/goweb/context"
+	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"runtime"
 	"strconv"
 	"time"
 )
 
-func launchSite(control chan int) {
-	goweb.ConfigureDefaultFormatters()
-	r := &goweb.RouteManager{}
-	r.MapFunc("/raw", RawDir)
-	r.MapFunc("/assets", AssetsDir)
-	r.MapFunc("*", Site)
-	if conf.Bool(conf.Conf["ssl"]) {
-		err := goweb.ListenAndServeRoutesTLS(":"+conf.Conf["site-port"], conf.Conf["ssl-cert"], conf.Conf["ssl-key"], r)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: site: %v\n", err)
-			logger.Error("ERROR: site: " + err.Error())
-		}
-	} else {
-		err := goweb.ListenAndServeRoutes(":"+conf.Conf["site-port"], r)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: site: %v\n", err)
-			logger.Error("ERROR: site: " + err.Error())
-		}
-	}
-	control <- 1 //we are ending
+type resource struct {
+	R []string `json:"resources"`
+	U string   `json:"url"`
+	D string   `json:"documentation"`
+	C string   `json:"contact"`
+	I string   `json:"id"`
+	T string   `json:"type"`
 }
 
-func launchAPI(control chan int) {
-	c := controller.New()
-	goweb.ConfigureDefaultFormatters()
-	r := &goweb.RouteManager{}
-	r.MapFunc("/preauth/{id}", c.Preauth, goweb.GetMethod)
-	r.Map("/node/{nid}/acl/{type}", c.Acl["typed"])
-	r.Map("/node/{nid}/acl", c.Acl["base"])
-	r.Map("/node/{nid}/index/{type}", c.Index)
-	r.Map("/node/{nid}/index", c.Index)
-	r.MapRest("/node", c.Node)
-	r.MapFunc("*", ResourceDescription, goweb.GetMethod)
-	r.MapFunc("*", RespondOk, goweb.OptionsMethod)
-	if conf.Bool(conf.Conf["ssl"]) {
-		err := goweb.ListenAndServeRoutesTLS(":"+conf.Conf["api-port"], conf.Conf["ssl-cert"], conf.Conf["ssl-key"], r)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: api: %v\n", err)
-			logger.Error("ERROR: api: " + err.Error())
+func mapRoutes() {
+	goweb.MapBefore(func(ctx context.Context) error {
+		logger.Info("access", "log request received")
+		return nil
+	})
+
+	goweb.MapAfter(func(ctx context.Context) error {
+		logger.Info("access", "log request response sent")
+		return nil
+	})
+
+	goweb.Map("/preauth/{id}", func(ctx context.Context) error {
+		pcon.PreAuthRequest(ctx)
+		return nil
+	})
+
+	goweb.Map("/node/{nid}/acl/{type}", func(ctx context.Context) error {
+		acon.AclTypedRequest(ctx)
+		return nil
+	})
+
+	goweb.Map("/node/{nid}/acl/", func(ctx context.Context) error {
+		acon.AclRequest(ctx)
+		return nil
+	})
+
+	goweb.Map("/node/{nid}/index/{idxType}", func(ctx context.Context) error {
+		icon.IndexTypedRequest(ctx)
+		return nil
+	})
+
+	goweb.Map("/", func(ctx context.Context) error {
+		host := util.ApiUrl(ctx)
+		r := resource{
+			R: []string{"node"},
+			U: host + "/",
+			D: host + "/documentation.html",
+			C: conf.Conf["admin-email"],
+			I: "Shock",
+			T: "Shock",
 		}
-	} else {
-		err := goweb.ListenAndServeRoutes(":"+conf.Conf["api-port"], r)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: api: %v\n", err)
-			logger.Error("ERROR: api: " + err.Error())
-		}
-	}
-	control <- 1 //we are ending
+		return responder.WriteResponseObject(ctx, http.StatusOK, r)
+	})
+
+	nodeController := new(ncon.NodeController)
+	goweb.MapController(nodeController)
+
+	goweb.MapStatic("/assets", conf.Conf["site-path"]+"/assets")
+	goweb.MapStaticFile("/documentation.html", conf.Conf["site-path"]+"/pages/main.html")
+
+	// Map the favicon
+	//goweb.MapStaticFile("/favicon.ico", "static-files/favicon.ico")
+
+	// Catch-all handler for everything that we don't understand
+	goweb.Map(func(ctx context.Context) error {
+		return responder.RespondWithError(ctx, http.StatusNotFound, "File not found")
+	})
 }
 
 func main() {
@@ -132,31 +158,34 @@ func main() {
 		runtime.GOMAXPROCS(avail)
 	}
 
-	//launch server
-	control := make(chan int)
-	go launchSite(control)
-	go launchAPI(control)
+	Address := ":" + conf.Conf["api-port"]
+	mapRoutes()
 
-	//checking to make sure that server has launched
-	connect := false
-	for i := 0; i < 10; i++ {
-		time.Sleep(100 * time.Millisecond)
-		_, err := http.Get("http://localhost:" + conf.Conf["api-port"])
-		if err == nil {
-			connect = true
-			break
+	s := &http.Server{
+		Addr:           ":" + Address,
+		Handler:        goweb.DefaultHttpHandler(),
+		ReadTimeout:    100 * time.Second,
+		WriteTimeout:   100 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+	}
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	listener, listenErr := net.Listen("tcp", Address)
+
+	if listenErr != nil {
+		fmt.Fprintf(os.Stderr, "Could not listen: %s\n", listenErr)
+	}
+
+	go func() {
+		for _ = range c {
+			// sig is a ^C, handle it
+
+			// stop the HTTP server
+			fmt.Fprintln(os.Stderr, "Stopping the server...")
+			listener.Close()
 		}
-		time.Sleep(100 * time.Millisecond)
-	}
+	}()
 
-	//exiting if server could not be reached after 1 second
-	if connect != true {
-		fmt.Fprintln(os.Stderr, "ERROR: server could not be reached at "+"http://localhost:"+conf.Conf["api-port"])
-		fmt.Fprintln(os.Stderr, "Exiting!")
-		os.Exit(1)
-	}
-
-	fmt.Println("\nReady to receive requests...")
-
-	<-control //block till something dies
+	fmt.Fprintf(os.Stderr, "Error in Serve: %s\n", s.Serve(listener))
 }
