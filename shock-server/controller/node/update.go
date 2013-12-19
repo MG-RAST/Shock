@@ -7,25 +7,22 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/request"
+	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
-	"github.com/MG-RAST/Shock/shock-server/util"
-	"github.com/MG-RAST/golib/goweb"
+	"github.com/stretchr/goweb/context"
 	"net/http"
 	"os"
 )
 
 // PUT: /node/{id} -> multipart-form
-func (cr *Controller) Update(id string, cx *goweb.Context) {
-	// Log Request and check for Auth
-	request.Log(cx.Request)
-	u, err := request.Authenticate(cx.Request)
+func (cr *NodeController) Replace(id string, ctx context.Context) error {
+	u, err := request.Authenticate(ctx.HttpRequest())
 	if err != nil && err.Error() != e.NoAuth {
-		request.AuthError(err, cx)
-		return
+		return request.AuthError(err, ctx)
 	}
 
 	// Gather query params
-	query := util.Q(cx.Request.URL.Query())
+	query := ctx.QueryParams()
 
 	// Fake public user
 	if u == nil {
@@ -35,18 +32,15 @@ func (cr *Controller) Update(id string, cx *goweb.Context) {
 	n, err := node.Load(id, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
-			cx.RespondWithErrorMessage(err.Error(), http.StatusUnauthorized)
-			return
+			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 		} else if err.Error() == e.MongoDocNotFound {
-			cx.RespondWithNotFound()
-			return
+			return responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
 			err_msg := "Err@node_Update:LoadNode: " + err.Error()
 			logger.Error(err_msg)
-			cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
-			return
+			return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 		}
 	}
 
@@ -56,28 +50,24 @@ func (cr *Controller) Update(id string, cx *goweb.Context) {
 		}
 
 		if !n.HasFile() {
-			cx.RespondWithErrorMessage("node file empty", http.StatusBadRequest)
-			return
+			return responder.RespondWithError(ctx, http.StatusBadRequest, "node file empty")
 		}
 
-		if query.Value("index") == "bai" {
+		if ctx.QueryValue("index") == "bai" {
 			//bam index is created by the command-line tool samtools
 			if ext := n.FileExt(); ext == ".bam" {
 				if err := index.CreateBamIndex(n.FilePath()); err != nil {
-					cx.RespondWithErrorMessage("Error while creating bam index", http.StatusBadRequest)
-					return
+					return responder.RespondWithError(ctx, http.StatusBadRequest, "Error while creating bam index")
 				}
-				return
+				return nil
 			} else {
-				cx.RespondWithErrorMessage("Index type bai requires .bam file", http.StatusBadRequest)
-				return
+				return responder.RespondWithError(ctx, http.StatusBadRequest, "Index type bai requires .bam file")
 			}
 		}
 
-		idxtype := query.Value("index")
+		idxtype := ctx.QueryValue("index")
 		if _, ok := index.Indexers[idxtype]; !ok {
-			cx.RespondWithErrorMessage("invalid index type", http.StatusBadRequest)
-			return
+			return responder.RespondWithError(ctx, http.StatusBadRequest, "invalid index type")
 		}
 
 		newIndexer := index.Indexers[idxtype]
@@ -85,15 +75,14 @@ func (cr *Controller) Update(id string, cx *goweb.Context) {
 		defer f.Close()
 		idxer := newIndexer(f)
 
-		count, err := idxer.Create(n.IndexPath() + "/" + query.Value("index") + ".idx")
+		count, err := idxer.Create(n.IndexPath() + "/" + ctx.QueryValue("index") + ".idx")
 		if err != nil {
 			logger.Error("err " + err.Error())
-			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
-			return
+			return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
 		}
 
 		idxInfo := node.IdxInfo{
-			Type:        query.Value("index"),
+			Type:        ctx.QueryValue("index"),
 			TotalUnits:  count,
 			AvgUnitSize: n.File.Size / count,
 		}
@@ -102,7 +91,7 @@ func (cr *Controller) Update(id string, cx *goweb.Context) {
 			idxInfo.AvgUnitSize = conf.CHUNK_SIZE
 		}
 
-		if err := n.SetIndexInfo(query.Value("index"), idxInfo); err != nil {
+		if err := n.SetIndexInfo(ctx.QueryValue("index"), idxInfo); err != nil {
 			logger.Error("err@node.SetIndexInfo: " + err.Error())
 		}
 
@@ -110,18 +99,17 @@ func (cr *Controller) Update(id string, cx *goweb.Context) {
 			logger.Perf("END indexing: " + id)
 		}
 
-		cx.RespondWithOK()
-		return
+		return responder.RespondOK(ctx)
 
 	} else {
 		if conf.Bool(conf.Conf["perf-log"]) {
 			logger.Perf("START PUT data: " + id)
 		}
-		params, files, err := request.ParseMultipartForm(cx.Request)
+		params, files, err := request.ParseMultipartForm(ctx.HttpRequest())
 		if err != nil {
-			logger.Error("err@node_ParseMultipartForm: " + err.Error())
-			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
-			return
+			err_msg := "err@node_ParseMultipartForm: " + err.Error()
+			logger.Error(err_msg)
+			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 		}
 
 		err = n.Update(params, files)
@@ -129,18 +117,17 @@ func (cr *Controller) Update(id string, cx *goweb.Context) {
 			errors := []string{e.FileImut, e.AttrImut, "parts cannot be less than 1"}
 			for e := range errors {
 				if err.Error() == errors[e] {
-					cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
-					return
+					return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
 				}
 			}
-			logger.Error("err@node_Update: " + id + ":" + err.Error())
-			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
-			return
+			err_msg := "err@node_Update: " + id + ":" + err.Error()
+			logger.Error(err_msg)
+			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 		}
-		cx.RespondWithData(n)
+		responder.RespondWithData(ctx, n)
 		if conf.Bool(conf.Conf["perf-log"]) {
 			logger.Perf("END PUT data: " + id)
 		}
 	}
-	return
+	return nil
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/node/filter"
-	"github.com/MG-RAST/Shock/shock-server/util"
+	"github.com/stretchr/goweb/context"
 	"io"
 	"net/http"
 	"os/exec"
@@ -81,8 +81,9 @@ func (s *Streamer) StreamSamtools(filePath string, region string, args ...string
 
 //helper function to translate args in URL query to samtools args
 //manual: http://samtools.sourceforge.net/samtools.shtml
-func ParseSamtoolsArgs(query *util.Query) (argv []string, err error) {
+func ParseSamtoolsArgs(ctx context.Context) (argv []string, err error) {
 
+	query := ctx.QueryParams()
 	var (
 		filter_options = map[string]string{
 			"head":     "-h",
@@ -105,7 +106,7 @@ func ParseSamtoolsArgs(query *util.Query) (argv []string, err error) {
 
 	for src, des := range valued_options {
 		if query.Has(src) {
-			if val := query.Value(src); val != "" {
+			if val := ctx.QueryValue(src); val != "" {
 				argv = append(argv, des)
 				argv = append(argv, val)
 			} else {

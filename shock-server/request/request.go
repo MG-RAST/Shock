@@ -9,9 +9,10 @@ import (
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
+	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
-	"github.com/MG-RAST/golib/goweb"
+	"github.com/stretchr/goweb/context"
 	"hash"
 	"math/rand"
 	"net"
@@ -58,15 +59,13 @@ func Authenticate(req *http.Request) (u *user.User, err error) {
 	return
 }
 
-func AuthError(err error, cx *goweb.Context) {
+func AuthError(err error, ctx context.Context) error {
 	if err.Error() == e.InvalidAuth {
-		cx.RespondWithErrorMessage("Invalid authorization header or content", http.StatusBadRequest)
-		return
+		return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid authorization header or content")
 	}
 	err_msg := "Error at Auth: " + err.Error()
 	logger.Error(err_msg)
-	cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
-	return
+	return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 }
 
 // helper function to create a node from an http data post

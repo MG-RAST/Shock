@@ -2,29 +2,28 @@
 package node
 
 import (
-	"github.com/MG-RAST/Shock/shock-server/request"
-	"github.com/MG-RAST/golib/goweb"
+	"github.com/MG-RAST/Shock/shock-server/responder"
+	"github.com/stretchr/goweb/context"
 	"net/http"
 )
 
-type Controller struct{}
+type NodeController struct{}
 
 // Options: /node
-func (cr *Controller) Options(cx *goweb.Context) {
-	request.Log(cx.Request)
-	cx.RespondWithOK()
+func (cr *NodeController) Options(ctx context.Context) {
+	responder.RespondOK(ctx)
 	return
 }
 
 // Will not implement
 // PUT: /node
-func (cr *Controller) UpdateMany(cx *goweb.Context) {
-	request.Log(cx.Request)
-	cx.RespondWithErrorMessage("This request type is not implemented.", http.StatusNotImplemented)
+func (cr *NodeController) UpdateMany(ctx context.Context) {
+	responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
+	return
 }
 
 // DELETE: /node
-func (cr *Controller) DeleteMany(cx *goweb.Context) {
-	request.Log(cx.Request)
-	cx.RespondWithErrorMessage("This request type is not implemented.", http.StatusNotImplemented)
+func (cr *NodeController) DeleteMany(ctx context.Context) {
+	responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
+	return
 }

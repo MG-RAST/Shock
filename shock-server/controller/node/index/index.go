@@ -1,4 +1,3 @@
-// Package index implements /node/:id/index resource (UNFINISHED)
 package index
 
 import (
@@ -9,8 +8,9 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/request"
+	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
-	"github.com/MG-RAST/golib/goweb"
+	"github.com/stretchr/goweb/context"
 	"net/http"
 	"os"
 )
@@ -23,11 +23,13 @@ type getRes struct {
 type m map[string]string
 
 // GET, PUT, DELETE: /node/{nid}/index/{idxType}
-var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
-	request.Log(cx.Request)
-	u, err := request.Authenticate(cx.Request)
+func IndexTypedRequest(ctx context.Context) {
+	nid := ctx.PathValue("nid")
+	idxType := ctx.PathValue("idxType")
+
+	u, err := request.Authenticate(ctx.HttpRequest())
 	if err != nil && err.Error() != e.NoAuth {
-		request.AuthError(err, cx)
+		request.AuthError(err, ctx)
 		return
 	}
 
@@ -37,70 +39,68 @@ var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
 	}
 
 	// Load node and handle user unauthorized
-	id := cx.PathParams["nid"]
-	n, err := node.Load(id, u.Uuid)
+	n, err := node.Load(nid, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
-			cx.RespondWithErrorMessage(err.Error(), http.StatusUnauthorized)
+			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 			return
 		} else if err.Error() == e.MongoDocNotFound {
-			cx.RespondWithNotFound()
+			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
 			return
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
 			err_msg := "Err@index:LoadNode: " + err.Error()
 			logger.Error(err_msg)
-			cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
+			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			return
 		}
 	}
 
-	idxType, hasType := cx.PathParams["type"]
-	switch cx.Request.Method {
+	switch ctx.HttpRequest().Method {
 	case "GET":
-		if hasType {
+		if idxType != "" {
 			if v, has := n.Indexes[idxType]; has {
-				cx.RespondWithData(map[string]interface{}{idxType: v})
+				responder.RespondWithData(ctx, map[string]interface{}{idxType: v})
 			} else {
-				cx.RespondWithErrorMessage(fmt.Sprintf("Node %s does not have index of type %s.", n.Id, idxType), http.StatusBadRequest)
+				responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("Node %s does not have index of type %s.", n.Id, idxType))
 			}
 		} else {
-			cx.RespondWithData(getRes{I: n.Indexes, A: filteredIndexes(n.Indexes)})
+			responder.RespondWithData(ctx, getRes{I: n.Indexes, A: filteredIndexes(n.Indexes)})
 		}
 
 	case "PUT":
 		if !n.HasFile() {
-			cx.RespondWithErrorMessage("Node has no file", http.StatusBadRequest)
+			responder.RespondWithError(ctx, http.StatusBadRequest, "Node has no file")
 			return
-		} else if !hasType {
-			cx.RespondWithErrorMessage("Index create requires type", http.StatusBadRequest)
+		} else if idxType == "" {
+			responder.RespondWithError(ctx, http.StatusBadRequest, "Index create requires type")
 			return
 		}
 		if _, ok := index.Indexers[idxType]; !ok {
-			cx.RespondWithErrorMessage(fmt.Sprintf("Index type %s unavailable", idxType), http.StatusBadRequest)
+			responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("Index type %s unavailable", idxType))
 			return
 		}
 		if idxType == "size" {
-			cx.RespondWithErrorMessage(fmt.Sprintf("Index type size is a virtual index and does not require index building."), http.StatusBadRequest)
+			responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("Index type size is a virtual index and does not require index building."))
 			return
 		}
 
 		if conf.Bool(conf.Conf["perf-log"]) {
-			logger.Perf("START indexing: " + id)
+			logger.Perf("START indexing: " + nid)
 		}
 
 		if idxType == "bai" {
 			//bam index is created by the command-line tool samtools
 			if ext := n.FileExt(); ext == ".bam" {
 				if err := index.CreateBamIndex(n.FilePath()); err != nil {
-					cx.RespondWithErrorMessage("Error while creating bam index", http.StatusBadRequest)
+					responder.RespondWithError(ctx, http.StatusBadRequest, "Error while creating bam index")
 					return
 				}
-				cx.RespondWithOK()
+				responder.RespondOK(ctx)
 				return
 			} else {
-				cx.RespondWithErrorMessage("Index type bai requires .bam file", http.StatusBadRequest)
+				responder.RespondWithError(ctx, http.StatusBadRequest, "Index type bai requires .bam file")
 				return
 			}
 		}
@@ -112,7 +112,7 @@ var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
 		count, err := idxer.Create(n.IndexPath() + "/" + idxType + ".idx")
 		if err != nil {
 			logger.Error("err " + err.Error())
-			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
+			responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
 			return
 		}
 
@@ -131,14 +131,14 @@ var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
 		}
 
 		if conf.Bool(conf.Conf["perf-log"]) {
-			logger.Perf("END indexing: " + id)
+			logger.Perf("END indexing: " + nid)
 		}
 
-		cx.RespondWithOK()
+		responder.RespondOK(ctx)
 		return
 
 	default:
-		cx.RespondWithErrorMessage("This request type is not implemented", http.StatusNotImplemented)
+		responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented")
 	}
 	return
 }
