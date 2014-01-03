@@ -37,12 +37,12 @@ type resource struct {
 
 func mapRoutes() {
 	goweb.MapBefore(func(ctx context.Context) error {
-		logger.Info("access", "log request received")
+		logger.Info("access", fmt.Sprintf("%s REQ RECEIVED: \"%s %s\"", ctx.HttpRequest().RemoteAddr, ctx.MethodString(), ctx.HttpRequest().RequestURI))
 		return nil
 	})
 
 	goweb.MapAfter(func(ctx context.Context) error {
-		logger.Info("access", "log request response sent")
+		logger.Info("access", fmt.Sprintf("RESPONDED TO %s: \"%s %s\"", ctx.HttpRequest().RemoteAddr, ctx.MethodString(), ctx.HttpRequest().RequestURI))
 		return nil
 	})
 
