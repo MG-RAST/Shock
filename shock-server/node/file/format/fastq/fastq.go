@@ -178,15 +178,17 @@ func (self *Reader) GetReadOffset() (n int, err error) {
 
 // seek sequences which add up to a size close to the configured chunk size (conf.CHUNK_SIZE, e.g. 1M)
 func (self *Reader) SeekChunk(offSet int64) (n int64, err error) {
-	r := io.NewSectionReader(self.f, offSet+conf.CHUNK_SIZE-32768, 32768)
-	buf := make([]byte, 32768)
+	winSize := 32768
+	r := io.NewSectionReader(self.f, offSet+conf.CHUNK_SIZE-winSize, winSize)
+	buf := make([]byte, winSize)
 	if n, err := r.Read(buf); err != nil {
 		return int64(n), err
 	}
 	if pos := bytes.LastIndex(buf, []byte("@")); pos == -1 {
-		return self.SeekChunk(offSet + conf.CHUNK_SIZE)
+		indexPos, err := self.SeekChunk(offSet + winSize)
+		return (winSize + indexPos), err
 	} else {
-		return conf.CHUNK_SIZE - 32768 + int64(pos), nil
+		return conf.CHUNK_SIZE - winSize + int64(pos), nil
 	}
 	return
 }
