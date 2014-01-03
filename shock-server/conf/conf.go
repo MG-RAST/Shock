@@ -149,7 +149,7 @@ func Print() {
 		fmt.Printf("##### SSL #####\nenabled:\t%s\n\n", Conf["ssl"])
 	}
 	fmt.Printf("##### Mongodb #####\nhost(s):\t%s\ndatabase:\t%s\n\n", Conf["mongodb-hosts"], Conf["mongodb-database"])
-	fmt.Printf("##### Ports #####\nsite:\t%s\napi:\t%s\n\n", Conf["site-port"], Conf["api-port"])
+	fmt.Printf("##### Port #####\napi:\t%s\n\n", Conf["api-port"])
 	if Bool(Conf["perf-log"]) {
 		fmt.Printf("##### PerfLog enabled #####\n\n")
 	}

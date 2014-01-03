@@ -83,7 +83,7 @@ func (s *Streamer) StreamSamtools(filePath string, region string, args ...string
 //manual: http://samtools.sourceforge.net/samtools.shtml
 func ParseSamtoolsArgs(ctx context.Context) (argv []string, err error) {
 
-	query := ctx.QueryParams()
+	query := ctx.HttpRequest().URL.Query()
 	var (
 		filter_options = map[string]string{
 			"head":     "-h",
@@ -99,14 +99,14 @@ func ParseSamtoolsArgs(ctx context.Context) (argv []string, err error) {
 	)
 
 	for src, des := range filter_options {
-		if query.Has(src) {
+		if _, ok := query[src]; ok {
 			argv = append(argv, des)
 		}
 	}
 
 	for src, des := range valued_options {
-		if query.Has(src) {
-			if val := ctx.QueryValue(src); val != "" {
+		if _, ok := query[src]; ok {
+			if val := query.Get(src); val != "" {
 				argv = append(argv, des)
 				argv = append(argv, val)
 			} else {

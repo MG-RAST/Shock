@@ -36,12 +36,12 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 	}
 
 	// Gather query params
-	query := ctx.QueryParams()
+	query := ctx.HttpRequest().URL.Query()
 
 	var fFunc filter.FilterFunc = nil
-	if query.Has("filter") {
-		if filter.Has(ctx.QueryValue("filter")) {
-			fFunc = filter.Filter(ctx.QueryValue("filter"))
+	if _, ok := query["filter"]; ok {
+		if filter.Has(query.Get("filter")) {
+			fFunc = filter.Filter(query.Get("filter"))
 		}
 	}
 
@@ -68,25 +68,25 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 
 	// Switch though param flags
 	// ?download=1
-	if query.Has("download") {
+	if _, ok := query["download"]; ok {
 		if !n.HasFile() {
 			return responder.RespondWithError(ctx, http.StatusBadRequest, "Node has no file")
 		}
 		filename := n.Id
-		if query.Has("filename") {
-			filename = ctx.QueryValue("filename")
+		if _, ok := query["filename"]; ok {
+			filename = query.Get("filename")
 		}
 
-		if query.Has("index") {
+		if _, ok := query["index"]; ok {
 			//handling bam file
-			if ctx.QueryValue("index") == "bai" {
+			if query.Get("index") == "bai" {
 				s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc}
 
 				var region string
 
-				if query.Has("region") {
+				if _, ok := query["region"]; ok {
 					//retrieve alingments overlapped with specified region
-					region = ctx.QueryValue("region")
+					region = query.Get("region")
 				}
 
 				argv, err := request.ParseSamtoolsArgs(ctx)
@@ -103,7 +103,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			}
 
 			// if forgot ?part=N
-			if !query.Has("part") {
+			if _, ok := query["part"]; !ok {
 				return responder.RespondWithError(ctx, http.StatusBadRequest, "Index parameter requires part parameter")
 			}
 			// open file
@@ -115,15 +115,15 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			}
 			// load index
-			idx, err := n.Index(ctx.QueryValue("index"))
+			idx, err := n.Index(query.Get("index"))
 			if err != nil {
 				return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index")
 			}
 
 			if idx.Type() == "virtual" {
 				csize := conf.CHUNK_SIZE
-				if query.Has("chunk_size") {
-					csize, err = strconv.ParseInt(ctx.QueryValue("chunk_size"), 10, 64)
+				if _, ok := query["chunk_size"]; ok {
+					csize, err = strconv.ParseInt(query.Get("chunk_size"), 10, 64)
 					if err != nil {
 						return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid chunk_size")
 					}
@@ -132,7 +132,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			}
 			var size int64 = 0
 			s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Filter: fFunc}
-			for _, p := range ctx.QueryValues("part") {
+			for _, p := range query["part"] {
 				pos, length, err := idx.Part(p)
 				if err != nil {
 					return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index part")
@@ -167,15 +167,15 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 			}
 		}
-	} else if query.Has("download_url") {
+	} else if _, ok := query["download_url"]; ok {
 		if !n.HasFile() {
 			return responder.RespondWithError(ctx, http.StatusBadRequest, "Node has not file")
 		} else if u.Uuid == "" {
 			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
 		} else {
 			options := map[string]string{}
-			if query.Has("filename") {
-				options["filename"] = ctx.QueryValue("filename")
+			if _, ok := query["filename"]; ok {
+				options["filename"] = query.Get("filename")
 			}
 			if p, err := preauth.New(util.RandString(20), "download", n.Id, options); err != nil {
 				err_msg := "err:@node_Read download_url: " + err.Error()

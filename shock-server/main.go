@@ -37,12 +37,36 @@ type resource struct {
 
 func mapRoutes() {
 	goweb.MapBefore(func(ctx context.Context) error {
-		logger.Info("access", "log request received")
+		req := ctx.HttpRequest()
+		host, _, _ := net.SplitHostPort(req.RemoteAddr)
+		if host == "::1" {
+			host = "localhost"
+		}
+		suffix := ""
+		if _, ok := req.Header["Authorization"]; ok {
+			suffix += " AUTH"
+		}
+		if l, has := req.Header["Content-Length"]; has {
+			suffix += " Content-Length: " + l[0]
+		}
+		logger.Info("access", fmt.Sprintf("%s REQ RECEIVED \"%s %s%s\"", host, ctx.MethodString(), req.RequestURI, suffix))
 		return nil
 	})
 
 	goweb.MapAfter(func(ctx context.Context) error {
-		logger.Info("access", "log request response sent")
+		req := ctx.HttpRequest()
+		host, _, _ := net.SplitHostPort(req.RemoteAddr)
+		if host == "::1" {
+			host = "localhost"
+		}
+		suffix := ""
+		if _, ok := req.Header["Authorization"]; ok {
+			suffix += " AUTH"
+		}
+		if l, has := req.Header["Content-Length"]; has {
+			suffix += " Content-Length: " + l[0]
+		}
+		logger.Info("access", fmt.Sprintf("RESPONDED TO %s \"%s %s%s\"", host, ctx.MethodString(), req.RequestURI, suffix))
 		return nil
 	})
 

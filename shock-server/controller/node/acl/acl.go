@@ -187,10 +187,10 @@ func AclTypedRequest(ctx context.Context) {
 
 func parseAclRequestTyped(ctx context.Context) (ids []string, err error) {
 	var users []string
-	query := ctx.QueryParams()
+	query := ctx.HttpRequest().URL.Query()
 	params, _, err := request.ParseMultipartForm(ctx.HttpRequest())
-	if err != nil && err.Error() == "request Content-Type isn't multipart/form-data" && query.Has("users") {
-		users = strings.Split(ctx.QueryValue("users"), ",")
+	if _, ok := query["users"]; ok && err != nil && err.Error() == "request Content-Type isn't multipart/form-data" {
+		users = strings.Split(query.Get("users"), ",")
 	} else if params["users"] != "" {
 		users = strings.Split(params["users"], ",")
 	} else {

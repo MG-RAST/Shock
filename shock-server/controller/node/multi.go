@@ -25,7 +25,7 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 	}
 
 	// Gather query params
-	query := ctx.QueryParams()
+	query := ctx.HttpRequest().URL.Query()
 
 	// Setup query and nodes objects
 	q := bson.M{}
@@ -48,22 +48,20 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 	// Gather params to make db query. Do not include the
 	// following list.
 	paramlist := map[string]int{"limit": 1, "offset": 1, "query": 1, "querynode": 1}
-	if query.Has("query") {
+	if _, ok := query["query"]; ok {
 		for key := range query {
-			_, s := paramlist[key]
-			if !s {
-				q[fmt.Sprintf("attributes.%s", key)] = ctx.QueryValue(key)
+			if _, found := paramlist[key]; !found {
+				q[fmt.Sprintf("attributes.%s", key)] = query.Get(key)
 			}
 		}
-	} else if query.Has("querynode") {
+	} else if _, ok := query["querynode"]; ok {
 		for key := range query {
 			if key == "type" {
-				querytypes := strings.Split(ctx.QueryValue("type"), ",")
+				querytypes := strings.Split(query.Get(key), ",")
 				q["type"] = bson.M{"$all": querytypes}
 			} else {
-				_, s := paramlist[key]
-				if !s {
-					q[key] = ctx.QueryValue(key)
+				if _, found := paramlist[key]; !found {
+					q[key] = query.Get(key)
 				}
 			}
 		}
@@ -72,11 +70,11 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 	// defaults
 	limit := 25
 	offset := 0
-	if query.Has("limit") {
-		limit = util.ToInt(ctx.QueryValue("limit"))
+	if _, ok := query["limit"]; ok {
+		limit = util.ToInt(query.Get("limit"))
 	}
-	if query.Has("offset") {
-		offset = util.ToInt(ctx.QueryValue("offset"))
+	if _, ok := query["offset"]; ok {
+		offset = util.ToInt(query.Get("offset"))
 	}
 
 	// Get nodes from db
