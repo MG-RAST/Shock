@@ -22,7 +22,7 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 	}
 
 	// Gather query params
-	query := ctx.QueryParams()
+	query := ctx.HttpRequest().URL.Query()
 
 	// Fake public user
 	if u == nil {
@@ -44,7 +44,7 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 		}
 	}
 
-	if query.Has("index") {
+	if _, ok := query["index"]; ok {
 		if conf.Bool(conf.Conf["perf-log"]) {
 			logger.Perf("START indexing: " + id)
 		}
@@ -53,7 +53,7 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 			return responder.RespondWithError(ctx, http.StatusBadRequest, "node file empty")
 		}
 
-		if ctx.QueryValue("index") == "bai" {
+		if query.Get("index") == "bai" {
 			//bam index is created by the command-line tool samtools
 			if ext := n.FileExt(); ext == ".bam" {
 				if err := index.CreateBamIndex(n.FilePath()); err != nil {
