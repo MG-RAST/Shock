@@ -23,7 +23,6 @@ import (
 	"os/signal"
 	"runtime"
 	"strconv"
-	"time"
 )
 
 type resource struct {
