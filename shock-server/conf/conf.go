@@ -46,7 +46,6 @@ func Initialize() {
 	}
 
 	// Ports
-	Conf["site-port"], _ = c.String("Ports", "site-port")
 	Conf["api-port"], _ = c.String("Ports", "api-port")
 
 	// URLs
