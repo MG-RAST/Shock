@@ -47,9 +47,8 @@ password=
 id=unique:true
 
 [Ports]
-# Ports for site/api
+# Port for api
 # Note: use of port 80 may require root access
-site-port=7444
 api-port=7445
 
 [Runtime]
