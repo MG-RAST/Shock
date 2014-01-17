@@ -141,6 +141,7 @@ func IndexTypedRequest(ctx context.Context) {
 			if err != nil {
 				logger.Error("err " + err.Error())
 				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+				return
 			}
 
 		} else {
