@@ -140,20 +140,31 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 				files[part.FormName()] = node.FormFile{Name: part.FileName(), Path: tmpPath, Checksum: make(map[string]string)}
 				if tmpFile, err := os.Create(tmpPath); err == nil {
 					defer tmpFile.Close()
-					md5c := make(chan checkSumCom)
-					writeChecksum(md5.New, md5c)
-					for {
-						buffer := make([]byte, 32*1024)
-						n, err := part.Read(buffer)
-						if n == 0 || err != nil {
-							md5c <- checkSumCom{n: 0}
-							break
+					if part.FormName() == "upload" {
+						md5c := make(chan checkSumCom)
+						writeChecksum(md5.New, md5c)
+						for {
+							buffer := make([]byte, 32*1024)
+							n, err := part.Read(buffer)
+							if n == 0 || err != nil {
+								md5c <- checkSumCom{n: 0}
+								break
+							}
+							md5c <- checkSumCom{buf: buffer[0:n], n: n}
+							tmpFile.Write(buffer[0:n])
 						}
-						md5c <- checkSumCom{buf: buffer[0:n], n: n}
-						tmpFile.Write(buffer[0:n])
+						md5r := <-md5c
+						files[part.FormName()].Checksum["md5"] = md5r.checksum
+					} else {
+						for {
+							buffer := make([]byte, 32*1024)
+							n, err := part.Read(buffer)
+							if n == 0 || err != nil {
+								break
+							}
+							tmpFile.Write(buffer[0:n])
+						}
 					}
-					md5r := <-md5c
-					files[part.FormName()].Checksum["md5"] = md5r.checksum
 				} else {
 					return nil, nil, err
 				}
