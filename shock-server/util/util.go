@@ -14,8 +14,8 @@ const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"
 
 // Arrays to check for valid param and file form names for node creation and updating, and also acl modification.
 // Note: indexing and querying do not use functions that use these arrays and thus we don't have to include those field names.
-var validParams = []string{"action", "all", "copy_data", "delete", "format", "ids", "linkage", "operation", "owner", "parts", "path", "read", "source", "tags", "type", "users", "write"}
-var validFiles = []string{"attributes", "upload"}
+var validParams = []string{"action", "all", "copy_data", "delete", "format", "ids", "index_name", "linkage", "operation", "owner", "parent_index", "parts", "path", "read", "source", "tags", "type", "users", "write"}
+var validFiles = []string{"attributes", "subset_indices", "upload"}
 
 type UrlResponse struct {
 	Url       string `json:"url"`
