@@ -45,7 +45,7 @@ func IndexTypedRequest(ctx context.Context) {
 			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 			return
 		} else if err.Error() == e.MongoDocNotFound {
-			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
+			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found.")
 			return
 		} else {
 			// In theory the db connection could be lost between
@@ -59,26 +59,22 @@ func IndexTypedRequest(ctx context.Context) {
 
 	switch ctx.HttpRequest().Method {
 	case "GET":
-		if idxType != "" {
-			if v, has := n.Indexes[idxType]; has {
-				responder.RespondWithData(ctx, map[string]interface{}{idxType: v})
-			} else {
-				responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("Node %s does not have index of type %s.", n.Id, idxType))
-			}
+		if v, has := n.Indexes[idxType]; has {
+			responder.RespondWithData(ctx, map[string]interface{}{idxType: v})
 		} else {
-			responder.RespondWithData(ctx, getRes{I: n.Indexes, A: filteredIndexes(n.Indexes)})
+			responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("Node %s does not have index of type %s.", n.Id, idxType))
 		}
 
 	case "PUT":
 		if !n.HasFile() {
-			responder.RespondWithError(ctx, http.StatusBadRequest, "Node has no file")
+			responder.RespondWithError(ctx, http.StatusBadRequest, "Node has no file.")
 			return
 		} else if idxType == "" {
-			responder.RespondWithError(ctx, http.StatusBadRequest, "Index create requires type")
+			responder.RespondWithError(ctx, http.StatusBadRequest, "Index create requires type.")
 			return
 		}
-		if _, ok := index.Indexers[idxType]; !ok {
-			responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("Index type %s unavailable", idxType))
+		if _, ok := index.Indexers[idxType]; !ok && idxType != "bai" && idxType != "subset" {
+			responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("Index type %s unavailable.", idxType))
 			return
 		}
 		if idxType == "size" {
@@ -94,25 +90,74 @@ func IndexTypedRequest(ctx context.Context) {
 			//bam index is created by the command-line tool samtools
 			if ext := n.FileExt(); ext == ".bam" {
 				if err := index.CreateBamIndex(n.FilePath()); err != nil {
-					responder.RespondWithError(ctx, http.StatusBadRequest, "Error while creating bam index")
+					responder.RespondWithError(ctx, http.StatusBadRequest, "Error while creating bam index.")
 					return
 				}
 				responder.RespondOK(ctx)
 				return
 			} else {
-				responder.RespondWithError(ctx, http.StatusBadRequest, "Index type bai requires .bam file")
+				responder.RespondWithError(ctx, http.StatusBadRequest, "Index type bai requires .bam file.")
 				return
 			}
 		}
 
-		newIndexer := index.Indexers[idxType]
-		f, _ := os.Open(n.FilePath())
-		defer f.Close()
-		idxer := newIndexer(f)
-		count, err := idxer.Create(n.IndexPath() + "/" + idxType + ".idx")
-		if err != nil {
-			logger.Error("err " + err.Error())
-			responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+		count := int64(0)
+		if idxType == "subset" {
+			// Utilizing the multipart form parser since we need to upload a file.
+			params, files, err := request.ParseMultipartForm(ctx.HttpRequest())
+			if err != nil {
+				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+				return
+			}
+
+			parentIndex, hasParent := params["parent_index"]
+			if !hasParent {
+				responder.RespondWithError(ctx, http.StatusBadRequest, "Index type subset requires parent_index param.")
+				return
+			} else if _, has := n.Indexes[parentIndex]; !has {
+				responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("Node %s does not have index of type %s.", n.Id, parentIndex))
+				return
+			}
+
+			newIndex, hasName := params["index_name"]
+			if !hasName {
+				responder.RespondWithError(ctx, http.StatusBadRequest, "Index type subset requires index_name param.")
+				return
+			} else if _, reservedName := index.Indexers[newIndex]; reservedName || newIndex == "bai" {
+				responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("%s is a reserved index name and cannot be used to create a custom subset index.", newIndex))
+				return
+			}
+
+			subsetIndices, hasFile := files["subset_indices"]
+			if !hasFile {
+				responder.RespondWithError(ctx, http.StatusBadRequest, "Index type subset requires subset_indices file.")
+				return
+			}
+
+			f, _ := os.Open(subsetIndices.Path)
+			defer f.Close()
+			idxer := index.NewSubsetIndexer(f)
+			count, err = index.CreateSubsetIndex(&idxer, n.IndexPath()+"/"+newIndex+".idx", n.IndexPath()+"/"+parentIndex+".idx")
+			if err != nil {
+				logger.Error("err " + err.Error())
+				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+			}
+
+		} else {
+			newIndexer := index.Indexers[idxType]
+			f, _ := os.Open(n.FilePath())
+			defer f.Close()
+			idxer := newIndexer(f)
+			count, err = idxer.Create(n.IndexPath() + "/" + idxType + ".idx")
+			if err != nil {
+				logger.Error("err " + err.Error())
+				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+				return
+			}
+		}
+
+		if count == 0 {
+			responder.RespondWithError(ctx, http.StatusBadRequest, "Index empty.")
 			return
 		}
 
@@ -122,8 +167,12 @@ func IndexTypedRequest(ctx context.Context) {
 			AvgUnitSize: n.File.Size / count,
 		}
 
-		if idxType == "chunkrecord" {
-			idxInfo.AvgUnitSize = conf.CHUNK_SIZE
+		//if idxType == "chunkrecord" {
+		//	idxInfo.AvgUnitSize = conf.CHUNK_SIZE
+		//}
+
+		if idxType == "subset" {
+			idxInfo.AvgUnitSize = -1
 		}
 
 		if err := n.SetIndexInfo(idxType, idxInfo); err != nil {
@@ -138,7 +187,7 @@ func IndexTypedRequest(ctx context.Context) {
 		return
 
 	default:
-		responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented")
+		responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
 	}
 	return
 }
@@ -150,15 +199,6 @@ func contains(list []string, s string) bool {
 		}
 	}
 	return false
-}
-
-func filteredIndexes(i node.Indexes) (indexes []string) {
-	for _, name := range availIndexers() {
-		if _, has := i[name]; !has {
-			indexes = append(indexes, name)
-		}
-	}
-	return indexes
 }
 
 func availIndexers() (indexers []string) {
