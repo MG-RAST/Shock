@@ -181,7 +181,7 @@ func main() {
 		runtime.GOMAXPROCS(avail)
 	}
 
-	Address := ":" + conf.Conf["api-port"]
+	Address := conf.Conf["api-ip"] + ":" + conf.Conf["api-port"]
 	mapRoutes()
 
 	s := &http.Server{

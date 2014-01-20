@@ -46,7 +46,8 @@ func Initialize() {
 	}
 
 	// Ports
-	Conf["api-port"], _ = c.String("Ports", "api-port")
+	Conf["api-ip"], _ = c.String("Address", "api-ip")
+	Conf["api-port"], _ = c.String("Address", "api-port")
 
 	// URLs
 	Conf["site-url"], _ = c.String("External", "site-url")
@@ -148,7 +149,7 @@ func Print() {
 		fmt.Printf("##### SSL #####\nenabled:\t%s\n\n", Conf["ssl"])
 	}
 	fmt.Printf("##### Mongodb #####\nhost(s):\t%s\ndatabase:\t%s\n\n", Conf["mongodb-hosts"], Conf["mongodb-database"])
-	fmt.Printf("##### Port #####\napi:\t%s\n\n", Conf["api-port"])
+	fmt.Printf("##### Address #####\nip:\t%s\napi:\t%s\n\n", Conf["api-ip"], Conf["api-port"])
 	if Bool(Conf["perf-log"]) {
 		fmt.Printf("##### PerfLog enabled #####\n\n")
 	}
