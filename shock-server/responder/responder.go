@@ -24,6 +24,7 @@ type paginatedResponse struct {
 }
 
 func RespondOK(ctx context.Context) error {
+	addResponseHeaders(ctx)
 	response := new(standardResponse)
 	response.S = http.StatusOK
 	response.D = nil
@@ -32,10 +33,12 @@ func RespondOK(ctx context.Context) error {
 }
 
 func WriteResponseObject(ctx context.Context, status int, responseObject interface{}) error {
+	addResponseHeaders(ctx)
 	return goweb.API.WriteResponseObject(ctx, status, responseObject)
 }
 
 func RespondWithData(ctx context.Context, data interface{}) error {
+	addResponseHeaders(ctx)
 	response := new(standardResponse)
 	response.S = http.StatusOK
 	response.D = data
@@ -44,6 +47,7 @@ func RespondWithData(ctx context.Context, data interface{}) error {
 }
 
 func RespondWithError(ctx context.Context, status int, err string) error {
+	addResponseHeaders(ctx)
 	response := new(standardResponse)
 	response.S = status
 	response.D = nil
@@ -52,7 +56,7 @@ func RespondWithError(ctx context.Context, status int, err string) error {
 }
 
 func RespondWithPaginatedData(ctx context.Context, data interface{}, limit, offset, count int) error {
-	// make the standard response object
+	addResponseHeaders(ctx)
 	response := new(paginatedResponse)
 	response.S = http.StatusOK
 	response.D = data
@@ -62,4 +66,11 @@ func RespondWithPaginatedData(ctx context.Context, data interface{}, limit, offs
 	response.Count = count
 
 	return goweb.API.WriteResponseObject(ctx, http.StatusOK, response)
+}
+
+func addResponseHeaders(ctx context.Context) {
+	ctx.HttpResponseWriter().Header().Set("Connection", "close")
+	ctx.HttpResponseWriter().Header().Set("Access-Control-Allow-Headers", "Authorization")
+	ctx.HttpResponseWriter().Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS")
+	ctx.HttpResponseWriter().Header().Set("Access-Control-Allow-Origin", "*")
 }
