@@ -113,7 +113,7 @@ func mapRoutes() {
 
 	// Catch-all handler for everything that we don't understand
 	goweb.Map(func(ctx context.Context) error {
-		return responder.RespondWithError(ctx, http.StatusNotFound, "File not found")
+		return responder.RespondWithError(ctx, http.StatusBadRequest, "Parameters do not match a valid Shock request type.")
 	})
 }
 
