@@ -165,7 +165,15 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 				return errors.New("invalid file parameter")
 			}
 		}
+	} else if node.HasFile() {
+		for key, _ := range files {
+			if _, errf := strconv.Atoi(key); errf == nil {
+				LockMgr.UnlockPartOp()
+				return errors.New(e.FileImut)
+			}
+		}
 	}
+
 	LockMgr.UnlockPartOp()
 
 	// update relatives
