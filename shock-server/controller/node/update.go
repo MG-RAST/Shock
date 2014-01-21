@@ -114,13 +114,7 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 
 		err = n.Update(params, files)
 		if err != nil {
-			errors := []string{e.FileImut, e.AttrImut, "parts cannot be less than 1"}
-			for e := range errors {
-				if err.Error() == errors[e] {
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
-				}
-			}
-			err_msg := "err@node_Update: " + id + ":" + err.Error()
+			err_msg := "err@node_Update: " + id + ": " + err.Error()
 			logger.Error(err_msg)
 			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 		}
