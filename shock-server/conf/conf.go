@@ -45,7 +45,7 @@ func Initialize() {
 		os.Exit(1)
 	}
 
-	// Ports
+	// Address
 	Conf["api-ip"], _ = c.String("Address", "api-ip")
 	Conf["api-port"], _ = c.String("Address", "api-port")
 
@@ -83,6 +83,7 @@ func Initialize() {
 
 	// Runtime
 	Conf["GOMAXPROCS"], _ = c.String("Runtime", "GOMAXPROCS")
+	Conf["pidfile"], _ = c.String("Runtime", "pidfile")
 
 	// Mongodb
 	Conf["mongodb-hosts"], _ = c.String("Mongodb", "hosts")

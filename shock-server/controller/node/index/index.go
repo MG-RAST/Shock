@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/goweb/context"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 type getRes struct {
@@ -73,7 +74,7 @@ func IndexTypedRequest(ctx context.Context) {
 			responder.RespondWithError(ctx, http.StatusBadRequest, "Index create requires type.")
 			return
 		}
-		if _, ok := index.Indexers[idxType]; !ok && idxType != "bai" && idxType != "subset" {
+		if _, ok := index.Indexers[idxType]; !ok && idxType != "bai" && idxType != "subset" && idxType != "column" {
 			responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("Index type %s unavailable.", idxType))
 			return
 		}
@@ -144,6 +145,35 @@ func IndexTypedRequest(ctx context.Context) {
 				return
 			}
 
+		} else if idxType == "column" {
+			// Gather query params
+			query := ctx.HttpRequest().URL.Query()
+
+			if _, exists := query["number"]; !exists {
+				err_msg := "Index type column requires a number parameter in the url."
+				logger.Error(err_msg)
+				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				return
+			}
+
+			num_str := query.Get("number")
+			num, err := strconv.Atoi(num_str)
+			if err != nil || num < 1 {
+				err_msg := "Index type column requires a number parameter in the url of an integer greater than zero."
+				logger.Error(err_msg)
+				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				return
+			}
+
+			f, _ := os.Open(n.FilePath())
+			defer f.Close()
+			idxer := index.NewColumnIndexer(f)
+			count, err = index.CreateColumnIndex(&idxer, num, n.IndexPath()+"/"+idxType+".idx")
+			if err != nil {
+				logger.Error("err " + err.Error())
+				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+				return
+			}
 		} else {
 			newIndexer := index.Indexers[idxType]
 			f, _ := os.Open(n.FilePath())
