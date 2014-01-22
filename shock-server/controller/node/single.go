@@ -58,7 +58,10 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			logger.Error("Err@node_Read:LoadNode:" + id + ":" + err.Error())
 
 			n, err = node.LoadFromDisk(id)
-			if err != nil {
+			if err.Error() == "Node does not exist" {
+				logger.Error(err.Error())
+				return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+			} else if err != nil {
 				err_msg := "Err@node_Read:LoadNodeFromDisk:" + id + ":" + err.Error()
 				logger.Error(err_msg)
 				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
