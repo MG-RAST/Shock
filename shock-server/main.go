@@ -173,13 +173,25 @@ func main() {
 	}
 
 	if procs <= avail {
-		fmt.Printf("Running Shock server with GOMAXPROCS = %d\n", procs)
+		fmt.Printf("Running Shock server with GOMAXPROCS = %d\n\n", procs)
 		runtime.GOMAXPROCS(procs)
 	} else {
 		fmt.Println("GOMAXPROCS config value is greater than available number of CPUs.")
-		fmt.Printf("Running Shock server with GOMAXPROCS = %d\n", avail)
+		fmt.Printf("Running Shock server with GOMAXPROCS = %d\n\n", avail)
 		runtime.GOMAXPROCS(avail)
 	}
+
+	f, err := os.Create(conf.Conf["pidfile"])
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	pid := os.Getpid()
+	fmt.Fprintln(f, pid)
+
+	fmt.Println("##### pidfile #####")
+	fmt.Printf("pid: %d saved to file: %s\n\n", pid, conf.Conf["pidfile"])
 
 	Address := conf.Conf["api-ip"] + ":" + conf.Conf["api-port"]
 	mapRoutes()
