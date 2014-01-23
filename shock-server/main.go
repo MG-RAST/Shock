@@ -181,17 +181,19 @@ func main() {
 		runtime.GOMAXPROCS(avail)
 	}
 
-	f, err := os.Create(conf.Conf["pidfile"])
-	if err != nil {
-		return
+	if conf.Conf["pidfile"] != "" {
+		f, err := os.Create(conf.Conf["pidfile"])
+		if err != nil {
+			return
+		}
+		defer f.Close()
+
+		pid := os.Getpid()
+		fmt.Fprintln(f, pid)
+
+		fmt.Println("##### pidfile #####")
+		fmt.Printf("pid: %d saved to file: %s\n\n", pid, conf.Conf["pidfile"])
 	}
-	defer f.Close()
-
-	pid := os.Getpid()
-	fmt.Fprintln(f, pid)
-
-	fmt.Println("##### pidfile #####")
-	fmt.Printf("pid: %d saved to file: %s\n\n", pid, conf.Conf["pidfile"])
 
 	Address := conf.Conf["api-ip"] + ":" + conf.Conf["api-port"]
 	mapRoutes()
