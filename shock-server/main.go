@@ -184,7 +184,8 @@ func main() {
 	if conf.Conf["pidfile"] != "" {
 		f, err := os.Create(conf.Conf["pidfile"])
 		if err != nil {
-			return
+			fmt.Fprintf(os.Stderr, "Could not create pid file: %s\n", conf.Conf["pidfile"])
+			os.Exit(1)
 		}
 		defer f.Close()
 
