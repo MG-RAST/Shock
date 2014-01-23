@@ -137,6 +137,7 @@ func main() {
 		if err := os.Mkdir(conf.Conf["data-path"]+"/temp", 0777); err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
 			logger.Error("ERROR: " + err.Error())
+			os.Exit(1)
 		}
 	}
 
@@ -147,6 +148,7 @@ func main() {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
 			logger.Error("ERROR: " + err.Error())
+			os.Exit(1)
 		}
 		fmt.Println("Done")
 	}
@@ -166,7 +168,10 @@ func main() {
 	fmt.Printf("Number of available CPUs = %d\n", avail)
 	if conf.Conf["GOMAXPROCS"] != "" {
 		if setting, err := strconv.Atoi(conf.Conf["GOMAXPROCS"]); err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: could not interpret configured GOMAXPROCS value as integer.")
+			err_msg := "ERROR: could not interpret configured GOMAXPROCS value as integer.\n"
+			fmt.Fprintf(os.Stderr, err_msg)
+			logger.Error("ERROR: " + err_msg)
+			os.Exit(1)
 		} else {
 			procs = setting
 		}
@@ -184,7 +189,10 @@ func main() {
 	if conf.Conf["pidfile"] != "" {
 		f, err := os.Create(conf.Conf["pidfile"])
 		if err != nil {
-			return
+			err_msg := "Could not create pid file: " + conf.Conf["pidfile"] + "\n"
+			fmt.Fprintf(os.Stderr, err_msg)
+			logger.Error("ERROR: " + err_msg)
+			os.Exit(1)
 		}
 		defer f.Close()
 
@@ -211,7 +219,10 @@ func main() {
 	listener, listenErr := net.Listen("tcp", Address)
 
 	if listenErr != nil {
-		fmt.Fprintf(os.Stderr, "Could not listen: %s\n", listenErr)
+		err_msg := "Could not listen - " + listenErr.Error() + "\n"
+		fmt.Fprintf(os.Stderr, err_msg)
+		logger.Error("ERROR: " + err_msg)
+		os.Exit(1)
 	}
 
 	go func() {
