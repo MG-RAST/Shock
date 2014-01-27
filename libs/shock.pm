@@ -131,7 +131,7 @@ sub request {
 	
 	my $my_url = $self->create_url($resource, (defined($query)?%$query:()));
 	
-	print "url: $my_url\n";
+	print "request: $method $my_url\n";
 	
 	
 	
@@ -285,6 +285,13 @@ sub download_to_path {
     }
 }
 
+
+sub pretty {
+	my ($self, $hash) = @_;
+	
+	return $self->json->pretty->encode ($hash);
+}
+
 sub _download_shockclient {
     my ($self, $node, $path) = @_;
     
@@ -385,11 +392,9 @@ sub upload_temporary_files {
 		if (defined($input_h->{'file'})) {
 			print "uploading temporary ".$input_h->{'file'}." to shock...\n";
 			$node_obj = $self->upload('file' => $input_h->{'file'}, 'attr' => $attr);
-			print "uploaded.\n";
 		} elsif (defined($input_h->{'data'})) {
 			print "uploading temporary data to shock...\n";
 			$node_obj = $self->upload('data' => $input_h->{'data'}, 'attr' => $attr);
-			print "uploaded.\n";
 		} else {
 			die "not data or file found";
 		}
@@ -397,17 +402,25 @@ sub upload_temporary_files {
 		unless (defined($node_obj)) {
 			die "could not upload to shock server";
 		}
+		
+		unless (defined($node_obj->{'data'})) {
+			die "no data field found";
+		}
+		
+		
 		my $node = $node_obj->{'data'}->{'id'};
 		unless (defined($node)) {
 			print Dumper($node_obj);
-			die;
+			die "no node id found";
 		}
 		
 		#print Dumper($node_obj)."\n";
 		#exit(0);
-		print "new node is $node\n";
+		print "new node id is $node\n";
 		$input_h->{'node'} = $node;
-		$input_h->{'shockhost'} = $self->shock_url();
+		unless (defined $input_h->{'shockhost'}) {
+			$input_h->{'shockhost'} = $self->shock_url(); # might have been set earlier if shock server url are different
+		}
 		
 	}
 	print "upload_temporary_files: all temporary files uploaded.\n";
