@@ -375,6 +375,7 @@ sub upload_temporary_files {
 	
 	#and upload job input to shock
 	foreach my $input (keys(%$job_input)) {
+		print "upload input object $input\n";
 		my $input_h = $job_input->{$input};
 		
 		
