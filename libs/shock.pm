@@ -78,6 +78,15 @@ sub _set_shockclient_auth {
 sub create_url {
 	my ($self, $resource, %query) = @_;
 	
+	
+	unless (defined $self->shock_url ) {
+		die "shock_url not defined";
+	}
+	
+	if ($self->shock_url eq '') {
+		die "shock_url string empty";
+	}
+	
 	my $my_url = $self->shock_url . "/$resource";
 	
 	#if (defined $self->token) {
@@ -154,6 +163,7 @@ sub request {
 		} elsif ($method eq 'DELETE') {
 			$response_object = $self->agent->delete(@method_args );
 		} elsif ($method eq 'POST') {
+			$self->agent->show_progress(1);
 			$response_object = $self->agent->post(@method_args );
 		} else {
 			die "not implemented yet";
