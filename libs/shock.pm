@@ -409,6 +409,8 @@ sub upload_temporary_files {
 		$input_h->{'shockhost'} = $self->shock_url();
 		
 	}
+	print "upload_temporary_files: all temporary files uploaded.\n";
+	
 	
 	return;
 }
