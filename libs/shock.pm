@@ -404,7 +404,7 @@ sub upload_temporary_files {
 		
 		#print Dumper($node_obj)."\n";
 		#exit(0);
-		
+		print "new node is $node\n";
 		$input_h->{'node'} = $node;
 		$input_h->{'shockhost'} = $self->shock_url();
 		
