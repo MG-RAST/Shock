@@ -7,8 +7,9 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/request"
+	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/util"
-	"github.com/MG-RAST/golib/goweb"
+	"github.com/stretchr/goweb/context"
 	"labix.org/v2/mgo/bson"
 	"net/http"
 	"strings"
@@ -17,17 +18,14 @@ import (
 // GET: /node
 // To do:
 // - Iterate node queries
-func (cr *Controller) ReadMany(cx *goweb.Context) {
-	// Log Request and check for Auth
-	request.Log(cx.Request)
-	u, err := request.Authenticate(cx.Request)
+func (cr *NodeController) ReadMany(ctx context.Context) error {
+	u, err := request.Authenticate(ctx.HttpRequest())
 	if err != nil && err.Error() != e.NoAuth {
-		request.AuthError(err, cx)
-		return
+		return request.AuthError(err, ctx)
 	}
 
 	// Gather query params
-	query := util.Q(cx.Request.URL.Query())
+	query := ctx.HttpRequest().URL.Query()
 
 	// Setup query and nodes objects
 	q := bson.M{}
@@ -43,30 +41,27 @@ func (cr *Controller) ReadMany(cx *goweb.Context) {
 			// select on only nodes with no read rights set
 			q["acl.read"] = []string{}
 		} else {
-			cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
-			return
+			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
 		}
 	}
 
 	// Gather params to make db query. Do not include the
 	// following list.
 	paramlist := map[string]int{"limit": 1, "offset": 1, "query": 1, "querynode": 1}
-	if query.Has("query") {
-		for key, val := range query.All() {
-			_, s := paramlist[key]
-			if !s {
-				q[fmt.Sprintf("attributes.%s", key)] = val[0]
+	if _, ok := query["query"]; ok {
+		for key := range query {
+			if _, found := paramlist[key]; !found {
+				q[fmt.Sprintf("attributes.%s", key)] = query.Get(key)
 			}
 		}
-	} else if query.Has("querynode") {
-		for key, val := range query.All() {
+	} else if _, ok := query["querynode"]; ok {
+		for key := range query {
 			if key == "type" {
-				querytypes := strings.Split(query.Value("type"), ",")
+				querytypes := strings.Split(query.Get(key), ",")
 				q["type"] = bson.M{"$all": querytypes}
 			} else {
-				_, s := paramlist[key]
-				if !s {
-					q[key] = val[0]
+				if _, found := paramlist[key]; !found {
+					q[key] = query.Get(key)
 				}
 			}
 		}
@@ -75,11 +70,11 @@ func (cr *Controller) ReadMany(cx *goweb.Context) {
 	// defaults
 	limit := 25
 	offset := 0
-	if query.Has("limit") {
-		limit = util.ToInt(query.Value("limit"))
+	if _, ok := query["limit"]; ok {
+		limit = util.ToInt(query.Get("limit"))
 	}
-	if query.Has("offset") {
-		offset = util.ToInt(query.Value("offset"))
+	if _, ok := query["offset"]; ok {
+		offset = util.ToInt(query.Get("offset"))
 	}
 
 	// Get nodes from db
@@ -87,9 +82,7 @@ func (cr *Controller) ReadMany(cx *goweb.Context) {
 	if err != nil {
 		err_msg := "err " + err.Error()
 		logger.Error(err_msg)
-		cx.RespondWithErrorMessage(err_msg, http.StatusBadRequest)
-		return
+		return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 	}
-	cx.RespondWithPaginatedData(nodes, limit, offset, count)
-	return
+	return responder.RespondWithPaginatedData(ctx, nodes, limit, offset, count)
 }

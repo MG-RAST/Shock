@@ -5,49 +5,43 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/request"
-	"github.com/MG-RAST/golib/goweb"
+	"github.com/MG-RAST/Shock/shock-server/responder"
+	"github.com/stretchr/goweb/context"
 	"net/http"
 )
 
 // DELETE: /node/{id}
-func (cr *Controller) Delete(id string, cx *goweb.Context) {
-	request.Log(cx.Request)
-	u, err := request.Authenticate(cx.Request)
+func (cr *NodeController) Delete(id string, ctx context.Context) error {
+	u, err := request.Authenticate(ctx.HttpRequest())
 	if err != nil && err.Error() != e.NoAuth {
-		request.AuthError(err, cx)
-		return
+		return request.AuthError(err, ctx)
 	}
+
 	if u == nil {
-		cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
-		return
+		return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
 	}
 
 	// Load node and handle user unauthorized
 	n, err := node.Load(id, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
-			cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
-			return
+			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 		} else if err.Error() == e.MongoDocNotFound {
-			cx.RespondWithNotFound()
-			return
+			return responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
 			err_msg := "Err@node_Read:Delete: " + err.Error()
 			logger.Error(err_msg)
-			cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
-			return
+			return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 		}
 	}
 
 	if err := n.Delete(); err == nil {
-		cx.RespondWithOK()
-		return
+		return responder.RespondOK(ctx)
 	} else {
 		err_msg := "Err@node_Delet:Delete: " + err.Error()
 		logger.Error(err_msg)
-		cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
+		return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 	}
-	return
 }

@@ -1,4 +1,3 @@
-// Package index implements /node/:id/index resource (UNFINISHED)
 package index
 
 import (
@@ -9,11 +8,12 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/request"
+	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
-	"github.com/MG-RAST/Shock/shock-server/util"
-	"github.com/MG-RAST/golib/goweb"
+	"github.com/stretchr/goweb/context"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 type getRes struct {
@@ -24,11 +24,13 @@ type getRes struct {
 type m map[string]string
 
 // GET, PUT, DELETE: /node/{nid}/index/{idxType}
-var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
-	request.Log(cx.Request)
-	u, err := request.Authenticate(cx.Request)
+func IndexTypedRequest(ctx context.Context) {
+	nid := ctx.PathValue("nid")
+	idxType := ctx.PathValue("idxType")
+
+	u, err := request.Authenticate(ctx.HttpRequest())
 	if err != nil && err.Error() != e.NoAuth {
-		request.AuthError(err, cx)
+		request.AuthError(err, ctx)
 		return
 	}
 
@@ -38,114 +40,185 @@ var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
 	}
 
 	// Load node and handle user unauthorized
-	id := cx.PathParams["nid"]
-	n, err := node.Load(id, u.Uuid)
+	n, err := node.Load(nid, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
-			cx.RespondWithErrorMessage(err.Error(), http.StatusUnauthorized)
+			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 			return
 		} else if err.Error() == e.MongoDocNotFound {
-			cx.RespondWithNotFound()
+			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found.")
 			return
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
 			err_msg := "Err@index:LoadNode: " + err.Error()
 			logger.Error(err_msg)
-			cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
+			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			return
 		}
 	}
 
-	idxType, hasType := cx.PathParams["type"]
-	query := util.Q(cx.Request.URL.Query())
-	switch cx.Request.Method {
+	switch ctx.HttpRequest().Method {
 	case "GET":
-		if hasType {
-			if v, has := n.Indexes[idxType]; has {
-				cx.RespondWithData(map[string]interface{}{idxType: v})
-			} else {
-				cx.RespondWithErrorMessage(fmt.Sprintf("Node %s does not have index of type %s.", n.Id, idxType), http.StatusBadRequest)
-			}
+		if v, has := n.Indexes[idxType]; has {
+			responder.RespondWithData(ctx, map[string]interface{}{idxType: v})
 		} else {
-			cx.RespondWithData(getRes{I: n.Indexes, A: filteredIndexes(n.Indexes)})
+			responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("Node %s does not have index of type %s.", n.Id, idxType))
 		}
 
 	case "PUT":
 		if !n.HasFile() {
-			cx.RespondWithErrorMessage("Node has no file", http.StatusBadRequest)
+			responder.RespondWithError(ctx, http.StatusBadRequest, "Node has no file.")
 			return
-		} else if !hasType {
-			cx.RespondWithErrorMessage("Index create requires type", http.StatusBadRequest)
+		} else if idxType == "" {
+			responder.RespondWithError(ctx, http.StatusBadRequest, "Index create requires type.")
 			return
 		}
-		if !contains(filteredIndexes(n.Indexes), idxType) {
-			cx.RespondWithErrorMessage(fmt.Sprintf("Index type %s unavailable", idxType), http.StatusBadRequest)
+		if _, ok := index.Indexers[idxType]; !ok && idxType != "bai" && idxType != "subset" && idxType != "column" {
+			responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("Index type %s unavailable.", idxType))
+			return
+		}
+		if idxType == "size" {
+			responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("Index type size is a virtual index and does not require index building."))
 			return
 		}
 
 		if conf.Bool(conf.Conf["perf-log"]) {
-			logger.Perf("START indexing: " + id)
+			logger.Perf("START indexing: " + nid)
 		}
 
-		if query.Value("index") == "bai" {
+		if idxType == "bai" {
 			//bam index is created by the command-line tool samtools
 			if ext := n.FileExt(); ext == ".bam" {
 				if err := index.CreateBamIndex(n.FilePath()); err != nil {
-					cx.RespondWithErrorMessage("Error while creating bam index", http.StatusBadRequest)
+					responder.RespondWithError(ctx, http.StatusBadRequest, "Error while creating bam index.")
 					return
 				}
-				cx.RespondWithOK()
+				responder.RespondOK(ctx)
 				return
 			} else {
-				cx.RespondWithErrorMessage("Index type bai requires .bam file", http.StatusBadRequest)
+				responder.RespondWithError(ctx, http.StatusBadRequest, "Index type bai requires .bam file.")
 				return
 			}
 		}
 
-		idxtype := query.Value("index")
-		if _, ok := index.Indexers[idxtype]; !ok {
-			cx.RespondWithErrorMessage("invalid index type", http.StatusBadRequest)
-			return
+		count := int64(0)
+		if idxType == "subset" {
+			// Utilizing the multipart form parser since we need to upload a file.
+			params, files, err := request.ParseMultipartForm(ctx.HttpRequest())
+			if err != nil {
+				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+				return
+			}
+
+			parentIndex, hasParent := params["parent_index"]
+			if !hasParent {
+				responder.RespondWithError(ctx, http.StatusBadRequest, "Index type subset requires parent_index param.")
+				return
+			} else if _, has := n.Indexes[parentIndex]; !has {
+				responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("Node %s does not have index of type %s.", n.Id, parentIndex))
+				return
+			}
+
+			newIndex, hasName := params["index_name"]
+			if !hasName {
+				responder.RespondWithError(ctx, http.StatusBadRequest, "Index type subset requires index_name param.")
+				return
+			} else if _, reservedName := index.Indexers[newIndex]; reservedName || newIndex == "bai" {
+				responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("%s is a reserved index name and cannot be used to create a custom subset index.", newIndex))
+				return
+			}
+
+			subsetIndices, hasFile := files["subset_indices"]
+			if !hasFile {
+				responder.RespondWithError(ctx, http.StatusBadRequest, "Index type subset requires subset_indices file.")
+				return
+			}
+
+			f, _ := os.Open(subsetIndices.Path)
+			defer f.Close()
+			idxer := index.NewSubsetIndexer(f)
+			count, err = index.CreateSubsetIndex(&idxer, n.IndexPath()+"/"+newIndex+".idx", n.IndexPath()+"/"+parentIndex+".idx")
+			if err != nil {
+				logger.Error("err " + err.Error())
+				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+				return
+			}
+
+		} else if idxType == "column" {
+			// Gather query params
+			query := ctx.HttpRequest().URL.Query()
+
+			if _, exists := query["number"]; !exists {
+				err_msg := "Index type column requires a number parameter in the url."
+				logger.Error(err_msg)
+				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				return
+			}
+
+			num_str := query.Get("number")
+			num, err := strconv.Atoi(num_str)
+			if err != nil || num < 1 {
+				err_msg := "Index type column requires a number parameter in the url of an integer greater than zero."
+				logger.Error(err_msg)
+				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				return
+			}
+
+			f, _ := os.Open(n.FilePath())
+			defer f.Close()
+			idxer := index.NewColumnIndexer(f)
+			count, err = index.CreateColumnIndex(&idxer, num, n.IndexPath()+"/"+idxType+".idx")
+			if err != nil {
+				logger.Error("err " + err.Error())
+				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+				return
+			}
+		} else {
+			newIndexer := index.Indexers[idxType]
+			f, _ := os.Open(n.FilePath())
+			defer f.Close()
+			idxer := newIndexer(f)
+			count, err = idxer.Create(n.IndexPath() + "/" + idxType + ".idx")
+			if err != nil {
+				logger.Error("err " + err.Error())
+				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+				return
+			}
 		}
 
-		newIndexer := index.Indexers[idxtype]
-		f, _ := os.Open(n.FilePath())
-		defer f.Close()
-		idxer := newIndexer(f)
-		count, err := idxer.Create()
-		if err != nil {
-			logger.Error("err " + err.Error())
-			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		if err := idxer.Dump(n.IndexPath() + "/" + query.Value("index") + ".idx"); err != nil {
-			logger.Error("err " + err.Error())
-			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
+		if count == 0 {
+			responder.RespondWithError(ctx, http.StatusBadRequest, "Index empty.")
 			return
 		}
 
 		idxInfo := node.IdxInfo{
-			Type:        query.Value("index"),
+			Type:        idxType,
 			TotalUnits:  count,
 			AvgUnitSize: n.File.Size / count,
 		}
 
-		if idxtype == "chunkrecord" {
-			idxInfo.AvgUnitSize = conf.CHUNK_SIZE
+		//if idxType == "chunkrecord" {
+		//	idxInfo.AvgUnitSize = conf.CHUNK_SIZE
+		//}
+
+		if idxType == "subset" {
+			idxInfo.AvgUnitSize = -1
 		}
 
-		if err := n.SetIndexInfo(query.Value("index"), idxInfo); err != nil {
+		if err := n.SetIndexInfo(idxType, idxInfo); err != nil {
 			logger.Error("err@node.SetIndexInfo: " + err.Error())
 		}
 
 		if conf.Bool(conf.Conf["perf-log"]) {
-			logger.Perf("END indexing: " + id)
+			logger.Perf("END indexing: " + nid)
 		}
 
+		responder.RespondOK(ctx)
+		return
+
 	default:
-		cx.RespondWithErrorMessage("This request type is not implemented", http.StatusNotImplemented)
+		responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
 	}
 	return
 }
@@ -157,15 +230,6 @@ func contains(list []string, s string) bool {
 		}
 	}
 	return false
-}
-
-func filteredIndexes(i node.Indexes) (indexes []string) {
-	for _, name := range availIndexers() {
-		if _, has := i[name]; !has {
-			indexes = append(indexes, name)
-		}
-	}
-	return indexes
 }
 
 func availIndexers() (indexers []string) {

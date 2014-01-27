@@ -37,7 +37,7 @@ To run:
 Routes Overview
 ---------------
     
-### API Routes (default port 7445):
+### API/Site Routes (default port 7445):
 
 #####OPTIONS
 
@@ -46,6 +46,9 @@ Routes Overview
 #####GET
 
 - [/](#get_slash)  resource listing
+- [/assets]() js, img, css, README.md
+- [/documentation.html]() this documentation
+
 - [/node](#get_nodes)  list nodes, query
 - [/node/{id}](#get_node)  view node, download file (full or partial)
 - [/node/{id}/acl]()  view node acls
@@ -65,14 +68,6 @@ Routes Overview
 #####DELETE
 
 - [/node/{id}]()  delete node
-
-### Site Routes (default port 7444):
-
-#####GET
-
-- [/]() this documentation and future site
-- [/raw]()    listing of data dir
-- [/assets]() js, img, css, README.md
 
 <br>
 
@@ -130,7 +125,7 @@ Data Types
 <br>
 ### Index:
 
-Currently there is support for two types of indices: virtual (for both size and record) and bam. 
+Currently available index types include: size (virtual, does not require index creation), line, chunkrecord and record (for sequence file types), and bai (bam index)
 
 ##### virtual index:
 
@@ -279,7 +274,7 @@ Description of resources available through this api
 	
 ##### returns
 
-    {"resources":["node", "user"],"url":"http://localhost:8000/","documentation":"http://localhost/","contact":"admin@host.com","id":"Shock","type":"Shock"}
+    {"resources":["node"],"url":"http://localhost:7445/","documentation":"http://localhost:7445/documentation.html","contact":"admin@host.com","id":"Shock","type":"Shock"}
 
 <a name="post_node"/>
 <br>
@@ -397,7 +392,7 @@ Modify node, create index
 <br>
 **Create index:**
 
- - currently available index types: size, record (for sequence file types), and bai (bam index)
+ - Currently available index types include: size (virtual, does not require index creation), line, chunkrecord and record (for sequence file types), and bai (bam index)
 
 ##### example	
 

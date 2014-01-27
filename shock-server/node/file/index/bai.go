@@ -13,11 +13,7 @@ func NewBaiIndexer(f *os.File) Indexer {
 	return &bai{}
 }
 
-func (i *bai) Create() (count int64, err error) {
-	return
-}
-
-func (i *bai) Dump(f string) (err error) {
+func (i *bai) Create(string) (count int64, err error) {
 	return
 }
 

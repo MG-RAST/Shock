@@ -13,16 +13,15 @@ type indexerFunc func(*os.File) Indexer
 
 var (
 	Indexers = map[string]indexerFunc{
+		"chunkrecord": NewChunkRecordIndexer,
 		"line":        NewLineIndexer,
 		"record":      NewRecordIndexer,
 		"size":        NewSizeIndexer,
-		"chunkrecord": NewChunkRecordIndexer,
 	}
 )
 
 type Indexer interface {
-	Dump(string) error
-	Create() (int64, error)
+	Create(string) (int64, error)
 	Close() error
 }
 
@@ -31,7 +30,6 @@ type Index interface {
 	Type() string
 	Append([]int64)
 	Part(string) (int64, int64, error)
-	Dump(string) error
 	Load(string) error
 }
 
@@ -81,19 +79,6 @@ func (i *Idx) Part(part string) (pos int64, length int64, err error) {
 		}
 		pos = i.Idx[(p - 1)][0]
 		length = i.Idx[(p - 1)][1]
-	}
-	return
-}
-
-func (i *Idx) Dump(file string) (err error) {
-	f, err := os.Create(file)
-	if err != nil {
-		return
-	}
-	defer f.Close()
-	for _, rec := range i.Idx {
-		binary.Write(f, binary.LittleEndian, rec[0])
-		binary.Write(f, binary.LittleEndian, rec[1])
 	}
 	return
 }

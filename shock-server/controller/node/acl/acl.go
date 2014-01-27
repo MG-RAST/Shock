@@ -8,9 +8,9 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/request"
+	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
-	"github.com/MG-RAST/Shock/shock-server/util"
-	"github.com/MG-RAST/golib/goweb"
+	"github.com/stretchr/goweb/context"
 	"net/http"
 	"strings"
 )
@@ -21,113 +21,114 @@ var (
 
 // GET, POST, PUT, DELETE: /node/{nid}/acl/
 // GET is the only action implemented here.
-var Controller goweb.ControllerFunc = func(cx *goweb.Context) {
-	request.Log(cx.Request)
-	u, err := request.Authenticate(cx.Request)
+func AclRequest(ctx context.Context) {
+	nid := ctx.PathValue("nid")
+
+	u, err := request.Authenticate(ctx.HttpRequest())
 	if err != nil && err.Error() != e.NoAuth {
-		request.AuthError(err, cx)
+		request.AuthError(err, ctx)
 		return
 	}
 
 	// acl require auth even for public data
 	if u == nil {
-		cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
+		responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
 		return
 	}
 
 	// Load node and handle user unauthorized
-	id := cx.PathParams["nid"]
-	n, err := node.Load(id, u.Uuid)
+	n, err := node.Load(nid, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
-			cx.RespondWithErrorMessage(err.Error(), http.StatusUnauthorized)
+			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 			return
 		} else if err.Error() == e.MongoDocNotFound {
-			cx.RespondWithNotFound()
+			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
 			return
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
 			err_msg := "Err@node_Read:LoadNode: " + err.Error()
 			logger.Error(err_msg)
-			cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
+			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			return
 		}
 	}
 
 	rights := n.Acl.Check(u.Uuid)
-	if cx.Request.Method == "GET" {
+	if ctx.HttpRequest().Method == "GET" {
 		if u.Uuid == n.Acl.Owner || rights["read"] {
-			cx.RespondWithData(n.Acl)
+			responder.RespondWithData(ctx, n.Acl)
 		} else {
-			cx.RespondWithErrorMessage(e.UnAuth, http.StatusUnauthorized)
+			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 			return
 		}
 	} else {
-		cx.RespondWithErrorMessage("This request type is not implemented.", http.StatusNotImplemented)
+		responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
 	}
 	return
 }
 
 // GET, POST, PUT, DELETE: /node/{nid}/acl/{type}
-var ControllerTyped goweb.ControllerFunc = func(cx *goweb.Context) {
-	request.Log(cx.Request)
-	u, err := request.Authenticate(cx.Request)
+func AclTypedRequest(ctx context.Context) {
+	nid := ctx.PathValue("nid")
+	rtype := ctx.PathValue("type")
+
+	u, err := request.Authenticate(ctx.HttpRequest())
 	if err != nil && err.Error() != e.NoAuth {
-		request.AuthError(err, cx)
+		request.AuthError(err, ctx)
 		return
 	}
 
 	// acl require auth even for public data
 	if u == nil {
-		cx.RespondWithErrorMessage(e.NoAuth, http.StatusUnauthorized)
+		responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
 		return
 	}
 
-	rtype := cx.PathParams["type"]
 	if !validAclTypes[rtype] {
-		cx.RespondWithErrorMessage("Invalid acl type", http.StatusBadRequest)
+		responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid acl type")
 		return
 	}
 
 	// Load node and handle user unauthorized
-	id := cx.PathParams["nid"]
-	n, err := node.Load(id, u.Uuid)
+	n, err := node.Load(nid, u.Uuid)
 	if err != nil {
 		if err.Error() == e.UnAuth {
-			cx.RespondWithErrorMessage(err.Error(), http.StatusUnauthorized)
+			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 			return
 		} else if err.Error() == e.MongoDocNotFound {
-			cx.RespondWithNotFound()
+			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
 			return
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
 			err_msg := "Err@node_Read:LoadNode: " + err.Error()
 			logger.Error(err_msg)
-			cx.RespondWithErrorMessage(err_msg, http.StatusInternalServerError)
+			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			return
 		}
 	}
 
 	rights := n.Acl.Check(u.Uuid)
-	if cx.Request.Method != "GET" {
-		ids, err := parseAclRequestTyped(cx)
+	requestMethod := ctx.HttpRequest().Method
+	if requestMethod != "GET" {
+		ids, err := parseAclRequestTyped(ctx)
 		if err != nil {
-			cx.RespondWithErrorMessage(err.Error(), http.StatusBadRequest)
+			responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
 			return
 		}
-		if (cx.Request.Method == "POST" || cx.Request.Method == "PUT") && (u.Uuid == n.Acl.Owner || rights["write"]) {
+		if (requestMethod == "POST" || requestMethod == "PUT") && (u.Uuid == n.Acl.Owner || rights["write"]) {
 			if rtype == "owner" {
 				if u.Uuid == n.Acl.Owner {
 					if len(ids) == 1 {
 						n.Acl.SetOwner(ids[0])
 					} else {
-						cx.RespondWithErrorMessage("Too many users. Nodes may have only one owner.", http.StatusBadRequest)
+						responder.RespondWithError(ctx, http.StatusBadRequest, "Too many users. Nodes may have only one owner.")
 						return
 					}
 				} else {
-					cx.RespondWithErrorMessage("Only owner can change ownership of Node.", http.StatusBadRequest)
+					responder.RespondWithError(ctx, http.StatusBadRequest, "Only owner can change ownership of Node.")
 					return
 				}
 			} else if rtype == "all" {
@@ -142,9 +143,9 @@ var ControllerTyped goweb.ControllerFunc = func(cx *goweb.Context) {
 				}
 			}
 			n.Save()
-		} else if cx.Request.Method == "DELETE" && (u.Uuid == n.Acl.Owner || rights["delete"]) {
+		} else if requestMethod == "DELETE" && (u.Uuid == n.Acl.Owner || rights["delete"]) {
 			if rtype == "owner" {
-				cx.RespondWithErrorMessage("Deleting ownership is not a supported request type.", http.StatusBadRequest)
+				responder.RespondWithError(ctx, http.StatusBadRequest, "Deleting ownership is not a supported request type.")
 				return
 			} else if rtype == "all" {
 				for _, atype := range []string{"read", "write", "delete"} {
@@ -159,7 +160,7 @@ var ControllerTyped goweb.ControllerFunc = func(cx *goweb.Context) {
 			}
 			n.Save()
 		} else {
-			cx.RespondWithErrorMessage(e.UnAuth, http.StatusUnauthorized)
+			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 			return
 		}
 	}
@@ -167,29 +168,29 @@ var ControllerTyped goweb.ControllerFunc = func(cx *goweb.Context) {
 	if u.Uuid == n.Acl.Owner || rights["read"] {
 		switch rtype {
 		case "read":
-			cx.RespondWithData(map[string][]string{"read": n.Acl.Read})
+			responder.RespondWithData(ctx, map[string][]string{"read": n.Acl.Read})
 		case "write":
-			cx.RespondWithData(map[string][]string{"write": n.Acl.Write})
+			responder.RespondWithData(ctx, map[string][]string{"write": n.Acl.Write})
 		case "delete":
-			cx.RespondWithData(map[string][]string{"delete": n.Acl.Delete})
+			responder.RespondWithData(ctx, map[string][]string{"delete": n.Acl.Delete})
 		case "owner":
-			cx.RespondWithData(map[string]string{"owner": n.Acl.Owner})
+			responder.RespondWithData(ctx, map[string]string{"owner": n.Acl.Owner})
 		case "all":
-			cx.RespondWithData(n.Acl)
+			responder.RespondWithData(ctx, n.Acl)
 		}
 	} else {
-		cx.RespondWithErrorMessage(e.UnAuth, http.StatusUnauthorized)
+		responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 		return
 	}
 	return
 }
 
-func parseAclRequestTyped(cx *goweb.Context) (ids []string, err error) {
+func parseAclRequestTyped(ctx context.Context) (ids []string, err error) {
 	var users []string
-	query := util.Q(cx.Request.URL.Query())
-	params, _, err := request.ParseMultipartForm(cx.Request)
-	if err != nil && err.Error() == "request Content-Type isn't multipart/form-data" && query.Has("users") {
-		users = strings.Split(query.Value("users"), ",")
+	query := ctx.HttpRequest().URL.Query()
+	params, _, err := request.ParseMultipartForm(ctx.HttpRequest())
+	if _, ok := query["users"]; ok && err != nil && err.Error() == "request Content-Type isn't multipart/form-data" {
+		users = strings.Split(query.Get("users"), ",")
 	} else if params["users"] != "" {
 		users = strings.Split(params["users"], ",")
 	} else {

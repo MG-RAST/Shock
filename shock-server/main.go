@@ -4,68 +4,117 @@ import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/auth"
 	"github.com/MG-RAST/Shock/shock-server/conf"
-	"github.com/MG-RAST/Shock/shock-server/controller"
+	ncon "github.com/MG-RAST/Shock/shock-server/controller/node"
+	acon "github.com/MG-RAST/Shock/shock-server/controller/node/acl"
+	icon "github.com/MG-RAST/Shock/shock-server/controller/node/index"
+	pcon "github.com/MG-RAST/Shock/shock-server/controller/preauth"
 	"github.com/MG-RAST/Shock/shock-server/db"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/preauth"
+	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
-	"github.com/MG-RAST/golib/goweb"
+	"github.com/MG-RAST/Shock/shock-server/util"
+	"github.com/stretchr/goweb"
+	"github.com/stretchr/goweb/context"
+	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"runtime"
 	"strconv"
-	"time"
 )
 
-func launchSite(control chan int) {
-	goweb.ConfigureDefaultFormatters()
-	r := &goweb.RouteManager{}
-	r.MapFunc("/raw", RawDir)
-	r.MapFunc("/assets", AssetsDir)
-	r.MapFunc("*", Site)
-	if conf.Bool(conf.Conf["ssl"]) {
-		err := goweb.ListenAndServeRoutesTLS(":"+conf.Conf["site-port"], conf.Conf["ssl-cert"], conf.Conf["ssl-key"], r)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: site: %v\n", err)
-			logger.Error("ERROR: site: " + err.Error())
-		}
-	} else {
-		err := goweb.ListenAndServeRoutes(":"+conf.Conf["site-port"], r)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: site: %v\n", err)
-			logger.Error("ERROR: site: " + err.Error())
-		}
-	}
-	control <- 1 //we are ending
+type resource struct {
+	R []string `json:"resources"`
+	U string   `json:"url"`
+	D string   `json:"documentation"`
+	C string   `json:"contact"`
+	I string   `json:"id"`
+	T string   `json:"type"`
 }
 
-func launchAPI(control chan int) {
-	c := controller.New()
-	goweb.ConfigureDefaultFormatters()
-	r := &goweb.RouteManager{}
-	r.MapFunc("/preauth/{id}", c.Preauth, goweb.GetMethod)
-	r.Map("/node/{nid}/acl/{type}", c.Acl["typed"])
-	r.Map("/node/{nid}/acl", c.Acl["base"])
-	r.Map("/node/{nid}/index/{type}", c.Index)
-	r.Map("/node/{nid}/index", c.Index)
-	r.MapRest("/node", c.Node)
-	r.MapFunc("*", ResourceDescription, goweb.GetMethod)
-	r.MapFunc("*", RespondOk, goweb.OptionsMethod)
-	if conf.Bool(conf.Conf["ssl"]) {
-		err := goweb.ListenAndServeRoutesTLS(":"+conf.Conf["api-port"], conf.Conf["ssl-cert"], conf.Conf["ssl-key"], r)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: api: %v\n", err)
-			logger.Error("ERROR: api: " + err.Error())
+func mapRoutes() {
+	goweb.MapBefore(func(ctx context.Context) error {
+		req := ctx.HttpRequest()
+		host, _, _ := net.SplitHostPort(req.RemoteAddr)
+		if host == "::1" {
+			host = "localhost"
 		}
-	} else {
-		err := goweb.ListenAndServeRoutes(":"+conf.Conf["api-port"], r)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: api: %v\n", err)
-			logger.Error("ERROR: api: " + err.Error())
+		suffix := ""
+		if _, ok := req.Header["Authorization"]; ok {
+			suffix += " AUTH"
 		}
-	}
-	control <- 1 //we are ending
+		if l, has := req.Header["Content-Length"]; has {
+			suffix += " Content-Length: " + l[0]
+		}
+		logger.Info("access", fmt.Sprintf("%s REQ RECEIVED \"%s %s%s\"", host, ctx.MethodString(), req.RequestURI, suffix))
+		return nil
+	})
+
+	goweb.MapAfter(func(ctx context.Context) error {
+		req := ctx.HttpRequest()
+		host, _, _ := net.SplitHostPort(req.RemoteAddr)
+		if host == "::1" {
+			host = "localhost"
+		}
+		suffix := ""
+		if _, ok := req.Header["Authorization"]; ok {
+			suffix += " AUTH"
+		}
+		if l, has := req.Header["Content-Length"]; has {
+			suffix += " Content-Length: " + l[0]
+		}
+		logger.Info("access", fmt.Sprintf("RESPONDED TO %s \"%s %s%s\"", host, ctx.MethodString(), req.RequestURI, suffix))
+		return nil
+	})
+
+	goweb.Map("/preauth/{id}", func(ctx context.Context) error {
+		pcon.PreAuthRequest(ctx)
+		return nil
+	})
+
+	goweb.Map("/node/{nid}/acl/{type}", func(ctx context.Context) error {
+		acon.AclTypedRequest(ctx)
+		return nil
+	})
+
+	goweb.Map("/node/{nid}/acl/", func(ctx context.Context) error {
+		acon.AclRequest(ctx)
+		return nil
+	})
+
+	goweb.Map("/node/{nid}/index/{idxType}", func(ctx context.Context) error {
+		icon.IndexTypedRequest(ctx)
+		return nil
+	})
+
+	goweb.Map("/", func(ctx context.Context) error {
+		host := util.ApiUrl(ctx)
+		r := resource{
+			R: []string{"node"},
+			U: host + "/",
+			D: host + "/documentation.html",
+			C: conf.Conf["admin-email"],
+			I: "Shock",
+			T: "Shock",
+		}
+		return responder.WriteResponseObject(ctx, http.StatusOK, r)
+	})
+
+	nodeController := new(ncon.NodeController)
+	goweb.MapController(nodeController)
+
+	goweb.MapStatic("/assets", conf.Conf["site-path"]+"/assets")
+	goweb.MapStaticFile("/documentation.html", conf.Conf["site-path"]+"/pages/main.html")
+
+	// Map the favicon
+	//goweb.MapStaticFile("/favicon.ico", "static-files/favicon.ico")
+
+	// Catch-all handler for everything that we don't understand
+	goweb.Map(func(ctx context.Context) error {
+		return responder.RespondWithError(ctx, http.StatusBadRequest, "Parameters do not match a valid Shock request type.")
+	})
 }
 
 func main() {
@@ -88,6 +137,7 @@ func main() {
 		if err := os.Mkdir(conf.Conf["data-path"]+"/temp", 0777); err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
 			logger.Error("ERROR: " + err.Error())
+			os.Exit(1)
 		}
 	}
 
@@ -98,6 +148,7 @@ func main() {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
 			logger.Error("ERROR: " + err.Error())
+			os.Exit(1)
 		}
 		fmt.Println("Done")
 	}
@@ -117,46 +168,72 @@ func main() {
 	fmt.Printf("Number of available CPUs = %d\n", avail)
 	if conf.Conf["GOMAXPROCS"] != "" {
 		if setting, err := strconv.Atoi(conf.Conf["GOMAXPROCS"]); err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: could not interpret configured GOMAXPROCS value as integer.")
+			err_msg := "ERROR: could not interpret configured GOMAXPROCS value as integer.\n"
+			fmt.Fprintf(os.Stderr, err_msg)
+			logger.Error("ERROR: " + err_msg)
+			os.Exit(1)
 		} else {
 			procs = setting
 		}
 	}
 
 	if procs <= avail {
-		fmt.Printf("Running Shock server with GOMAXPROCS = %d\n", procs)
+		fmt.Printf("Running Shock server with GOMAXPROCS = %d\n\n", procs)
 		runtime.GOMAXPROCS(procs)
 	} else {
 		fmt.Println("GOMAXPROCS config value is greater than available number of CPUs.")
-		fmt.Printf("Running Shock server with GOMAXPROCS = %d\n", avail)
+		fmt.Printf("Running Shock server with GOMAXPROCS = %d\n\n", avail)
 		runtime.GOMAXPROCS(avail)
 	}
 
-	//launch server
-	control := make(chan int)
-	go launchSite(control)
-	go launchAPI(control)
-
-	//checking to make sure that server has launched
-	connect := false
-	for i := 0; i < 10; i++ {
-		time.Sleep(100 * time.Millisecond)
-		_, err := http.Get("http://localhost:" + conf.Conf["api-port"])
-		if err == nil {
-			connect = true
-			break
+	if conf.Conf["pidfile"] != "" {
+		f, err := os.Create(conf.Conf["pidfile"])
+		if err != nil {
+			err_msg := "Could not create pid file: " + conf.Conf["pidfile"] + "\n"
+			fmt.Fprintf(os.Stderr, err_msg)
+			logger.Error("ERROR: " + err_msg)
+			os.Exit(1)
 		}
-		time.Sleep(100 * time.Millisecond)
+		defer f.Close()
+
+		pid := os.Getpid()
+		fmt.Fprintln(f, pid)
+
+		fmt.Println("##### pidfile #####")
+		fmt.Printf("pid: %d saved to file: %s\n\n", pid, conf.Conf["pidfile"])
 	}
 
-	//exiting if server could not be reached after 1 second
-	if connect != true {
-		fmt.Fprintln(os.Stderr, "ERROR: server could not be reached at "+"http://localhost:"+conf.Conf["api-port"])
-		fmt.Fprintln(os.Stderr, "Exiting!")
+	Address := conf.Conf["api-ip"] + ":" + conf.Conf["api-port"]
+	mapRoutes()
+
+	s := &http.Server{
+		Addr:           ":" + Address,
+		Handler:        goweb.DefaultHttpHandler(),
+		ReadTimeout:    0,
+		WriteTimeout:   0,
+		MaxHeaderBytes: 1 << 20,
+	}
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	listener, listenErr := net.Listen("tcp", Address)
+
+	if listenErr != nil {
+		err_msg := "Could not listen - " + listenErr.Error() + "\n"
+		fmt.Fprintf(os.Stderr, err_msg)
+		logger.Error("ERROR: " + err_msg)
 		os.Exit(1)
 	}
 
-	fmt.Println("\nReady to receive requests...")
+	go func() {
+		for _ = range c {
+			// sig is a ^C, handle it
 
-	<-control //block till something dies
+			// stop the HTTP server
+			fmt.Fprintln(os.Stderr, "Stopping the server...")
+			listener.Close()
+		}
+	}()
+
+	fmt.Fprintf(os.Stderr, "Error in Serve: %s\n", s.Serve(listener))
 }

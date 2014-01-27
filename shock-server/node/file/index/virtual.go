@@ -96,10 +96,6 @@ func (v *vIndex) Append(a []int64) {
 	return
 }
 
-func (v *vIndex) Dump(string) error {
-	return nil
-}
-
 func (v *vIndex) Load(string) error {
 	return nil
 }

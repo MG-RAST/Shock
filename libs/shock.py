@@ -89,27 +89,40 @@ class Client:
             raise Exception('Shock error: %d: %s'%(rj['status'], rj['error'][0]))
         return rj['data']
     
+    def download_to_string(self, node, index=None, part=None, chunk=None, binary=False):
+        result = self._get_node_download(node, index=index, part=part, chunk=chunk, stream=False)
+        if binary:
+            return result.content
+        else:
+            return result.text
+    
     def download_to_path(self, node, path, index=None, part=None, chunk=None):
-        if node == '' or path == '':
-            raise Exception(u'download_to_path requires non-empty node & path parameters')
+        if path == '':
+            raise Exception(u'download_to_path requires non-empty path parameter')
+        result = self._get_node_download(node, index=index, part=part, chunk=chunk, stream=True)
+        with open(path, 'wb') as f:
+            for chunk in result.iter_content(chunk_size=8192): 
+                if chunk:
+                    f.write(chunk)
+                    f.flush()
+        return path
+    
+    def _get_node_download(self, node, index=None, part=None, chunk=None, stream=False):
+        if node == '':
+            raise Exception(u'download requires non-empty node parameter')
         url = '%s/node/%s?download'%(self.shock_url, node)
         if index and part:
             url += '&index='+index+'&part='+str(part)
             if chunk:
                 url += '&chunk_size='+str(chunk)
         try:
-            rget = requests.get(url, headers=self.auth_header, allow_redirects=True, stream=True)
+            rget = requests.get(url, headers=self.auth_header, stream=stream)
         except Exception as ex:
             message = self.template.format(type(ex).__name__, ex.args)
             raise Exception(u'Unable to connect to Shock server %s\n%s' %(url, message))
         if not (rget.ok):
             raise Exception(u'Unable to connect to Shock server %s: %s' %(url, rget.raise_for_status()))
-        with open(path, 'wb') as f:
-            for chunk in rget.iter_content(chunk_size=8192): 
-                if chunk:
-                    f.write(chunk)
-                    f.flush()
-        return path
+        return rget
     
     def delete_node(self, node):
         url = self.shock_url+'/node/'+node

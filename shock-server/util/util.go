@@ -2,7 +2,7 @@ package util
 
 import (
 	"github.com/MG-RAST/Shock/shock-server/conf"
-	"github.com/MG-RAST/golib/goweb"
+	"github.com/stretchr/goweb/context"
 	"io"
 	"math/rand"
 	"os"
@@ -14,8 +14,8 @@ const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"
 
 // Arrays to check for valid param and file form names for node creation and updating, and also acl modification.
 // Note: indexing and querying do not use functions that use these arrays and thus we don't have to include those field names.
-var validParams = []string{"action", "all", "copy_data", "delete", "format", "ids", "linkage", "operation", "owner", "parts", "path", "read", "source", "tags", "type", "users", "write"}
-var validFiles = []string{"attributes", "upload"}
+var validParams = []string{"action", "all", "copy_data", "delete", "format", "ids", "index_name", "linkage", "operation", "owner", "parent_index", "parts", "path", "read", "source", "tags", "type", "users", "write"}
+var validFiles = []string{"attributes", "subset_indices", "upload"}
 
 type UrlResponse struct {
 	Url       string `json:"url"`
@@ -63,11 +63,11 @@ func ToInt(s string) (i int) {
 	return
 }
 
-func ApiUrl(cx *goweb.Context) string {
+func ApiUrl(ctx context.Context) string {
 	if conf.Conf["api-url"] != "" {
 		return conf.Conf["api-url"]
 	}
-	return "http://" + cx.Request.Host
+	return "http://" + ctx.HttpRequest().Host
 }
 
 func StringInSlice(a string, list []string) bool {

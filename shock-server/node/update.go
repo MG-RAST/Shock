@@ -165,7 +165,24 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 				return errors.New("invalid file parameter")
 			}
 		}
+	} else if node.HasFile() {
+		// if node has a file and user is trying to perform parts upload, return error that file is immutable.
+		for key, _ := range files {
+			if _, errf := strconv.Atoi(key); errf == nil {
+				LockMgr.UnlockPartOp()
+				return errors.New(e.FileImut)
+			}
+		}
+	} else if parts_count == -1 {
+		// if node is not variable length and user is trying to perform parts upload, return error that node is not variable
+		for key, _ := range files {
+			if _, errf := strconv.Atoi(key); errf == nil {
+				LockMgr.UnlockPartOp()
+				return errors.New("This is not a variable length node and thus does not support uploading in parts.")
+			}
+		}
 	}
+
 	LockMgr.UnlockPartOp()
 
 	// update relatives
