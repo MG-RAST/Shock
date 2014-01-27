@@ -8,6 +8,7 @@ use File::Basename;
 use Data::Dumper;
 use JSON;
 use LWP::UserAgent;
+use URI::Escape;
 
 1;
 
@@ -74,41 +75,160 @@ sub _set_shockclient_auth {
     }
 }
 
-
-sub query { # https://github.com/MG-RAST/Shock#get_nodes
+sub create_url {
+	my ($self, $resource, %query) = @_;
+	
+	my $my_url = $self->shock_url . "/$resource";
+	
+	#if (defined $self->token) {
+	#	$query{'auth'}=$self->token;
+	#}
+	
+	#build query string:
+	my $query_string = "";
+	
+	foreach my $key (keys %query) {
+		my $value = $query{$key};
 		
-	my ($self, %h) = @_;
-	
-	my $url = $self->shock_url.'/node?query';
-	
-	my @pairs = %h;
-	if (@pairs > 0) {
-		for (my $i = 0 ; $i < @pairs ; $i+=2) {
-			$url .= '&'.$pairs[$i].'='.$pairs[$i+1];
+		unless (defined $value) {
+			$query_string .= $key;
+			next;
+		}
+		
+		my @values=();
+		if (ref($value) eq 'ARRAY') {
+			@values=@$value;
+		} else {
+			@values=($value);
+		}
+		
+		foreach my $value (@values) {
+			if ((length($query_string) != 0)) {
+				$query_string .= '&';
+			}
+			$query_string .= $key.'='.$value;
 		}
 	}
+	
+	
+	if (length($query_string) != 0) {
+		
+		#print "url: ".$my_url.'?'.$query_string."\n";
+		$my_url .= '?'.$query_string;#uri_escape()
+	}
+	
+	
+	
+	
+	return $my_url;
+}
 
-	#print "url: $url\n";
+
+sub request {
+	#print 'request: '.join(',',@_)."\n";
+	my ($self, $method, $resource, $query, $headers) = @_;
 	
-	my $response = undef;
 	
-	eval {
-		my	$res = $self->agent->get($url, ($self->token)?('Authorization' , "OAuth ".$self->token):() );
-		$response = $self->json->decode( $res->content );
-	};
-	#print Dumper($res);
+	my $my_url = $self->create_url($resource, (defined($query)?%$query:()));
 	
-	if ($@ || (! ref($response))) {
+	print "url: $my_url\n";
+	
+	
+	
+	my @method_args = ($my_url, ($self->token)?('Authorization' , "OAuth ".$self->token):());
+	
+	if (defined $headers) {
+		push(@method_args, %$headers);
+	}
+	
+	#print 'method_args: '.join(',', @method_args)."\n";
+	
+	my $response_content = undef;
+    
+    eval {
+		
+        my $response_object = undef;
+		
+        if ($method eq 'GET') {
+			$response_object = $self->agent->get(@method_args );
+		} elsif ($method eq 'DELETE') {
+			$response_object = $self->agent->delete(@method_args );
+		} elsif ($method eq 'POST') {
+			$response_object = $self->agent->post(@method_args );
+		} else {
+			die "not implemented yet";
+		}
+
+		
+		$response_content = $self->json->decode( $response_object->content );
+        
+    };
+    
+	if ($@ || (! ref($response_content))) {
         print STDERR "[error] unable to connect to Shock ".$self->shock_url."\n";
         return undef;
-    } elsif (exists($response->{error}) && $response->{error}) {
-        print STDERR "[error] unable to query Shock: ".$response->{error}[0]."\n";
+    } elsif (exists($response_content->{error}) && $response_content->{error}) {
+        print STDERR "[error] unable to send $method request to Shock: ".$response_content->{error}[0]."\n";
+		return undef;
     } else {
-        return $response;
+        return $response_content;
     }
 	
 }
 
+
+sub get {
+	#print 'get: '.join(',',@_)."\n";
+	my ($self, $resource, $query, $headers) = @_;
+	
+	return $self->request('GET',  $resource, $query, $headers);
+}
+
+sub delete {
+	my ($self, $resource, $query, $headers) = @_;
+	
+	return $self->request('DELETE', $resource, $query, $headers);
+}
+
+sub post {
+	#print 'get: '.join(',',@_)."\n";
+	my ($self, $resource, $query, $headers) = @_;
+	
+	return $self->request('POST', $resource, $query, $headers);
+}
+
+sub delete_node {
+    my ($self, $node) = @_;
+    
+	return $self->delete('node/'.$node);
+}
+
+
+sub query { # https://github.com/MG-RAST/Shock#get_nodes
+		
+	my ($self, %query) = @_;
+	
+	$query{'query'} = undef;
+	
+	my $response = $self->get('node', \%query);
+	#print Dumper ($response);
+	unless (defined $response->{'total_count'}) {
+		die;
+	}
+	
+	if ($response->{'total_count'} > 25) {
+		# get all nodes
+		$query{'limit'} = $response->{'total_count'};
+		$response = $self->get('node', \%query);
+	}
+	
+	
+	return $response;
+	
+}
+
+
+#get('/node/'.$node, %h);
 sub get_node {
     my ($self, $node) = @_;
     
@@ -117,26 +237,8 @@ sub get_node {
         return undef;
     }
     
-    my $content = undef;    
-    eval {
-        my $get = undef;
-        if ($self->token) {
-            $get = $self->agent->get($self->shock_url.'/node/'.$node, 'Authorization' => "OAuth ".$self->token);
-        } else {
-            $get = $self->agent->get($self->shock_url.'/node/'.$node);
-        }
-        $content = $self->json->decode($get->content);
-    };
-    
-    if ($@ || (! ref($content))) {
-        print STDERR "[error] unable to connect to Shock ".$self->shock_url."\n";
-        return undef;
-    } elsif (exists($content->{error}) && $content->{error}) {
-        print STDERR "[error] unable to GET node $node from Shock: ".$content->{error}[0]."\n";
-        return undef;
-    } else {
-        return $content->{data};
-    }
+	return $self->get('/node/'.$node);
+	
 }
 
 sub download_to_path {
@@ -209,10 +311,10 @@ sub create_node {
 sub upload {
     my ($self, %hash) = @_;
 	
-    my $response = undef;
+    #my $response = undef;
     my $content = {};
-    my $url = $self->shock_url.'/node';
-    my $method = 'POST';
+    #my $url = $self->shock_url.'/node';
+    #my $method = 'POST';
     #if ($hash{'node'}) {
     #    $url = $url.'/'.$hash{'node'};
     #    $method = 'PUT';
@@ -236,25 +338,29 @@ sub upload {
     }
     
     $HTTP::Request::Common::DYNAMIC_FILE_UPLOAD = 1;
-    eval {
-        my $res = undef;
-		my @auth = ($self->token)?('Authorization' , "OAuth ".$self->token):();
-		
-        if ($method eq 'POST') {
-			$res = $self->agent->post($url, Content_Type => 'multipart/form-data', @auth, Content => $content);
-		} else {
-			$res = $self->agent->put($url, Content_Type => 'multipart/form-data', @auth, Content => $content);
-        }
-        $response = $self->json->decode( $res->content );
-    };
-    if ($@ || (! ref($response))) {
-        print STDERR "[error] unable to connect to Shock ".$self->shock_url."\n";
-        return undef;
-    } elsif (exists($response->{error}) && $response->{error}) {
-        print STDERR "[error] unable to $method data to Shock: ".$response->{error}[0]."\n";
-    } else {
-        return $response->{data};
-    }
+	
+	return $self->post('node', undef, {Content_Type => 'multipart/form-data', Content => $content});
+	
+#	
+#    eval {
+#        my $res = undef;
+#		my @auth = ($self->token)?('Authorization' , "OAuth ".$self->token):();
+#		
+#        if ($method eq 'POST') {
+#			$res = $self->agent->post($url, Content_Type => 'multipart/form-data', @auth, Content => $content);
+#		} else {
+#			$res = $self->agent->put($url, Content_Type => 'multipart/form-data', @auth, Content => $content);
+#        }
+#        $response = $self->json->decode( $res->content );
+#    };
+#    if ($@ || (! ref($response))) {
+#        print STDERR "[error] unable to connect to Shock ".$self->shock_url."\n";
+#        return undef;
+#    } elsif (exists($response->{error}) && $response->{error}) {
+#        print STDERR "[error] unable to $method data to Shock: ".$response->{error}[0]."\n";
+#    } else {
+#        return $response->{data};
+#    }
 }
 
 
@@ -274,13 +380,15 @@ sub upload_temporary_files {
 		
 		my $attr = '{"temporary" : "1"}'; # I can find them later and delete them! ;-)
 		
-		my $node_obj;
+		my $node_obj=undef;
 		if (defined($input_h->{'file'})) {
-			print "uploading ".$input_h->{'file'}." to shock...\n";
+			print "uploading temporary ".$input_h->{'file'}." to shock...\n";
 			$node_obj = $self->upload('file' => $input_h->{'file'}, 'attr' => $attr);
+			print "uploaded.\n";
 		} elsif (defined($input_h->{'data'})) {
-			print "uploading data to shock...\n";
+			print "uploading temporary data to shock...\n";
 			$node_obj = $self->upload('data' => $input_h->{'data'}, 'attr' => $attr);
+			print "uploaded.\n";
 		} else {
 			die "not data or file found";
 		}
@@ -288,8 +396,9 @@ sub upload_temporary_files {
 		unless (defined($node_obj)) {
 			die "could not upload to shock server";
 		}
-		my $node = $node_obj->{'id'};
+		my $node = $node_obj->{'data'}->{'id'};
 		unless (defined($node)) {
+			print Dumper($node_obj);
 			die;
 		}
 		
@@ -339,26 +448,8 @@ sub _get_handle {
 	return [undef, "n/a", Content => $item];
 }
 
-sub delete {
-    my ($self, $node) = @_;
-    
-	my $url = $self->shock_url.'/node/'.$node;
-	my $response = undef;
-	
-	eval {
-		my	$res = $self->agent->delete($url, ($self->token)?('Authorization' , "OAuth ".$self->token):() );
-		$response = $self->json->decode( $res->content );
-	};
-	#print Dumper($res);
-	
-	if ($@ || (! ref($response))) {
-        print STDERR "[error] unable to connect to Shock ".$self->shock_url."\n";
-        return undef;
-    } elsif (exists($response->{error}) && $response->{error}) {
-        print STDERR "[error] unable to delete data from Shock: ".$response->{error}[0]."\n";
-    } else {
-        return $response;
-    }
 
-}
+
+
+
 
