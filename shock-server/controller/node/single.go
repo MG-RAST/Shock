@@ -70,8 +70,10 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 	}
 
 	// Switch though param flags
-	// ?download=1
-	if _, ok := query["download"]; ok {
+	// ?download=1 or ?download_raw=1
+
+	_, download_raw := query["download_raw"]
+	if _, ok := query["download"]; ok || download_raw {
 		if !n.HasFile() {
 			return responder.RespondWithError(ctx, http.StatusBadRequest, "Node has no file")
 		}
@@ -144,12 +146,22 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				s.R = append(s.R, io.NewSectionReader(r, pos, length))
 			}
 			s.Size = size
-			err = s.Stream()
-			if err != nil {
-				// causes "multiple response.WriteHeader calls" error but better than no response
-				err_msg := "err:@node_Read s.stream: " + err.Error()
-				logger.Error(err_msg)
-				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+			if download_raw {
+				err = s.StreamRaw()
+				if err != nil {
+					// causes "multiple response.WriteHeader calls" error but better than no response
+					err_msg := "err:@node_Read s.StreamRaw: " + err.Error()
+					logger.Error(err_msg)
+					responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				}
+			} else {
+				err = s.Stream()
+				if err != nil {
+					// causes "multiple response.WriteHeader calls" error but better than no response
+					err_msg := "err:@node_Read s.Stream: " + err.Error()
+					logger.Error(err_msg)
+					responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				}
 			}
 		} else {
 			nf, err := n.FileReader()
@@ -162,12 +174,22 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 			}
 			s := &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc}
-			err = s.Stream()
-			if err != nil {
-				// causes "multiple response.WriteHeader calls" error but better than no response
-				err_msg := "err:@node_Read: s.stream: " + err.Error()
-				logger.Error(err_msg)
-				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+			if download_raw {
+				err = s.StreamRaw()
+				if err != nil {
+					// causes "multiple response.WriteHeader calls" error but better than no response
+					err_msg := "err:@node_Read s.StreamRaw: " + err.Error()
+					logger.Error(err_msg)
+					responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				}
+			} else {
+				err = s.Stream()
+				if err != nil {
+					// causes "multiple response.WriteHeader calls" error but better than no response
+					err_msg := "err:@node_Read s.Stream: " + err.Error()
+					logger.Error(err_msg)
+					responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				}
 			}
 		}
 	} else if _, ok := query["download_url"]; ok {
