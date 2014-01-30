@@ -1,3 +1,10 @@
+[Address]
+# IP and port for api
+# Note: use of port 80 may require root access
+# 0.0.0.0 will bind Shock to all IP's
+api-ip=0.0.0.0
+api-port=7445
+
 [Admin]
 email=admin@host.com
 
@@ -10,31 +17,16 @@ create-user=false
 
 [Auth]
 # defaults to local user management with basis auth
-basic_auth=true
+basic=true
 # comment line above and uncomment below to use Globus Online as auth provider
 #globus_token_url=https://nexus.api.globusonline.org/goauth/token?grant_type=client_credentials
 #globus_profile_url=https://nexus.api.globusonline.org/users
-
-[Directories]
-# See documentation for details of deploying Shock
-site=/usr/local/shock/site
-data=/usr/local/shock
-logs=/var/log/shock
-
-# Comma delimited search path available for remote path uploads. Only remote paths that prefix 
-# match one of the following will be allowed. Note: poor choices can result in security concerns.
-local_paths=N/A
 
 [External]
 site-url=http://localhost
 
 [Log]
 perf_log=false
-
-[SSL]
-enable=false
-#key=<path_to_key_file>
-#cert=<path_to_cert_file>
 
 [Mongodb]
 # Mongodb configuration
@@ -49,13 +41,18 @@ password=
 # key=unique:true/false[,dropDups:true/false][,sparse:true/false]
 id=unique:true
 
-[Address]
-# IP and port for api
-# Note: use of port 80 may require root access
-# 0.0.0.0 will bind Shock to all IP's
-api-ip=0.0.0.0
-api-port=7445
+[Paths]
+# See documentation for details of deploying Shock
+site=/usr/local/shock/site
+data=/usr/local/shock
+logs=/var/log/shock
+local_paths=
+pidfile=
 
 [Runtime]
 GOMAXPROCS=
-pidfile=
+
+[SSL]
+enable=false
+#key=<path_to_key_file>
+#cert=<path_to_cert_file>
