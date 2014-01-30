@@ -23,7 +23,7 @@ basic=true
 #globus_profile_url=https://nexus.api.globusonline.org/users
 
 [External]
-site-url=http://localhost
+api-url=http://localhost
 
 [Log]
 perf_log=false
