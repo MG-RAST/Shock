@@ -152,7 +152,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					// causes "multiple response.WriteHeader calls" error but better than no response
 					err_msg := "err:@node_Read s.StreamRaw: " + err.Error()
 					logger.Error(err_msg)
-					responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				}
 			} else {
 				err = s.Stream()
@@ -160,7 +160,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					// causes "multiple response.WriteHeader calls" error but better than no response
 					err_msg := "err:@node_Read s.Stream: " + err.Error()
 					logger.Error(err_msg)
-					responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				}
 			}
 		} else {
@@ -180,7 +180,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					// causes "multiple response.WriteHeader calls" error but better than no response
 					err_msg := "err:@node_Read s.StreamRaw: " + err.Error()
 					logger.Error(err_msg)
-					responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				}
 			} else {
 				err = s.Stream()
@@ -188,7 +188,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					// causes "multiple response.WriteHeader calls" error but better than no response
 					err_msg := "err:@node_Read s.Stream: " + err.Error()
 					logger.Error(err_msg)
-					responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				}
 			}
 		}
@@ -205,14 +205,14 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			if p, err := preauth.New(util.RandString(20), "download", n.Id, options); err != nil {
 				err_msg := "err:@node_Read download_url: " + err.Error()
 				logger.Error(err_msg)
-				responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			} else {
-				responder.RespondWithData(ctx, util.UrlResponse{Url: util.ApiUrl(ctx) + "/preauth/" + p.Id, ValidTill: p.ValidTill.Format(time.ANSIC)})
+				return responder.RespondWithData(ctx, util.UrlResponse{Url: util.ApiUrl(ctx) + "/preauth/" + p.Id, ValidTill: p.ValidTill.Format(time.ANSIC)})
 			}
 		}
 	} else {
 		// Base case respond with node in json
-		responder.RespondWithData(ctx, n)
+		return responder.RespondWithData(ctx, n)
 	}
 	return nil
 }

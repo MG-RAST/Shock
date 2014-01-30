@@ -60,4 +60,5 @@ func streamDownload(ctx context.Context, n *node.Node, filename string) {
 		logger.Error(err_msg)
 		responder.RespondWithError(ctx, 500, err_msg)
 	}
+	return
 }
