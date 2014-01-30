@@ -73,17 +73,16 @@ func Initialize() {
 
 	// Admin
 	Conf["admin-email"], _ = c.String("Admin", "email")
-	Conf["admin-secret"], _ = c.String("Admin", "secretkey")
 
-	// Directories
-	Conf["site-path"], _ = c.String("Directories", "site")
-	Conf["data-path"], _ = c.String("Directories", "data")
-	Conf["logs-path"], _ = c.String("Directories", "logs")
-	Conf["local-paths"], _ = c.String("Directories", "local_paths")
+	// Paths
+	Conf["site-path"], _ = c.String("Paths", "site")
+	Conf["data-path"], _ = c.String("Paths", "data")
+	Conf["logs-path"], _ = c.String("Paths", "logs")
+	Conf["local-paths"], _ = c.String("Paths", "local_paths")
+	Conf["pidfile"], _ = c.String("Paths", "pidfile")
 
 	// Runtime
 	Conf["GOMAXPROCS"], _ = c.String("Runtime", "GOMAXPROCS")
-	Conf["pidfile"], _ = c.String("Runtime", "pidfile")
 
 	// Mongodb
 	Conf["mongodb-hosts"], _ = c.String("Mongodb", "hosts")
@@ -136,7 +135,6 @@ func Bool(s string) bool {
 
 // Print prints the configuration loads to stdout
 func Print() {
-	fmt.Printf("##### Admin #####\nemail:\t%s\nsecretkey:\t%s\n\n", Conf["admin-email"], Conf["admin-secret"])
 	fmt.Printf("####### Anonymous ######\nread:\t%s\nwrite:\t%s\ncreate-user:\t%s\n\n", Conf["anon-read"], Conf["anon-write"], Conf["anon-user"])
 	if Conf["auth-type"] == "basic" {
 		fmt.Printf("##### Auth #####\ntype:\tbasic\n\n")
