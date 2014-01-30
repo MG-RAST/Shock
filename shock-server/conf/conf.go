@@ -50,7 +50,6 @@ func Initialize() {
 	Conf["api-port"], _ = c.String("Address", "api-port")
 
 	// URLs
-	Conf["site-url"], _ = c.String("External", "site-url")
 	Conf["api-url"], _ = c.String("External", "api-url")
 
 	// SSL
