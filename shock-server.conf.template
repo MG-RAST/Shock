@@ -28,6 +28,9 @@ local_paths=N/A
 [External]
 site-url=http://localhost
 
+[Log]
+perf_log=false
+
 [SSL]
 enable=false
 #key=<path_to_key_file>

@@ -10,20 +10,17 @@ import (
 type NodeController struct{}
 
 // Options: /node
-func (cr *NodeController) Options(ctx context.Context) {
-	responder.RespondOK(ctx)
-	return
+func (cr *NodeController) Options(ctx context.Context) error {
+	return responder.RespondOK(ctx)
 }
 
 // Will not implement
 // PUT: /node
-func (cr *NodeController) UpdateMany(ctx context.Context) {
-	responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
-	return
+func (cr *NodeController) UpdateMany(ctx context.Context) error {
+	return responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
 }
 
 // DELETE: /node
-func (cr *NodeController) DeleteMany(ctx context.Context) {
-	responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
-	return
+func (cr *NodeController) DeleteMany(ctx context.Context) error {
+	return responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
 }
