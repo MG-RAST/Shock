@@ -406,7 +406,7 @@ sub upload_temporary_files {
 			print "uploading temporary data to shock...\n";
 			$node_obj = $self->upload('data' => $input_h->{'data'}, 'attr' => $attr);
 		} else {
-			die "not data or file found";
+			die "not data or file found for input \"$input\"";
 		}
 		
 		unless (defined($node_obj)) {
