@@ -33,7 +33,6 @@ perf_log=false
 # Hostnames and ports hosts=host1[,host2:port,...,hostN]
 hosts=localhost
 database=ShockDB
-timeout=
 user=
 password=
 

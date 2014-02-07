@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	DbTimeout = time.Duration(time.Second * conf.Conf["mongodb-timeout"])
+	DbTimeout = time.Duration(time.Second * 1200)
 )
 
 var (
