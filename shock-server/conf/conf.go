@@ -91,6 +91,7 @@ func Initialize() {
 	}
 	Conf["mongodb-user"], _ = c.String("Mongodb", "user")
 	Conf["mongodb-password"], _ = c.String("Mongodb", "password")
+	Conf["mongodb-timeout"], _ = c.String("Mongodb", "timeout")
 
 	// parse Node-Indices
 	NODE_IDXS = map[string]idxOpts{}
@@ -140,7 +141,7 @@ func Print() {
 	} else if Conf["auth-type"] == "globus" {
 		fmt.Printf("##### Auth #####\ntype:\tglobus\ntoken_url:\t%s\nprofile_url:\t%s\n\n", Conf["globus_token_url"], Conf["globus_profile_url"])
 	}
-	fmt.Printf("##### Directories #####\nsite:\t%s\ndata:\t%s\nlogs:\t%s\nlocal_paths:\t%s\n\n", Conf["site-path"], Conf["data-path"], Conf["logs-path"], Conf["local-paths"])
+	fmt.Printf("##### Paths #####\nsite:\t%s\ndata:\t%s\nlogs:\t%s\nlocal_paths:\t%s\n\n", Conf["site-path"], Conf["data-path"], Conf["logs-path"], Conf["local-paths"])
 	if Bool(Conf["ssl"]) {
 		fmt.Printf("##### SSL #####\nenabled:\t%s\nkey:\t%s\ncert:\t%s\n\n", Conf["ssl"], Conf["ssl-key"], Conf["ssl-cert"])
 	} else {
