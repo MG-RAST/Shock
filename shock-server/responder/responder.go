@@ -73,4 +73,5 @@ func addResponseHeaders(ctx context.Context) {
 	ctx.HttpResponseWriter().Header().Set("Access-Control-Allow-Headers", "Authorization")
 	ctx.HttpResponseWriter().Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS")
 	ctx.HttpResponseWriter().Header().Set("Access-Control-Allow-Origin", "*")
+	ctx.HttpResponseWriter().Header().Set("Content-Type", "application/json")
 }
