@@ -1,6 +1,7 @@
 package responder
 
 import (
+	"github.com/stretchr/codecs/services"
 	"github.com/stretchr/goweb"
 	"github.com/stretchr/goweb/context"
 	"net/http"
@@ -29,11 +30,13 @@ func RespondOK(ctx context.Context) error {
 	response.S = http.StatusOK
 	response.D = nil
 	response.E = nil
+	goweb.API.SetCodecService(getJsonCodec())
 	return goweb.API.WriteResponseObject(ctx, http.StatusOK, response)
 }
 
 func WriteResponseObject(ctx context.Context, status int, responseObject interface{}) error {
 	addResponseHeaders(ctx)
+	goweb.API.SetCodecService(getJsonCodec())
 	return goweb.API.WriteResponseObject(ctx, status, responseObject)
 }
 
@@ -43,6 +46,7 @@ func RespondWithData(ctx context.Context, data interface{}) error {
 	response.S = http.StatusOK
 	response.D = data
 	response.E = nil
+	goweb.API.SetCodecService(getJsonCodec())
 	return goweb.API.WriteResponseObject(ctx, http.StatusOK, response)
 }
 
@@ -52,6 +56,7 @@ func RespondWithError(ctx context.Context, status int, err string) error {
 	response.S = status
 	response.D = nil
 	response.E = append(response.E, err)
+	goweb.API.SetCodecService(getJsonCodec())
 	return goweb.API.WriteResponseObject(ctx, http.StatusOK, response)
 }
 
@@ -64,7 +69,7 @@ func RespondWithPaginatedData(ctx context.Context, data interface{}, limit, offs
 	response.Limit = limit
 	response.Offset = offset
 	response.Count = count
-
+	goweb.API.SetCodecService(getJsonCodec())
 	return goweb.API.WriteResponseObject(ctx, http.StatusOK, response)
 }
 
@@ -73,5 +78,12 @@ func addResponseHeaders(ctx context.Context) {
 	ctx.HttpResponseWriter().Header().Set("Access-Control-Allow-Headers", "Authorization")
 	ctx.HttpResponseWriter().Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS")
 	ctx.HttpResponseWriter().Header().Set("Access-Control-Allow-Origin", "*")
-	ctx.HttpResponseWriter().Header().Set("Content-Type", "application/json")
+}
+
+func getJsonCodec() services.CodecService {
+	codecService := services.NewWebCodecService()
+	myCodecService := new(services.WebCodecService)
+	codec, _ := codecService.GetCodec("application/json")
+	myCodecService.AddCodec(codec)
+	return myCodecService
 }
