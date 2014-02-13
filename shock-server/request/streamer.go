@@ -6,7 +6,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/node/filter"
-	"github.com/stretchr/goweb/context"
+	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"io"
 	"net/http"
 	"os/exec"

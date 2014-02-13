@@ -2,7 +2,7 @@
 package acl
 
 import (
-	"code.google.com/p/go-uuid/uuid"
+	"github.com/MG-RAST/golib/go-uuid/uuid/"
 	"errors"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
@@ -10,7 +10,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
-	"github.com/stretchr/goweb/context"
+	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"net/http"
 	"strings"
 )

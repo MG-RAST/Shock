@@ -8,7 +8,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
-	"github.com/stretchr/goweb/context"
+	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"net/http"
 )
 

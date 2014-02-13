@@ -1,9 +1,9 @@
 package responder
 
 import (
-	"github.com/stretchr/codecs/services"
-	"github.com/stretchr/goweb"
-	"github.com/stretchr/goweb/context"
+	"github.com/MG-RAST/golib/stretchr/codecs/services"
+	"github.com/MG-RAST/golib/stretchr/goweb"
+	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"net/http"
 )
 

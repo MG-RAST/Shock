@@ -7,7 +7,7 @@ import (
 	"fmt"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"io/ioutil"
-	"labix.org/v2/mgo/bson"
+	"github.com/MG-RAST/golib/mgo/bson"
 	"os"
 	"strconv"
 )
