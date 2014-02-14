@@ -9,8 +9,8 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/util"
-	"github.com/stretchr/goweb/context"
-	"labix.org/v2/mgo/bson"
+	"github.com/MG-RAST/golib/stretchr/goweb/context"
+	"github.com/MG-RAST/golib/mgo/bson"
 	"net/http"
 	"strings"
 )
