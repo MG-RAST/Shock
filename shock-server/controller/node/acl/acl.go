@@ -2,7 +2,7 @@
 package acl
 
 import (
-	"github.com/MG-RAST/golib/go-uuid/uuid/"
+	"github.com/MG-RAST/golib/go-uuid/uuid"
 	"errors"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
