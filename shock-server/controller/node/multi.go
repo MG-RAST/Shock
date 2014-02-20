@@ -12,8 +12,11 @@ import (
 	"github.com/MG-RAST/golib/mgo/bson"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"net/http"
-	"strings"
+	"strconv"
 )
+
+type M map[string]interface{}
+type ListOfMaps []M
 
 // GET: /node
 // To do:
@@ -51,23 +54,37 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 	if _, ok := query["query"]; ok {
 		for key := range query {
 			if _, found := paramlist[key]; !found {
-				if query.Get(key) != "" {
-					q[fmt.Sprintf("attributes.%s", key)] = query.Get(key)
+				keyStr := fmt.Sprintf("attributes.%s", key)
+				value := query.Get(key)
+				if value != "" {
+					if numValue, err := strconv.Atoi(value); err == nil {
+						q["$or"] = ListOfMaps{{keyStr: value}, {keyStr: numValue}}
+					} else {
+						q[keyStr] = value
+					}
 				} else {
-					m := make(map[string]bool)
-					m["$exists"] = true
-					q[fmt.Sprintf("attributes.%s", key)] = m
+					existsMap := map[string]bool{
+						"$exists": true,
+					}
+					q[keyStr] = existsMap
 				}
 			}
 		}
 	} else if _, ok := query["querynode"]; ok {
 		for key := range query {
-			if key == "type" {
-				querytypes := strings.Split(query.Get(key), ",")
-				q["type"] = bson.M{"$all": querytypes}
-			} else {
-				if _, found := paramlist[key]; !found {
-					q[key] = query.Get(key)
+			if _, found := paramlist[key]; !found {
+				value := query.Get(key)
+				if value != "" {
+					if numValue, err := strconv.Atoi(value); err == nil {
+						q["$or"] = ListOfMaps{{key: value}, {key: numValue}}
+					} else {
+						q[key] = value
+					}
+				} else {
+					existsMap := map[string]bool{
+						"$exists": true,
+					}
+					q[key] = existsMap
 				}
 			}
 		}
