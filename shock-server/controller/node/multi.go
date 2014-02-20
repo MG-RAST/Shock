@@ -9,8 +9,8 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/util"
-	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"github.com/MG-RAST/golib/mgo/bson"
+	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"net/http"
 	"strings"
 )
@@ -51,7 +51,13 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 	if _, ok := query["query"]; ok {
 		for key := range query {
 			if _, found := paramlist[key]; !found {
-				q[fmt.Sprintf("attributes.%s", key)] = query.Get(key)
+				if query.Get(key) != "" {
+					q[fmt.Sprintf("attributes.%s", key)] = query.Get(key)
+				} else {
+					m := make(map[string]bool)
+					m["$exists"] = true
+					q[fmt.Sprintf("attributes.%s", key)] = m
+				}
 			}
 		}
 	} else if _, ok := query["querynode"]; ok {
