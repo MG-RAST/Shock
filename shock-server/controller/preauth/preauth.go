@@ -8,7 +8,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/preauth"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
-	"github.com/stretchr/goweb/context"
+	"github.com/MG-RAST/golib/stretchr/goweb/context"
 )
 
 func PreAuthRequest(ctx context.Context) {
@@ -60,4 +60,5 @@ func streamDownload(ctx context.Context, n *node.Node, filename string) {
 		logger.Error(err_msg)
 		responder.RespondWithError(ctx, 500, err_msg)
 	}
+	return
 }

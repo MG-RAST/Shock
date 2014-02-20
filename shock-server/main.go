@@ -15,8 +15,8 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
-	"github.com/stretchr/goweb"
-	"github.com/stretchr/goweb/context"
+	"github.com/MG-RAST/golib/stretchr/goweb"
+	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"net"
 	"net/http"
 	"os"
@@ -122,7 +122,9 @@ func main() {
 	conf.Initialize()
 	logger.Initialize()
 	if err := db.Initialize(); err != nil {
-		logger.Error(err.Error())
+		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
+		logger.Error("ERROR: " + err.Error())
+		os.Exit(1)
 	}
 	user.Initialize()
 	node.Initialize()
@@ -133,11 +135,14 @@ func main() {
 	printLogo()
 	conf.Print()
 
-	if _, err := os.Stat(conf.Conf["data-path"] + "/temp"); err != nil && os.IsNotExist(err) {
-		if err := os.Mkdir(conf.Conf["data-path"]+"/temp", 0777); err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
-			logger.Error("ERROR: " + err.Error())
-			os.Exit(1)
+	// check if necessary directories exist or created
+	for _, path := range []string{conf.Conf["site-path"], conf.Conf["data-path"], conf.Conf["logs-path"], conf.Conf["data-path"] + "/temp"} {
+		if _, err := os.Stat(path); err != nil && os.IsNotExist(err) {
+			if err := os.Mkdir(path, 0777); err != nil {
+				fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
+				logger.Error("ERROR: " + err.Error())
+				os.Exit(1)
+			}
 		}
 	}
 

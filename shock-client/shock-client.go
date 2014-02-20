@@ -1,7 +1,7 @@
 package main
 
 import (
-	"code.google.com/p/gopass"
+	"github.com/MG-RAST/golib/gopass"
 	"encoding/json"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-client/conf"

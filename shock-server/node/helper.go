@@ -1,7 +1,7 @@
 package node
 
 import (
-	"code.google.com/p/go-uuid/uuid"
+	"github.com/MG-RAST/golib/go-uuid/uuid"
 	"encoding/json"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"

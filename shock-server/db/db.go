@@ -5,13 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
-	"labix.org/v2/mgo"
-	"os"
+	"github.com/MG-RAST/golib/mgo"
 	"time"
 )
 
 const (
-	DbTimeout = time.Duration(time.Second * 10)
+	DbTimeout = time.Duration(time.Second * 1200)
 )
 
 var (
@@ -31,7 +30,6 @@ func Initialize() (err error) {
 	s, err := mgo.DialWithTimeout(conf.Conf["mongodb-hosts"], DbTimeout)
 	if err != nil {
 		e := errors.New(fmt.Sprintf("no reachable mongodb server(s) at %s", conf.Conf["mongodb-hosts"]))
-		fmt.Fprintln(os.Stderr, "Error: "+e.Error())
 		return e
 	}
 	c.Session = s

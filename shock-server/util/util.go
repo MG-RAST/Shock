@@ -2,7 +2,7 @@ package util
 
 import (
 	"github.com/MG-RAST/Shock/shock-server/conf"
-	"github.com/stretchr/goweb/context"
+	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"io"
 	"math/rand"
 	"os"

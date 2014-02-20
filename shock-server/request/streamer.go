@@ -6,7 +6,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/node/filter"
-	"github.com/stretchr/goweb/context"
+	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"io"
 	"net/http"
 	"os/exec"
@@ -24,6 +24,35 @@ type Streamer struct {
 func (s *Streamer) Stream() (err error) {
 	s.W.Header().Set("Content-Type", s.ContentType)
 	s.W.Header().Set("Content-Disposition", fmt.Sprintf(" attachment; filename=%s", s.Filename))
+	s.W.Header().Set("Connection", "close")
+	s.W.Header().Set("Access-Control-Allow-Headers", "Authorization")
+	s.W.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS")
+	s.W.Header().Set("Access-Control-Allow-Origin", "*")
+
+	if s.Size > 0 && s.Filter == nil {
+		s.W.Header().Set("Content-Length", fmt.Sprint(s.Size))
+	}
+	for _, sr := range s.R {
+		var rs io.Reader
+		if s.Filter != nil {
+			rs = s.Filter(sr)
+		} else {
+			rs = sr
+		}
+		_, err := io.Copy(s.W, rs)
+		if err != nil {
+			return err
+		}
+	}
+	return
+}
+
+func (s *Streamer) StreamRaw() (err error) {
+	s.W.Header().Set("Content-Type", s.ContentType)
+	s.W.Header().Set("Connection", "close")
+	s.W.Header().Set("Access-Control-Allow-Headers", "Authorization")
+	s.W.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS")
+	s.W.Header().Set("Access-Control-Allow-Origin", "*")
 	if s.Size > 0 && s.Filter == nil {
 		s.W.Header().Set("Content-Length", fmt.Sprint(s.Size))
 	}
