@@ -10,8 +10,8 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
-	"io/ioutil"
 	"github.com/MG-RAST/golib/mgo/bson"
+	"io/ioutil"
 	"os"
 )
 
