@@ -1,4 +1,4 @@
-package Shock;
+package SHOCK::Client;
 
 use strict;
 use warnings;
@@ -358,26 +358,6 @@ sub upload {
 	
 	return $self->post('node', undef, {Content_Type => 'multipart/form-data', Content => $content});
 	
-#	
-#    eval {
-#        my $res = undef;
-#		my @auth = ($self->token)?('Authorization' , "OAuth ".$self->token):();
-#		
-#        if ($method eq 'POST') {
-#			$res = $self->agent->post($url, Content_Type => 'multipart/form-data', @auth, Content => $content);
-#		} else {
-#			$res = $self->agent->put($url, Content_Type => 'multipart/form-data', @auth, Content => $content);
-#        }
-#        $response = $self->json->decode( $res->content );
-#    };
-#    if ($@ || (! ref($response))) {
-#        print STDERR "[error] unable to connect to Shock ".$self->shock_url."\n";
-#        return undef;
-#    } elsif (exists($response->{error}) && $response->{error}) {
-#        print STDERR "[error] unable to $method data to Shock: ".$response->{error}[0]."\n";
-#    } else {
-#        return $response->{data};
-#    }
 }
 
 
@@ -389,6 +369,20 @@ sub upload {
 sub upload_temporary_files {
 	my ($self, $job_input) = @_;
 
+	
+	#check
+	foreach my $input (keys(%$job_input)) {
+		my $input_h = $job_input->{$input};
+		if (defined($input_h->{'file'})) {
+			unless (-e $input_h->{'file'}) {
+				die "file ".$input_h->{'file'}." not found, input was \"$input\"";
+			}
+		} elsif (defined($input_h->{'data'})) {
+			
+		} else {
+			die "not data or file found for input \"$input\"";
+		}
+	}
 	
 	#and upload job input to shock
 	foreach my $input (keys(%$job_input)) {
