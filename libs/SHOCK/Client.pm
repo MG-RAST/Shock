@@ -476,7 +476,7 @@ sub cached_download {
 	if (length($url) < 5) {
 		die;
 	}
-	$file = $dir. $targetname;
+	my $file = $dir. $targetname;
 	
 	
 	#check if file is already in shock
