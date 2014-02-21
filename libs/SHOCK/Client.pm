@@ -469,7 +469,7 @@ sub _get_handle {
 }
 
 sub cached_download {
-	my ($self, $url, $dir, $targetname, $download_cmd)=@;
+	my ($self, $url, $dir, $targetname, $download_cmd)=@_;
 	
 	# example $curl_download_cmd = "cd $dir && curl $ssl -L -o $targetname --retry 1 --retry-delay 5 \"$url\"";
 	
