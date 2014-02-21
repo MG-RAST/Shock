@@ -511,7 +511,7 @@ sub cached_download {
 		my $shock_node_id = $up_result->{'data'}->{'id'} || die "SHOCK node id not found for uploaded image";
 		
 		# get accls
-		my $node_accls = $shock->get("node/$shock_node_id/acl") || die;
+		my $node_accls = $self->get("node/$shock_node_id/acl") || die;
 		unless ($node_accls->{'status'} == 200) {
 			die;
 		}
@@ -520,7 +520,7 @@ sub cached_download {
 		
 		# make node world readable
 		if (@{$node_accls_read_users} > 0) {
-			my $node_accls_delete = $shock->delete('node/'.$shock_node_id.'/acl/read/?users='.join(',', @{$node_accls_read_users})) || die;
+			my $node_accls_delete = $self->delete('node/'.$shock_node_id.'/acl/read/?users='.join(',', @{$node_accls_read_users})) || die;
 			unless ($node_accls_delete->{'status'} == 200) {
 				die;
 			}
