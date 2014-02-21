@@ -356,8 +356,8 @@ sub upload {
     
     $HTTP::Request::Common::DYNAMIC_FILE_UPLOAD = 1;
 	
-	return $self->post('node', undef, {Content_Type => 'multipart/form-data', Content => $content});
-	
+	return $self->post('node', undef, {Content_Type => 'multipart/form-data', Content => $content}); # resource, query, headers
+	 
 }
 
 
@@ -468,7 +468,80 @@ sub _get_handle {
 	return [undef, "n/a", Content => $item];
 }
 
+sub cached_download {
+	my ($self, $url, $dir, $targetname, $download_cmd)=@;
+	
+	# example $curl_download_cmd = "cd $dir && curl $ssl -L -o $targetname --retry 1 --retry-delay 5 \"$url\"";
+	
+	if (length($url) < 5) {
+		die;
+	}
+	$file = $dir. $targetname;
+	
+	
+	#check if file is already in shock
+	my $query = $self->query('cache' => '1', 'cached_url' => $url)|| die;
+	
+	print Dumper($query);
+	
+	my $data_nodes = $query->{'data'} || die;
+	
+	if (@{$data_nodes} == 0) {
+		# not found, download directly
+		system($download_cmd);
+		unless (-s $file ) {
+			die "file $file was not downloaded!?";
+		}
+		
+		#upload to SHOCK
+		my $shock_json =	'{'.
+							' "temporary":"1",'.
+							' "cache":"1",'.
+							' "cached_url":"'.$url.'",'.
+							' "$targetname":"'.$targetname.'"'.
+							'}';
 
+		print "caching file in SHOCK\n";
+		my $up_result = $self->upload('file' => $file, 'attr' => $shock_json) || die;
+		
+		unless ($up_result->{'status'} == 200) {
+			die;
+		}
+		
+		my $shock_node_id = $up_result->{'data'}->{'id'} || die "SHOCK node id not found for uploaded image";
+		
+		# get accls
+		my $node_accls = $shock->get("node/$shock_node_id/acl") || die;
+		unless ($node_accls->{'status'} == 200) {
+			die;
+		}
+						
+		my $node_accls_read_users = $node_accls->{'data'}->{'read'} || die;
+		
+		# make node world readable
+		if (@{$node_accls_read_users} > 0) {
+			my $node_accls_delete = $shock->delete('node/'.$shock_node_id.'/acl/read/?users='.join(',', @{$node_accls_read_users})) || die;
+			unless ($node_accls_delete->{'status'} == 200) {
+				die;
+			}
+		}
+		
+		return $file;
+		
+	} elsif (@{$data_nodes} == 1) {
+		# found once
+		my $shock_node_obj = $data_nodes->[0] || die;
+		my $shock_node_id = $shock_node_obj->{'data'}->{'id'} || die;
+		
+		my $download_result = $self->download_to_path($shock_node_id, $file);
+		
+		return $download_result;
+		
+	}
+	
+	#found multiple
+	return undef;
+}
 
 
 
