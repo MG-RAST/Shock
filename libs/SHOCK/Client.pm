@@ -531,7 +531,10 @@ sub cached_download {
 	} elsif (@{$data_nodes} == 1) {
 		# found once
 		my $shock_node_obj = $data_nodes->[0] || die;
-		my $shock_node_id = $shock_node_obj->{'data'}->{'id'} || die;
+		my $shock_node_id = $shock_node_obj->{'data'}->{'id'} || do {
+			print Dumper($shock_node_obj);
+			die;
+		}
 		
 		my $download_result = $self->download_to_path($shock_node_id, $file);
 		
