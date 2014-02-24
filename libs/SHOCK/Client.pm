@@ -531,7 +531,9 @@ sub cached_download {
 	} elsif (@{$data_nodes} == 1) {
 		# found once
 		my $shock_node_obj = $data_nodes->[0] || die;
-		my $shock_node_id = $shock_node_obj->{'data'}->{'id'} || do {
+		my $shock_node_id = $shock_node_obj->{'data'}->{'id'};
+		
+		unless (defined $shock_node_id) {
 			print Dumper($shock_node_obj);
 			die;
 		}
