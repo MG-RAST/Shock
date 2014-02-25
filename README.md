@@ -125,18 +125,26 @@ Data Types
 <br>
 ### Index:
 
-Currently available index types include: size (virtual, does not require index creation), line, chunkrecord and record (for sequence file types), and bai (bam index)
+Currently available index types include: size (virtual, does not require index creation), line, column (for tabbed files), chunkrecord and record (for sequence file types), bai (bam index), and subset (based on an existing index)
 
 ##### virtual index:
 
 A virtual index is one that can be generated on the fly without support of precalculated data. The current working example of this 
 is the size virtual index. Based on the file size and desired chunksize the partitions become individually addressable. 
 
+##### column index:
+
+A column index is one that is generated on tabbed files which are sorted by the chosen column number.  Each record represents the lines (delimitated by returns) that contain all the same value for the inputted column number.
+
 ##### bam index (bai):
 
 To use the bam index feature, the <a href="http://samtools.sourceforge.net/">SAMtools</a> package must be installed on the machine that is running the Shock server with the samtools executable in the path of the user that is running the Shock server.
 
 Also, in order to use this feature, you must sort your .bam file using the 'samtools sort' command before uploading the file into Shock.
+
+##### subset index:
+
+Create a named index based on a list of record numbers that are a subset of an existing index.
 
 <br><br>
 
@@ -392,11 +400,13 @@ Modify node, create index
 <br>
 **Create index:**
 
- - Currently available index types include: size (virtual, does not require index creation), line, chunkrecord and record (for sequence file types), and bai (bam index)
+ - Currently available index types include: size (virtual, does not require index creation), line, column (for tabbed files), chunkrecord and record (for sequence file types), bai (bam index), and subset (based on an existing index)
 
 ##### example	
-
+    
 	curl -X PUT [ see Authentication ] http://<host>[:<port>]/node/{id}/index/<type>
+	curl -X PUT [ see Authentication ] http://<host>[:<port>]/node/{id}/index/column?number=<int>
+	curl -X PUT [ see Authentication ] -F "index_name=<string>" -F "parent_index=<type>" -F "subset_indices=@<path_to_file>" http://<host>[:<port>]/node/{id}/index/subset
 	curl -X PUT [ see Authentication ] http://<host>[:<port>]/node/{id}?index=<type> (deprecated)
 
 ##### returns
