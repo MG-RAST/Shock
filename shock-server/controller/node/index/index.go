@@ -157,6 +157,7 @@ func IndexTypedRequest(ctx context.Context) {
 			}
 
 			num_str := query.Get("number")
+			idxType := idxType+num_str
 			num, err := strconv.Atoi(num_str)
 			if err != nil || num < 1 {
 				err_msg := "Index type column requires a number parameter in the url of an integer greater than zero."
