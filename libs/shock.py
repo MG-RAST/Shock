@@ -136,8 +136,10 @@ class Client:
             raise Exception(u'Shock error %s : %s'%(rj['status'], rj['error'][0]))
         return rj
     
-    def index_node(self, node, index):
+    def index_node(self, node, index, column=None):
         url = "%s/node/%s/index/%s"%(self.shock_url, node, index)
+        if column is not None:
+            url += '?number='+str(column)
         try:
             req = requests.put(url, headers=self.auth_header)
             rj  = req.json()
