@@ -144,7 +144,7 @@ Also, in order to use this feature, you must sort your .bam file using the 'samt
 
 ##### subset index:
 
-Create a named index based on a list of record numbers that are a subset of an existing index.
+Create a named index based on a list of sorted record numbers that are a subset of an existing index.
 
 <br><br>
 
