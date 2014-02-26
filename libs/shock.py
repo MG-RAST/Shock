@@ -14,6 +14,7 @@ import cStringIO
 import os
 import requests
 import urllib
+from requests_toolbelt import MultipartEncoder
 
 #-----------------------------------------------------------------------------
 # Classes
@@ -150,6 +151,22 @@ class Client:
             raise Exception(u'Shock error %s : %s'%(rj['status'], rj['error'][0]))
         return rj
     
+    def index_subset(self, node, name, parent, subset_file):
+        url = "%s/node/%s/index/subset"%(self.shock_url, node)
+        pdata = {'index_name': name, 'parent_index': parent, 'subset_indices': self._get_handle(subset_file)}
+        mdata = MultipartEncoder(fields=pdata)
+        headers = self.auth_header.copy()
+        headers['Content-Type'] = mdata.content_type
+        try:
+            req = requests.put(url, headers=headers, data=mdata, allow_redirects=True)
+            rj = req.json()
+        except Exception as ex:
+            message = self.template.format(type(ex).__name__, ex.args)
+            raise Exception(u'Unable to connect to Shock server %s\n%s' %(url, message))
+        if rj['error']:
+            raise Exception(u'Shock error %s : %s'%(rj['status'], rj['error'][0]))
+        return rj        
+    
     def create_node(self, data='', attr='', data_name=''):
         return self.upload("", data, attr, data_name)
 
@@ -168,11 +185,14 @@ class Client:
         if attr != '':
             files['attributes'] = self._get_handle(attr)
         if form:
+            mdata = MultipartEncoder(fields=files)
+            headers = self.auth_header.copy()
+            headers['Content-Type'] = mdata.content_type
             try:
                 if method == 'PUT':
-                    req = requests.put(url, headers=self.auth_header, files=files, allow_redirects=True)
+                    req = requests.put(url, headers=headers, data=mdata, allow_redirects=True)
                 else:
-                    req = requests.post(url, headers=self.auth_header, files=files, allow_redirects=True)
+                    req = requests.post(url, headers=headers, data=mdata, allow_redirects=True)
                 rj = req.json()
             except Exception as ex:
                 message = self.template.format(type(ex).__name__, ex.args)
