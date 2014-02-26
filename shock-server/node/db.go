@@ -4,9 +4,9 @@ import (
 	"errors"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/db"
-	"io/ioutil"
 	"github.com/MG-RAST/golib/mgo"
 	"github.com/MG-RAST/golib/mgo/bson"
+	"io/ioutil"
 	"path/filepath"
 )
 
