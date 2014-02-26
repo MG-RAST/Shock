@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/MG-RAST/Shock/shock-server/util"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/golib/mgo/bson"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"path/filepath"
 )
 
 //Modification functions
@@ -127,6 +129,20 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		node.File.Size = n.File.Size
 		node.File.Checksum = n.File.Checksum
 		node.File.Format = n.File.Format
+		
+		// Copy node indices
+		if _, copyIndex := params["copy_index"]; copyIndex {
+    		indices, err := filepath.Glob(n.IndexPath()+"/*.idx")
+    		if err != nil {
+    			return err
+    		}
+    		for _, indexPath := range indices {
+    		    _, indexFile := filepath.Split(indexPath)
+    		    if _, cerr := util.CopyFile(indexPath, node.IndexPath()+'/'+indexFile); cerr != nil {
+					return cerr
+				}
+		    }
+    	}
 
 		if n.File.Path == "" {
 			node.File.Path = fmt.Sprintf("%s/%s.data", getPath(params["copy_data"]), params["copy_data"])
