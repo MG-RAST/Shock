@@ -138,7 +138,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
     		}
     		for _, indexPath := range indices {
     		    _, indexFile := filepath.Split(indexPath)
-    		    if _, cerr := util.CopyFile(indexPath, node.IndexPath()+'/'+indexFile); cerr != nil {
+    		    if _, cerr := util.CopyFile(indexPath, node.IndexPath()+"/"+indexFile); cerr != nil {
 					return cerr
 				}
 		    }
