@@ -11,7 +11,6 @@ import (
 	"github.com/MG-RAST/golib/mgo/bson"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -131,15 +130,19 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		node.File.Format = n.File.Format
 
 		// Copy node indices
-		if _, copyIndex := params["copy_index"]; copyIndex {
-			indices, err := filepath.Glob(n.IndexPath() + "/*.idx")
-			if err != nil {
-				return err
-			}
-			for _, indexPath := range indices {
-				_, indexFile := filepath.Split(indexPath)
-				if _, cerr := util.CopyFile(indexPath, node.IndexPath()+"/"+indexFile); cerr != nil {
-					return cerr
+		if _, copyIndex := params["copy_index"]; copyIndex && (len(n.Indexes) > 0) {
+			// loop through parent indexes
+			for idxType, idxInfo := range n.Indexes {
+				parentFile := n.IndexPath() + "/" + idxType + ".idx"
+				if _, err := os.Stat(parentFile); err == nil {
+					// copy file if exists
+					if _, cerr := util.CopyFile(parentFile, node.IndexPath()+"/"+idxType+".idx"); cerr != nil {
+						return cerr
+					}
+				}
+				// copy index struct
+				if err := node.SetIndexInfo(idxType, idxInfo); err != nil {
+					return err
 				}
 			}
 		}
