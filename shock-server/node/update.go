@@ -145,6 +145,11 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 					return err
 				}
 			}
+		} else if sizeIndex, exists := n.Indexes["size"]; exists {
+			// just copy size index
+			if err := node.SetIndexInfo("size", sizeIndex); err != nil {
+				return err
+			}
 		}
 
 		if n.File.Path == "" {
