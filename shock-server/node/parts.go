@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
-	"io/ioutil"
 	"github.com/MG-RAST/golib/mgo/bson"
+	"io/ioutil"
 	"os"
 	"strconv"
 )

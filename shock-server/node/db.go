@@ -4,9 +4,9 @@ import (
 	"errors"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/db"
-	"io/ioutil"
 	"github.com/MG-RAST/golib/mgo"
 	"github.com/MG-RAST/golib/mgo/bson"
+	"io/ioutil"
 	"path/filepath"
 )
 
@@ -18,6 +18,8 @@ func Initialize() {
 	defer session.Close()
 	c := session.DB(conf.Conf["mongodb-database"]).C("Nodes")
 	c.EnsureIndex(mgo.Index{Key: []string{"id"}, Unique: true})
+	c.EnsureIndex(mgo.Index{Key: []string{"file.path"}, Background: true})
+	c.EnsureIndex(mgo.Index{Key: []string{"virtual_parts"}, Background: true})
 }
 
 func dbDelete(q bson.M) (err error) {

@@ -59,6 +59,18 @@ func IndexTypedRequest(ctx context.Context) {
 	}
 
 	switch ctx.HttpRequest().Method {
+	case "DELETE":
+		if _, has := n.Indexes[idxType]; has {
+			if err := n.DeleteIndex(idxType); err != nil {
+				err_msg := err.Error()
+				logger.Error(err_msg)
+				responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+			}
+			responder.RespondOK(ctx)
+		} else {
+			responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("Node %s does not have index of type %s.", n.Id, idxType))
+		}
+
 	case "GET":
 		if v, has := n.Indexes[idxType]; has {
 			responder.RespondWithData(ctx, map[string]interface{}{idxType: v})
@@ -67,6 +79,11 @@ func IndexTypedRequest(ctx context.Context) {
 		}
 
 	case "PUT":
+		if _, has := n.Indexes[idxType]; has {
+			responder.RespondOK(ctx)
+			return
+		}
+
 		if !n.HasFile() {
 			responder.RespondWithError(ctx, http.StatusBadRequest, "Node has no file.")
 			return
@@ -157,6 +174,7 @@ func IndexTypedRequest(ctx context.Context) {
 			}
 
 			num_str := query.Get("number")
+			idxType = idxType + num_str
 			num, err := strconv.Atoi(num_str)
 			if err != nil || num < 1 {
 				err_msg := "Index type column requires a number parameter in the url of an integer greater than zero."

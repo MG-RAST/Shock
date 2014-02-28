@@ -10,8 +10,8 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
-	"io/ioutil"
 	"github.com/MG-RAST/golib/mgo/bson"
+	"io/ioutil"
 	"os"
 )
 
@@ -146,7 +146,6 @@ func (node *Node) FileReader() (reader file.ReaderAt, err error) {
 	return os.Open(node.FilePath())
 }
 
-// Index functions
 func (node *Node) Index(name string) (idx index.Index, err error) {
 	if index.Has(name) {
 		idx = index.NewVirtual(name, node.FilePath(), node.File.Size, 10240)
@@ -201,6 +200,16 @@ func (node *Node) Delete() (err error) {
 		return err
 	}
 	return node.Rmdir()
+}
+
+func (node *Node) DeleteIndex(indextype string) (err error) {
+	delete(node.Indexes, indextype)
+	IndexFilePath := fmt.Sprintf("%s/%s.idx", node.IndexPath(), indextype)
+	if err = os.Remove(IndexFilePath); err != nil {
+		return
+	}
+	err = node.Save()
+	return
 }
 
 func (node *Node) SetIndexInfo(indextype string, idxinfo IdxInfo) (err error) {
