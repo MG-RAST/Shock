@@ -433,6 +433,31 @@ sub upload_temporary_files {
 	return;
 }
 
+#make node readable to the world
+sub permisson_readable {
+	my ($self, $nodeid) = @_;
+	
+	my $node_accls = $shock->get("node/$shock_node_id/acl") || return undef;
+	unless ($node_accls->{'status'} == 200) {
+		return undef;
+	}
+	
+	#print Dumper($node_accls);
+	
+	my $node_accls_read_users = $node_accls->{'data'}->{'read'} || return undef;
+	
+	print "make node world readable\n";
+	if (@{$node_accls_read_users} > 0) {
+		my $node_accls_delete = $shock->delete('node/'.$shock_node_id.'/acl/read/?users='.join(',', @{$node_accls_read_users})) || return undef;
+		#print Dumper($node_accls_delete);
+		unless ($node_accls_delete->{'status'} == 200) {
+			return undef;
+		}
+	}
+
+	
+	return $nodeid;
+}
 
 sub _upload_shockclient {
     my ($self, $path) = @_;
