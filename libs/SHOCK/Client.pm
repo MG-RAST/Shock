@@ -468,6 +468,65 @@ sub _get_handle {
 	return [undef, "n/a", Content => $item];
 }
 
+
+sub cache_find {
+	my ($self, $url) = @_;
+	
+	#check if file is already in shock
+	my $query = $self->query('cache' => '1', 'cached_url' => $url)|| die;
+	
+	my $data_nodes = $query->{'data'} || die;
+	
+	if (@{$data_nodes} == 0) {
+		return undef;
+	} elsif (@{$data_nodes} == 1) {
+		return $data_nodes->[0];
+	}
+	
+	die "error: multiple hits for this url";
+	
+}
+
+sub cache_upload {
+	my ($self, $file, $url, $targetname) = @_;
+	
+	#upload to SHOCK
+	my $shock_json =	'{'.
+	' "temporary":"1",'.
+	' "cache":"1",'.
+	' "cached_url":"'.$url.'",'.
+	' "targetname":"'.$targetname.'"'.
+	'}';
+	
+	print "caching file in SHOCK\n";
+	my $up_result = $self->upload('file' => $file, 'attr' => $shock_json) || die;
+	
+	unless ($up_result->{'status'} == 200) {
+		die;
+	}
+	
+	my $shock_node_id = $up_result->{'data'}->{'id'} || die "SHOCK node id not found for uploaded image";
+	
+	# get accls
+	my $node_accls = $self->get("node/$shock_node_id/acl") || die;
+	unless ($node_accls->{'status'} == 200) {
+		die;
+	}
+	
+	my $node_accls_read_users = $node_accls->{'data'}->{'read'} || die;
+	
+	# make node world readable
+	if (@{$node_accls_read_users} > 0) {
+		my $node_accls_delete = $self->delete('node/'.$shock_node_id.'/acl/read/?users='.join(',', @{$node_accls_read_users})) || die;
+		unless ($node_accls_delete->{'status'} == 200) {
+			die;
+		}
+	}
+	
+	return $file;
+}
+
+
 sub cached_download {
 	my ($self, $url, $dir, $targetname, $download_cmd)=@_;
 	
@@ -478,59 +537,13 @@ sub cached_download {
 	}
 	my $file = $dir. $targetname;
 	
+	my $shock_node_obj = $self->cache_find($url);
 	
-	#check if file is already in shock
-	my $query = $self->query('cache' => '1', 'cached_url' => $url)|| die;
 	
-	print Dumper($query);
 	
-	my $data_nodes = $query->{'data'} || die;
-	
-	if (@{$data_nodes} == 0) {
-		# not found, download directly
-		system($download_cmd);
-		unless (-s $file ) {
-			die "file $file was not downloaded!?";
-		}
+	if (defined($shock_node_obj)) {
+		# found url, download from shock
 		
-		#upload to SHOCK
-		my $shock_json =	'{'.
-							' "temporary":"1",'.
-							' "cache":"1",'.
-							' "cached_url":"'.$url.'",'.
-							' "$targetname":"'.$targetname.'"'.
-							'}';
-
-		print "caching file in SHOCK\n";
-		my $up_result = $self->upload('file' => $file, 'attr' => $shock_json) || die;
-		
-		unless ($up_result->{'status'} == 200) {
-			die;
-		}
-		
-		my $shock_node_id = $up_result->{'data'}->{'id'} || die "SHOCK node id not found for uploaded image";
-		
-		# get accls
-		my $node_accls = $self->get("node/$shock_node_id/acl") || die;
-		unless ($node_accls->{'status'} == 200) {
-			die;
-		}
-						
-		my $node_accls_read_users = $node_accls->{'data'}->{'read'} || die;
-		
-		# make node world readable
-		if (@{$node_accls_read_users} > 0) {
-			my $node_accls_delete = $self->delete('node/'.$shock_node_id.'/acl/read/?users='.join(',', @{$node_accls_read_users})) || die;
-			unless ($node_accls_delete->{'status'} == 200) {
-				die;
-			}
-		}
-		
-		return $file;
-		
-	} elsif (@{$data_nodes} == 1) {
-		# found once
-		my $shock_node_obj = $data_nodes->[0] || die;
 		my $shock_node_id = $shock_node_obj->{'data'}->{'id'};
 		
 		unless (defined $shock_node_id) {
@@ -541,10 +554,23 @@ sub cached_download {
 		my $download_result = $self->download_to_path($shock_node_id, $file);
 		
 		return $download_result;
+
+	} else {
+		# not found, download directly and upload to shock
+		
+		# 1) download from url
+		system($download_cmd);
+		unless (-s $file ) {
+			die "file $file was not downloaded!?";
+		}
+		
+		# 2) upload to SHOCK
+		return cache_upload($file, $url, $targetname);
+	
 		
 	}
 	
-	#found multiple
+	#
 	return undef;
 }
 
