@@ -167,9 +167,29 @@ class Client:
             raise Exception(u'Shock error %s : %s'%(rj['status'], rj['error'][0]))
         return rj        
     
+    def copy_node(self, parent_node, attr='', copy_index=True):
+        url = self.shock_url+'/node'
+        pdata = {'copy_data': parent_node}
+        if attr != '':
+            pdata['attributes'] = self._get_handle(attr)
+        if copy_index:
+            pdata['copy_index'] = 'true'
+        mdata = MultipartEncoder(fields=pdata)
+        headers = self.auth_header.copy()
+        headers['Content-Type'] = mdata.content_type
+        try:
+            req = requests.post(url, headers=headers, data=mdata, allow_redirects=True)
+            rj = req.json()
+        except Exception as ex:
+            message = self.template.format(type(ex).__name__, ex.args)
+            raise Exception(u'Unable to connect to Shock server %s\n%s' %(url, message))
+        if rj['error']:
+            raise Exception(u'Shock error %s : %s'%(rj['status'], rj['error'][0]))
+        return rj['data']
+    
     def create_node(self, data='', attr='', data_name=''):
         return self.upload("", data, attr, data_name)
-
+    
     # file_name is name of data file
     # form == True for multi-part form
     # form == False for data POST of file
@@ -213,8 +233,7 @@ class Client:
             raise Exception(u'Unable to connect to Shock server %s: %s' %(url, req.raise_for_status()))
         if rj['error']:
             raise Exception(u'Shock error %s : %s'%(rj['status'], rj['error'][0]))
-        else:
-            return rj['data']
+        return rj['data']
     
     # handles 3 cases
     # 1. file path

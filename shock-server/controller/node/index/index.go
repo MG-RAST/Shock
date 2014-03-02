@@ -120,6 +120,7 @@ func IndexTypedRequest(ctx context.Context) {
 		}
 
 		count := int64(0)
+		subsetName := ""
 		if idxType == "subset" {
 			// Utilizing the multipart form parser since we need to upload a file.
 			params, files, err := request.ParseMultipartForm(ctx.HttpRequest())
@@ -145,6 +146,7 @@ func IndexTypedRequest(ctx context.Context) {
 				responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("%s is a reserved index name and cannot be used to create a custom subset index.", newIndex))
 				return
 			}
+			subsetName = newIndex
 
 			subsetIndices, hasFile := files["subset_indices"]
 			if !hasFile {
@@ -222,6 +224,7 @@ func IndexTypedRequest(ctx context.Context) {
 
 		if idxType == "subset" {
 			idxInfo.AvgUnitSize = -1
+			idxType = subsetName
 		}
 
 		if err := n.SetIndexInfo(idxType, idxInfo); err != nil {
