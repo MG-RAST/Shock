@@ -448,7 +448,7 @@ sub permisson_readable {
 	
 	#print "make node world readable\n";
 	if (@{$node_accls_read_users} > 0) {
-		my $node_accls_delete = $self->delete('node/'$nodeid.'/acl/read/?users='.join(',', @{$node_accls_read_users})) || return undef;
+		my $node_accls_delete = $self->delete('node/'.$nodeid.'/acl/read/?users='.join(',', @{$node_accls_read_users})) || return undef;
 		#print Dumper($node_accls_delete);
 		unless ($node_accls_delete->{'status'} == 200) {
 			return undef;
