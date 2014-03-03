@@ -23,6 +23,7 @@ import (
 	"os/signal"
 	"runtime"
 	"strconv"
+	"time"
 )
 
 type resource struct {
@@ -214,8 +215,8 @@ func main() {
 	s := &http.Server{
 		Addr:           ":" + Address,
 		Handler:        goweb.DefaultHttpHandler(),
-		ReadTimeout:    0,
-		WriteTimeout:   0,
+		ReadTimeout:    48 * time.Hour,
+		WriteTimeout:   48 * time.Hour,
 		MaxHeaderBytes: 1 << 20,
 	}
 
