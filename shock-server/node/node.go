@@ -150,8 +150,13 @@ func (node *Node) Index(name string) (idx index.Index, err error) {
 	if index.Has(name) {
 		idx = index.NewVirtual(name, node.FilePath(), node.File.Size, 10240)
 	} else {
-		idx = index.New()
-		err = idx.Load(node.IndexPath() + "/" + name + ".idx")
+		if _, has := node.Indexes[name]; has {
+			idx = index.New()
+			err = idx.Load(node.IndexPath() + "/" + name + ".idx")
+		} else {
+			err_str := fmt.Sprintf("Node %s does not have index of type %s.", node.Id, name)
+			err = errors.New(err_str)
+		}
 	}
 	return
 }
