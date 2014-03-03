@@ -123,7 +123,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			}
 			idx, err := n.Index(idxName)
 			if err != nil {
-				return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index")
+				return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
 			}
 
 			if idx.Type() == "virtual" {
