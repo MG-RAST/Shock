@@ -97,6 +97,11 @@ func (i *Idx) Range(part string) (recs [][]int64, err error) {
 		}
 		curPos := i.Idx[(start - 1)][0]
 		curLen := i.Idx[(start - 1)][1]
+		// we only have one record
+		if start == end {
+			recs = append(recs, []int64{curPos, curLen})
+			return
+		}
 		// this loop tries to only return seperate [pos, length] sets for non-continious records
 		for x := start; x <= end-1; x++ {
 			nextPos := i.Idx[x][0]
