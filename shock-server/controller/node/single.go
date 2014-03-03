@@ -88,22 +88,18 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc}
 
 				var region string
-
 				if _, ok := query["region"]; ok {
 					//retrieve alingments overlapped with specified region
 					region = query.Get("region")
 				}
-
 				argv, err := request.ParseSamtoolsArgs(ctx)
 				if err != nil {
 					return responder.RespondWithError(ctx, http.StatusBadRequest, "Invaid args in query url")
 				}
-
 				err = s.StreamSamtools(n.FilePath(), region, argv...)
 				if err != nil {
 					return responder.RespondWithError(ctx, http.StatusBadRequest, "error while involking samtools")
 				}
-
 				return nil
 			}
 
@@ -119,8 +115,13 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				logger.Error(err_msg)
 				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			}
-			// load index
-			idx, err := n.Index(query.Get("index"))
+			// load index obj and info
+			idxName := query.Get("index")
+			idxInfo, ok := n.Indexes[idxName]
+			if !ok {
+				return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index")
+			}
+			idx, err := n.Index(idxName)
 			if err != nil {
 				return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index")
 			}
@@ -138,12 +139,24 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			var size int64 = 0
 			s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Filter: fFunc}
 			for _, p := range query["part"] {
-				pos, length, err := idx.Part(p)
-				if err != nil {
-					return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index part")
+				// special case for subset ranges
+				if idxInfo.Type == "subset" {
+					recSlice, err := idx.Range(p)
+					if err != nil {
+						return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index part")
+					}
+					for _, rec := range recSlice {
+						size += rec[1]
+						s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
+					}
+				} else {
+					pos, length, err := idx.Part(p)
+					if err != nil {
+						return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index part")
+					}
+					size += length
+					s.R = append(s.R, io.NewSectionReader(r, pos, length))
 				}
-				size += length
-				s.R = append(s.R, io.NewSectionReader(r, pos, length))
 			}
 			s.Size = size
 			if download_raw {
