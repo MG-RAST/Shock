@@ -1,4 +1,4 @@
-package Shock;
+package SHOCK::Client;
 
 use strict;
 use warnings;
@@ -356,28 +356,8 @@ sub upload {
     
     $HTTP::Request::Common::DYNAMIC_FILE_UPLOAD = 1;
 	
-	return $self->post('node', undef, {Content_Type => 'multipart/form-data', Content => $content});
-	
-#	
-#    eval {
-#        my $res = undef;
-#		my @auth = ($self->token)?('Authorization' , "OAuth ".$self->token):();
-#		
-#        if ($method eq 'POST') {
-#			$res = $self->agent->post($url, Content_Type => 'multipart/form-data', @auth, Content => $content);
-#		} else {
-#			$res = $self->agent->put($url, Content_Type => 'multipart/form-data', @auth, Content => $content);
-#        }
-#        $response = $self->json->decode( $res->content );
-#    };
-#    if ($@ || (! ref($response))) {
-#        print STDERR "[error] unable to connect to Shock ".$self->shock_url."\n";
-#        return undef;
-#    } elsif (exists($response->{error}) && $response->{error}) {
-#        print STDERR "[error] unable to $method data to Shock: ".$response->{error}[0]."\n";
-#    } else {
-#        return $response->{data};
-#    }
+	return $self->post('node', undef, {Content_Type => 'multipart/form-data', Content => $content}); # resource, query, headers
+	 
 }
 
 
@@ -389,6 +369,20 @@ sub upload {
 sub upload_temporary_files {
 	my ($self, $job_input) = @_;
 
+	
+	#check
+	foreach my $input (keys(%$job_input)) {
+		my $input_h = $job_input->{$input};
+		if (defined($input_h->{'file'})) {
+			unless (-e $input_h->{'file'}) {
+				die "file ".$input_h->{'file'}." not found, input was \"$input\"";
+			}
+		} elsif (defined($input_h->{'data'})) {
+			
+		} else {
+			die "not data or file found for input \"$input\"";
+		}
+	}
 	
 	#and upload job input to shock
 	foreach my $input (keys(%$job_input)) {
@@ -406,7 +400,7 @@ sub upload_temporary_files {
 			print "uploading temporary data to shock...\n";
 			$node_obj = $self->upload('data' => $input_h->{'data'}, 'attr' => $attr);
 		} else {
-			die "not data or file found";
+			die "not data or file found for input \"$input\"";
 		}
 		
 		unless (defined($node_obj)) {
@@ -474,7 +468,85 @@ sub _get_handle {
 	return [undef, "n/a", Content => $item];
 }
 
+sub cached_download {
+	my ($self, $url, $dir, $targetname, $download_cmd)=@_;
+	
+	# example $curl_download_cmd = "cd $dir && curl $ssl -L -o $targetname --retry 1 --retry-delay 5 \"$url\"";
+	
+	if (length($url) < 5) {
+		die;
+	}
+	my $file = $dir. $targetname;
+	
+	
+	#check if file is already in shock
+	my $query = $self->query('cache' => '1', 'cached_url' => $url)|| die;
+	
+	print Dumper($query);
+	
+	my $data_nodes = $query->{'data'} || die;
+	
+	if (@{$data_nodes} == 0) {
+		# not found, download directly
+		system($download_cmd);
+		unless (-s $file ) {
+			die "file $file was not downloaded!?";
+		}
+		
+		#upload to SHOCK
+		my $shock_json =	'{'.
+							' "temporary":"1",'.
+							' "cache":"1",'.
+							' "cached_url":"'.$url.'",'.
+							' "$targetname":"'.$targetname.'"'.
+							'}';
 
+		print "caching file in SHOCK\n";
+		my $up_result = $self->upload('file' => $file, 'attr' => $shock_json) || die;
+		
+		unless ($up_result->{'status'} == 200) {
+			die;
+		}
+		
+		my $shock_node_id = $up_result->{'data'}->{'id'} || die "SHOCK node id not found for uploaded image";
+		
+		# get accls
+		my $node_accls = $self->get("node/$shock_node_id/acl") || die;
+		unless ($node_accls->{'status'} == 200) {
+			die;
+		}
+						
+		my $node_accls_read_users = $node_accls->{'data'}->{'read'} || die;
+		
+		# make node world readable
+		if (@{$node_accls_read_users} > 0) {
+			my $node_accls_delete = $self->delete('node/'.$shock_node_id.'/acl/read/?users='.join(',', @{$node_accls_read_users})) || die;
+			unless ($node_accls_delete->{'status'} == 200) {
+				die;
+			}
+		}
+		
+		return $file;
+		
+	} elsif (@{$data_nodes} == 1) {
+		# found once
+		my $shock_node_obj = $data_nodes->[0] || die;
+		my $shock_node_id = $shock_node_obj->{'data'}->{'id'};
+		
+		unless (defined $shock_node_id) {
+			print Dumper($shock_node_obj);
+			die;
+		}
+		
+		my $download_result = $self->download_to_path($shock_node_id, $file);
+		
+		return $download_result;
+		
+	}
+	
+	#found multiple
+	return undef;
+}
 
 
 

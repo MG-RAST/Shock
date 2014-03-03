@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
+	"github.com/MG-RAST/Shock/shock-server/util"
 	"github.com/MG-RAST/golib/mgo/bson"
 	"io/ioutil"
 	"os"
@@ -127,6 +128,29 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		node.File.Size = n.File.Size
 		node.File.Checksum = n.File.Checksum
 		node.File.Format = n.File.Format
+
+		// Copy node indices
+		if _, copyIndex := params["copy_index"]; copyIndex && (len(n.Indexes) > 0) {
+			// loop through parent indexes
+			for idxType, idxInfo := range n.Indexes {
+				parentFile := n.IndexPath() + "/" + idxType + ".idx"
+				if _, err := os.Stat(parentFile); err == nil {
+					// copy file if exists
+					if _, cerr := util.CopyFile(parentFile, node.IndexPath()+"/"+idxType+".idx"); cerr != nil {
+						return cerr
+					}
+				}
+				// copy index struct
+				if err := node.SetIndexInfo(idxType, idxInfo); err != nil {
+					return err
+				}
+			}
+		} else if sizeIndex, exists := n.Indexes["size"]; exists {
+			// just copy size index
+			if err := node.SetIndexInfo("size", sizeIndex); err != nil {
+				return err
+			}
+		}
 
 		if n.File.Path == "" {
 			node.File.Path = fmt.Sprintf("%s/%s.data", getPath(params["copy_data"]), params["copy_data"])
