@@ -82,7 +82,64 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			filename = query.Get("filename")
 		}
 
-		if _, ok := query["index"]; ok {
+		_, seek_ok := query["seek"]
+		if _, length_ok := query["length"]; seek_ok || length_ok {
+
+			var seek int64
+			var length int64
+			if !seek_ok {
+				seek = 0
+				length_str := query.Get("length")
+				length, err = strconv.ParseInt(length_str, 10, 0)
+				if err != nil {
+					return responder.RespondWithError(ctx, http.StatusBadRequest, "length must be an integer value")
+				}
+			} else if !length_ok {
+				seek_str := query.Get("seek")
+				seek, err = strconv.ParseInt(seek_str, 10, 0)
+				if err != nil {
+					return responder.RespondWithError(ctx, http.StatusBadRequest, "seek must be an integer value")
+				}
+				length = n.File.Size - seek
+			} else {
+				seek_str := query.Get("seek")
+				seek, err = strconv.ParseInt(seek_str, 10, 0)
+				if err != nil {
+					return responder.RespondWithError(ctx, http.StatusBadRequest, "seek must be an integer value")
+				}
+				length_str := query.Get("length")
+				length, err = strconv.ParseInt(length_str, 10, 0)
+				if err != nil {
+					return responder.RespondWithError(ctx, http.StatusBadRequest, "length must be an integer value")
+				}
+			}
+			r, err := n.FileReader()
+			defer r.Close()
+			if err != nil {
+				err_msg := "Err@node_Read:Open: " + err.Error()
+				logger.Error(err_msg)
+				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+			}
+			s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: length, Filter: fFunc}
+			s.R = append(s.R, io.NewSectionReader(r, seek, length))
+			if download_raw {
+				err = s.StreamRaw()
+				if err != nil {
+					// causes "multiple response.WriteHeader calls" error but better than no response
+					err_msg := "err:@node_Read s.StreamRaw: " + err.Error()
+					logger.Error(err_msg)
+					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				}
+			} else {
+				err = s.Stream()
+				if err != nil {
+					// causes "multiple response.WriteHeader calls" error but better than no response
+					err_msg := "err:@node_Read s.Stream: " + err.Error()
+					logger.Error(err_msg)
+					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				}
+			}
+		} else if _, ok := query["index"]; ok {
 			//handling bam file
 			if query.Get("index") == "bai" {
 				s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc}
