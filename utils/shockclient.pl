@@ -34,21 +34,21 @@ sub shock_upload {
 
 
 my ($h, $help_text) = &parse_options (
-'name' => 'mg-awe-submit',
+'name' => 'shockclient.pl',
 'version' => '1',
-'synopsis' => 'mg-awe-submit --status',
+'synopsis' => 'shockclient.pl --show=<nodeid>',
 'examples' => 'ls',
 'authors' => 'Wolfgang Gerlach',
 'options' => [
 	'',
 	'Actions:',
 	[ 'show=s'						, ""],
-	[ 'delete=s'						, ""],
+	[ 'delete=s'					, ""],
 	[ 'query=s'						, ""],
-	[ 'clean_tmp'						, ""],
-	'',
-	'Options:',
-	[ 'xx=s'						, "xx"],
+	[ 'clean_tmp'					, ""],
+#	'',
+#	'Options:',
+#	[ 'xx=s'						, "xx"],
 	[ 'help|h'						, "", { hidden => 1  }]
 	]
 );
@@ -68,34 +68,43 @@ unless (defined $shock) {
 }
 
 
+my $value = undef;
 
-if (defined($h->{"query"})) {
+if (defined($value = $h->{"query"})) {
 	
 	
-	my @queries = split(',', $h->{"query"});
+	my @queries = split(',', $value);
 	
 	
 	my $response =  $shock->query(@queries);
 	print Dumper($response);
+	
+	my @nodes = ();
+	foreach my $node_obj (@{$response->{'data'}}) {
+		push(@nodes, $node_obj->{'id'});
+	}
+	
+	print "nodes: ".join(',',@nodes)."\n";
+	
 	exit(0);
-} elsif (defined($h->{"delete"})) {
+} elsif (defined($value = $h->{"delete"})) {
 	
 	
-	my @nodes = split(',', $h->{"delete"});
+	my @nodes = split(',', $value);
 	
 	
 	foreach my $node (@nodes) {
-		my $response =  $shock->delete_node('node/'.$node);
+		my $response =  $shock->delete_node($node);
 		print Dumper($response);
 	}
 	
 	
 	
 	exit(0);
-} elsif (defined($h->{"show"})) {
+} elsif (defined($value = $h->{"show"})) {
 	
 	
-	my @nodes = split(',', $h->{"show"});
+	my @nodes = split(',', $value);
 	
 		
 	foreach my $node (@nodes) {
@@ -141,3 +150,4 @@ if (defined($h->{"query"})) {
 	
 	
 	exit(0);
+}

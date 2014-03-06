@@ -100,6 +100,9 @@ sub create_url {
 		my $value = $query{$key};
 		
 		unless (defined $value) {
+			if ((length($query_string) != 0)) {
+				$query_string .= '&';
+			}
 			$query_string .= $key;
 			next;
 		}
