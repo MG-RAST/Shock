@@ -3,13 +3,16 @@
 use strict;
 use warnings;
 
+use lib ".";
+
 use Data::Dumper;
 use SHOCK::Client;
 
-use USAGEPOD qw(parse_options);
+eval "use USAGEPOD qw(parse_options); 1"
+or die "module USAGEPOD.pm required: wget https://raw.github.com/MG-RAST/MG-RAST-Tools/master/tools/lib/USAGEPOD.pm";
 
 
-my $shockurl =  $ENV{'SHOCK_SERVER_URL'};
+my $shockurl = $ENV{'SHOCK_SERVER_URL'} || die "SHOCK_SERVER_URL not defined";
 
 my $shocktoken=$ENV{'GLOBUSONLINE'} || $ENV{'KB_AUTH_TOKEN'};
 
