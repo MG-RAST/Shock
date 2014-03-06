@@ -82,35 +82,84 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			filename = query.Get("filename")
 		}
 
-		if _, ok := query["index"]; ok {
+		_, seek_ok := query["seek"]
+		if _, length_ok := query["length"]; seek_ok || length_ok {
+
+			var seek int64
+			var length int64
+			if !seek_ok {
+				seek = 0
+				length_str := query.Get("length")
+				length, err = strconv.ParseInt(length_str, 10, 0)
+				if err != nil {
+					return responder.RespondWithError(ctx, http.StatusBadRequest, "length must be an integer value")
+				}
+			} else if !length_ok {
+				seek_str := query.Get("seek")
+				seek, err = strconv.ParseInt(seek_str, 10, 0)
+				if err != nil {
+					return responder.RespondWithError(ctx, http.StatusBadRequest, "seek must be an integer value")
+				}
+				length = n.File.Size - seek
+			} else {
+				seek_str := query.Get("seek")
+				seek, err = strconv.ParseInt(seek_str, 10, 0)
+				if err != nil {
+					return responder.RespondWithError(ctx, http.StatusBadRequest, "seek must be an integer value")
+				}
+				length_str := query.Get("length")
+				length, err = strconv.ParseInt(length_str, 10, 0)
+				if err != nil {
+					return responder.RespondWithError(ctx, http.StatusBadRequest, "length must be an integer value")
+				}
+			}
+			r, err := n.FileReader()
+			defer r.Close()
+			if err != nil {
+				err_msg := "Err@node_Read:Open: " + err.Error()
+				logger.Error(err_msg)
+				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+			}
+			s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: length, Filter: fFunc}
+			s.R = append(s.R, io.NewSectionReader(r, seek, length))
+			if download_raw {
+				err = s.StreamRaw()
+				if err != nil {
+					// causes "multiple response.WriteHeader calls" error but better than no response
+					err_msg := "err:@node_Read s.StreamRaw: " + err.Error()
+					logger.Error(err_msg)
+					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				}
+			} else {
+				err = s.Stream()
+				if err != nil {
+					// causes "multiple response.WriteHeader calls" error but better than no response
+					err_msg := "err:@node_Read s.Stream: " + err.Error()
+					logger.Error(err_msg)
+					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				}
+			}
+		} else if _, ok := query["index"]; ok {
 			//handling bam file
 			if query.Get("index") == "bai" {
 				s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc}
 
 				var region string
-
 				if _, ok := query["region"]; ok {
 					//retrieve alingments overlapped with specified region
 					region = query.Get("region")
 				}
-
 				argv, err := request.ParseSamtoolsArgs(ctx)
 				if err != nil {
 					return responder.RespondWithError(ctx, http.StatusBadRequest, "Invaid args in query url")
 				}
-
 				err = s.StreamSamtools(n.FilePath(), region, argv...)
 				if err != nil {
 					return responder.RespondWithError(ctx, http.StatusBadRequest, "error while involking samtools")
 				}
-
 				return nil
 			}
 
-			// if forgot ?part=N
-			if _, ok := query["part"]; !ok {
-				return responder.RespondWithError(ctx, http.StatusBadRequest, "Index parameter requires part parameter")
-			}
 			// open file
 			r, err := n.FileReader()
 			defer r.Close()
@@ -119,10 +168,16 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				logger.Error(err_msg)
 				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			}
-			// load index
-			idx, err := n.Index(query.Get("index"))
-			if err != nil {
+
+			// load index obj and info
+			idxName := query.Get("index")
+			idxInfo, ok := n.Indexes[idxName]
+			if !ok {
 				return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index")
+			}
+			idx, err := n.Index(idxName)
+			if err != nil {
+				return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
 			}
 
 			if idx.Type() == "virtual" {
@@ -135,15 +190,47 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				}
 				idx.Set(map[string]interface{}{"ChunkSize": csize})
 			}
+
 			var size int64 = 0
 			s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Filter: fFunc}
-			for _, p := range query["part"] {
-				pos, length, err := idx.Part(p)
+
+			_, hasPart := query["part"]
+			if (!hasPart) && (idxInfo.Type == "subset") {
+				// download full subset file
+				fullRange := "1-" + strconv.FormatInt(idxInfo.TotalUnits, 10)
+				recSlice, err := idx.Range(fullRange)
 				if err != nil {
-					return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index part")
+					return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index subset")
 				}
-				size += length
-				s.R = append(s.R, io.NewSectionReader(r, pos, length))
+				for _, rec := range recSlice {
+					size += rec[1]
+					s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
+				}
+			} else if hasPart {
+				// downlaod parts
+				for _, p := range query["part"] {
+					// special case for subset ranges
+					if idxInfo.Type == "subset" {
+						recSlice, err := idx.Range(p)
+						if err != nil {
+							return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index part")
+						}
+						for _, rec := range recSlice {
+							size += rec[1]
+							s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
+						}
+					} else {
+						pos, length, err := idx.Part(p)
+						if err != nil {
+							return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index part")
+						}
+						size += length
+						s.R = append(s.R, io.NewSectionReader(r, pos, length))
+					}
+				}
+			} else {
+				// bad request
+				return responder.RespondWithError(ctx, http.StatusBadRequest, "Index parameter requires part parameter")
 			}
 			s.Size = size
 			if download_raw {
@@ -163,6 +250,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				}
 			}
+			// download full file
 		} else {
 			nf, err := n.FileReader()
 			defer nf.Close()

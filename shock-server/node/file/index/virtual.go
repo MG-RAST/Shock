@@ -99,3 +99,7 @@ func (v *vIndex) Append(a []int64) {
 func (v *vIndex) Load(string) error {
 	return nil
 }
+
+func (v *vIndex) Range(string) ([][]int64, error) {
+	return nil, nil
+}
