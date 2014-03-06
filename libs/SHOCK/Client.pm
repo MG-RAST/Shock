@@ -261,9 +261,9 @@ sub download_to_path {
         print STDERR "[error] missing node or path\n";
         return undef;
     }
-    if ($self->transport_method eq 'shock-client') {
-        return $self->_download_shockclient($node, $path);
-    }
+    #if ($self->transport_method eq 'shock-client') {
+    #    return $self->_download_shockclient($node, $path);
+    #}
     
     my $content = undef;
     eval {

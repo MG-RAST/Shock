@@ -48,6 +48,7 @@ my ($h, $help_text) = &parse_options (
 	[ 'show=s'						, ""],
 	[ 'delete=s'					, ""],
 	[ 'query=s'						, ""],
+	[ 'download=s'					, ""],
 	[ 'clean_tmp'					, ""],
 #	'',
 #	'Options:',
@@ -112,6 +113,35 @@ if (defined($value = $h->{"query"})) {
 		
 	foreach my $node (@nodes) {
 		my $response =  $shock->get('node/'.$node);
+		print Dumper($response);
+	}
+	
+	
+	
+	exit(0);
+} elsif (defined($value = $h->{"download"})) {
+	
+	
+	my @nodes = split(',', $value);
+	
+	
+	foreach my $node (@nodes) {
+		
+		my $view_response =  $shock->get('node/'.$node);
+		print Dumper($view_response);
+		#exit(0);
+		
+		my $filename  = $view_response->{'data'}->{'file'}->{'name'};
+		unless (defined $filename) {
+			die "filename not defined, cannot save.";
+		}
+		
+		if (-e $filename) {
+			die "file \"$filename\" already exists";
+		}
+		
+		
+		my $response =  $shock->download_to_path($node, $filename);
 		print Dumper($response);
 	}
 	
