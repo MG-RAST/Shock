@@ -149,7 +149,12 @@ sub request {
 	
 	my @method_args = ($my_url, ($self->token)?('Authorization' , "OAuth ".$self->token):());
 	
+	my $is_download = 0;
 	if (defined $headers) {
+		if (defined $headers->{':content_cb'}){
+			$is_download = 1;
+		}
+		
 		push(@method_args, %$headers);
 	}
 	
@@ -171,22 +176,26 @@ sub request {
 		} else {
 			die "not implemented yet";
 		}
-
+		#print "content: ".$response_object->content."\n";
 		
 		$response_content = $self->json->decode( $response_object->content );
         
+		
+		
+		
     };
     
-	if ($@ || (! ref($response_content))) {
-        print STDERR "[error] unable to connect to Shock ".$self->shock_url."\n";
-        return undef;
-    } elsif (exists($response_content->{error}) && $response_content->{error}) {
-        print STDERR "[error] unable to send $method request to Shock: ".$response_content->{error}[0]."\n";
-		return undef;
-    } else {
-        return $response_content;
-    }
-	
+	if ($@) {
+		if (! ref($response_content) && $is_download==0 ) {
+			print STDERR "[error] unable to connect to Shock ".$self->shock_url."\n";
+			return undef;
+		} elsif (exists($response_content->{error}) && $response_content->{error}) {
+			print STDERR "[error] unable to send $method request to Shock: ".$response_content->{error}[0]."\n";
+			return undef;
+		} else {
+			return $response_content;
+		}
+	}
 }
 
 
@@ -252,6 +261,30 @@ sub get_node {
     
 	return $self->get('/node/'.$node);
 	
+}
+
+sub download_to_path2 {
+	 my ($self, $node, $path) = @_;
+	
+	
+	
+	open(OUTF, ">$path") || die "Can not open file $path: $!\n";
+	
+	my $header =  {
+		':read_size_hint' => 8192,
+		':content_cb'     => sub{ my ($chunk) = @_; print OUTF $chunk;}
+	};
+	
+	my $response = $self->get('/node/'.$node, {'download' => undef}, $header);
+	
+		
+	close OUTF;
+	
+	if (defined $response) {
+		return $path;
+	}
+	system('rm -f '.$path);
+	return undef;
 }
 
 sub download_to_path {
