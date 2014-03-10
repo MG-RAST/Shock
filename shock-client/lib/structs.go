@@ -21,8 +21,9 @@ type Wrapper struct {
 }
 
 type WNode struct {
-	Data  *Node     `json:"data"`
-	Error *[]string `json:"error"`
+	Status int       `json:"status"`
+	Data   *Node     `json:"data"`
+	Error  *[]string `json:"error"`
 }
 
 type WAcl struct {
