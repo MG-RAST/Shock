@@ -168,6 +168,20 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		delete(files, "attributes")
 	}
 
+	// set attributes from json string
+	if _, hasAttrStr := params["attributes_str"]; hasAttrStr {
+		if err = node.SetAttributesFromString(params["attributes_str"]); err != nil {
+			return err
+		}
+		delete(params, "attributes_str")
+	}
+
+	// set filename string
+	if _, hasFileNameStr := params["file_name"]; hasFileNameStr {
+		node.File.Name = params["file_name"]
+		delete(params, "file_name")
+	}
+
 	// handle part file
 	LockMgr.LockPartOp()
 	parts_count := node.partsCount()

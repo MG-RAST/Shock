@@ -241,3 +241,12 @@ func (node *Node) SetAttributes(attr FormFile) (err error) {
 	err = node.Save()
 	return
 }
+
+func (node *Node) SetAttributesFromString(attributes string) (err error) {
+	err = json.Unmarshal([]byte(attributes), &node.Attributes)
+	if err != nil {
+		return
+	}
+	err = node.Save()
+	return
+}
