@@ -1,6 +1,9 @@
 package node
 
 import (
+	"encoding/json"
+	clientLib "github.com/MG-RAST/Shock/shock-client/lib"
+	client "github.com/MG-RAST/Shock/shock-client/lib/httpclient"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
@@ -14,6 +17,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/util"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"time"
@@ -251,9 +255,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		}
 	} else if _, ok := query["download_url"]; ok {
 		if !n.HasFile() {
-			return responder.RespondWithError(ctx, http.StatusBadRequest, "Node has not file")
-		} else if u.Uuid == "" {
-			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
+			return responder.RespondWithError(ctx, http.StatusBadRequest, "Node has no file")
 		} else {
 			options := map[string]string{}
 			if _, ok := query["filename"]; ok {
@@ -266,6 +268,87 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			} else {
 				return responder.RespondWithData(ctx, util.UrlResponse{Url: util.ApiUrl(ctx) + "/preauth/" + p.Id, ValidTill: p.ValidTill.Format(time.ANSIC)})
 			}
+		}
+	} else if _, ok := query["download_post"]; ok {
+		// This is a request to post the node to another Shock server. The 'post_url' parameter is required.
+		// By default the post operation will include the data file and attributes (these options can be set
+		// with post_data=0/1 and post_attr=0/1).
+
+		post_url := ""
+		if _, ok := query["post_url"]; ok {
+			post_url = query.Get("post_url")
+		} else {
+			return responder.RespondWithError(ctx, http.StatusBadRequest, "Request type requires post_url parameter of where to post new Shock node")
+		}
+
+		post_opts := map[string]int{
+			"post_data": 1,
+			"post_attr": 1,
+		}
+
+		for k, _ := range post_opts {
+			if _, ok := query[k]; ok {
+				if query.Get(k) == "0" {
+					post_opts[k] = 0
+				} else if query.Get(k) == "1" {
+					post_opts[k] = 1
+				} else {
+					return responder.RespondWithError(ctx, http.StatusBadRequest, "Parameter "+k+" must be either 0 or 1")
+				}
+			}
+		}
+
+		form := client.NewForm()
+		form.AddParam("file_name", n.File.Name)
+
+		if post_opts["post_data"] == 1 {
+			form.AddFile("upload", n.FilePath())
+		}
+
+		if post_opts["post_attr"] == 1 && n.Attributes != nil {
+			attr, _ := json.Marshal(n.Attributes)
+			form.AddParam("attributes_str", string(attr[:]))
+		}
+
+		err = form.Create()
+		if err != nil {
+			err_msg := "could not create multipart form for posting to Shock server: " + err.Error()
+			logger.Error(err_msg)
+			return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+		}
+
+		headers := client.Header{
+			"Content-Type":   form.ContentType,
+			"Content-Length": strconv.FormatInt(form.Length, 10),
+		}
+
+		if res, err := client.Do("POST", post_url, headers, form.Reader); err == nil {
+			if res.StatusCode == 200 {
+				n := clientLib.Node{}
+				r := clientLib.WNode{Data: &n}
+				body, _ := ioutil.ReadAll(res.Body)
+				if err = json.Unmarshal(body, &r); err != nil {
+					err_msg := "bad return from Shock server: " + err.Error()
+					logger.Error(err_msg)
+					return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+				} else {
+					return responder.WriteResponseObject(ctx, http.StatusOK, r)
+				}
+			} else {
+				r := clientLib.Wrapper{}
+				body, _ := ioutil.ReadAll(res.Body)
+				if err = json.Unmarshal(body, &r); err == nil {
+					err_msg := res.Status + ": " + (*r.Error)[0]
+					logger.Error(err_msg)
+					return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+				} else {
+					err_msg := "request error: " + res.Status
+					logger.Error(err_msg)
+					return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+				}
+			}
+		} else {
+			return err
 		}
 	} else {
 		// Base case respond with node in json
