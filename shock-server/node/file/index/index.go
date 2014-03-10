@@ -30,6 +30,7 @@ type Index interface {
 	Type() string
 	Append([]int64)
 	Part(string) (int64, int64, error)
+	Range(string) ([][]int64, error)
 	Load(string) error
 }
 
@@ -79,6 +80,58 @@ func (i *Idx) Part(part string) (pos int64, length int64, err error) {
 		}
 		pos = i.Idx[(p - 1)][0]
 		length = i.Idx[(p - 1)][1]
+	}
+	return
+}
+
+func (i *Idx) Range(part string) (recs [][]int64, err error) {
+	// this function is for returning an array of [pos, length] for a given range
+	// used for subset indices where the records are not contigious for the data file
+	if strings.Contains(part, "-") {
+		startend := strings.Split(part, "-")
+		start, startEr := strconv.ParseInt(startend[0], 10, 64)
+		end, endEr := strconv.ParseInt(startend[1], 10, 64)
+		if startEr != nil || endEr != nil || start <= 0 || start > int64(i.Length) || end <= 0 || end > int64(i.Length) {
+			err = errors.New("")
+			return
+		}
+		curPos := i.Idx[(start - 1)][0]
+		curLen := i.Idx[(start - 1)][1]
+		// we only have one record
+		if start == end {
+			recs = append(recs, []int64{curPos, curLen})
+			return
+		}
+		// this loop tries to only return seperate [pos, length] sets for non-continious records
+		for x := start; x <= end-1; x++ {
+			nextPos := i.Idx[x][0]
+			nextLen := i.Idx[x][1]
+			// special case - last record
+			if x == (end - 1) {
+				if curLen == (nextPos - curPos) {
+					recs = append(recs, []int64{curPos, curLen + nextLen})
+				} else {
+					recs = append(recs, []int64{curPos, curLen})
+					recs = append(recs, []int64{nextPos, nextLen})
+				}
+				break
+			}
+			if curLen == (nextPos - curPos) {
+				curLen = curLen + nextLen
+				continue
+			}
+			recs = append(recs, []int64{curPos, curLen})
+			curPos = nextPos
+			curLen = nextLen
+		}
+	} else {
+		p, er := strconv.ParseInt(part, 10, 64)
+		if er != nil || p <= 0 || p > int64(i.Length) {
+			err = errors.New("")
+			return
+		}
+		rec := []int64{i.Idx[(p - 1)][0], i.Idx[(p - 1)][1]}
+		recs = append(recs, rec)
 	}
 	return
 }
