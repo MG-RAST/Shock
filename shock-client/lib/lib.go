@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-client/conf"
-	client "github.com/MG-RAST/golib/httpclient"
+	client "github.com/MG-RAST/Shock/shock-client/lib/httpclient"
 	"io"
 	"io/ioutil"
 	"net/http"
