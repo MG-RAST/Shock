@@ -186,16 +186,18 @@ sub request {
     };
     
 	if ($@) {
-		if (! ref($response_content) && $is_download==0 ) {
+		if (! ref($response_content) && ($is_download==0 )) {
 			print STDERR "[error] unable to connect to Shock ".$self->shock_url."\n";
 			return undef;
 		} elsif (exists($response_content->{error}) && $response_content->{error}) {
 			print STDERR "[error] unable to send $method request to Shock: ".$response_content->{error}[0]."\n";
 			return undef;
-		} else {
-			return $response_content;
 		}
+		
 	}
+	
+	return $response_content;
+	
 }
 
 
@@ -441,6 +443,16 @@ sub upload_temporary_files {
 		
 		unless (defined($node_obj)) {
 			die "could not upload to shock server";
+		}
+		
+		if (ref($node_obj) ne 'HASH') {
+			if (ref($node_obj) eq '' ) {
+				print "node_obj: ".$node_obj."\n";
+				if ($node_obj eq '' ) {
+					print "node_obj is empty string\n";
+				}
+			}
+			die "could not upload to shock server, node_obj not a hash reference, ref=".ref($node_obj);
 		}
 		
 		unless (defined($node_obj->{'data'})) {
