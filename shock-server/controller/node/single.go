@@ -353,6 +353,10 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			"Content-Length": strconv.FormatInt(form.Length, 10),
 		}
 
+		if _, hasAuth := ctx.HttpRequest().Header["Authorization"]; hasAuth {
+			headers["Authorization"] = ctx.HttpRequest().Header.Get("Authorization")
+		}
+
 		if res, err := client.Do("POST", post_url, headers, form.Reader); err == nil {
 			if res.StatusCode == 200 {
 				n := clientLib.Node{}
