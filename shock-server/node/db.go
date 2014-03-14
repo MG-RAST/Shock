@@ -19,7 +19,7 @@ func Initialize() {
 	c := session.DB(conf.Conf["mongodb-database"]).C("Nodes")
 	c.EnsureIndex(mgo.Index{Key: []string{"id"}, Unique: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"file.path"}, Background: true})
-	c.EnsureIndex(mgo.Index{Key: []string{"virtual_parts"}, Background: true})
+	c.EnsureIndex(mgo.Index{Key: []string{"file.virtual_parts"}, Background: true})
 }
 
 func dbDelete(q bson.M) (err error) {
