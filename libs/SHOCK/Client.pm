@@ -462,6 +462,7 @@ sub upload_temporary_files {
 		}
 		
 		unless (defined($node_obj->{'data'})) {
+			print Dumper($node_obj);
 			die "no data field found";
 		}
 		
