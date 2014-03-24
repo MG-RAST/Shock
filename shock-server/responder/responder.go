@@ -57,7 +57,7 @@ func RespondWithError(ctx context.Context, status int, err string) error {
 	response.D = nil
 	response.E = append(response.E, err)
 	goweb.API.SetCodecService(getJsonCodec())
-	return goweb.API.WriteResponseObject(ctx, http.StatusOK, response)
+	return goweb.API.WriteResponseObject(ctx, status, response)
 }
 
 func RespondWithPaginatedData(ctx context.Context, data interface{}, limit, offset, count int) error {
