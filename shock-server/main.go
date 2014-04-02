@@ -23,6 +23,7 @@ import (
 	"os/signal"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -33,6 +34,7 @@ type resource struct {
 	C string   `json:"contact"`
 	I string   `json:"id"`
 	T string   `json:"type"`
+	A []string `json:"attribute_indexes"`
 }
 
 func mapRoutes() {
@@ -92,6 +94,12 @@ func mapRoutes() {
 
 	goweb.Map("/", func(ctx context.Context) error {
 		host := util.ApiUrl(ctx)
+
+		attrs := strings.Split(conf.Conf["mongodb-attribute-indexes"], ",")
+		for k, v := range attrs {
+			attrs[k] = strings.TrimSpace(v)
+		}
+
 		r := resource{
 			R: []string{"node"},
 			U: host + "/",
@@ -99,6 +107,7 @@ func mapRoutes() {
 			C: conf.Conf["admin-email"],
 			I: "Shock",
 			T: "Shock",
+			A: attrs,
 		}
 		return responder.WriteResponseObject(ctx, http.StatusOK, r)
 	})

@@ -48,8 +48,8 @@ func CreateSubsetIndex(s *subset, ofile string, ifile string) (count int64, err 
 	count = 0
 	prev_int := int(0)
 	for {
-		buf := make([]byte, 32*1024)
-		n, er := s.r.ReadRaw(buf)
+		buf, er := s.r.ReadLine()
+		n := len(buf)
 		if er != nil {
 			if er != io.EOF {
 				err = er
