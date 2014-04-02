@@ -28,13 +28,14 @@ import (
 )
 
 type resource struct {
-	R []string `json:"resources"`
-	U string   `json:"url"`
-	D string   `json:"documentation"`
-	C string   `json:"contact"`
-	I string   `json:"id"`
-	T string   `json:"type"`
 	A []string `json:"attribute_indexes"`
+	C string   `json:"contact"`
+	D string   `json:"documentation"`
+	I string   `json:"id"`
+	R []string `json:"resources"`
+	T string   `json:"type"`
+	U string   `json:"url"`
+	V string   `json:"version"`
 }
 
 func mapRoutes() {
@@ -101,13 +102,14 @@ func mapRoutes() {
 		}
 
 		r := resource{
-			R: []string{"node"},
-			U: host + "/",
-			D: host + "/documentation.html",
-			C: conf.Conf["admin-email"],
-			I: "Shock",
-			T: "Shock",
 			A: attrs,
+			C: conf.Conf["admin-email"],
+			D: host + "/documentation.html",
+			I: "Shock",
+			R: []string{"node"},
+			T: "Shock",
+			U: host + "/",
+			V: "0.8.8",
 		}
 		return responder.WriteResponseObject(ctx, http.StatusOK, r)
 	})
