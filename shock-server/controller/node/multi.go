@@ -59,6 +59,8 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 				if value != "" {
 					if numValue, err := strconv.Atoi(value); err == nil {
 						q["$or"] = ListOfMaps{{keyStr: value}, {keyStr: numValue}}
+					} else if value == "null" {
+						q["$or"] = ListOfMaps{{keyStr: value}, {keyStr: nil}}
 					} else {
 						q[keyStr] = value
 					}
@@ -77,6 +79,8 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 				if value != "" {
 					if numValue, err := strconv.Atoi(value); err == nil {
 						q["$or"] = ListOfMaps{{key: value}, {key: numValue}}
+					} else if value == "null" {
+						q["$or"] = ListOfMaps{{key: value}, {key: nil}}
 					} else {
 						q[key] = value
 					}
