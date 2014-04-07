@@ -55,7 +55,12 @@ func CreateColumnIndex(c *column, column int, ofile string) (count int64, err er
 			}
 			break
 		}
-
+		// skip empty line
+		if n <= 1 {
+			total_n += n
+			line_count += 1
+			continue
+		}
 		// split line by columns and test if column value has changed
 		slices := bytes.Split(buf, []byte("\t"))
 		if len(slices) < column-1 {
