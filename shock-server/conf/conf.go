@@ -91,6 +91,7 @@ func Initialize() {
 	}
 	Conf["mongodb-user"], _ = c.String("Mongodb", "user")
 	Conf["mongodb-password"], _ = c.String("Mongodb", "password")
+	Conf["mongodb-attribute-indexes"], _ = c.String("Mongodb", "attribute_indexes")
 
 	// parse Node-Indices
 	NODE_IDXS = map[string]idxOpts{}

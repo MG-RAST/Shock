@@ -13,6 +13,7 @@ import (
 	"github.com/MG-RAST/golib/mgo/bson"
 	"io/ioutil"
 	"os"
+	"time"
 )
 
 type Node struct {
@@ -27,8 +28,8 @@ type Node struct {
 	Tags         []string          `bson:"tags" json:"tags"`
 	Revisions    []Node            `bson:"revisions" json:"-"`
 	Linkages     []linkage         `bson:"linkage" json:"linkages"`
-	CreatedOn    string            `bson:"created_on" json:"created_on"`
-	LastModified string            `bson:"last_modified" json:"last_modified"`
+	CreatedOn    time.Time         `bson:"created_on" json:"created_on"`
+	LastModified time.Time         `bson:"last_modified" json:"last_modified"`
 }
 
 type linkage struct {
@@ -58,7 +59,6 @@ func New() (node *Node) {
 	node.Indexes = make(map[string]IdxInfo)
 	node.File.Checksum = make(map[string]string)
 	node.setId()
-	node.LastModified = "-"
 	return
 }
 
@@ -235,6 +235,15 @@ func (node *Node) SetAttributes(attr FormFile) (err error) {
 		return
 	}
 	err = json.Unmarshal(attributes, &node.Attributes)
+	if err != nil {
+		return
+	}
+	err = node.Save()
+	return
+}
+
+func (node *Node) SetAttributesFromString(attributes string) (err error) {
+	err = json.Unmarshal([]byte(attributes), &node.Attributes)
 	if err != nil {
 		return
 	}

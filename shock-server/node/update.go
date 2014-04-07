@@ -168,6 +168,20 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		delete(files, "attributes")
 	}
 
+	// set attributes from json string
+	if _, hasAttrStr := params["attributes_str"]; hasAttrStr {
+		if err = node.SetAttributesFromString(params["attributes_str"]); err != nil {
+			return err
+		}
+		delete(params, "attributes_str")
+	}
+
+	// set filename string
+	if _, hasFileNameStr := params["file_name"]; hasFileNameStr {
+		node.File.Name = params["file_name"]
+		delete(params, "file_name")
+	}
+
 	// handle part file
 	LockMgr.LockPartOp()
 	parts_count := node.partsCount()
@@ -258,10 +272,10 @@ func (node *Node) Save() (err error) {
 		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Public, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified}
 		node.Revisions = append(node.Revisions, n)
 	}
-	if node.CreatedOn == "" {
-		node.CreatedOn = time.Now().Format(time.UnixDate)
+	if node.CreatedOn.String() == "" {
+		node.CreatedOn = time.Now()
 	} else {
-		node.LastModified = time.Now().Format(time.UnixDate)
+		node.LastModified = time.Now()
 	}
 
 	bsonPath := fmt.Sprintf("%s/%s.bson", node.Path(), node.Id)
