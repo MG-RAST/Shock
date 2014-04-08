@@ -359,13 +359,12 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 
 		if res, err := client.Do("POST", post_url, headers, form.Reader); err == nil {
 			if res.StatusCode == 200 {
-				n := clientLib.Node{}
-				r := clientLib.WNode{Data: &n}
+				r := clientLib.Wrapper{}
 				body, _ := ioutil.ReadAll(res.Body)
 				if err = json.Unmarshal(body, &r); err != nil {
-					err_msg := "bad return from Shock server: " + err.Error()
+					err_msg := "err:@node_Read POST: " + err.Error()
 					logger.Error(err_msg)
-					return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+					return responder.WriteResponseObject(ctx, http.StatusInternalServerError, err_msg)
 				} else {
 					return responder.WriteResponseObject(ctx, http.StatusOK, r)
 				}

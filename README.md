@@ -171,6 +171,10 @@ __Note__: Authentication is required for most of these commands
     # copying data file from another node
     curl -X POST -F "copy_data=<copy_node_id>" http://<host>[:<port>]/node
 
+    # copying node (and it's attributes) from one shock server to another shock server
+	(note: if the destination shock server requires authentication, you must provide authentication in your GET request and the credentials will be passed along to the destination shock server.)
+    curl -X GET http://<host>[:<port>]/node/<node_id>?download_post&post_url=http://<destination_host>[:<destination_port>]/node
+
     # with file local to the shock server
     curl -X POST -F "path=<path_to_data_file>" -F "action=<action_type>" http://<host>[:<port>]/node
         (note: The action_type is one of keep_file (node points to file path given), copy_file (file is copied to shock data directory), or move_file (file is moved to shock data directory).  The move_file action only works if user running Shock has permissions to move the file.)
