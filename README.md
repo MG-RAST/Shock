@@ -50,16 +50,16 @@ Routes Overview
 - [/documentation.html]() this documentation
 
 - [/node](#get_nodes)  list nodes, query
-- [/node/<node_id>](#get_node)  view node, download file (full or partial)
-- [/node/<node_id>/acl]()  view node acls
-- [/node/<node_id>/acl/<type>]()  view node acls of type <type>
+- [/node/&lt;node_id&gt;](#get_node)  view node, download file (full or partial)
+- [/node/&lt;node_id&gt;/acl]()  view node acls
+- [/node/&lt;node_id&gt;/acl/&lt;type&gt;]()  view node acls of type &lt;type&gt;
 
 #####PUT
 
-- [/node/<node_id>](#put_node)  modify node
-- [/node/<node_id>/acl]()  modify node acls
-- [/node/<node_id>/acl/<type>]()  modify node acls of type <type>
-- [/node/<node_id>/index/<type>]()  create node indexes
+- [/node/&lt;node_id&gt;](#put_node)  modify node
+- [/node/&lt;node_id&gt;/acl]()  modify node acls
+- [/node/&lt;node_id&gt;/acl/&lt;type&gt;]()  modify node acls of type &lt;type&gt;
+- [/node/&lt;node_id&gt;/index/&lt;type&gt;]()  create node indexes
 
 #####POST
  
@@ -67,7 +67,7 @@ Routes Overview
 
 #####DELETE
 
-- [/node/<node_id>]()  delete node
+- [/node/&lt;node_id&gt;]()  delete node
 
 <br>
 
@@ -270,12 +270,12 @@ API
 All responses from Shock currently are in the following encoding. 
 
   {
-    "data": <JSON or null>,
-    "error": <string or null: error message>,
-    "status": <int: http status code>,
-    "limit": <int: paginated requests only>, 
-    "offset": <int: paginated requests only>,
-    "total_count": <int: paginated requests only>
+    "data": &lt;JSON or null&gt;,
+    "error": &lt;string or null: error message&gt;,
+    "status": &lt;int: http status code&gt;,
+    "limit": &lt;int: paginated requests only&gt;, 
+    "offset": &lt;int: paginated requests only&gt;,
+    "total_count": &lt;int: paginated requests only&gt;
   }
 
 <a name="get_slash"/>
@@ -357,7 +357,7 @@ Multiple attributes can be selected in a single query and are treated as AND ope
 
 <a name="get_node"/>
 <br>
-### GET /node/<node_id>
+### GET /node/&lt;node_id&gt;
 
 View node, download file (full or partial)
 
@@ -379,7 +379,7 @@ View node, download file (full or partial)
 
 <a name="put_node"/>
 <br>
-### PUT /node/<node_id>
+### PUT /node/&lt;node_id&gt;
 
 Modify node, create index
 
