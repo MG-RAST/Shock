@@ -57,6 +57,11 @@ func CreateSubsetIndex(s *subset, ofile string, ifile string) (count int64, err 
 			}
 			break
 		}
+		// skip empty line
+		if n <= 1 {
+			continue
+		}
+		// int from line
 		str := string(buf[:n-1])
 		curr_int, er := strconv.Atoi(str)
 		if er != nil {
