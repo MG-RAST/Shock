@@ -44,9 +44,10 @@ func CreateColumnIndex(c *column, column int, ofile string) (count int64, err er
 	total_n := 0     // stores the number of bytes read for the current index record
 	line_count := 0  // stores the number of lines that have been read from the data file
 	prev_str := ""   // keeps track of the string of the specified column of the previous line
+
 	for {
-		buf := make([]byte, 32*1024)
-		n, er := c.r.ReadRaw(buf)
+		buf, er := c.r.ReadLine()
+		n := len(buf)
 		if er != nil {
 			if er != io.EOF {
 				err = er
@@ -54,7 +55,12 @@ func CreateColumnIndex(c *column, column int, ofile string) (count int64, err er
 			}
 			break
 		}
-
+		// skip empty line
+		if n <= 1 {
+			total_n += n
+			line_count += 1
+			continue
+		}
 		// split line by columns and test if column value has changed
 		slices := bytes.Split(buf, []byte("\t"))
 		if len(slices) < column-1 {

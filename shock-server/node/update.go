@@ -272,10 +272,10 @@ func (node *Node) Save() (err error) {
 		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Public, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified}
 		node.Revisions = append(node.Revisions, n)
 	}
-	if node.CreatedOn == "" {
-		node.CreatedOn = time.Now().Format(time.UnixDate)
+	if node.CreatedOn.String() == "0001-01-01 00:00:00 +0000 UTC" {
+		node.CreatedOn = time.Now()
 	} else {
-		node.LastModified = time.Now().Format(time.UnixDate)
+		node.LastModified = time.Now()
 	}
 
 	bsonPath := fmt.Sprintf("%s/%s.bson", node.Path(), node.Id)

@@ -8,6 +8,7 @@ import (
 	"github.com/MG-RAST/golib/mgo/bson"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 )
 
 // Initialize creates a copy of the mongodb connection and then uses that connection to
@@ -20,6 +21,11 @@ func Initialize() {
 	c.EnsureIndex(mgo.Index{Key: []string{"id"}, Unique: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"file.path"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"file.virtual_parts"}, Background: true})
+	if conf.Conf["mongodb-indexes"] != "" {
+		for _, v := range strings.Split(conf.Conf["mongodb-attribute-indexes"], ",") {
+			c.EnsureIndex(mgo.Index{Key: []string{strings.TrimSpace(v)}, Background: true})
+		}
+	}
 }
 
 func dbDelete(q bson.M) (err error) {

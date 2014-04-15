@@ -50,16 +50,16 @@ Routes Overview
 - [/documentation.html]() this documentation
 
 - [/node](#get_nodes)  list nodes, query
-- [/node/{id}](#get_node)  view node, download file (full or partial)
-- [/node/{id}/acl]()  view node acls
-- [/node/{id}/acl/{type}]()  view node acls of type {type}
+- [/node/&lt;node_id&gt;](#get_node)  view node, download file (full or partial)
+- [/node/&lt;node_id&gt;/acl]()  view node acls
+- [/node/&lt;node_id&gt;/acl/&lt;type&gt;]()  view node acls of type &lt;type&gt;
 
 #####PUT
 
-- [/node/{id}](#put_node)  modify node
-- [/node/{id}/acl]()  modify node acls
-- [/node/{id}/acl/{type}]()  modify node acls of type {type}
-- [/node/{id}/index/{type}]()  create node indexes
+- [/node/&lt;node_id&gt;](#put_node)  modify node
+- [/node/&lt;node_id&gt;/acl]()  modify node acls
+- [/node/&lt;node_id&gt;/acl/&lt;type&gt;]()  modify node acls of type &lt;type&gt;
+- [/node/&lt;node_id&gt;/index/&lt;type&gt;]()  create node indexes
 
 #####POST
  
@@ -67,7 +67,7 @@ Routes Overview
 
 #####DELETE
 
-- [/node/{id}]()  delete node
+- [/node/&lt;node_id&gt;]()  delete node
 
 <br>
 
@@ -171,6 +171,10 @@ __Note__: Authentication is required for most of these commands
     # copying data file from another node
     curl -X POST -F "copy_data=<copy_node_id>" http://<host>[:<port>]/node
 
+    # copying node (and it's attributes) from one shock server to another shock server
+	(note: if the destination shock server requires authentication, you must provide authentication in your GET request and the credentials will be passed along to the destination shock server.)
+    curl -X GET http://<host>[:<port>]/node/<node_id>?download_post&post_url=http://<destination_host>[:<destination_port>]/node
+
     # with file local to the shock server
     curl -X POST -F "path=<path_to_data_file>" -F "action=<action_type>" http://<host>[:<port>]/node
         (note: The action_type is one of keep_file (node points to file path given), copy_file (file is copied to shock data directory), or move_file (file is moved to shock data directory).  The move_file action only works if user running Shock has permissions to move the file.)
@@ -193,65 +197,69 @@ __Note__: Authentication is required for most of these commands
 #### Node retrieval ([details](#get_node)):
 
     # node information
-    curl -X GET http://<host>[:<port>]/node/{id}
+    curl -X GET http://<host>[:<port>]/node/<node_id>
 
     # download file
-    curl -X GET http://<host>[:<port>]/node/{id}/?download
+    curl -X GET http://<host>[:<port>]/node/<node_id>?download
 
     # download first 1mb of file
-    curl -X GET http://<host>[:<port>]/node/{id}/?download&index=size&part=1
+    curl -X GET http://<host>[:<port>]/node/<node_id>?download&index=size&part=1
         
     # download first 10mb of file
-    curl -X GET http://<host>[:<port>]/node/{id}/?download&index=size&chunk_size=10485760&part=1
+    curl -X GET http://<host>[:<port>]/node/<node_id>?download&index=size&chunk_size=10485760&part=1
 
     # download Nth 10mb of file
-    curl -X GET http://<host>[:<port>]/node/{id}/?download&index=size&chunk_size=10485760&part=N
+    curl -X GET http://<host>[:<port>]/node/<node_id>?download&index=size&chunk_size=10485760&part=N
+	
+	# download portion of file given seek and length positions (in bytes)
+	curl -X GET http://<host>[:<port>]/node/<node_id>?download&seek=<seek>&length=<length>
+	(note: exluding seek position defaults to an offset of zero bytes, exluding length position defaults to remainder of file being returned)
 
     # download entire bam file in human readable sam alignments
-    curl -X GET http://<host>[:<port>]/node/{id}/?download&index=bai
+    curl -X GET http://<host>[:<port>]/node/<node_id>?download&index=bai
 
     # download bam alignments overlapped with specified region (ref_id:start_pos-end_pos)
-    curl -X GET http://<host>[:<port>]/node/{id}/?download&index=bai&region=chr1:1-20000
+    curl -X GET http://<host>[:<port>]/node/<node_id>?download&index=bai&region=chr1:1-20000
 
     # download bam alignments with selected arguments supported by "samtools view"
-    curl -X GET http://<host>[:<port>]/node/{id}/?download/index=bai&head&headonly&count&flag=[INT]&lib=[STR]&mapq=[INT]&readgroup=[STR]
+    curl -X GET http://<host>[:<port>]/node/<node_id>?download&index=bai&head&headonly&count&flag=[INT]&lib=[STR]&mapq=[INT]&readgroup=[STR]
     (note: All the arguments are optional and can be used with or without the region, but the index=bai is required)
     
 <br>
 #### Node acls: 
 
     # view all acls
-    curl -X GET http://<host>[:<port>]/node/{id}/acl/
+    curl -X GET http://<host>[:<port>]/node/<node_id>/acl/
 
     # view specific acls
-    curl -X GET http://<host>[:<port>]/node/{id}/acl/[ all | read | write | delete | owner ]
+    curl -X GET http://<host>[:<port>]/node/<node_id>/acl/[ all | read | write | delete | owner ]
 
     # changing owner (chown)
-    curl -X PUT http://<host>[:<port>]/node/{id}/acl/owner?users=<user-id_or_uuid>
+    curl -X PUT http://<host>[:<port>]/node/<node_id>/acl/owner?users=<user-id_or_uuid>
 
     # adding user to all acls (except owner)
-    curl -X PUT http://<host>[:<port>]/node/{id}/acl/all?users=<user-ids_or_uuids>
+    curl -X PUT http://<host>[:<port>]/node/<node_id>/acl/all?users=<user-ids_or_uuids>
 
     # adding user to specific acls
-    curl -X PUT http://<host>[:<port>]/node/{id}/acl/[ read | write | delete ]?users=<user-ids_or_uuids>
+    curl -X PUT http://<host>[:<port>]/node/<node_id>/acl/[ read | write | delete ]?users=<user-ids_or_uuids>
     
     # deleting user from all acls (except owner)
-    curl -X DELETE http://<host>[:<port>]/node/{id}/acl/all?users=<user-ids_or_uuids>    
+    curl -X DELETE http://<host>[:<port>]/node/<node_id>/acl/all?users=<user-ids_or_uuids>    
     
     # deleting user to specific acls
-    curl -X DELETE http://<host>[:<port>]/node/{id}/acl/[ read | write | delete ]?users=<user-ids_or_uuids>
+    curl -X DELETE http://<host>[:<port>]/node/<node_id>/acl/[ read | write | delete ]?users=<user-ids_or_uuids>
     
 <br>
 #### Querying ([details](#get_nodes)):
 
     # by attribute key value
-    curl -X GET http://<host>[:<port>]/node/?query&<key>=<value>
+    curl -X GET http://<host>[:<port>]/node?query&<key>=<value>
 
     # by attribute key value, limit 10
-    curl -X GET http://<host>[:<port>]/node/?query&<key>=<value>&limit=10
+    curl -X GET http://<host>[:<port>]/node?query&<key>=<value>&limit=10
 
     # by attribute key value, limit 10, offset 10
-    curl -X GET http://<host>[:<port>]/node/?query&<key>=<value>&limit=10&offset=10
+    curl -X GET http://<host>[:<port>]/node?query&<key>=<value>&limit=10&offset=10
 
 <br>
 
@@ -262,12 +270,12 @@ API
 All responses from Shock currently are in the following encoding. 
 
   {
-    "data": <JSON or null>,
-    "error": <string or null: error message>,
-    "status": <int: http status code>,
-    "limit": <int: paginated requests only>, 
-    "offset": <int: paginated requests only>,
-    "total_count": <int: paginated requests only>
+    "data": &lt;JSON or null&gt;,
+    "error": &lt;string or null: error message&gt;,
+    "status": &lt;int: http status code&gt;,
+    "limit": &lt;int: paginated requests only&gt;, 
+    "offset": &lt;int: paginated requests only&gt;,
+    "total_count": &lt;int: paginated requests only&gt;
   }
 
 <a name="get_slash"/>
@@ -349,7 +357,7 @@ Multiple attributes can be selected in a single query and are treated as AND ope
 
 <a name="get_node"/>
 <br>
-### GET /node/{id}
+### GET /node/&lt;node_id&gt;
 
 View node, download file (full or partial)
 
@@ -359,7 +367,7 @@ View node, download file (full or partial)
 
 ##### example	
 
-	curl -X GET [ see Authentication ] http://<host>[:<port>]/node/{id}
+	curl -X GET [ see Authentication ] http://<host>[:<port>]/node/<node_id>
 
 ##### returns
 
@@ -371,7 +379,7 @@ View node, download file (full or partial)
 
 <a name="put_node"/>
 <br>
-### PUT /node/{id}
+### PUT /node/&lt;node_id&gt;
 
 Modify node, create index
 
@@ -386,7 +394,7 @@ Modify node, create index
    
 ##### example	
   
-	curl -X PUT [ see Authentication ] [ -F "attributes=@<path_to_json>" ( -F "upload=@<path_to_data_file>" || -F "path=<path_to_file>") ] http://<host>[:<port>]/node/{id}
+	curl -X PUT [ see Authentication ] [ -F "attributes=@<path_to_json>" ( -F "upload=@<path_to_data_file>" || -F "path=<path_to_file>") ] http://<host>[:<port>]/node/<node_id>
 
   
 ##### returns
@@ -404,10 +412,10 @@ Modify node, create index
 
 ##### example	
     
-	curl -X PUT [ see Authentication ] http://<host>[:<port>]/node/{id}/index/<type>
-	curl -X PUT [ see Authentication ] http://<host>[:<port>]/node/{id}/index/column?number=<int>
-	curl -X PUT [ see Authentication ] -F "index_name=<string>" -F "parent_index=<type>" -F "subset_indices=@<path_to_file>" http://<host>[:<port>]/node/{id}/index/subset
-	curl -X PUT [ see Authentication ] http://<host>[:<port>]/node/{id}?index=<type> (deprecated)
+	curl -X PUT [ see Authentication ] http://<host>[:<port>]/node/<node_id>/index/<type>
+	curl -X PUT [ see Authentication ] http://<host>[:<port>]/node/<node_id>/index/column?number=<int>
+	curl -X PUT [ see Authentication ] -F "index_name=<string>" -F "parent_index=<type>" -F "subset_indices=@<path_to_file>" http://<host>[:<port>]/node/<node_id>/index/subset
+	curl -X PUT [ see Authentication ] http://<host>[:<port>]/node/<node_id>?index=<type> (deprecated)
 
 ##### returns
 
