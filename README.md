@@ -17,7 +17,7 @@ Building
 --------
 Shock (requires mongodb=>2.0.3, go=>1.1.0 [golang.org](http://golang.org/), git, mercurial and bazaar). You must also set the $GOPATH and $GOROOT environment variables before installing Shock. There are two options for installing Shock.
 
-OPTION 1: The recommended method is to download the Makefile located [here](https://raw.github.com/MG-RAST/Shock/master/Makefile) to your $GOPATH directory and then run:
+OPTION 1: The recommended method for installing Shock is to download the Makefile located [here](https://raw.github.com/MG-RAST/Shock/master/Makefile) to your $GOPATH directory and then run:
 
     make install
 
