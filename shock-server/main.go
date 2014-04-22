@@ -104,7 +104,7 @@ func mapRoutes() {
 		r := resource{
 			A: attrs,
 			C: conf.Conf["admin-email"],
-			D: host + "/documentation.html",
+			D: host + "/wiki/",
 			I: "Shock",
 			R: []string{"node"},
 			T: "Shock",
@@ -117,8 +117,7 @@ func mapRoutes() {
 	nodeController := new(ncon.NodeController)
 	goweb.MapController(nodeController)
 
-	goweb.MapStatic("/assets", conf.Conf["site-path"]+"/assets")
-	goweb.MapStaticFile("/documentation.html", conf.Conf["site-path"]+"/pages/main.html")
+	goweb.MapStatic("/wiki", conf.Conf["site-path"])
 
 	// Map the favicon
 	//goweb.MapStaticFile("/favicon.ico", "static-files/favicon.ico")
