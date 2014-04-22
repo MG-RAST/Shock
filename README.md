@@ -15,11 +15,17 @@ Shock is actively being developed at [github.com/MG-RAST/Shock](https://github.c
 
 Building
 --------
-Shock (requires mongodb=>2.0.3, go=>1.1.0 [golang.org](http://golang.org/), git, mercurial and bazaar):
+Shock (requires mongodb=>2.0.3, go=>1.1.0 [golang.org](http://golang.org/), git, mercurial and bazaar). You must also set the $GOPATH and $GOROOT environment variables before installing Shock. There are two options for installing Shock.
+
+OPTION 1: The recommended method is to download the Makefile located [here](https://raw.github.com/MG-RAST/Shock/master/Makefile) to your $GOPATH directory and then run:
+
+    make install
+
+OPTION 2: You could alternatively install Shock by running:
 
     go get github.com/MG-RAST/Shock/...
 
-Built binary will be located in env configured $GOPATH or $GOROOT depending on the Go configuration.
+The upside to using OPTION 1 is that this will insert the Shock version number into your Shock server to be displayed when the server is started and this will also generate the Shock documentation locally to be hosted by the server. The built binaries will be located in env configured $GOPATH/bin/ directory.
 
 Configuration
 -------------
