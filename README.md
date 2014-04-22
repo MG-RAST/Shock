@@ -25,7 +25,7 @@ OPTION 2: You could alternatively install Shock by running:
 
     go get github.com/MG-RAST/Shock/...
 
-The upside to using OPTION 1 is that this will insert the Shock version number into your Shock server to be displayed when the server is started and this will also generate the Shock documentation locally to be hosted by the server. The built binaries will be located in env configured $GOPATH/bin/ directory.
+The upside to using OPTION 1 is that this will insert the Shock version number into your Shock server to be displayed when the server is started and this will also generate the Shock documentation locally to be hosted by the server. The built binaries will be located in the env configured $GOPATH/bin/ directory.
 
 Configuration
 -------------
