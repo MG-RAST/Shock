@@ -1,5 +1,5 @@
-About:
-------
+About
+-----
 
 Shock is a platform to support computation, storage, and distribution. Designed from the ground up to be fast, scalable, fault tolerant, federated. 
 
@@ -13,24 +13,24 @@ Shock is a data management system. The long term goals of Shock include the abil
 
 Shock is actively being developed at [github.com/MG-RAST/Shock](https://github.com/MG-RAST/Shock).
 
-Building:
----------
+Building
+--------
 Shock (requires mongodb=>2.0.3, go=>1.1.0 [golang.org](http://golang.org/), git, mercurial and bazaar):
 
     go get github.com/MG-RAST/Shock/...
 
 Built binary will be located in env configured $GOPATH or $GOROOT depending on the Go configuration.
 
-Configuration:
---------------
+Configuration
+-------------
 The Shock configuration file is in INI file format. There is a template of the config file located at the root level of the repository.
 
-Running:
---------------
+Running
+-------
 To run:
   
     shock-server -conf <path_to_config_file>
 
-More:
---------------
+Documentation
+-------------
 For further information about Shock's functionality, please refer to our [github wiki](https://github.com/MG-RAST/Shock/wiki/_pages).
