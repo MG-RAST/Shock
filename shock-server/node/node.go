@@ -30,6 +30,8 @@ type Node struct {
 	Linkages     []linkage         `bson:"linkage" json:"linkages"`
 	CreatedOn    time.Time         `bson:"created_on" json:"created_on"`
 	LastModified time.Time         `bson:"last_modified" json:"last_modified"`
+	Type         string            `bson:"type" json:"-"`
+	Parent       Parent            `bson:"parent" json:"-"`
 }
 
 type linkage struct {
@@ -52,6 +54,11 @@ type FormFile struct {
 	Name     string
 	Path     string
 	Checksum map[string]string
+}
+
+type Parent struct {
+	Id        string `bson:"id" json:"-"`
+	IndexName string `bson:"index_name" json:"-"`
 }
 
 func New() (node *Node) {
@@ -94,8 +101,17 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 		}
 	}
 
+	// if copying node or creating subset node from parent, check if user has rights to the original node
+
 	if _, hasCopyData := params["copy_data"]; hasCopyData {
 		_, err = Load(params["copy_data"], u.Uuid)
+		if err != nil {
+			return
+		}
+	}
+
+	if _, hasParentNode := params["parent_node"]; hasParentNode {
+		_, err = Load(params["parent_node"], u.Uuid)
 		if err != nil {
 			return
 		}

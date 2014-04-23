@@ -157,7 +157,7 @@ func IndexTypedRequest(ctx context.Context) {
 			f, _ := os.Open(subsetIndices.Path)
 			defer f.Close()
 			idxer := index.NewSubsetIndexer(f)
-			count, err = index.CreateSubsetIndex(&idxer, n.IndexPath()+"/"+newIndex+".idx", n.IndexPath()+"/"+parentIndex+".idx")
+			count, _, err = index.CreateSubsetIndex(&idxer, n.IndexPath()+"/"+newIndex+".idx", n.IndexPath()+"/"+parentIndex+".idx")
 			if err != nil {
 				logger.Error("err " + err.Error())
 				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
