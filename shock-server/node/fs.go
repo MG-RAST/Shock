@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
+	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"math/rand"
 	"os"
 	"syscall"
@@ -31,6 +32,48 @@ func (node *Node) SetFile(file FormFile) (err error) {
 		TotalUnits:  totalunits,
 		AvgUnitSize: conf.CHUNK_SIZE,
 	}
+	err = node.Save()
+	return
+}
+
+func (node *Node) SetFileFromSubset(subsetIndices FormFile) (err error) {
+	// load parent node
+	var n *Node
+	n, err = LoadUnauth(node.Parent.Id)
+	if err != nil {
+		return err
+	}
+
+	if _, indexExists := n.Indexes[node.Parent.IndexName]; !indexExists {
+		return errors.New("Index '" + node.Parent.IndexName + "' does not exist for parent node.")
+	}
+
+	parentIndexFile := n.IndexPath() + "/" + node.Parent.IndexName + ".idx"
+	if _, statErr := os.Stat(parentIndexFile); statErr != nil {
+		return errors.New("Could not stat index file for parent node where parent node = '" + node.Parent.Id + "' and index = '" + node.Parent.IndexName + "'.")
+	}
+
+	f, _ := os.Open(subsetIndices.Path)
+	defer f.Close()
+	idxer := index.NewSubsetIndexer(f)
+	_, size, err := index.CreateSubsetIndex(&idxer, node.Path()+"/"+node.Id+".subset.idx", parentIndexFile)
+	if err != nil {
+		return
+	}
+	node.File.Size = size
+
+	// fill size index info
+	totalunits := node.File.Size / conf.CHUNK_SIZE
+	m := node.File.Size % conf.CHUNK_SIZE
+	if m != 0 {
+		totalunits += 1
+	}
+	node.Indexes["size"] = IdxInfo{
+		Type:        "size",
+		TotalUnits:  totalunits,
+		AvgUnitSize: conf.CHUNK_SIZE,
+	}
+
 	err = node.Save()
 	return
 }
