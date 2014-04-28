@@ -207,6 +207,19 @@ func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
 	node.File.Name = node.Id
 	node.File.Size = fileStat.Size()
 	node.File.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
+
+	//fill size index info
+	totalunits := node.File.Size / conf.CHUNK_SIZE
+	m := node.File.Size % conf.CHUNK_SIZE
+	if m != 0 {
+		totalunits += 1
+	}
+	node.Indexes["size"] = IdxInfo{
+		Type:        "size",
+		TotalUnits:  totalunits,
+		AvgUnitSize: conf.CHUNK_SIZE,
+	}
+
 	err = node.Save()
 	return
 }
