@@ -82,20 +82,43 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			if !n.HasFile() {
 				return responder.RespondWithError(ctx, http.StatusBadRequest, "Node has no file")
 			}
+
+			// open file
+			r, err := n.FileReader()
+			defer r.Close()
+			if err != nil {
+				err_msg := "Err@node_Read:Open: " + err.Error()
+				logger.Error(err_msg)
+				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+			}
+
 			filename := n.Id
 			if _, ok := query["filename"]; ok {
 				filename = query.Get("filename")
 			}
-			nf, err := n.FileReader()
-			defer nf.Close()
+
+			// need to load index for subset node
+			idx, err := n.SubsetNodeIndex()
 			if err != nil {
-				// File not found or some sort of file read error.
-				// Probably deserves more checking
-				err_msg := "err:@node_Read node.FileReader: " + err.Error()
-				logger.Error(err_msg)
-				return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				logger.Error(err.Error())
+				return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
 			}
-			s := &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc}
+
+			var size int64 = 0
+			s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Filter: fFunc}
+
+			// download full subset file
+			fullRange := "1-" + strconv.FormatInt(idx.GetLength(), 10)
+			recSlice, err := idx.Range(fullRange)
+			if err != nil {
+				return responder.RespondWithError(ctx, http.StatusInternalServerError, "Subset node contains invalid subset index")
+			}
+			for _, rec := range recSlice {
+				size += rec[1]
+				s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
+			}
+
+			s.Size = size
 			if download_raw {
 				err = s.StreamRaw()
 				if err != nil {
