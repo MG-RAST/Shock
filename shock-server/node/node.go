@@ -162,6 +162,19 @@ func (node *Node) FileReader() (reader file.ReaderAt, err error) {
 	return os.Open(node.FilePath())
 }
 
+func (node *Node) SubsetNodeIndex() (idx index.Index, err error) {
+	indexPath := fmt.Sprintf("%s/%s.subset.idx", node.Path(), node.Id)
+	_, err = os.Stat(indexPath)
+	if err != nil {
+		err_str := fmt.Sprintf("Subset node %s does not have a subset index file.", node.Id)
+		err = errors.New(err_str)
+		return
+	}
+	idx = index.New()
+	err = idx.Load(indexPath)
+	return
+}
+
 func (node *Node) Index(name string) (idx index.Index, err error) {
 	if index.Has(name) {
 		idx = index.NewVirtual(name, node.FilePath(), node.File.Size, 10240)
