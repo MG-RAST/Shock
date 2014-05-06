@@ -1,4 +1,4 @@
-package SHOCK::Client;
+package Shock;
 
 use strict;
 use warnings;
