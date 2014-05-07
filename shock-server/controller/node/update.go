@@ -49,6 +49,20 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 		return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 	}
 
+	if _, hasCopyData := params["copy_data"]; hasCopyData {
+		_, err = node.Load(params["copy_data"], u.Uuid)
+		if err != nil {
+			return request.AuthError(err, ctx)
+		}
+	}
+
+	if _, hasParentNode := params["parent_node"]; hasParentNode {
+		_, err = node.Load(params["parent_node"], u.Uuid)
+		if err != nil {
+			return request.AuthError(err, ctx)
+		}
+	}
+
 	err = n.Update(params, files)
 	if err != nil {
 		err_msg := "err@node_Update: " + id + ": " + err.Error()

@@ -30,8 +30,8 @@ type Node struct {
 	Linkages     []linkage         `bson:"linkage" json:"linkages"`
 	CreatedOn    time.Time         `bson:"created_on" json:"created_on"`
 	LastModified time.Time         `bson:"last_modified" json:"last_modified"`
-	Type         string            `bson:"type" json:"-"`
-	Parent       Parent            `bson:"parent" json:"-"`
+	Type         string            `bson:"type" json:"type"`
+	Subset       Subset            `bson:"subset" json:"-"`
 }
 
 type linkage struct {
@@ -46,6 +46,7 @@ type IdxInfo struct {
 	Type        string `bson:"index_type" json:"-"`
 	TotalUnits  int64  `bson:"total_units" json:"total_units"`
 	AvgUnitSize int64  `bson:"average_unit_size" json:"average_unit_size"`
+	Format      string `bson:"format" json:"-"`
 }
 
 type FormFiles map[string]FormFile
@@ -56,9 +57,22 @@ type FormFile struct {
 	Checksum map[string]string
 }
 
+// Subset is used to store information about a subset node's parent and its index.
+// A subset node's index defines the subset of the data file that this node represents.
+// A subset node's index is immutable after it is defined.
+type Subset struct {
+	Parent Parent      `bson:"parent" json:"-"`
+	Index  SubsetIndex `bson:"subset_index" json:"-"`
+}
+
 type Parent struct {
 	Id        string `bson:"id" json:"-"`
 	IndexName string `bson:"index_name" json:"-"`
+}
+
+type SubsetIndex struct {
+	Path   string `bson:"path" json:"-"`
+	Format string `bson:"format" json:"-"`
 }
 
 func New() (node *Node) {
@@ -118,6 +132,7 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 	}
 
 	node = New()
+	node.Type = "basic"
 	if u.Uuid != "" {
 		node.Acl.SetOwner(u.Uuid)
 		node.Acl.Set(u.Uuid, acl.Rights{"read": true, "write": true, "delete": true})

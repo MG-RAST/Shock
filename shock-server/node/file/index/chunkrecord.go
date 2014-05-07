@@ -28,7 +28,7 @@ func NewChunkRecordIndexer(f *os.File) Indexer {
 	}
 }
 
-func (i *chunkRecord) Create(file string) (count int64, err error) {
+func (i *chunkRecord) Create(file string) (count int64, format string, err error) {
 	tmpFilePath := fmt.Sprintf("%s/temp/%d%d.idx", conf.Conf["data-path"], rand.Int(), rand.Int())
 
 	f, err := os.Create(tmpFilePath)
@@ -37,6 +37,7 @@ func (i *chunkRecord) Create(file string) (count int64, err error) {
 	}
 	defer f.Close()
 
+	format = "array"
 	curr := int64(0)
 	count = 0
 	for {
