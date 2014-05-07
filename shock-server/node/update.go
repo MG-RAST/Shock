@@ -69,6 +69,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 		delete(files, "upload")
 	} else if isPartialUpload {
+		node.Type = "parts"
 		if params["parts"] == "unknown" {
 			if err = node.initParts("unknown"); err != nil {
 				return err
@@ -92,6 +93,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			}
 		}
 	} else if isVirtualNode {
+		node.Type = "virtual"
 		if source, hasSource := params["source"]; hasSource {
 			ids := strings.Split(source, ",")
 			node.addVirtualParts(ids)
@@ -135,6 +137,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		node.File.Size = n.File.Size
 		node.File.Checksum = n.File.Checksum
 		node.File.Format = n.File.Format
+		node.Type = "copy"
 
 		// Copy node indexes
 		if _, copyIndex := params["copy_indexes"]; copyIndex && (len(n.Indexes) > 0) {
@@ -198,8 +201,8 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		node.File.Name = n.File.Name
 		node.File.Format = n.File.Format
 		node.Type = "subset"
-		node.Parent.Id = params["parent_node"]
-		node.Parent.IndexName = params["parent_index"]
+		node.Subset.Parent.Id = params["parent_node"]
+		node.Subset.Parent.IndexName = params["parent_index"]
 
 		if n.File.Path == "" {
 			node.File.Path = fmt.Sprintf("%s/%s.data", getPath(params["parent_node"]), params["parent_node"])
@@ -337,7 +340,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 func (node *Node) Save() (err error) {
 	node.UpdateVersion()
 	if len(node.Revisions) == 0 || node.Revisions[len(node.Revisions)-1].Version != node.Version {
-		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Public, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified, node.Type, node.Parent}
+		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Public, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified, node.Type, node.Subset}
 		node.Revisions = append(node.Revisions, n)
 	}
 	if node.CreatedOn.String() == "0001-01-01 00:00:00 +0000 UTC" {

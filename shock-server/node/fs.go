@@ -31,6 +31,7 @@ func (node *Node) SetFile(file FormFile) (err error) {
 		Type:        "size",
 		TotalUnits:  totalunits,
 		AvgUnitSize: conf.CHUNK_SIZE,
+		Format:      "dynamic",
 	}
 	err = node.Save()
 	return
@@ -39,27 +40,30 @@ func (node *Node) SetFile(file FormFile) (err error) {
 func (node *Node) SetFileFromSubset(subsetIndices FormFile) (err error) {
 	// load parent node
 	var n *Node
-	n, err = LoadUnauth(node.Parent.Id)
+	n, err = LoadUnauth(node.Subset.Parent.Id)
 	if err != nil {
 		return err
 	}
 
-	if _, indexExists := n.Indexes[node.Parent.IndexName]; !indexExists {
-		return errors.New("Index '" + node.Parent.IndexName + "' does not exist for parent node.")
+	if _, indexExists := n.Indexes[node.Subset.Parent.IndexName]; !indexExists {
+		return errors.New("Index '" + node.Subset.Parent.IndexName + "' does not exist for parent node.")
 	}
 
-	parentIndexFile := n.IndexPath() + "/" + node.Parent.IndexName + ".idx"
+	parentIndexFile := n.IndexPath() + "/" + node.Subset.Parent.IndexName + ".idx"
 	if _, statErr := os.Stat(parentIndexFile); statErr != nil {
-		return errors.New("Could not stat index file for parent node where parent node = '" + node.Parent.Id + "' and index = '" + node.Parent.IndexName + "'.")
+		return errors.New("Could not stat index file for parent node where parent node = '" + node.Subset.Parent.Id + "' and index = '" + node.Subset.Parent.IndexName + "'.")
 	}
 
 	f, _ := os.Open(subsetIndices.Path)
 	defer f.Close()
 	idxer := index.NewSubsetIndexer(f)
-	_, size, err := index.CreateSubsetIndex(&idxer, node.Path()+"/"+node.Id+".subset.idx", parentIndexFile)
+	indexPath := node.Path() + "/" + node.Id + ".subset.idx"
+	_, size, format, err := index.CreateSubsetIndex(&idxer, indexPath, parentIndexFile)
 	if err != nil {
 		return
 	}
+	node.Subset.Index.Path = indexPath
+	node.Subset.Index.Format = format
 	node.File.Size = size
 
 	// fill size index info
@@ -72,6 +76,7 @@ func (node *Node) SetFileFromSubset(subsetIndices FormFile) (err error) {
 		Type:        "size",
 		TotalUnits:  totalunits,
 		AvgUnitSize: conf.CHUNK_SIZE,
+		Format:      "dynamic",
 	}
 
 	err = node.Save()
@@ -157,6 +162,7 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 		Type:        "size",
 		TotalUnits:  totalunits,
 		AvgUnitSize: conf.CHUNK_SIZE,
+		Format:      "dynamic",
 	}
 
 	if action == "copy_file" {
@@ -218,6 +224,7 @@ func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
 		Type:        "size",
 		TotalUnits:  totalunits,
 		AvgUnitSize: conf.CHUNK_SIZE,
+		Format:      "dynamic",
 	}
 
 	err = node.Save()

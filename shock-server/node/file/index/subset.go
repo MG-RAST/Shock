@@ -30,7 +30,7 @@ func (s *subset) Create(string) (count int64, err error) {
 	return
 }
 
-func CreateSubsetIndex(s *subset, ofile string, ifile string) (count int64, size int64, err error) {
+func CreateSubsetIndex(s *subset, ofile string, ifile string) (count int64, size int64, format string, err error) {
 	tmpFilePath := fmt.Sprintf("%s/temp/%d%d.idx", conf.Conf["data-path"], rand.Int(), rand.Int())
 
 	f, err := os.Create(tmpFilePath)
@@ -47,6 +47,7 @@ func CreateSubsetIndex(s *subset, ofile string, ifile string) (count int64, size
 
 	count = 0
 	size = 0
+	format = "array"
 	prev_int := int(0)
 	for {
 		buf, er := s.r.ReadLine()

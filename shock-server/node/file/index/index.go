@@ -21,7 +21,7 @@ var (
 )
 
 type Indexer interface {
-	Create(string) (int64, error)
+	Create(string) (int64, string, error)
 	Close() error
 }
 

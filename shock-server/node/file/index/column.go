@@ -26,11 +26,11 @@ func NewColumnIndexer(f *os.File) column {
 	}
 }
 
-func (c *column) Create(string) (count int64, err error) {
+func (c *column) Create(string) (count int64, format string, err error) {
 	return
 }
 
-func CreateColumnIndex(c *column, column int, ofile string) (count int64, err error) {
+func CreateColumnIndex(c *column, column int, ofile string) (count int64, format string, err error) {
 	tmpFilePath := fmt.Sprintf("%s/temp/%d%d.idx", conf.Conf["data-path"], rand.Int(), rand.Int())
 
 	f, err := os.Create(tmpFilePath)
@@ -39,6 +39,7 @@ func CreateColumnIndex(c *column, column int, ofile string) (count int64, err er
 	}
 	defer f.Close()
 
+	format = "array"
 	curr := int64(0) // stores the offset position of the current index
 	count = 0        // stores the number of indexed positions and get returned
 	total_n := 0     // stores the number of bytes read for the current index record
@@ -64,7 +65,7 @@ func CreateColumnIndex(c *column, column int, ofile string) (count int64, err er
 		// split line by columns and test if column value has changed
 		slices := bytes.Split(buf, []byte("\t"))
 		if len(slices) < column-1 {
-			return 0, errors.New("Specified column does not exist for all lines in file.")
+			return 0, format, errors.New("Specified column does not exist for all lines in file.")
 		}
 
 		str := string(slices[column-1])
