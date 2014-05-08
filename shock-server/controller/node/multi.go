@@ -8,11 +8,14 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
+	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
+	"github.com/MG-RAST/golib/go-uuid/uuid"
 	"github.com/MG-RAST/golib/mgo/bson"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 type M map[string]interface{}
@@ -50,7 +53,7 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 
 	// Gather params to make db query. Do not include the
 	// following list.
-	paramlist := map[string]int{"limit": 1, "offset": 1, "query": 1, "querynode": 1}
+	paramlist := map[string]int{"limit": 1, "offset": 1, "query": 1, "querynode": 1, "owner": 1, "read": 1, "write": 1, "delete": 1, "public_owner": 1, "public_read": 1, "public_write": 1, "public_delete": 1}
 	if _, ok := query["query"]; ok {
 		for key := range query {
 			if _, found := paramlist[key]; !found {
@@ -102,6 +105,46 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 	}
 	if _, ok := query["offset"]; ok {
 		offset = util.ToInt(query.Get("offset"))
+	}
+
+	// Allowing user to query based on ACL's with a comma-separated list of users.
+	// Users can be written as a username or a UUID.
+	for _, atype := range []string{"owner", "read", "write", "delete"} {
+		if _, ok := query[atype]; ok {
+			users := strings.Split(query.Get(atype), ",")
+			for _, v := range users {
+				if uuid.Parse(v) != nil {
+					q["acl."+atype] = v
+				} else {
+					u := user.User{Username: v}
+					if err := u.SetUuid(); err != nil {
+						err_msg := "err " + err.Error()
+						logger.Error(err_msg)
+						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					}
+					q["acl."+atype] = u.Uuid
+				}
+			}
+		}
+	}
+
+	if _, ok := query["public_owner"]; ok {
+		q["acl.owner"] = ""
+	}
+
+	// Allowing users to query based on whether ACL is public
+	for _, atype := range []string{"read", "write", "delete"} {
+		if _, ok := query["public_"+atype]; ok {
+			sizeMap := map[string]int{
+				"$size": 0,
+			}
+			// Currently a node cannot be public and have an ACL at the same time, so this returns zero nodes.
+			if _, exists := q["acl."+atype]; exists {
+				return responder.RespondWithPaginatedData(ctx, nodes, limit, offset, 0)
+			} else {
+				q["acl."+atype] = sizeMap
+			}
+		}
 	}
 
 	// Get nodes from db
