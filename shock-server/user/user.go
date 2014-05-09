@@ -6,6 +6,7 @@ import (
 	"github.com/MG-RAST/golib/go-uuid/uuid"
 	"github.com/MG-RAST/golib/mgo"
 	"github.com/MG-RAST/golib/mgo/bson"
+	"strings"
 )
 
 // Array of User
@@ -31,6 +32,15 @@ func Initialize() {
 	c := session.DB(conf.Conf["mongodb-database"]).C("Users")
 	c.EnsureIndex(mgo.Index{Key: []string{"uuid"}, Unique: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"username"}, Unique: true})
+
+	// Setting admin users based on config file.  First, set all users to Admin = false
+	c.UpdateAll(bson.M{}, bson.M{"shock_admin": false})
+
+	// This config parameter contains a string that should be a comma-separated list of users that are Admins.
+	adminUsers := strings.Split(conf.Conf["admin-users"], ",")
+	for _, v := range adminUsers {
+		c.Update(bson.M{"username": v}, bson.M{"$set": bson.M{"shock_admin": true}})
+	}
 }
 
 func New(username string, password string, isAdmin bool) (u *User, err error) {
@@ -71,9 +81,10 @@ func AdminGet(u *Users) (err error) {
 	return
 }
 
-func (u *User) SetUuid() (err error) {
-	if uu, err := dbGetUuid(u.Username); err == nil {
+func (u *User) SetMongoInfo() (err error) {
+	if uu, admin, err := dbGetInfo(u.Username); err == nil {
 		u.Uuid = uu
+		u.Admin = admin
 		return nil
 	} else {
 		u.Uuid = uuid.New()
@@ -84,15 +95,15 @@ func (u *User) SetUuid() (err error) {
 	return
 }
 
-func dbGetUuid(username string) (uuid string, err error) {
+func dbGetInfo(username string) (uuid string, admin bool, err error) {
 	session := db.Connection.Session.Copy()
 	defer session.Close()
 	c := session.DB(conf.Conf["mongodb-database"]).C("Users")
 	u := User{}
 	if err = c.Find(bson.M{"username": username}).One(&u); err != nil {
-		return "", err
+		return "", false, err
 	}
-	return u.Uuid, nil
+	return u.Uuid, u.Admin, nil
 }
 
 func (u *User) Save() (err error) {
