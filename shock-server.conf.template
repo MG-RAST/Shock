@@ -7,6 +7,7 @@ api-port=7445
 
 [Admin]
 email=admin@host.com
+users=
 
 [Anonymous]
 # Controls an anonymous user's ability to read/write
