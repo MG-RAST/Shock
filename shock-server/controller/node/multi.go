@@ -117,7 +117,7 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 					q["acl."+atype] = v
 				} else {
 					u := user.User{Username: v}
-					if err := u.SetUuid(); err != nil {
+					if err := u.SetMongoInfo(); err != nil {
 						err_msg := "err " + err.Error()
 						logger.Error(err_msg)
 						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
@@ -129,6 +129,10 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 	}
 
 	if _, ok := query["public_owner"]; ok {
+		// If search is for public_owner AND owner = non-empty string then return zero nodes, no nodes can match this query.
+		if _, exists := q["acl.owner"]; exists {
+			return responder.RespondWithPaginatedData(ctx, nodes, limit, offset, 0)
+		}
 		q["acl.owner"] = ""
 	}
 
