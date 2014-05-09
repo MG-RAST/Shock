@@ -2,7 +2,6 @@ package node
 
 import (
 	"encoding/json"
-	clientLib "github.com/MG-RAST/Shock/shock-client/lib"
 	client "github.com/MG-RAST/Shock/shock-client/lib/httpclient"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
@@ -22,6 +21,12 @@ import (
 	"strconv"
 	"time"
 )
+
+type responseWrapper struct {
+	Data   interface{} `json:"data"`
+	Error  *[]string   `json:"error"`
+	Status int         `json:"status"`
+}
 
 // GET: /node/{id}
 func (cr *NodeController) Read(id string, ctx context.Context) error {
@@ -427,7 +432,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 
 			if res, err := client.Do("POST", post_url, headers, form.Reader); err == nil {
 				if res.StatusCode == 200 {
-					r := clientLib.Wrapper{}
+					r := responseWrapper{}
 					body, _ := ioutil.ReadAll(res.Body)
 					if err = json.Unmarshal(body, &r); err != nil {
 						err_msg := "err:@node_Read POST: " + err.Error()
@@ -437,7 +442,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 						return responder.WriteResponseObject(ctx, http.StatusOK, r)
 					}
 				} else {
-					r := clientLib.Wrapper{}
+					r := responseWrapper{}
 					body, _ := ioutil.ReadAll(res.Body)
 					if err = json.Unmarshal(body, &r); err == nil {
 						err_msg := res.Status + ": " + (*r.Error)[0]
