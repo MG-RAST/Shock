@@ -72,6 +72,7 @@ func Initialize() {
 
 	// Admin
 	Conf["admin-email"], _ = c.String("Admin", "email")
+	Conf["admin-users"], _ = c.String("Admin", "users")
 
 	// Paths
 	Conf["site-path"], _ = c.String("Paths", "site")

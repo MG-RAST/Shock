@@ -201,7 +201,7 @@ func parseAclRequestTyped(ctx context.Context) (ids []string, err error) {
 			ids = append(ids, v)
 		} else {
 			u := user.User{Username: v}
-			if err := u.SetUuid(); err != nil {
+			if err := u.SetMongoInfo(); err != nil {
 				return nil, err
 			}
 			ids = append(ids, u.Uuid)
