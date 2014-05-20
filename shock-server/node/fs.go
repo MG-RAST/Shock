@@ -57,14 +57,27 @@ func (node *Node) SetFileFromSubset(subsetIndices FormFile) (err error) {
 	f, _ := os.Open(subsetIndices.Path)
 	defer f.Close()
 	idxer := index.NewSubsetIndexer(f)
-	indexPath := node.Path() + "/" + node.Id + ".subset.idx"
-	_, size, format, err := index.CreateSubsetIndex(&idxer, indexPath, parentIndexFile)
+	coIndexPath := node.Path() + "/" + node.Id + ".subset.idx"
+	oIndexPath := node.Path() + "/idx/" + node.Subset.Parent.IndexName + ".idx"
+	coCount, oCount, oSize, oFormat, err := index.CreateSubsetNodeIndexes(&idxer, coIndexPath, oIndexPath, parentIndexFile)
 	if err != nil {
 		return
 	}
-	node.Subset.Index.Path = indexPath
-	node.Subset.Index.Format = format
-	node.File.Size = size
+
+	// this info refers to the compressed index for the subset node's data file
+	node.Subset.Index.Path = coIndexPath
+	node.Subset.Index.TotalUnits = coCount
+	node.Subset.Index.AvgUnitSize = oSize / coCount
+	node.Subset.Index.Format = "array"
+	node.File.Size = oSize
+
+	// this info is for the subset index that's been created in the index folder
+	node.Indexes[node.Subset.Parent.IndexName] = IdxInfo{
+		Type:        "subset",
+		TotalUnits:  oCount,
+		AvgUnitSize: oSize / oCount,
+		Format:      oFormat,
+	}
 
 	// fill size index info
 	totalunits := node.File.Size / conf.CHUNK_SIZE
