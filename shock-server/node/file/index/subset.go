@@ -179,6 +179,7 @@ func CreateSubsetNodeIndexes(s *subset, cofile string, ofile string, ifile strin
 		if prev_int != 0 && offset != prevOffset+prevLength {
 			binary.Write(cof, binary.LittleEndian, coOffset)
 			binary.Write(cof, binary.LittleEndian, coLength)
+
 			coOffset = offset
 			coLength = length
 			coCount += 1
@@ -196,6 +197,7 @@ func CreateSubsetNodeIndexes(s *subset, cofile string, ofile string, ifile strin
 
 	binary.Write(cof, binary.LittleEndian, coOffset)
 	binary.Write(cof, binary.LittleEndian, coLength)
+	coCount += 1
 
 	err = os.Rename(coTmpFilePath, cofile)
 	if err != nil {
