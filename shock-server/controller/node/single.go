@@ -8,6 +8,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/node/file"
+	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/node/filter"
 	"github.com/MG-RAST/Shock/shock-server/preauth"
 	"github.com/MG-RAST/Shock/shock-server/request"
@@ -273,34 +274,76 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			// download full file
 		} else {
 			if n.Type == "subset" {
-				return responder.RespondWithError(ctx, http.StatusBadRequest, "subset nodes do not currently support full file download without defined index")
-			}
-
-			nf, err := n.FileReader()
-			defer nf.Close()
-			if err != nil {
-				// File not found or some sort of file read error.
-				// Probably deserves more checking
-				err_msg := "err:@node_Read node.FileReader: " + err.Error()
-				logger.Error(err_msg)
-				return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
-			}
-			s := &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc}
-			if download_raw {
-				err = s.StreamRaw()
+				// open file
+				r, err := n.FileReader()
+				defer r.Close()
 				if err != nil {
-					// causes "multiple response.WriteHeader calls" error but better than no response
-					err_msg := "err:@node_Read s.StreamRaw: " + err.Error()
+					err_msg := "Err@node_Read:Open: " + err.Error()
+					logger.Error(err_msg)
+					return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+				}
+
+				idx := index.New()
+				err = idx.Load(n.Path() + "/" + n.Id + ".subset.idx")
+				if err != nil {
+					return responder.RespondWithError(ctx, http.StatusInternalServerError, "Could not load data index file for subset node.")
+				}
+
+				s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc}
+
+				fullRange := "1-" + strconv.FormatInt(n.Subset.Index.TotalUnits, 10)
+				recSlice, err := idx.Range(fullRange)
+				if err != nil {
+					return responder.RespondWithError(ctx, http.StatusInternalServerError, "Invalid data index for subset node.")
+				}
+				for _, rec := range recSlice {
+					s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
+				}
+
+				if download_raw {
+					err = s.StreamRaw()
+					if err != nil {
+						// causes "multiple response.WriteHeader calls" error but better than no response
+						err_msg := "err:@node_Read s.StreamRaw: " + err.Error()
+						logger.Error(err_msg)
+						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					}
+				} else {
+					err = s.Stream()
+					if err != nil {
+						// causes "multiple response.WriteHeader calls" error but better than no response
+						err_msg := "err:@node_Read s.Stream: " + err.Error()
+						logger.Error(err_msg)
+						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					}
+				}
+			} else {
+				nf, err := n.FileReader()
+				defer nf.Close()
+				if err != nil {
+					// File not found or some sort of file read error.
+					// Probably deserves more checking
+					err_msg := "err:@node_Read node.FileReader: " + err.Error()
 					logger.Error(err_msg)
 					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				}
-			} else {
-				err = s.Stream()
-				if err != nil {
-					// causes "multiple response.WriteHeader calls" error but better than no response
-					err_msg := "err:@node_Read s.Stream: " + err.Error()
-					logger.Error(err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				s := &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc}
+				if download_raw {
+					err = s.StreamRaw()
+					if err != nil {
+						// causes "multiple response.WriteHeader calls" error but better than no response
+						err_msg := "err:@node_Read s.StreamRaw: " + err.Error()
+						logger.Error(err_msg)
+						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					}
+				} else {
+					err = s.Stream()
+					if err != nil {
+						// causes "multiple response.WriteHeader calls" error but better than no response
+						err_msg := "err:@node_Read s.Stream: " + err.Error()
+						logger.Error(err_msg)
+						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					}
 				}
 			}
 		}
