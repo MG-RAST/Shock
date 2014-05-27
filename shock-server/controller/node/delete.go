@@ -37,6 +37,11 @@ func (cr *NodeController) Delete(id string, ctx context.Context) error {
 		}
 	}
 
+	rights := n.Acl.Check(u.Uuid)
+	if !rights["delete"] {
+		return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+	}
+
 	if err := n.Delete(); err == nil {
 		return responder.RespondOK(ctx)
 	} else {

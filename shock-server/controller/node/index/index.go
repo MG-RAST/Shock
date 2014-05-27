@@ -60,6 +60,12 @@ func IndexTypedRequest(ctx context.Context) {
 
 	switch ctx.HttpRequest().Method {
 	case "DELETE":
+		rights := n.Acl.Check(u.Uuid)
+		if !rights["write"] {
+			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+			return
+		}
+
 		if _, has := n.Indexes[idxType]; has {
 			if err := n.DeleteIndex(idxType); err != nil {
 				err_msg := err.Error()
@@ -79,6 +85,12 @@ func IndexTypedRequest(ctx context.Context) {
 		}
 
 	case "PUT":
+		rights := n.Acl.Check(u.Uuid)
+		if !rights["write"] {
+			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+			return
+		}
+
 		if _, has := n.Indexes[idxType]; has {
 			responder.RespondOK(ctx)
 			return

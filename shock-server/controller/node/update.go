@@ -39,6 +39,11 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 		}
 	}
 
+	rights := n.Acl.Check(u.Uuid)
+	if !rights["write"] {
+		return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+	}
+
 	if conf.Bool(conf.Conf["perf-log"]) {
 		logger.Perf("START PUT data: " + id)
 	}
