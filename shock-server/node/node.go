@@ -35,7 +35,7 @@ type Node struct {
 }
 
 type linkage struct {
-	Type      string   `bson: "relation" json:"relation"`
+	Type      string   `bson:"relation" json:"relation"`
 	Ids       []string `bson:"ids" json:"ids"`
 	Operation string   `bson:"operation" json:"operation"`
 }
@@ -61,8 +61,8 @@ type FormFile struct {
 // A subset node's index defines the subset of the data file that this node represents.
 // A subset node's index is immutable after it is defined.
 type Subset struct {
-	Parent Parent      `bson:"parent" json:"-"`
-	Index  SubsetIndex `bson:"subset_index" json:"-"`
+	Parent Parent            `bson:"parent" json:"-"`
+	Index  SubsetNodeIdxInfo `bson:"index" json:"-"`
 }
 
 type Parent struct {
@@ -70,9 +70,11 @@ type Parent struct {
 	IndexName string `bson:"index_name" json:"-"`
 }
 
-type SubsetIndex struct {
-	Path   string `bson:"path" json:"-"`
-	Format string `bson:"format" json:"-"`
+type SubsetNodeIdxInfo struct {
+	Path        string `bson:"path" json:"-"`
+	TotalUnits  int64  `bson:"total_units" json:"-"`
+	AvgUnitSize int64  `bson:"average_unit_size" json:"-"`
+	Format      string `bson:"format" json:"-"`
 }
 
 func New() (node *Node) {
