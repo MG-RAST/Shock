@@ -45,7 +45,7 @@ func (cr *NodeController) Delete(id string, ctx context.Context) error {
 	if err := n.Delete(); err == nil {
 		return responder.RespondOK(ctx)
 	} else {
-		err_msg := "Err@node_Delet:Delete: " + err.Error()
+		err_msg := "Err@node_Delete:Delete: " + err.Error()
 		logger.Error(err_msg)
 		return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 	}
