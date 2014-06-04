@@ -236,6 +236,12 @@ sub query { # https://github.com/MG-RAST/Shock#get_nodes
 	
 	my $response = $self->get('node', \%query);
 	#print Dumper ($response);
+	
+	if (defined $response->{'error'}) {
+		print Dumper ($response);
+		return undef;
+	}
+	
 	unless (defined $response->{'total_count'}) {
 		die;
 	}
