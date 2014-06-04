@@ -236,6 +236,12 @@ sub query { # https://github.com/MG-RAST/Shock#get_nodes
 	
 	my $response = $self->get('node', \%query);
 	#print Dumper ($response);
+	
+	if (defined $response->{'error'}) {
+		print Dumper ($response);
+		return undef;
+	}
+	
 	unless (defined $response->{'total_count'}) {
 		die;
 	}
@@ -359,7 +365,9 @@ sub create_node {
     return $self->upload(undef, $data, $attr);
 }
 
-#example:     upload(data => 'hello world')
+
+
+#example:     upload(data => 'hello world'), where data is scalar or reference to scalar
 #example:  or upload(file => 'myworld.txt')
 #example:  or upload(file => 'myworld.txt', attr => {some hash})
 # TODO implement PUT here or in another function
@@ -382,7 +390,11 @@ sub upload {
 		$content->{'upload'} = [$hash{'file'}]
 	}
 	if (defined $hash{data}) {
-		$content->{'upload'} = [undef, "n/a", Content => $hash{'data'}]
+		if (ref($hash{data}) eq 'SCALAR') {
+			$content->{'upload'} = [undef, "n/a", Content => ${$hash{'data'}}];
+		} else {
+			$content->{'upload'} = [undef, "n/a", Content => $hash{'data'}];
+		}
 	}
 	
    
@@ -456,6 +468,7 @@ sub upload_temporary_files {
 		}
 		
 		unless (defined($node_obj->{'data'})) {
+			print Dumper($node_obj);
 			die "no data field found";
 		}
 		
