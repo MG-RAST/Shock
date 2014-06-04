@@ -21,13 +21,14 @@ var (
 )
 
 type Indexer interface {
-	Create(string) (int64, error)
+	Create(string) (int64, string, error)
 	Close() error
 }
 
 type Index interface {
 	Set(map[string]interface{})
 	Type() string
+	GetLength() int64
 	Append([]int64)
 	Part(string) (int64, int64, error)
 	Range(string) ([][]int64, error)
@@ -59,6 +60,10 @@ func (i *Idx) Set(inter map[string]interface{}) {
 
 func (i *Idx) Type() string {
 	return i.T
+}
+
+func (i *Idx) GetLength() int64 {
+	return int64(i.Length)
 }
 
 func (i *Idx) Part(part string) (pos int64, length int64, err error) {

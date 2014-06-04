@@ -55,6 +55,15 @@ func AclRequest(ctx context.Context) {
 		}
 	}
 
+	// only the owner can view/edit acl's unless owner="" or owner=nil
+	// note: owner can only be empty when anonymous node creation is enabled in shock config.
+	if n.Acl.Owner != u.Uuid && n.Acl.Owner != "" {
+		err_msg := "Only the node owner can edit/view node ACL's"
+		logger.Error(err_msg)
+		responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+		return
+	}
+
 	rights := n.Acl.Check(u.Uuid)
 	if ctx.HttpRequest().Method == "GET" {
 		if u.Uuid == n.Acl.Owner || rights["read"] {
@@ -108,6 +117,15 @@ func AclTypedRequest(ctx context.Context) {
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			return
 		}
+	}
+
+	// only the owner can view/edit acl's unless owner="" or owner=nil
+	// note: owner can only be empty when anonymous node creation is enabled in shock config.
+	if n.Acl.Owner != u.Uuid && n.Acl.Owner != "" {
+		err_msg := "Only the node owner can edit/view node ACL's"
+		logger.Error(err_msg)
+		responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+		return
 	}
 
 	rights := n.Acl.Check(u.Uuid)
@@ -201,7 +219,7 @@ func parseAclRequestTyped(ctx context.Context) (ids []string, err error) {
 			ids = append(ids, v)
 		} else {
 			u := user.User{Username: v}
-			if err := u.SetUuid(); err != nil {
+			if err := u.SetMongoInfo(); err != nil {
 				return nil, err
 			}
 			ids = append(ids, u.Uuid)

@@ -106,9 +106,14 @@ func IndexTypedRequest(ctx context.Context) {
 
 		if idxType == "bai" {
 			//bam index is created by the command-line tool samtools
+			if n.Type == "subset" {
+				responder.RespondWithError(ctx, http.StatusBadRequest, "Shock does not support bam index creation on subset nodes.")
+				return
+			}
+
 			if ext := n.FileExt(); ext == ".bam" {
 				if err := index.CreateBamIndex(n.FilePath()); err != nil {
-					responder.RespondWithError(ctx, http.StatusBadRequest, "Error while creating bam index.")
+					responder.RespondWithError(ctx, http.StatusInternalServerError, "Error while creating bam index.")
 					return
 				}
 				responder.RespondOK(ctx)
@@ -119,7 +124,9 @@ func IndexTypedRequest(ctx context.Context) {
 			}
 		}
 
+		subsetSize := int64(0)
 		count := int64(0)
+		indexFormat := ""
 		subsetName := ""
 		if idxType == "subset" {
 			// Utilizing the multipart form parser since we need to upload a file.
@@ -157,7 +164,7 @@ func IndexTypedRequest(ctx context.Context) {
 			f, _ := os.Open(subsetIndices.Path)
 			defer f.Close()
 			idxer := index.NewSubsetIndexer(f)
-			count, err = index.CreateSubsetIndex(&idxer, n.IndexPath()+"/"+newIndex+".idx", n.IndexPath()+"/"+parentIndex+".idx")
+			count, subsetSize, indexFormat, err = index.CreateSubsetIndex(&idxer, n.IndexPath()+"/"+newIndex+".idx", n.IndexPath()+"/"+parentIndex+".idx")
 			if err != nil {
 				logger.Error("err " + err.Error())
 				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
@@ -188,7 +195,7 @@ func IndexTypedRequest(ctx context.Context) {
 			f, _ := os.Open(n.FilePath())
 			defer f.Close()
 			idxer := index.NewColumnIndexer(f)
-			count, err = index.CreateColumnIndex(&idxer, num, n.IndexPath()+"/"+idxType+".idx")
+			count, indexFormat, err = index.CreateColumnIndex(&idxer, num, n.IndexPath()+"/"+idxType+".idx")
 			if err != nil {
 				logger.Error("err " + err.Error())
 				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
@@ -199,7 +206,7 @@ func IndexTypedRequest(ctx context.Context) {
 			f, _ := os.Open(n.FilePath())
 			defer f.Close()
 			idxer := newIndexer(f)
-			count, err = idxer.Create(n.IndexPath() + "/" + idxType + ".idx")
+			count, indexFormat, err = idxer.Create(n.IndexPath() + "/" + idxType + ".idx")
 			if err != nil {
 				logger.Error("err " + err.Error())
 				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
@@ -216,6 +223,7 @@ func IndexTypedRequest(ctx context.Context) {
 			Type:        idxType,
 			TotalUnits:  count,
 			AvgUnitSize: n.File.Size / count,
+			Format:      indexFormat,
 		}
 
 		//if idxType == "chunkrecord" {
@@ -223,8 +231,8 @@ func IndexTypedRequest(ctx context.Context) {
 		//}
 
 		if idxType == "subset" {
-			idxInfo.AvgUnitSize = -1
 			idxType = subsetName
+			idxInfo.AvgUnitSize = subsetSize / count
 		}
 
 		if err := n.SetIndexInfo(idxType, idxInfo); err != nil {

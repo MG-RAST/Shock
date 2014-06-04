@@ -25,7 +25,7 @@ func NewRecordIndexer(f *os.File) Indexer {
 	}
 }
 
-func (i *record) Create(file string) (count int64, err error) {
+func (i *record) Create(file string) (count int64, format string, err error) {
 	tmpFilePath := fmt.Sprintf("%s/temp/%d%d.idx", conf.Conf["data-path"], rand.Int(), rand.Int())
 
 	f, err := os.Create(tmpFilePath)
@@ -34,6 +34,7 @@ func (i *record) Create(file string) (count int64, err error) {
 	}
 	defer f.Close()
 
+	format = "array"
 	curr := int64(0)
 	count = 0
 	for {

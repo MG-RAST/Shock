@@ -10,7 +10,7 @@ func NewSizeIndexer(f *os.File) Indexer {
 	return &size{}
 }
 
-func (i *size) Create(file string) (count int64, err error) {
+func (i *size) Create(file string) (count int64, format string, err error) {
 	return
 }
 

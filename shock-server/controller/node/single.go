@@ -2,13 +2,13 @@ package node
 
 import (
 	"encoding/json"
-	clientLib "github.com/MG-RAST/Shock/shock-client/lib"
 	client "github.com/MG-RAST/Shock/shock-client/lib/httpclient"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/node/file"
+	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/node/filter"
 	"github.com/MG-RAST/Shock/shock-server/preauth"
 	"github.com/MG-RAST/Shock/shock-server/request"
@@ -23,6 +23,12 @@ import (
 	"time"
 )
 
+type responseWrapper struct {
+	Data   interface{} `json:"data"`
+	Error  *[]string   `json:"error"`
+	Status int         `json:"status"`
+}
+
 // GET: /node/{id}
 func (cr *NodeController) Read(id string, ctx context.Context) error {
 	u, err := request.Authenticate(ctx.HttpRequest())
@@ -36,16 +42,6 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			u = &user.User{Uuid: ""}
 		} else {
 			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
-		}
-	}
-
-	// Gather query params
-	query := ctx.HttpRequest().URL.Query()
-
-	var fFunc filter.FilterFunc = nil
-	if _, ok := query["filter"]; ok {
-		if filter.Has(query.Get("filter")) {
-			fFunc = filter.Filter(query.Get("filter"))
 		}
 	}
 
@@ -73,6 +69,16 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		}
 	}
 
+	// Gather query params
+	query := ctx.HttpRequest().URL.Query()
+
+	var fFunc filter.FilterFunc = nil
+	if _, ok := query["filter"]; ok {
+		if filter.Has(query.Get("filter")) {
+			fFunc = filter.Filter(query.Get("filter"))
+		}
+	}
+
 	// Switch though param flags
 	// ?download=1 or ?download_raw=1
 
@@ -88,6 +94,9 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 
 		_, seek_ok := query["seek"]
 		if _, length_ok := query["length"]; seek_ok || length_ok {
+			if n.Type == "subset" {
+				return responder.RespondWithError(ctx, http.StatusBadRequest, "subset nodes do not currently support seek/length offset retrieval")
+			}
 
 			var seek int64
 			var length int64
@@ -146,6 +155,10 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		} else if _, ok := query["index"]; ok {
 			//handling bam file
 			if query.Get("index") == "bai" {
+				if n.Type == "subset" {
+					return responder.RespondWithError(ctx, http.StatusBadRequest, "subset nodes do not support bam indices")
+				}
+
 				s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc}
 
 				var region string
@@ -185,6 +198,10 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			}
 
 			if idx.Type() == "virtual" {
+				if n.Type == "subset" {
+					return responder.RespondWithError(ctx, http.StatusBadRequest, "subset nodes do not currently support virtual indices")
+				}
+
 				csize := conf.CHUNK_SIZE
 				if _, ok := query["chunk_size"]; ok {
 					csize, err = strconv.ParseInt(query.Get("chunk_size"), 10, 64)
@@ -256,35 +273,85 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			}
 			// download full file
 		} else {
-			nf, err := n.FileReader()
-			defer nf.Close()
-			if err != nil {
-				// File not found or some sort of file read error.
-				// Probably deserves more checking
-				err_msg := "err:@node_Read node.FileReader: " + err.Error()
-				logger.Error(err_msg)
-				return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
-			}
-			s := &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc}
-			if download_raw {
-				err = s.StreamRaw()
+			if n.Type == "subset" {
+				// open file
+				r, err := n.FileReader()
+				defer r.Close()
 				if err != nil {
-					// causes "multiple response.WriteHeader calls" error but better than no response
-					err_msg := "err:@node_Read s.StreamRaw: " + err.Error()
+					err_msg := "Err@node_Read:Open: " + err.Error()
+					logger.Error(err_msg)
+					return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+				}
+
+				idx := index.New()
+				err = idx.Load(n.Path() + "/" + n.Id + ".subset.idx")
+				if err != nil {
+					return responder.RespondWithError(ctx, http.StatusInternalServerError, "Could not load data index file for subset node.")
+				}
+
+				s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc}
+
+				fullRange := "1-" + strconv.FormatInt(n.Subset.Index.TotalUnits, 10)
+				recSlice, err := idx.Range(fullRange)
+				if err != nil {
+					return responder.RespondWithError(ctx, http.StatusInternalServerError, "Invalid data index for subset node.")
+				}
+				for _, rec := range recSlice {
+					s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
+				}
+
+				if download_raw {
+					err = s.StreamRaw()
+					if err != nil {
+						// causes "multiple response.WriteHeader calls" error but better than no response
+						err_msg := "err:@node_Read s.StreamRaw: " + err.Error()
+						logger.Error(err_msg)
+						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					}
+				} else {
+					err = s.Stream()
+					if err != nil {
+						// causes "multiple response.WriteHeader calls" error but better than no response
+						err_msg := "err:@node_Read s.Stream: " + err.Error()
+						logger.Error(err_msg)
+						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					}
+				}
+			} else {
+				nf, err := n.FileReader()
+				defer nf.Close()
+				if err != nil {
+					// File not found or some sort of file read error.
+					// Probably deserves more checking
+					err_msg := "err:@node_Read node.FileReader: " + err.Error()
 					logger.Error(err_msg)
 					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				}
-			} else {
-				err = s.Stream()
-				if err != nil {
-					// causes "multiple response.WriteHeader calls" error but better than no response
-					err_msg := "err:@node_Read s.Stream: " + err.Error()
-					logger.Error(err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				s := &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc}
+				if download_raw {
+					err = s.StreamRaw()
+					if err != nil {
+						// causes "multiple response.WriteHeader calls" error but better than no response
+						err_msg := "err:@node_Read s.StreamRaw: " + err.Error()
+						logger.Error(err_msg)
+						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					}
+				} else {
+					err = s.Stream()
+					if err != nil {
+						// causes "multiple response.WriteHeader calls" error but better than no response
+						err_msg := "err:@node_Read s.Stream: " + err.Error()
+						logger.Error(err_msg)
+						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					}
 				}
 			}
 		}
 	} else if _, ok := query["download_url"]; ok {
+		if n.Type == "subset" {
+			return responder.RespondWithError(ctx, http.StatusBadRequest, "subset nodes do not currently support download_url operation")
+		}
+
 		if !n.HasFile() {
 			return responder.RespondWithError(ctx, http.StatusBadRequest, "Node has no file")
 		} else {
@@ -304,6 +371,9 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		// This is a request to post the node to another Shock server. The 'post_url' parameter is required.
 		// By default the post operation will include the data file and attributes (these options can be set
 		// with post_data=0/1 and post_attr=0/1).
+		if n.Type == "subset" {
+			return responder.RespondWithError(ctx, http.StatusBadRequest, "subset nodes do not currently support download_post operation")
+		}
 
 		post_url := ""
 		if _, ok := query["post_url"]; ok {
@@ -359,7 +429,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 
 		if res, err := client.Do("POST", post_url, headers, form.Reader); err == nil {
 			if res.StatusCode == 200 {
-				r := clientLib.Wrapper{}
+				r := responseWrapper{}
 				body, _ := ioutil.ReadAll(res.Body)
 				if err = json.Unmarshal(body, &r); err != nil {
 					err_msg := "err:@node_Read POST: " + err.Error()
@@ -369,7 +439,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					return responder.WriteResponseObject(ctx, http.StatusOK, r)
 				}
 			} else {
-				r := clientLib.Wrapper{}
+				r := responseWrapper{}
 				body, _ := ioutil.ReadAll(res.Body)
 				if err = json.Unmarshal(body, &r); err == nil {
 					err_msg := res.Status + ": " + (*r.Error)[0]
@@ -388,5 +458,6 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		// Base case respond with node in json
 		return responder.RespondWithData(ctx, n)
 	}
+
 	return nil
 }

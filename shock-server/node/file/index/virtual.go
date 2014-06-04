@@ -91,6 +91,10 @@ func (v *vIndex) Type() string {
 	return v.T
 }
 
+func (v *vIndex) GetLength() int64 {
+	return v.size
+}
+
 // Empty functions to fulfil interface
 func (v *vIndex) Append(a []int64) {
 	return

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
+	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"math/rand"
 	"os"
 	"syscall"
@@ -30,7 +31,67 @@ func (node *Node) SetFile(file FormFile) (err error) {
 		Type:        "size",
 		TotalUnits:  totalunits,
 		AvgUnitSize: conf.CHUNK_SIZE,
+		Format:      "dynamic",
 	}
+	err = node.Save()
+	return
+}
+
+func (node *Node) SetFileFromSubset(subsetIndices FormFile) (err error) {
+	// load parent node
+	var n *Node
+	n, err = LoadUnauth(node.Subset.Parent.Id)
+	if err != nil {
+		return err
+	}
+
+	if _, indexExists := n.Indexes[node.Subset.Parent.IndexName]; !indexExists {
+		return errors.New("Index '" + node.Subset.Parent.IndexName + "' does not exist for parent node.")
+	}
+
+	parentIndexFile := n.IndexPath() + "/" + node.Subset.Parent.IndexName + ".idx"
+	if _, statErr := os.Stat(parentIndexFile); statErr != nil {
+		return errors.New("Could not stat index file for parent node where parent node = '" + node.Subset.Parent.Id + "' and index = '" + node.Subset.Parent.IndexName + "'.")
+	}
+
+	f, _ := os.Open(subsetIndices.Path)
+	defer f.Close()
+	idxer := index.NewSubsetIndexer(f)
+	coIndexPath := node.Path() + "/" + node.Id + ".subset.idx"
+	oIndexPath := node.Path() + "/idx/" + node.Subset.Parent.IndexName + ".idx"
+	coCount, oCount, oSize, oFormat, err := index.CreateSubsetNodeIndexes(&idxer, coIndexPath, oIndexPath, parentIndexFile)
+	if err != nil {
+		return
+	}
+
+	// this info refers to the compressed index for the subset node's data file
+	node.Subset.Index.Path = coIndexPath
+	node.Subset.Index.TotalUnits = coCount
+	node.Subset.Index.AvgUnitSize = oSize / coCount
+	node.Subset.Index.Format = "array"
+	node.File.Size = oSize
+
+	// this info is for the subset index that's been created in the index folder
+	node.Indexes[node.Subset.Parent.IndexName] = IdxInfo{
+		Type:        "subset",
+		TotalUnits:  oCount,
+		AvgUnitSize: oSize / oCount,
+		Format:      oFormat,
+	}
+
+	// fill size index info
+	totalunits := node.File.Size / conf.CHUNK_SIZE
+	m := node.File.Size % conf.CHUNK_SIZE
+	if m != 0 {
+		totalunits += 1
+	}
+	node.Indexes["size"] = IdxInfo{
+		Type:        "size",
+		TotalUnits:  totalunits,
+		AvgUnitSize: conf.CHUNK_SIZE,
+		Format:      "dynamic",
+	}
+
 	err = node.Save()
 	return
 }
@@ -114,6 +175,7 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 		Type:        "size",
 		TotalUnits:  totalunits,
 		AvgUnitSize: conf.CHUNK_SIZE,
+		Format:      "dynamic",
 	}
 
 	if action == "copy_file" {
@@ -164,6 +226,20 @@ func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
 	node.File.Name = node.Id
 	node.File.Size = fileStat.Size()
 	node.File.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
+
+	//fill size index info
+	totalunits := node.File.Size / conf.CHUNK_SIZE
+	m := node.File.Size % conf.CHUNK_SIZE
+	if m != 0 {
+		totalunits += 1
+	}
+	node.Indexes["size"] = IdxInfo{
+		Type:        "size",
+		TotalUnits:  totalunits,
+		AvgUnitSize: conf.CHUNK_SIZE,
+		Format:      "dynamic",
+	}
+
 	err = node.Save()
 	return
 }

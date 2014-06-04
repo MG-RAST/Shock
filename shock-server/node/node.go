@@ -30,10 +30,12 @@ type Node struct {
 	Linkages     []linkage         `bson:"linkage" json:"linkages"`
 	CreatedOn    time.Time         `bson:"created_on" json:"created_on"`
 	LastModified time.Time         `bson:"last_modified" json:"last_modified"`
+	Type         string            `bson:"type" json:"type"`
+	Subset       Subset            `bson:"subset" json:"-"`
 }
 
 type linkage struct {
-	Type      string   `bson: "relation" json:"relation"`
+	Type      string   `bson:"relation" json:"relation"`
 	Ids       []string `bson:"ids" json:"ids"`
 	Operation string   `bson:"operation" json:"operation"`
 }
@@ -44,6 +46,7 @@ type IdxInfo struct {
 	Type        string `bson:"index_type" json:"-"`
 	TotalUnits  int64  `bson:"total_units" json:"total_units"`
 	AvgUnitSize int64  `bson:"average_unit_size" json:"average_unit_size"`
+	Format      string `bson:"format" json:"-"`
 }
 
 type FormFiles map[string]FormFile
@@ -52,6 +55,26 @@ type FormFile struct {
 	Name     string
 	Path     string
 	Checksum map[string]string
+}
+
+// Subset is used to store information about a subset node's parent and its index.
+// A subset node's index defines the subset of the data file that this node represents.
+// A subset node's index is immutable after it is defined.
+type Subset struct {
+	Parent Parent            `bson:"parent" json:"-"`
+	Index  SubsetNodeIdxInfo `bson:"index" json:"-"`
+}
+
+type Parent struct {
+	Id        string `bson:"id" json:"-"`
+	IndexName string `bson:"index_name" json:"-"`
+}
+
+type SubsetNodeIdxInfo struct {
+	Path        string `bson:"path" json:"-"`
+	TotalUnits  int64  `bson:"total_units" json:"-"`
+	AvgUnitSize int64  `bson:"average_unit_size" json:"-"`
+	Format      string `bson:"format" json:"-"`
 }
 
 func New() (node *Node) {
@@ -94,6 +117,8 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 		}
 	}
 
+	// if copying node or creating subset node from parent, check if user has rights to the original node
+
 	if _, hasCopyData := params["copy_data"]; hasCopyData {
 		_, err = Load(params["copy_data"], u.Uuid)
 		if err != nil {
@@ -101,7 +126,15 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 		}
 	}
 
+	if _, hasParentNode := params["parent_node"]; hasParentNode {
+		_, err = Load(params["parent_node"], u.Uuid)
+		if err != nil {
+			return
+		}
+	}
+
 	node = New()
+	node.Type = "basic"
 	if u.Uuid != "" {
 		node.Acl.SetOwner(u.Uuid)
 		node.Acl.Set(u.Uuid, acl.Rights{"read": true, "write": true, "delete": true})
@@ -144,6 +177,19 @@ func (node *Node) FileReader() (reader file.ReaderAt, err error) {
 		return file.MultiReaderAt(readers...), nil
 	}
 	return os.Open(node.FilePath())
+}
+
+func (node *Node) SubsetNodeIndex() (idx index.Index, err error) {
+	indexPath := fmt.Sprintf("%s/%s.subset.idx", node.Path(), node.Id)
+	_, err = os.Stat(indexPath)
+	if err != nil {
+		err_str := fmt.Sprintf("Subset node %s does not have a subset index file.", node.Id)
+		err = errors.New(err_str)
+		return
+	}
+	idx = index.New()
+	err = idx.Load(indexPath)
+	return
 }
 
 func (node *Node) Index(name string) (idx index.Index, err error) {

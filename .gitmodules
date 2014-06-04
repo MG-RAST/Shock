@@ -1,3 +1,0 @@
-[submodule "pool"]
-	path = pool
-	url = git://github.com/stefantalpalaru/pool.git

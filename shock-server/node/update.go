@@ -23,8 +23,12 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	// 2. has params[parts] (partial upload support)
 	// 3. has params[type] & params[source] (v_node)
 	// 4. has params[path] (set from local path)
+	// 5. has params[copy_data] (create node by copying data from another node)
+	// 6. has params[parent_node] (create node by specifying subset of records in a parent node)
 	//
 	// All condition allow setting of attributes
+	//
+	// Note that all paths for node operations in this function must end with "err = node.Save()" to save node state.
 
 	if _, uploadMisplaced := params["upload"]; uploadMisplaced {
 		return errors.New("upload form field must be file encoded.")
@@ -39,20 +43,23 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	}
 	_, isPathUpload := params["path"]
 	_, isCopyUpload := params["copy_data"]
+	_, isSubsetUpload := params["parent_node"]
 
 	// Check exclusive conditions
-	if (isRegularUpload && isPartialUpload) || (isRegularUpload && isVirtualNode) || (isRegularUpload && isPathUpload) || (isRegularUpload && isCopyUpload) {
-		return errors.New("upload parameter incompatible with parts, path, type and/or copy_data parameter(s)")
-	} else if (isPartialUpload && isVirtualNode) || (isPartialUpload && isPathUpload) || (isPartialUpload && isCopyUpload) {
-		return errors.New("parts parameter incompatible with type, path and/or copy_data parameter(s)")
-	} else if (isVirtualNode && isPathUpload) || (isVirtualNode && isCopyUpload) {
-		return errors.New("type parameter incompatible with path and/or copy_data parameter")
-	} else if isPathUpload && isCopyUpload {
-		return errors.New("path parameter incompatible with copy_data parameter")
+	if (isRegularUpload && isPartialUpload) || (isRegularUpload && isVirtualNode) || (isRegularUpload && isPathUpload) || (isRegularUpload && isCopyUpload) || (isRegularUpload && isSubsetUpload) {
+		return errors.New("upload parameter incompatible with parts, path, type, copy_data and/or parent_node parameter(s)")
+	} else if (isPartialUpload && isVirtualNode) || (isPartialUpload && isPathUpload) || (isPartialUpload && isCopyUpload) || (isPartialUpload && isSubsetUpload) {
+		return errors.New("parts parameter incompatible with type, path, copy_data and/or parent_node parameter(s)")
+	} else if (isVirtualNode && isPathUpload) || (isVirtualNode && isCopyUpload) || (isVirtualNode && isSubsetUpload) {
+		return errors.New("type parameter incompatible with path, copy_data and/or parent_node parameter")
+	} else if (isPathUpload && isCopyUpload) || (isPathUpload && isSubsetUpload) {
+		return errors.New("path parameter incompatible with copy_data and/or parent_node parameter")
+	} else if isCopyUpload && isSubsetUpload {
+		return errors.New("copy_data parameter incompatible with parent_node parameter")
 	}
 
 	// Check if immutable
-	if (isRegularUpload || isPartialUpload || isVirtualNode || isPathUpload || isCopyUpload) && node.HasFile() {
+	if (isRegularUpload || isPartialUpload || isVirtualNode || isPathUpload || isCopyUpload || isSubsetUpload) && node.HasFile() {
 		return errors.New(e.FileImut)
 	}
 
@@ -62,6 +69,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 		delete(files, "upload")
 	} else if isPartialUpload {
+		node.Type = "parts"
 		if params["parts"] == "unknown" {
 			if err = node.initParts("unknown"); err != nil {
 				return err
@@ -85,6 +93,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			}
 		}
 	} else if isVirtualNode {
+		node.Type = "virtual"
 		if source, hasSource := params["source"]; hasSource {
 			ids := strings.Split(source, ",")
 			node.addVirtualParts(ids)
@@ -128,9 +137,10 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		node.File.Size = n.File.Size
 		node.File.Checksum = n.File.Checksum
 		node.File.Format = n.File.Format
+		node.Type = "copy"
 
-		// Copy node indices
-		if _, copyIndex := params["copy_index"]; copyIndex && (len(n.Indexes) > 0) {
+		// Copy node indexes
+		if _, copyIndex := params["copy_indexes"]; copyIndex && (len(n.Indexes) > 0) {
 			// loop through parent indexes
 			for idxType, idxInfo := range n.Indexes {
 				parentFile := n.IndexPath() + "/" + idxType + ".idx"
@@ -157,6 +167,67 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		} else {
 			node.File.Path = n.File.Path
 		}
+
+		err = node.Save()
+		if err != nil {
+			return
+		}
+	} else if isSubsetUpload {
+		_, hasParentIndex := params["parent_index"]
+		if !hasParentIndex {
+			return errors.New("parent_index is a required parameter for creating a subset node.")
+		}
+
+		var n *Node
+		n, err = LoadUnauth(params["parent_node"])
+		if err != nil {
+			return err
+		}
+
+		if n.File.Virtual {
+			return errors.New("parent_node parameter points to a virtual node, invalid operation.")
+		}
+
+		if _, indexExists := n.Indexes[params["parent_index"]]; !indexExists {
+			return errors.New("Index '" + params["parent_index"] + "' does not exist for parent node.")
+		}
+
+		parentIndexFile := n.IndexPath() + "/" + params["parent_index"] + ".idx"
+		if _, statErr := os.Stat(parentIndexFile); statErr != nil {
+			return errors.New("Could not stat index file for parent node where parent node = '" + params["parent_node"] + "' and index = '" + params["parent_index"] + "'.")
+		}
+
+		// Copy node file information
+		node.File.Name = n.File.Name
+		node.File.Format = n.File.Format
+		node.Type = "subset"
+		node.Subset.Parent.Id = params["parent_node"]
+		node.Subset.Parent.IndexName = params["parent_index"]
+
+		if n.File.Path == "" {
+			node.File.Path = fmt.Sprintf("%s/%s.data", getPath(params["parent_node"]), params["parent_node"])
+		} else {
+			node.File.Path = n.File.Path
+		}
+
+		if _, hasSubsetList := files["subset_indices"]; hasSubsetList {
+			if err = node.SetFileFromSubset(files["subset_indices"]); err != nil {
+				return err
+			}
+			delete(files, "subset_indices")
+		} else {
+			err = node.Save()
+			if err != nil {
+				return
+			}
+		}
+	}
+
+	if _, hasSubsetList := files["subset_indices"]; hasSubsetList {
+		if err = node.SetFileFromSubset(files["subset_indices"]); err != nil {
+			return err
+		}
+		delete(files, "subset_indices")
 	}
 
 	// set attributes from file
@@ -269,7 +340,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 func (node *Node) Save() (err error) {
 	node.UpdateVersion()
 	if len(node.Revisions) == 0 || node.Revisions[len(node.Revisions)-1].Version != node.Version {
-		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Public, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified}
+		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Public, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified, node.Type, node.Subset}
 		node.Revisions = append(node.Revisions, n)
 	}
 	if node.CreatedOn.String() == "0001-01-01 00:00:00 +0000 UTC" {

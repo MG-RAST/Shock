@@ -102,7 +102,7 @@ func fetchProfile(t string) (u *user.User, err error) {
 				if err = json.Unmarshal(body, &u); err != nil {
 					return nil, err
 				} else {
-					if err = u.SetUuid(); err != nil {
+					if err = u.SetMongoInfo(); err != nil {
 						return nil, err
 					}
 				}
