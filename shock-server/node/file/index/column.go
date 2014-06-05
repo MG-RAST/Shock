@@ -45,7 +45,10 @@ func CreateColumnIndex(c *column, column int, ofile string) (count int64, format
 	total_n := 0     // stores the number of bytes read for the current index record
 	line_count := 0  // stores the number of lines that have been read from the data file
 	prev_str := ""   // keeps track of the string of the specified column of the previous line
+	record_pos := 0  // used to track the location in our byte array
 
+	// Writing index file in 16MB chunks
+	var b [16777216]byte
 	for {
 		buf, er := c.r.ReadLine()
 		n := len(buf)
@@ -70,10 +73,21 @@ func CreateColumnIndex(c *column, column int, ofile string) (count int64, format
 
 		str := string(slices[column-1])
 		if prev_str != str && line_count != 0 {
-			binary.Write(f, binary.LittleEndian, curr)
-			binary.Write(f, binary.LittleEndian, int64(total_n))
+			// Calculating position in byte array
+			x := (record_pos * 16)
+			// Print byte array if it's full
+			if x == 16777216 {
+				f.Write(b[:])
+				record_pos = 0
+				x = 0
+			}
+			// Adding next record to byte array
+			binary.LittleEndian.PutUint64(b[x:x+8], uint64(curr))
+			binary.LittleEndian.PutUint64(b[x+8:x+16], uint64(total_n))
+
 			curr += int64(total_n)
 			count += 1
+			record_pos += 1
 			total_n = 0
 			prev_str = str
 		}
@@ -84,8 +98,22 @@ func CreateColumnIndex(c *column, column int, ofile string) (count int64, format
 		line_count += 1
 	}
 
-	binary.Write(f, binary.LittleEndian, curr)
-	binary.Write(f, binary.LittleEndian, int64(total_n))
+	// Calculating position in byte array
+	x := (record_pos * 16)
+	// Print byte array if it's full
+	if x == 16777216 {
+		f.Write(b[:])
+		record_pos = 0
+		x = 0
+	}
+	// Unless file was empty we need to add the last index to our byte array and then print it out
+	if curr != 0 {
+		binary.LittleEndian.PutUint64(b[x:x+8], uint64(curr))
+		binary.LittleEndian.PutUint64(b[x+8:x+16], uint64(total_n))
+		count += 1
+		record_pos += 1
+		f.Write(b[:record_pos*16])
+	}
 
 	err = os.Rename(tmpFilePath, ofile)
 
