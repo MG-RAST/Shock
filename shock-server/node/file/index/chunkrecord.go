@@ -52,20 +52,18 @@ func (i *chunkRecord) Create(file string) (count int64, format string, err error
 				return
 			}
 		}
+		// Calculating position in byte array
 		x := (record_pos * 16)
 		if x == 16777216 {
 			f.Write(b[:])
 			record_pos = 0
 			x = 0
 		}
-		y := x + 8
-		z := x + 16
-
-		binary.LittleEndian.PutUint64(b[x:y], uint64(curr))
+		binary.LittleEndian.PutUint64(b[x:x+8], uint64(curr))
 		if er == io.EOF {
-			binary.LittleEndian.PutUint64(b[y:z], uint64(i.size-curr))
+			binary.LittleEndian.PutUint64(b[x+8:x+16], uint64(i.size-curr))
 		} else {
-			binary.LittleEndian.PutUint64(b[y:z], uint64(n))
+			binary.LittleEndian.PutUint64(b[x+8:x+16], uint64(n))
 		}
 
 		curr += int64(n)
