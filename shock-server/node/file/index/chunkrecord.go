@@ -40,6 +40,10 @@ func (i *chunkRecord) Create(file string) (count int64, format string, err error
 	format = "array"
 	curr := int64(0)
 	count = 0
+	record_pos := 0 // used to track the location in our byte array
+
+	// Writing index file in 16MB chunks
+	var b [16777216]byte
 	for {
 		n, er := i.r.SeekChunk(curr)
 		if er != nil {
@@ -47,16 +51,30 @@ func (i *chunkRecord) Create(file string) (count int64, format string, err error
 				err = er
 				return
 			}
-			binary.Write(f, binary.LittleEndian, curr)
-			binary.Write(f, binary.LittleEndian, i.size-curr)
-			count += 1
-			break
-		} else {
-			binary.Write(f, binary.LittleEndian, curr)
-			binary.Write(f, binary.LittleEndian, n)
-			curr += int64(n)
-			count += 1
 		}
+		// Calculating position in byte array
+		x := (record_pos * 16)
+		if x == 16777216 {
+			f.Write(b[:])
+			record_pos = 0
+			x = 0
+		}
+		binary.LittleEndian.PutUint64(b[x:x+8], uint64(curr))
+		if er == io.EOF {
+			binary.LittleEndian.PutUint64(b[x+8:x+16], uint64(i.size-curr))
+		} else {
+			binary.LittleEndian.PutUint64(b[x+8:x+16], uint64(n))
+		}
+
+		curr += int64(n)
+		count += 1
+		record_pos += 1
+		if er == io.EOF {
+			break
+		}
+	}
+	if record_pos != 0 {
+		f.Write(b[:record_pos*16])
 	}
 	err = os.Rename(tmpFilePath, file)
 

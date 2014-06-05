@@ -172,7 +172,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				}
 				err = s.StreamSamtools(n.FilePath(), region, argv...)
 				if err != nil {
-					return responder.RespondWithError(ctx, http.StatusBadRequest, "error while involking samtools")
+					return responder.RespondWithError(ctx, http.StatusBadRequest, "error while invoking samtools")
 				}
 				return nil
 			}
@@ -192,7 +192,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			if !ok {
 				return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index")
 			}
-			idx, err := n.Index(idxName)
+			idx, err := n.DynamicIndex(idxName)
 			if err != nil {
 				return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
 			}
@@ -219,7 +219,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			if (!hasPart) && (idxInfo.Type == "subset") {
 				// download full subset file
 				fullRange := "1-" + strconv.FormatInt(idxInfo.TotalUnits, 10)
-				recSlice, err := idx.Range(fullRange)
+				recSlice, err := idx.DynamicRange(fullRange, n.IndexPath()+"/"+idxName+".idx", idxInfo.TotalUnits)
 				if err != nil {
 					return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index subset")
 				}
@@ -232,7 +232,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				for _, p := range query["part"] {
 					// special case for subset ranges
 					if idxInfo.Type == "subset" {
-						recSlice, err := idx.Range(p)
+						recSlice, err := idx.DynamicRange(p, n.IndexPath()+"/"+idxName+".idx", idxInfo.TotalUnits)
 						if err != nil {
 							return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index part")
 						}
@@ -241,7 +241,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 							s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
 						}
 					} else {
-						pos, length, err := idx.Part(p)
+						pos, length, err := idx.DynamicPart(p, n.IndexPath()+"/"+idxName+".idx", idxInfo.TotalUnits)
 						if err != nil {
 							return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index part")
 						}
@@ -284,15 +284,11 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				}
 
 				idx := index.New()
-				err = idx.Load(n.Path() + "/" + n.Id + ".subset.idx")
-				if err != nil {
-					return responder.RespondWithError(ctx, http.StatusInternalServerError, "Could not load data index file for subset node.")
-				}
 
 				s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc}
 
 				fullRange := "1-" + strconv.FormatInt(n.Subset.Index.TotalUnits, 10)
-				recSlice, err := idx.Range(fullRange)
+				recSlice, err := idx.DynamicRange(fullRange, n.Path()+"/"+n.Id+".subset.idx", n.Subset.Index.TotalUnits)
 				if err != nil {
 					return responder.RespondWithError(ctx, http.StatusInternalServerError, "Invalid data index for subset node.")
 				}

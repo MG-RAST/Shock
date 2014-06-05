@@ -107,3 +107,11 @@ func (v *vIndex) Load(string) error {
 func (v *vIndex) Range(string) ([][]int64, error) {
 	return nil, nil
 }
+
+func (v *vIndex) DynamicPart(string, string, int64) (int64, int64, error) {
+	return -1, -1, nil
+}
+
+func (v *vIndex) DynamicRange(string, string, int64) ([][]int64, error) {
+	return nil, nil
+}
