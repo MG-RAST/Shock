@@ -42,6 +42,10 @@ func (i *record) Create(file string) (count int64, format string, err error) {
 	// Writing index file in 16MB chunks
 	var b [16777216]byte
 	for {
+		// io.EOF error does not get returned from GetReadOffset() until all sequences
+		// have been read.  Thus, io.EOF for last fasta read is not returned as it is by bufio.ReadBytes().
+		// This was primarily implemented as such for agreement in the behavior between the fasta and
+		// the fastq readers.
 		n, er := i.r.GetReadOffset()
 		if er != nil {
 			if er != io.EOF {
