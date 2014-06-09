@@ -36,7 +36,7 @@ func (l *lineRecord) Create(file string) (count int64, format string, err error)
 	format = "array"
 	curr := int64(0)
 	count = 0
-	record_pos := 0 // used to track the location in our byte array
+	buffer_pos := 0 // used to track the location in our byte array
 
 	// Writing index file in 16MB chunks
 	var b [16777216]byte
@@ -50,10 +50,10 @@ func (l *lineRecord) Create(file string) (count int64, format string, err error)
 			}
 			break
 		}
-		x := (record_pos * 16)
+		x := (buffer_pos * 16)
 		if x == 16777216 {
 			f.Write(b[:])
-			record_pos = 0
+			buffer_pos = 0
 			x = 0
 		}
 		y := x + 8
@@ -63,10 +63,10 @@ func (l *lineRecord) Create(file string) (count int64, format string, err error)
 		binary.LittleEndian.PutUint64(b[y:z], uint64(n))
 		curr += int64(n)
 		count += 1
-		record_pos += 1
+		buffer_pos += 1
 	}
-	if record_pos != 0 {
-		f.Write(b[:record_pos*16])
+	if buffer_pos != 0 {
+		f.Write(b[:buffer_pos*16])
 	}
 
 	err = os.Rename(tmpFilePath, file)
