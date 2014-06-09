@@ -42,7 +42,7 @@ func NewVirtual(t string, p string, s int64, c int64) *vIndex {
 	return &vIndex{}
 }
 
-func (v *vIndex) Part(p string) (pos int64, length int64, err error) {
+func (v *vIndex) Part(p string, q string, r int64) (pos int64, length int64, err error) {
 	return v.partF(p, v)
 }
 
@@ -100,18 +100,6 @@ func (v *vIndex) Append(a []int64) {
 	return
 }
 
-func (v *vIndex) Load(string) error {
-	return nil
-}
-
-func (v *vIndex) Range(string) ([][]int64, error) {
-	return nil, nil
-}
-
-func (v *vIndex) DynamicPart(string, string, int64) (int64, int64, error) {
-	return -1, -1, nil
-}
-
-func (v *vIndex) DynamicRange(string, string, int64) ([][]int64, error) {
+func (v *vIndex) Range(string, string, int64) ([][]int64, error) {
 	return nil, nil
 }
