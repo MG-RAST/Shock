@@ -54,12 +54,19 @@ func (node *Node) SetFileFromSubset(subsetIndices FormFile) (err error) {
 		return errors.New("Could not stat index file for parent node where parent node = '" + node.Subset.Parent.Id + "' and index = '" + node.Subset.Parent.IndexName + "'.")
 	}
 
+	// we default to "array" index format for backwards compatibility
+	indexFormat := "array"
+	if n.Indexes[node.Subset.Parent.IndexName].Format == "array" || n.Indexes[node.Subset.Parent.IndexName].Format == "matrix" {
+		indexFormat = n.Indexes[node.Subset.Parent.IndexName].Format
+	}
+
 	f, _ := os.Open(subsetIndices.Path)
 	defer f.Close()
 	idxer := index.NewSubsetIndexer(f)
 	coIndexPath := node.Path() + "/" + node.Id + ".subset.idx"
 	oIndexPath := node.Path() + "/idx/" + node.Subset.Parent.IndexName + ".idx"
-	coCount, oCount, oSize, oFormat, err := index.CreateSubsetNodeIndexes(&idxer, coIndexPath, oIndexPath, parentIndexFile)
+
+	coCount, oCount, oSize, err := index.CreateSubsetNodeIndexes(&idxer, coIndexPath, oIndexPath, parentIndexFile, indexFormat, n.Indexes[node.Subset.Parent.IndexName].TotalUnits)
 	if err != nil {
 		return
 	}
@@ -76,7 +83,7 @@ func (node *Node) SetFileFromSubset(subsetIndices FormFile) (err error) {
 		Type:        "subset",
 		TotalUnits:  oCount,
 		AvgUnitSize: oSize / oCount,
-		Format:      oFormat,
+		Format:      indexFormat,
 	}
 
 	// fill size index info

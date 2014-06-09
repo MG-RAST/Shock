@@ -176,7 +176,13 @@ func IndexTypedRequest(ctx context.Context) {
 			f, _ := os.Open(subsetIndices.Path)
 			defer f.Close()
 			idxer := index.NewSubsetIndexer(f)
-			count, subsetSize, indexFormat, err = index.CreateSubsetIndex(&idxer, n.IndexPath()+"/"+newIndex+".idx", n.IndexPath()+"/"+parentIndex+".idx")
+
+			// we default to "array" index format for backwards compatibility
+			indexFormat = "array"
+			if n.Indexes[parentIndex].Format == "array" || n.Indexes[parentIndex].Format == "matrix" {
+				indexFormat = n.Indexes[parentIndex].Format
+			}
+			count, subsetSize, err = index.CreateSubsetIndex(&idxer, n.IndexPath()+"/"+newIndex+".idx", n.IndexPath()+"/"+parentIndex+".idx", indexFormat, n.Indexes[parentIndex].TotalUnits)
 			if err != nil {
 				logger.Error("err " + err.Error())
 				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
