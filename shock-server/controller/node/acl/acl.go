@@ -37,12 +37,9 @@ func AclRequest(ctx context.Context) {
 	}
 
 	// Load node and handle user unauthorized
-	n, err := node.Load(nid, u.Uuid)
+	n, err := node.LoadUnauth(nid)
 	if err != nil {
-		if err.Error() == e.UnAuth {
-			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
-			return
-		} else if err.Error() == e.MongoDocNotFound {
+		if err.Error() == e.MongoDocNotFound {
 			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
 			return
 		} else {
@@ -60,18 +57,12 @@ func AclRequest(ctx context.Context) {
 	if n.Acl.Owner != u.Uuid && n.Acl.Owner != "" {
 		err_msg := "Only the node owner can edit/view node ACL's"
 		logger.Error(err_msg)
-		responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+		responder.RespondWithError(ctx, http.StatusUnauthorized, err_msg)
 		return
 	}
 
-	rights := n.Acl.Check(u.Uuid)
 	if ctx.HttpRequest().Method == "GET" {
-		if u.Uuid == n.Acl.Owner || rights["read"] {
-			responder.RespondWithData(ctx, n.Acl)
-		} else {
-			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
-			return
-		}
+		responder.RespondWithData(ctx, n.Acl)
 	} else {
 		responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
 	}
@@ -89,24 +80,21 @@ func AclTypedRequest(ctx context.Context) {
 		return
 	}
 
+	if !validAclTypes[rtype] {
+		responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid acl type")
+		return
+	}
+
 	// acl require auth even for public data
 	if u == nil {
 		responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
 		return
 	}
 
-	if !validAclTypes[rtype] {
-		responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid acl type")
-		return
-	}
-
 	// Load node and handle user unauthorized
-	n, err := node.Load(nid, u.Uuid)
+	n, err := node.LoadUnauth(nid)
 	if err != nil {
-		if err.Error() == e.UnAuth {
-			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
-			return
-		} else if err.Error() == e.MongoDocNotFound {
+		if err.Error() == e.MongoDocNotFound {
 			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
 			return
 		} else {
@@ -128,7 +116,6 @@ func AclTypedRequest(ctx context.Context) {
 		return
 	}
 
-	rights := n.Acl.Check(u.Uuid)
 	requestMethod := ctx.HttpRequest().Method
 	if requestMethod != "GET" {
 		ids, err := parseAclRequestTyped(ctx)
@@ -136,17 +123,12 @@ func AclTypedRequest(ctx context.Context) {
 			responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
 			return
 		}
-		if (requestMethod == "POST" || requestMethod == "PUT") && (u.Uuid == n.Acl.Owner || rights["write"]) {
+		if requestMethod == "POST" || requestMethod == "PUT" {
 			if rtype == "owner" {
-				if u.Uuid == n.Acl.Owner {
-					if len(ids) == 1 {
-						n.Acl.SetOwner(ids[0])
-					} else {
-						responder.RespondWithError(ctx, http.StatusBadRequest, "Too many users. Nodes may have only one owner.")
-						return
-					}
+				if len(ids) == 1 {
+					n.Acl.SetOwner(ids[0])
 				} else {
-					responder.RespondWithError(ctx, http.StatusBadRequest, "Only owner can change ownership of Node.")
+					responder.RespondWithError(ctx, http.StatusBadRequest, "Too many users. Nodes may have only one owner.")
 					return
 				}
 			} else if rtype == "all" {
@@ -161,7 +143,7 @@ func AclTypedRequest(ctx context.Context) {
 				}
 			}
 			n.Save()
-		} else if requestMethod == "DELETE" && (u.Uuid == n.Acl.Owner || rights["delete"]) {
+		} else if requestMethod == "DELETE" {
 			if rtype == "owner" {
 				responder.RespondWithError(ctx, http.StatusBadRequest, "Deleting ownership is not a supported request type.")
 				return
@@ -178,28 +160,26 @@ func AclTypedRequest(ctx context.Context) {
 			}
 			n.Save()
 		} else {
-			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+			responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
 			return
 		}
 	}
 
-	if u.Uuid == n.Acl.Owner || rights["read"] {
-		switch rtype {
-		case "read":
-			responder.RespondWithData(ctx, map[string][]string{"read": n.Acl.Read})
-		case "write":
-			responder.RespondWithData(ctx, map[string][]string{"write": n.Acl.Write})
-		case "delete":
-			responder.RespondWithData(ctx, map[string][]string{"delete": n.Acl.Delete})
-		case "owner":
-			responder.RespondWithData(ctx, map[string]string{"owner": n.Acl.Owner})
-		case "all":
-			responder.RespondWithData(ctx, n.Acl)
-		}
-	} else {
-		responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
-		return
+	switch rtype {
+	default:
+		responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
+	case "read":
+		responder.RespondWithData(ctx, map[string][]string{"read": n.Acl.Read})
+	case "write":
+		responder.RespondWithData(ctx, map[string][]string{"write": n.Acl.Write})
+	case "delete":
+		responder.RespondWithData(ctx, map[string][]string{"delete": n.Acl.Delete})
+	case "owner":
+		responder.RespondWithData(ctx, map[string]string{"owner": n.Acl.Owner})
+	case "all":
+		responder.RespondWithData(ctx, n.Acl)
 	}
+
 	return
 }
 

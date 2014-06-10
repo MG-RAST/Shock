@@ -36,7 +36,12 @@ func (l *lineRecord) Create(file string) (count int64, format string, err error)
 	format = "array"
 	curr := int64(0)
 	count = 0
+	buffer_pos := 0 // used to track the location in our byte array
+
+	// Writing index file in 16MB chunks
+	var b [16777216]byte
 	for {
+		// io.EOF error does not get returned from GetReadOffset() until all lines have been read
 		n, er := l.r.GetReadOffset()
 		if er != nil {
 			if er != io.EOF {
@@ -45,11 +50,25 @@ func (l *lineRecord) Create(file string) (count int64, format string, err error)
 			}
 			break
 		}
-		binary.Write(f, binary.LittleEndian, curr)
-		binary.Write(f, binary.LittleEndian, int64(n))
+		x := (buffer_pos * 16)
+		if x == 16777216 {
+			f.Write(b[:])
+			buffer_pos = 0
+			x = 0
+		}
+		y := x + 8
+		z := x + 16
+
+		binary.LittleEndian.PutUint64(b[x:y], uint64(curr))
+		binary.LittleEndian.PutUint64(b[y:z], uint64(n))
 		curr += int64(n)
 		count += 1
+		buffer_pos += 1
 	}
+	if buffer_pos != 0 {
+		f.Write(b[:buffer_pos*16])
+	}
+
 	err = os.Rename(tmpFilePath, file)
 
 	return

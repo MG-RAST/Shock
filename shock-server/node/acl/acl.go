@@ -50,7 +50,7 @@ func (a *Acl) Check(uuid string) (r Rights) {
 		if len(v) == 0 {
 			r[k] = true
 		} else {
-			for _, id := range a.Read {
+			for _, id := range v {
 				if uuid == id {
 					r[k] = true
 					break

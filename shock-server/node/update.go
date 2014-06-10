@@ -250,6 +250,9 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	// set filename string
 	if _, hasFileNameStr := params["file_name"]; hasFileNameStr {
 		node.File.Name = params["file_name"]
+		if err = node.Save(); err != nil {
+			return err
+		}
 		delete(params, "file_name")
 	}
 
