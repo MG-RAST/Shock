@@ -16,22 +16,23 @@ my $shockurl = $ENV{'SHOCK_SERVER_URL'} || die "SHOCK_SERVER_URL not defined";
 
 my $shocktoken=$ENV{'GLOBUSONLINE'} || $ENV{'KB_AUTH_TOKEN'};
 
-
-sub shock_upload {
-	my ($shock) = shift(@_);
-	my @other_args = @_;
-	
-	my $shock_data = $shock->upload(@other_args); # "test.txt"
-	unless (defined $shock_data) {
-		die;
-	}
-	#print Dumper($shock_data);
-	unless (defined $shock_data->{'id'}) {
-		die;
-	}
-	
-	return $shock_data->{id};
-}
+#
+#sub shock_upload {
+#	my ($shock) = shift(@_);
+#	my @other_args = @_;
+#	
+#	my $shock_data = $shock->upload(@other_args); # "test.txt"
+#	unless (defined $shock_data) {
+#		die;
+#	}
+#	#print Dumper($shock_data);
+#	
+#	unless (defined $shock_data->{'id'}) {
+#		die;
+#	}
+#	
+#	return $shock_data->{id};
+#}
 
 #######################################
 
@@ -40,19 +41,21 @@ my ($h, $help_text) = &parse_options (
 'name' => 'shockclient.pl',
 'version' => '1',
 'synopsis' => 'shockclient.pl --show=<nodeid>',
-'examples' => 'ls',
+'examples' => 'shockclient.pl --upload *.fasta',
 'authors' => 'Wolfgang Gerlach',
 'options' => [
 	'',
 	'Actions:',
 	[ 'show=s'						, ""],
-	[ 'delete=s'					, ""],
-	[ 'query=s'						, ""],
+	[ 'upload'						, "upload files to Shock"],
+	[ 'delete=s'					, "delete Shock node"],
+	[ 'query=s'						, "querystring, e.g. "],
 	[ 'download=s'					, ""],
 	[ 'clean_tmp'					, ""],
-#	'',
-#	'Options:',
+	'',
+	'Options:',
 #	[ 'xx=s'						, "xx"],
+	[ 'public'						, "uploaded files will be public (default private)"],
 	[ 'help|h'						, "", { hidden => 1  }]
 	]
 );
@@ -100,6 +103,40 @@ if (defined($value = $h->{"query"})) {
 	foreach my $node (@nodes) {
 		my $response =  $shock->delete_node($node);
 		print Dumper($response);
+	}
+	
+	
+	
+	exit(0);
+} elsif (defined($h->{"upload"})) {
+	
+	
+	my @files = @ARGV;
+	
+	
+	foreach my $file (@files) {
+		
+		print "uploading ".$file."...\n";
+		my $shock_data = $shock->upload($file); # "test.txt"
+		unless (defined $shock_data) {
+			die;
+		}
+		
+		if (defined $shock_data->{'error'}) {
+			die $shock_data->{'error'};
+		}
+		
+		my $id = $shock_data->{'id'};
+		unless (defined $id) {
+				print Dumper($shock_data);
+				die "id not found";
+		}
+		print $value." saved with id $id\n";
+		
+		if (defined $h->{"public"}) {
+			print "make id $id public...\n";
+			$shock->permisson_readable($id);
+		}
 	}
 	
 	
