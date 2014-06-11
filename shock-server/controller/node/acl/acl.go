@@ -62,6 +62,60 @@ func AclRequest(ctx context.Context) {
 	}
 
 	if ctx.HttpRequest().Method == "GET" {
+	    if u.Uuid == n.Acl.Owner || rights["read"] {
+		// this is pretty clumsy and I could have done it with a lot less code and cleaner
+		// in perl or js, but I am not so familiar with GO yet (it always hurts the first time)
+		// the return structure should probably not be a concatenated string, but rather a hash
+		// for each entry containing Username, Fullname and Uuid
+		
+		// owner
+		cu, err := user.FindByUuid(n.Acl.Owner)
+		if err != nil {
+		    responder.RespondWithError(ctx, http.StatusInternalServerError, "Err@Uuid_Resolve: "+err.Error())
+		    return
+		} else {
+		    n.Acl.Owner = cu.Username + "|" + cu.Uuid
+		}
+
+		// read
+		p1 := []string{}
+		for _, v := range n.Acl.Read {
+		    cu, err := user.FindByUuid(v)
+		    if err != nil {
+			responder.RespondWithError(ctx, http.StatusInternalServerError, "Err@Uuid_Resolve: "+err.Error())
+			return
+		    } else {
+			p1 = append(p1, cu.Username + "|" + cu.Uuid)
+		    }
+		}
+		n.Acl.Read = p1
+
+		// write
+		p2 := []string{}
+		for _, v := range n.Acl.Write {
+		    cu, err := user.FindByUuid(v)
+		    if err != nil {
+			responder.RespondWithError(ctx, http.StatusInternalServerError, "Err@Uuid_Resolve: "+err.Error())
+			return
+		    } else {
+			p2 = append(p2, cu.Username + "|" + cu.Uuid)
+		    }
+		}
+		n.Acl.Write = p2
+
+		// delete
+		p3 := []string{}
+		for _, v := range n.Acl.Delete {
+		    cu, err := user.FindByUuid(v)
+		    if err != nil {
+			responder.RespondWithError(ctx, http.StatusInternalServerError, "Err@Uuid_Resolve: "+err.Error())
+			return
+		    } else {
+			p3 = append(p3, cu.Username + "|" + cu.Uuid)
+		    }
+		}
+		n.Acl.Delete = p3
+
 		responder.RespondWithData(ctx, n.Acl)
 	} else {
 		responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
