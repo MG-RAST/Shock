@@ -143,7 +143,7 @@ sub request {
 	
 	my $my_url = $self->create_url($resource, (defined($query)?%$query:()));
 	
-	print "request: $method $my_url\n";
+	print "request: $method \"$my_url\"\n";
 	
 	
 	
@@ -176,7 +176,7 @@ sub request {
 		} else {
 			die "not implemented yet";
 		}
-		#print "content: ".$response_object->content."\n";
+		print "content: ".$response_object->content."\n";
 		
 		$response_content = $self->json->decode( $response_object->content );
         
@@ -227,8 +227,8 @@ sub delete_node {
 	return $self->delete('node/'.$node);
 }
 
-
-sub query { # https://github.com/MG-RAST/Shock#get_nodes
+# query attributes (!= node)
+sub query { # https://github.com/MG-RAST/Shock/wiki/API
 		
 	my ($self, %query) = @_;
 	
@@ -256,6 +256,37 @@ sub query { # https://github.com/MG-RAST/Shock#get_nodes
 	return $response;
 	
 }
+
+#query node (!= attributes)
+sub querynode { # https://github.com/MG-RAST/Shock/wiki/API
+	
+	my ($self, %query) = @_;
+	
+	$query{'querynode'} = undef;
+	
+	my $response = $self->get('node', \%query);
+	#print Dumper ($response);
+	
+	if (defined $response->{'error'}) {
+		print Dumper ($response);
+		return undef;
+	}
+	
+	unless (defined $response->{'total_count'}) {
+		die;
+	}
+	
+	if ($response->{'total_count'} > 25) {
+		# get all nodes
+		$query{'limit'} = $response->{'total_count'};
+		$response = $self->get('node', \%query);
+	}
+	
+	
+	return $response;
+	
+}
+
 
 
 #get('/node/'.$node, %h);
