@@ -13,13 +13,19 @@ import (
 type lineRecord struct {
 	f     *os.File
 	r     line.LineReader
+	t     string
+	snf   string
+	snp   string
 	Index *Idx
 }
 
-func NewLineIndexer(f *os.File) Indexer {
+func NewLineIndexer(f *os.File, nType string, snFormat string, snIndexPath string) Indexer {
 	return &lineRecord{
 		f:     f,
 		r:     line.NewReader(f),
+		t:     nType,
+		snf:   snFormat,
+		snp:   snIndexPath,
 		Index: New(),
 	}
 }
