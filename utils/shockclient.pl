@@ -49,8 +49,10 @@ my ($h, $help_text) = &parse_options (
 	[ 'show=s'						, ""],
 	[ 'upload'						, "upload files to Shock"],
 	[ 'delete=s'					, "delete Shock node"],
-	[ 'query=s'						, "querystring, e.g. "],
+	[ 'query=s'						, "querystring, e.g. key=value,key2=value2"],
+	[ 'querynode=s'					, "querystring, e.g. key=value,key2=value2"],
 	[ 'download=s'					, ""],
+	[ 'makepublic=s'				, "make node public"],
 	[ 'clean_tmp'					, ""],
 	'',
 	'Options:',
@@ -80,7 +82,7 @@ my $value = undef;
 if (defined($value = $h->{"query"})) {
 	
 	
-	my @queries = split(',', $value);
+	my @queries = split(/,|\=/, $value);
 	
 	
 	my $response =  $shock->query(@queries);
@@ -94,6 +96,23 @@ if (defined($value = $h->{"query"})) {
 	print "nodes: ".join(',',@nodes)."\n";
 	
 	exit(0);
+} elsif (defined($value = $h->{"querynode"})) {
+		
+		
+		my @queries = split(/,|\=/, $value);
+		
+		
+		my $response =  $shock->querynode(@queries);
+		print Dumper($response);
+		
+		my @nodes = ();
+		foreach my $node_obj (@{$response->{'data'}}) {
+			push(@nodes, $node_obj->{'id'});
+		}
+		
+		print "nodes: ".join(',',@nodes)."\n";
+		
+		exit(0);
 } elsif (defined($value = $h->{"delete"})) {
 	
 	
@@ -117,21 +136,21 @@ if (defined($value = $h->{"query"})) {
 	foreach my $file (@files) {
 		
 		print "uploading ".$file."...\n";
-		my $shock_data = $shock->upload($file); # "test.txt"
-		unless (defined $shock_data) {
+		my $shock_node = $shock->upload('file' => $file); # "test.txt"
+		unless (defined $shock_node) {
 			die;
 		}
 		
-		if (defined $shock_data->{'error'}) {
-			die $shock_data->{'error'};
+		if (defined $shock_node->{'error'}) {
+			die $shock_node->{'error'};
 		}
 		
-		my $id = $shock_data->{'id'};
+		my $id = $shock_node->{'data'}->{'id'};
 		unless (defined $id) {
-				print Dumper($shock_data);
+				print Dumper($shock_node);
 				die "id not found";
 		}
-		print $value." saved with id $id\n";
+		print $file." saved with id $id\n";
 		
 		if (defined $h->{"public"}) {
 			print "make id $id public...\n";
@@ -139,8 +158,10 @@ if (defined($value = $h->{"query"})) {
 		}
 	}
 	
-	
-	
+	exit(0);
+} elsif (defined($value = $h->{"makepublic"})) {
+	print "make id $value public...\n";
+	$shock->permisson_readable($value);
 	exit(0);
 } elsif (defined($value = $h->{"show"})) {
 	
