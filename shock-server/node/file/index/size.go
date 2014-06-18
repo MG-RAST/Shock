@@ -6,7 +6,7 @@ import (
 
 type size struct{}
 
-func NewSizeIndexer(f *os.File) Indexer {
+func NewSizeIndexer(f *os.File, nType string, snFormat string, snIndexPath string) Indexer {
 	return &size{}
 }
 

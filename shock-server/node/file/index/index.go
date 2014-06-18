@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-type indexerFunc func(*os.File) Indexer
+type indexerFunc func(*os.File, string, string, string) Indexer
 
 var (
 	Indexers = map[string]indexerFunc{
@@ -29,28 +29,20 @@ type Index interface {
 	Set(map[string]interface{})
 	Type() string
 	GetLength() int64
-	Append([]int64)
 	Part(string, string, int64) (int64, int64, error)
 	Range(string, string, int64) ([][]int64, error)
 }
 
 type Idx struct {
 	T      string
-	Idx    [][]int64
 	Length int
 }
 
 func New() *Idx {
 	return &Idx{
 		T:      "file",
-		Idx:    [][]int64{},
 		Length: 0,
 	}
-}
-
-func (i *Idx) Append(rec []int64) {
-	i.Idx = append(i.Idx, rec)
-	i.Length += 1
 }
 
 func (i *Idx) Set(inter map[string]interface{}) {
@@ -67,7 +59,7 @@ func (i *Idx) GetLength() int64 {
 
 func (i *Idx) Part(part string, idxFilePath string, idxLength int64) (pos int64, length int64, err error) {
 	// this function is for returning a single pos and length for a given range
-	// used for non-subset indices where the records are contigious for the data file
+	// used for non-subset indices where the records are contiguous for the data file
 	f, err := os.Open(idxFilePath)
 	if err != nil {
 		return
@@ -118,7 +110,7 @@ func (i *Idx) Part(part string, idxFilePath string, idxLength int64) (pos int64,
 
 func (i *Idx) Range(part string, idxFilePath string, idxLength int64) (recs [][]int64, err error) {
 	// this function is for returning an array of [pos, length] for a given range
-	// used for subset indices where the records are not contigious for the data file
+	// used for subset indices where the records are not contiguous for the data file
 	f, err := os.Open(idxFilePath)
 	if err != nil {
 		return

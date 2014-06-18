@@ -121,7 +121,7 @@ func mapRoutes() {
 			R: []string{"node"},
 			T: "Shock",
 			U: host + "/",
-			V: "0.8.10",
+			V: "[% VERSION %]",
 		}
 		return responder.WriteResponseObject(ctx, http.StatusOK, r)
 	})
