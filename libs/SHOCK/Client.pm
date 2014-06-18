@@ -176,7 +176,7 @@ sub request {
 		} else {
 			die "not implemented yet";
 		}
-		print "content: ".$response_object->content."\n";
+		#print "content: ".$response_object->content."\n";
 		
 		$response_content = $self->json->decode( $response_object->content );
         
