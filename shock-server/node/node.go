@@ -196,7 +196,7 @@ func (node *Node) DynamicIndex(name string) (idx index.Index, err error) {
 func (node *Node) Delete() (err error) {
 	// check to make sure this node isn't referenced by a vnode
 	virtualNodes := Nodes{}
-	if _, err = dbFind(bson.M{"virtual_parts": node.Id}, &virtualNodes, nil); err != nil {
+	if _, err = dbFind(bson.M{"file.virtual_parts": node.Id}, &virtualNodes, nil); err != nil {
 		return err
 	}
 	if len(virtualNodes) != 0 {
