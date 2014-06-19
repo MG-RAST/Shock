@@ -91,9 +91,18 @@ func IndexTypedRequest(ctx context.Context) {
 			return
 		}
 
+		// Gather query params
+		query := ctx.HttpRequest().URL.Query()
+		_, forceRebuild := query["force_rebuild"]
+
 		if _, has := n.Indexes[idxType]; has {
-			responder.RespondOK(ctx)
-			return
+			if idxType == "size" {
+				responder.RespondOK(ctx)
+				return
+			} else if !forceRebuild {
+				responder.RespondWithError(ctx, http.StatusBadRequest, "This index already exists, please add the parameter 'force_rebuild=1' to force a rebuild of the existing index.")
+				return
+			}
 		}
 
 		if !n.HasFile() {
@@ -193,6 +202,11 @@ func IndexTypedRequest(ctx context.Context) {
 			// Gather query params
 			query := ctx.HttpRequest().URL.Query()
 
+			if n.Type == "subset" {
+				responder.RespondWithError(ctx, http.StatusBadRequest, "Shock does not support column index creation on subset nodes.")
+				return
+			}
+
 			if _, exists := query["number"]; !exists {
 				err_msg := "Index type column requires a number parameter in the url."
 				logger.Error(err_msg)
@@ -220,10 +234,20 @@ func IndexTypedRequest(ctx context.Context) {
 				return
 			}
 		} else {
+			if n.Type == "subset" && (idxType != "chunkrecord" || n.Subset.Parent.IndexName != "record") {
+				responder.RespondWithError(ctx, http.StatusBadRequest, "For subset nodes, Shock currently only supports subset and chunkrecord indexes. Also, for a chunkrecord index, the subset node must have been generated from a record index.")
+				return
+			}
+
 			newIndexer := index.Indexers[idxType]
 			f, _ := os.Open(n.FilePath())
 			defer f.Close()
-			idxer := newIndexer(f)
+			var idxer index.Indexer
+			if n.Type == "subset" {
+				idxer = newIndexer(f, n.Type, n.Subset.Index.Format, n.IndexPath()+"/"+n.Subset.Parent.IndexName+".idx")
+			} else {
+				idxer = newIndexer(f, n.Type, "", "")
+			}
 			count, indexFormat, err = idxer.Create(n.IndexPath() + "/" + idxType + ".idx")
 			if err != nil {
 				logger.Error("err " + err.Error())
