@@ -12,7 +12,7 @@ eval "use USAGEPOD qw(parse_options); 1"
 or die "module USAGEPOD.pm required: wget https://raw.github.com/MG-RAST/MG-RAST-Tools/master/tools/lib/USAGEPOD.pm";
 
 
-my $shockurl = $ENV{'SHOCK_SERVER_URL'} || die "SHOCK_SERVER_URL not defined";
+my $shockurl = $ENV{'SHOCK_SERVER_URL'};
 
 my $shocktoken=$ENV{'GLOBUSONLINE'} || $ENV{'KB_AUTH_TOKEN'};
 
@@ -58,6 +58,8 @@ my ($h, $help_text) = &parse_options (
 	'Options:',
 #	[ 'xx=s'						, "xx"],
 	[ 'public'						, "uploaded files will be public (default private)"],
+	[ 'url=s' 						, "url to Shock server (default $shockurl)" ],
+	[ 'token=s' 					, "default from \$KB_AUTH_TOKEN" ],
 	[ 'help|h'						, "", { hidden => 1  }]
 	]
 );
@@ -67,6 +69,15 @@ my ($h, $help_text) = &parse_options (
 if ($h->{'help'} || keys(%$h)==0) {
 	print $help_text;
 	exit(0);
+}
+
+
+if ($h->{'url'}) {
+	$shockurl = $h->{'url'};
+}
+
+if ($h->{'token'}) {
+	$shocktoken = $h->{'token'};
 }
 
 
