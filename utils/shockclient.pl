@@ -12,9 +12,9 @@ eval "use USAGEPOD qw(parse_options); 1"
 or die "module USAGEPOD.pm required: wget https://raw.github.com/MG-RAST/MG-RAST-Tools/master/tools/lib/USAGEPOD.pm";
 
 
-my $shockurl = $ENV{'SHOCK_SERVER_URL'};
+my $shockurl = $ENV{'SHOCK_SERVER_URL'} || '';
 
-my $shocktoken=$ENV{'GLOBUSONLINE'} || $ENV{'KB_AUTH_TOKEN'};
+my $shocktoken = $ENV{'GLOBUSONLINE'} || $ENV{'KB_AUTH_TOKEN'};
 
 #
 #sub shock_upload {
@@ -151,7 +151,7 @@ if (defined($value = $h->{"query"})) {
 	    open(JSON, $h->{"attributes_file"}) or die $!;
         my $json_str = do { local $/; <JSON> };
         close(JSON);
-        $attr = $shock->json->decode(json_str);
+        $attr = $shock->json->decode($json_str);
 	}
 	
 	foreach my $file (@files) {
