@@ -216,42 +216,91 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Filter: fFunc}
 
 			_, hasPart := query["part"]
-			if (!hasPart) && (idxInfo.Type == "subset") {
-				// download full subset file
-				fullRange := "1-" + strconv.FormatInt(idxInfo.TotalUnits, 10)
-				recSlice, err := idx.Range(fullRange, n.IndexPath()+"/"+idxName+".idx", idxInfo.TotalUnits)
+			if n.Type == "subset" && idxName == "chunkrecord" {
+				recordIdxName := "record"
+				recordIdxInfo, ok := n.Indexes[recordIdxName]
+				if !ok {
+					return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid request, record index must exist to retrieve chunkrecord index on a subset node.")
+				}
+				recordIdx, err := n.DynamicIndex(recordIdxName)
 				if err != nil {
-					return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index subset")
+					return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
 				}
-				for _, rec := range recSlice {
-					size += rec[1]
-					s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
-				}
-			} else if hasPart {
-				// downlaod parts
-				for _, p := range query["part"] {
-					// special case for subset ranges
-					if idxInfo.Type == "subset" {
-						recSlice, err := idx.Range(p, n.IndexPath()+"/"+idxName+".idx", idxInfo.TotalUnits)
-						if err != nil {
-							return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index part")
-						}
-						for _, rec := range recSlice {
-							size += rec[1]
-							s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
-						}
-					} else {
-						pos, length, err := idx.Part(p, n.IndexPath()+"/"+idxName+".idx", idxInfo.TotalUnits)
-						if err != nil {
-							return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index part")
-						}
-						size += length
-						s.R = append(s.R, io.NewSectionReader(r, pos, length))
+
+				if !hasPart {
+					// download full subset file
+					fullRange := "1-" + strconv.FormatInt(recordIdxInfo.TotalUnits, 10)
+					recSlice, err := recordIdx.Range(fullRange, n.IndexPath()+"/"+recordIdxName+".idx", recordIdxInfo.TotalUnits)
+					if err != nil {
+						return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index subset")
 					}
+					for _, rec := range recSlice {
+						size += rec[1]
+						s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
+					}
+				} else if hasPart {
+					// download parts
+					for _, p := range query["part"] {
+						chunkRecSlice, err := idx.Range(p, n.IndexPath()+"/"+idxName+".idx", idxInfo.TotalUnits)
+						if err != nil {
+							return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index part")
+						}
+						// This gets us the parts of the chunkrecord index, but we still need to convert these to record indices.
+						for _, chunkRec := range chunkRecSlice {
+							start := (chunkRec[0] / 16) + 1
+							stop := (start - 1) + (chunkRec[1] / 16)
+							recSlice, err := recordIdx.Range(strconv.FormatInt(start, 10)+"-"+strconv.FormatInt(stop, 10), n.IndexPath()+"/"+recordIdxName+".idx", recordIdxInfo.TotalUnits)
+							if err != nil {
+								return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index subset")
+							}
+							for _, rec := range recSlice {
+								size += rec[1]
+								s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
+							}
+						}
+					}
+				} else {
+					// bad request
+					return responder.RespondWithError(ctx, http.StatusBadRequest, "Index parameter requires part parameter")
 				}
 			} else {
-				// bad request
-				return responder.RespondWithError(ctx, http.StatusBadRequest, "Index parameter requires part parameter")
+				if (!hasPart) && (idxInfo.Type == "subset") {
+					// download full subset file
+					fullRange := "1-" + strconv.FormatInt(idxInfo.TotalUnits, 10)
+					recSlice, err := idx.Range(fullRange, n.IndexPath()+"/"+idxName+".idx", idxInfo.TotalUnits)
+					if err != nil {
+						return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index subset")
+					}
+					for _, rec := range recSlice {
+						size += rec[1]
+						s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
+					}
+				} else if hasPart {
+					// download parts
+					for _, p := range query["part"] {
+						// special case for subset ranges
+						if idxInfo.Type == "subset" {
+							recSlice, err := idx.Range(p, n.IndexPath()+"/"+idxName+".idx", idxInfo.TotalUnits)
+							if err != nil {
+								return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index part")
+							}
+							for _, rec := range recSlice {
+								size += rec[1]
+								s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
+							}
+						} else {
+							pos, length, err := idx.Part(p, n.IndexPath()+"/"+idxName+".idx", idxInfo.TotalUnits)
+							if err != nil {
+								return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index part")
+							}
+							size += length
+							s.R = append(s.R, io.NewSectionReader(r, pos, length))
+						}
+					}
+				} else {
+					// bad request
+					return responder.RespondWithError(ctx, http.StatusBadRequest, "Index parameter requires part parameter")
+				}
 			}
 			s.Size = size
 			if download_raw {

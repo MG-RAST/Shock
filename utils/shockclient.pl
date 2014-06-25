@@ -16,22 +16,23 @@ my $shockurl = $ENV{'SHOCK_SERVER_URL'} || die "SHOCK_SERVER_URL not defined";
 
 my $shocktoken=$ENV{'GLOBUSONLINE'} || $ENV{'KB_AUTH_TOKEN'};
 
-
-sub shock_upload {
-	my ($shock) = shift(@_);
-	my @other_args = @_;
-	
-	my $shock_data = $shock->upload(@other_args); # "test.txt"
-	unless (defined $shock_data) {
-		die;
-	}
-	#print Dumper($shock_data);
-	unless (defined $shock_data->{'id'}) {
-		die;
-	}
-	
-	return $shock_data->{id};
-}
+#
+#sub shock_upload {
+#	my ($shock) = shift(@_);
+#	my @other_args = @_;
+#	
+#	my $shock_data = $shock->upload(@other_args); # "test.txt"
+#	unless (defined $shock_data) {
+#		die;
+#	}
+#	#print Dumper($shock_data);
+#	
+#	unless (defined $shock_data->{'id'}) {
+#		die;
+#	}
+#	
+#	return $shock_data->{id};
+#}
 
 #######################################
 
@@ -40,19 +41,23 @@ my ($h, $help_text) = &parse_options (
 'name' => 'shockclient.pl',
 'version' => '1',
 'synopsis' => 'shockclient.pl --show=<nodeid>',
-'examples' => 'ls',
+'examples' => 'shockclient.pl --upload *.fasta',
 'authors' => 'Wolfgang Gerlach',
 'options' => [
 	'',
 	'Actions:',
 	[ 'show=s'						, ""],
-	[ 'delete=s'					, ""],
-	[ 'query=s'						, ""],
+	[ 'upload'						, "upload files to Shock"],
+	[ 'delete=s'					, "delete Shock node"],
+	[ 'query=s'						, "querystring, e.g. key=value,key2=value2"],
+	[ 'querynode=s'					, "querystring, e.g. key=value,key2=value2"],
 	[ 'download=s'					, ""],
+	[ 'makepublic=s'				, "make node public"],
 	[ 'clean_tmp'					, ""],
-#	'',
-#	'Options:',
+	'',
+	'Options:',
 #	[ 'xx=s'						, "xx"],
+	[ 'public'						, "uploaded files will be public (default private)"],
 	[ 'help|h'						, "", { hidden => 1  }]
 	]
 );
@@ -77,7 +82,7 @@ my $value = undef;
 if (defined($value = $h->{"query"})) {
 	
 	
-	my @queries = split(',', $value);
+	my @queries = split(/,|\=/, $value);
 	
 	
 	my $response =  $shock->query(@queries);
@@ -91,6 +96,23 @@ if (defined($value = $h->{"query"})) {
 	print "nodes: ".join(',',@nodes)."\n";
 	
 	exit(0);
+} elsif (defined($value = $h->{"querynode"})) {
+		
+		
+		my @queries = split(/,|\=/, $value);
+		
+		
+		my $response =  $shock->querynode(@queries);
+		print Dumper($response);
+		
+		my @nodes = ();
+		foreach my $node_obj (@{$response->{'data'}}) {
+			push(@nodes, $node_obj->{'id'});
+		}
+		
+		print "nodes: ".join(',',@nodes)."\n";
+		
+		exit(0);
 } elsif (defined($value = $h->{"delete"})) {
 	
 	
@@ -104,6 +126,42 @@ if (defined($value = $h->{"query"})) {
 	
 	
 	
+	exit(0);
+} elsif (defined($h->{"upload"})) {
+	
+	
+	my @files = @ARGV;
+	
+	
+	foreach my $file (@files) {
+		
+		print "uploading ".$file."...\n";
+		my $shock_node = $shock->upload('file' => $file); # "test.txt"
+		unless (defined $shock_node) {
+			die;
+		}
+		
+		if (defined $shock_node->{'error'}) {
+			die $shock_node->{'error'};
+		}
+		
+		my $id = $shock_node->{'data'}->{'id'};
+		unless (defined $id) {
+				print Dumper($shock_node);
+				die "id not found";
+		}
+		print $file." saved with id $id\n";
+		
+		if (defined $h->{"public"}) {
+			print "make id $id public...\n";
+			$shock->permisson_readable($id);
+		}
+	}
+	
+	exit(0);
+} elsif (defined($value = $h->{"makepublic"})) {
+	print "make id $value public...\n";
+	$shock->permisson_readable($value);
 	exit(0);
 } elsif (defined($value = $h->{"show"})) {
 	

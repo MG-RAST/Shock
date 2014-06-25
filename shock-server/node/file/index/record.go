@@ -14,13 +14,19 @@ import (
 type record struct {
 	f     *os.File
 	r     seq.Reader
+	t     string
+	snf   string
+	snp   string
 	Index *Idx
 }
 
-func NewRecordIndexer(f *os.File) Indexer {
+func NewRecordIndexer(f *os.File, nType string, snFormat string, snIndexPath string) Indexer {
 	return &record{
 		f:     f,
 		r:     multi.NewReader(f),
+		t:     nType,
+		snf:   snFormat,
+		snp:   snIndexPath,
 		Index: New(),
 	}
 }
