@@ -38,7 +38,7 @@ my ($h, $help_text) = &parse_options (
 	[ 'attributes_file=s'           , "file containing attributes to be uploaded with file, must be valid JSON" ],
 	[ 'url=s' 						, "url to Shock server (default $shockurl)" ],
 	[ 'token=s' 					, "default from \$KB_AUTH_TOKEN" ],
-	[ 'id_list'                     , "return nodes ids and not content for query (defualt off)" ]
+	[ 'id_list'                     , "return nodes ids and not content for query (defualt off)" ],
 	[ 'debug' 					    , "more verbose mode for debugging (default off)" ],
 	[ 'help|h'						, "", { hidden => 1  }]
 	]
@@ -194,7 +194,7 @@ if (defined($value = $h->{"query"})) {
 			die "file \"$filename\" already exists";
 		}
 		
-		$response = $shock->download_to_path($node, $filename);
+		my $response = $shock->download_to_path($node, $filename);
 		if (! $response) {
 		    die "error downloading $node";
 		} else {
