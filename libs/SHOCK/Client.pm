@@ -10,10 +10,12 @@ use JSON;
 use LWP::UserAgent;
 use URI::Escape;
 
+our $global_debug = 0;
+
 1;
 
 sub new {
-    my ($class, $shock_url, $token) = @_;
+    my ($class, $shock_url, $token, $debug) = @_;
     
     my $agent = LWP::UserAgent->new;
     my $json = JSON->new;
@@ -26,7 +28,8 @@ sub new {
         agent => $agent,
         shock_url => $shock_url || '',
         token => $token || '',
-        transport_method => 'requests'
+        transport_method => 'requests',
+        debug => $debug || $global_debug
     };
     if (system("type shock-client > /dev/null 2>&1") == 0) {
         $self->{transport_method} = 'shock-client';
@@ -55,6 +58,10 @@ sub token {
 sub transport_method {
     my ($self) = @_;
     return $self->{transport_method};
+}
+sub debug {
+    my ($self) = @_;
+    return $self->{debug};
 }
 
 sub _set_shockclient_auth {
@@ -143,7 +150,7 @@ sub request {
 	
 	my $my_url = $self->create_url($resource, (defined($query)?%$query:()));
 	
-	print "request: $method \"$my_url\"\n";
+	print "request: $method \"$my_url\"\n" if $self->debug;
 	
 	
 	
@@ -238,7 +245,7 @@ sub query { # https://github.com/MG-RAST/Shock/wiki/API
 	#print Dumper ($response);
 	
 	if (defined $response->{'error'}) {
-		print Dumper ($response);
+		print STDERR Dumper ($response);
 		return undef;
 	}
 	
@@ -270,7 +277,7 @@ sub querynode { # https://github.com/MG-RAST/Shock/wiki/API
 	#print Dumper ($response);
 	
 	if (defined $response->{'error'}) {
-		print Dumper ($response);
+		print STDERR Dumper ($response);
 		return undef;
 	}
 	
@@ -469,7 +476,7 @@ sub upload_temporary_files {
 	
 	#and upload job input to shock
 	foreach my $input (keys(%$job_input)) {
-		print "upload input object $input\n";
+		print "upload input object $input\n" if $self->debug;
 		my $input_h = $job_input->{$input};
 		
 		
@@ -477,10 +484,10 @@ sub upload_temporary_files {
 		
 		my $node_obj=undef;
 		if (defined($input_h->{'file'})) {
-			print "uploading temporary ".$input_h->{'file'}." to shock...\n";
+			print "uploading temporary ".$input_h->{'file'}." to shock...\n" if $self->debug;
 			$node_obj = $self->upload('file' => $input_h->{'file'}, 'attr' => $attr);
 		} elsif (defined($input_h->{'data'})) {
-			print "uploading temporary data to shock...\n";
+			print "uploading temporary data to shock...\n" if $self->debug;
 			$node_obj = $self->upload('data' => $input_h->{'data'}, 'attr' => $attr);
 		} else {
 			die "not data or file found for input \"$input\"";
@@ -492,36 +499,36 @@ sub upload_temporary_files {
 		
 		if (ref($node_obj) ne 'HASH') {
 			if (ref($node_obj) eq '' ) {
-				print "node_obj: ".$node_obj."\n";
+				print "node_obj: ".$node_obj."\n" if $self->debug;
 				if ($node_obj eq '' ) {
-					print "node_obj is empty string\n";
+					print "node_obj is empty string\n" if $self->debug;
 				}
 			}
 			die "could not upload to shock server, node_obj not a hash reference, ref=".ref($node_obj);
 		}
 		
 		unless (defined($node_obj->{'data'})) {
-			print Dumper($node_obj);
+			print STDERR Dumper($node_obj);
 			die "no data field found";
 		}
 		
 		
 		my $node = $node_obj->{'data'}->{'id'};
 		unless (defined($node)) {
-			print Dumper($node_obj);
+			print STDERR Dumper($node_obj);
 			die "no node id found";
 		}
 		
 		#print Dumper($node_obj)."\n";
 		#exit(0);
-		print "new node id is $node\n";
+		print "new node id is $node\n" if $self->debug;
 		$input_h->{'node'} = $node;
 		unless (defined $input_h->{'shockhost'}) {
 			$input_h->{'shockhost'} = $self->shock_url(); # might have been set earlier if shock server url are different
 		}
 		
 	}
-	print "upload_temporary_files: all temporary files uploaded.\n";
+	print "upload_temporary_files: all temporary files uploaded.\n" if $self->debug;
 	
 	
 	return;
@@ -617,7 +624,7 @@ sub cache_upload {
 	' "targetname":"'.$targetname.'"'.
 	'}';
 	
-	print "caching file in SHOCK\n";
+	print "caching file in SHOCK\n" if $self->debug;
 	my $up_result = $self->upload('file' => $file, 'attr' => $shock_json) || die;
 	
 	unless ($up_result->{'status'} == 200) {
@@ -666,7 +673,7 @@ sub cached_download {
 		my $shock_node_id = $shock_node_obj->{'data'}->{'id'};
 		
 		unless (defined $shock_node_id) {
-			print Dumper($shock_node_obj);
+			print STDERR Dumper($shock_node_obj);
 			die;
 		}
 		
