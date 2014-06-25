@@ -58,6 +58,8 @@ my ($h, $help_text) = &parse_options (
 	'Options:',
 #	[ 'xx=s'						, "xx"],
 	[ 'public'						, "uploaded files will be public (default private)"],
+	[ 'attributes_string=s'         , "string containing attributes to be uploaded with file, must be valid JSON" ],
+	[ 'attributes_file=s'           , "file containing attributes to be uploaded with file, must be valid JSON" ],
 	[ 'url=s' 						, "url to Shock server (default $shockurl)" ],
 	[ 'token=s' 					, "default from \$KB_AUTH_TOKEN" ],
 	[ 'help|h'						, "", { hidden => 1  }]
@@ -142,14 +144,23 @@ if (defined($value = $h->{"query"})) {
 	
 	
 	my @files = @ARGV;
-	
+	my $attr = {};
+	if (defined($h->{"attributes_string"})) {
+	    $attr = $shock->json->decode($h->{"attributes_string"});
+	} elsif (defined($h->{"attributes_file"}) && (-s $h->{"attributes_file"})) {
+	    open(JSON, $h->{"attributes_file"}) or die $!;
+        my $json_str = do { local $/; <JSON> };
+        close(JSON);
+        $attr = $shock->json->decode(json_str);
+	}
 	
 	foreach my $file (@files) {
 		
 		print "uploading ".$file."...\n";
-		my $shock_node = $shock->upload('file' => $file); # "test.txt"
+		
+		my $shock_node = $attr ? $shock->upload('file' => $file, 'attr' => $attr) : $shock->upload('file' => $file);
 		unless (defined $shock_node) {
-			die;
+			die "unknown error uploading $file";
 		}
 		
 		if (defined $shock_node->{'error'}) {
