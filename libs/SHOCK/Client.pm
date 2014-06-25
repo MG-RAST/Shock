@@ -242,16 +242,18 @@ sub query { # https://github.com/MG-RAST/Shock/wiki/API
 		return undef;
 	}
 	
-	unless (defined $response->{'total_count'}) {
-		die;
+	unless (defined $query{'limit'}) {
+
+		unless (defined $response->{'total_count'}) {
+			die;
+		}
+		
+		if ($response->{'total_count'} > 25) {
+			# get all nodes
+			$query{'limit'} = $response->{'total_count'};
+			$response = $self->get('node', \%query);
+		}
 	}
-	
-	if ($response->{'total_count'} > 25) {
-		# get all nodes
-		$query{'limit'} = $response->{'total_count'};
-		$response = $self->get('node', \%query);
-	}
-	
 	
 	return $response;
 	
