@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	Regex = regexp.MustCompile(`[@[A-Z][A-Z][ \t]+[\S \t]+[\n\r]]*`)
+	Regex = regexp.MustCompile(`^[\n\r]*[@[A-Z][A-Z][ \t]+[\S \t]+[\n\r]]*`)
 )
 
 // Sam sequence format reader type.

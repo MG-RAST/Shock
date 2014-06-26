@@ -103,10 +103,10 @@ func (r *Reader) SeekChunk(carryOver int64) (n int64, err error) {
 
 func (r *Reader) Format(s *seq.Seq, w io.Writer) (n int, err error) {
 	switch {
-	case r.format == "fasta":
-		return fasta.Format(s, w)
 	case r.format == "fastq":
 		return fastq.Format(s, w)
+	case r.format == "fasta":
+		return fasta.Format(s, w)
 	case r.format == "sam":
 		return sam.Format(s, w)
 	}
