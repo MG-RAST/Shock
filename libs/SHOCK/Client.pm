@@ -155,6 +155,14 @@ sub request {
 	
 	
 	my @method_args = ($my_url, ($self->token)?('Authorization' , "OAuth ".$self->token):());
+	if ($self->{'debug'} ==1) {
+		if (defined $self->token) {
+			print "found token: ".substr($self->token, 0, 20)."... \n";
+		} else {
+			print "found no token\n";
+		}
+
+	}
 	
 	my $is_download = 0;
 	if (defined $headers) {
@@ -164,9 +172,10 @@ sub request {
 		
 		push(@method_args, %$headers);
 	}
-	
-	#print 'method_args: '.join(',', @method_args)."\n";
-	
+	if ($self->{'debug'} ==1) {
+		#print 'method_args: '.join(',', @method_args)."\n";
+		print 'method_args: '.Dumper(@method_args)."\n";
+	}
 	my $response_content = undef;
     
     eval {
@@ -178,13 +187,20 @@ sub request {
 		} elsif ($method eq 'DELETE') {
 			$response_object = $self->agent->delete(@method_args );
 		} elsif ($method eq 'POST') {
+			
 			$self->agent->show_progress(1);
+			
 			$response_object = $self->agent->post(@method_args );
+			
 		} else {
 			die "not implemented yet";
 		}
-		#print "content: ".$response_object->content."\n";
-		
+		if ($self->{'debug'} ==1) {
+			print "content: ".$response_object->content."\n";
+		}
+		if ($self->{'debug'} ==1) {
+			print Dumper($response_object)."\n";
+		}
 		$response_content = $self->json->decode( $response_object->content );
         
 		
@@ -437,12 +453,20 @@ sub upload {
 		}
 	}
 	
-   
-	if (defined $hash{'attr'}) {
+	if (defined $hash{'attributes'}) { # file
+		#$content->{'attributes'} = [undef, "n/a", Content => $hash{'attributes'}]
+		$content->{'attributes'} = [$hash{'attributes'}];
+	}
+	if (defined $hash{'attributes_str'}) { # string
+		#$content->{'attributes_str'} = [undef, "n/a", Content => $hash{'attributes_str'}]
+		$content->{'attributes_str'} = $hash{'attributes_str'};
+	}
+	
+	#if (defined $hash{'attr'}) {
 		# get_handle is not good
         #$content->{attributes} = $self->_get_handle($hash{attr});
-		$content->{'attributes'} = [undef, "n/a", Content => $hash{'attr'}]
-    }
+	#	$content->{'attributes'} = [undef, "n/a", Content => $hash{'attr'}]
+    #}
     
     $HTTP::Request::Common::DYNAMIC_FILE_UPLOAD = 1;
 	
