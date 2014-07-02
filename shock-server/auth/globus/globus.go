@@ -8,6 +8,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/auth/basic"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
+	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"io/ioutil"
 	"net/http"
@@ -111,7 +112,9 @@ func fetchProfile(t string) (u *user.User, err error) {
 		} else if resp.StatusCode == http.StatusForbidden {
 			return nil, errors.New(e.InvalidAuth)
 		} else {
-			return nil, errors.New("Authentication failed: Unexpected response status: " + resp.Status)
+			err_str := "Authentication failed: Unexpected response status: " + resp.Status
+			logger.Error(err_str)
+			return nil, errors.New(err_str)
 		}
 	} else {
 		return nil, err
