@@ -118,21 +118,31 @@ if (defined($value = $h->{"query"})) {
 	
 	
 	my @files = @ARGV;
-	my $attr = {};
+	my $attr_value = undef;
+	my $attr_type = "useless_dummy";
 	if (defined($h->{"attributes_string"})) {
-	    $attr = $shock->json->decode($h->{"attributes_string"});
-	} elsif (defined($h->{"attributes_file"}) && (-s $h->{"attributes_file"})) {
-	    open(JSON, $h->{"attributes_file"}) or die $!;
-        my $json_str = do { local $/; <JSON> };
-        close(JSON);
-        $attr = $shock->json->decode($json_str);
+	    #$attr = $shock->json->decode($h->{"attributes_string"});
+		$attr_type = "attributes_str";
+		$attr_value = $h->{"attributes_string"};
+	} elsif (defined($h->{"attributes_file"}) ) {
+		$attr_type = "attributes";
+		$attr_value = $h->{"attributes_file"};
+		unless (-s $attr_value) {
+			die "file $attr_value not found";
+		}
+		
+	    #open(JSON, $h->{"attributes_file"}) or die $!;
+        #my $json_str = do { local $/; <JSON> };
+        #close(JSON);
+        #$attr = $shock->json->decode($json_str);
 	}
 	
 	foreach my $file (@files) {
 		
 		print "uploading ".$file."...\n" if $debug;
 		
-		my $shock_node = $attr ? $shock->upload('file' => $file, 'attr' => $attr) : $shock->upload('file' => $file);
+		#my $shock_node = $attr ? $shock->upload('file' => $file, 'attr' => $attr) : $shock->upload('file' => $file);
+		my $shock_node = $shock->upload('file' => $file, $attr_type => $attr_value);
 		unless (defined $shock_node) {
 			die "unknown error uploading $file";
 		}

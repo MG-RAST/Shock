@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	Regex = regexp.MustCompile(`@[\S ]+[\n\r]+[A-Za-z]+[\n\r]+\+[\S ]*[\n\r]+\S*[\n\r]*`)
+	Regex = regexp.MustCompile(`^[\n\r]*@[\S\t ]+[\n\r]+[A-Za-z\-]+[\n\r]+\+[\S\t ]*[\n\r]+\S*[\n\r]+`)
 )
 
 // Fastq sequence format reader type.
@@ -167,13 +167,23 @@ func (self *Reader) GetReadOffset() (n int, err error) {
 	curr += len(plus)
 
 	qual, err := self.r.ReadBytes('\n')
-	if err != nil {
-		return 0, err
-	} else if len(seq) != len(qual) {
-		return 0, errors.New("Invalid format: length of sequence and quality lines do not match")
+	if len(qual) > 1 {
+		if err == io.EOF {
+			if len(seq)-1 != len(qual) {
+				return 0, errors.New("Invalid format: length of sequence and quality lines do not match")
+			}
+			n = curr + len(qual)
+			return n, nil
+		} else if err != nil {
+			return 0, err
+		} else if len(seq) != len(qual) {
+			return 0, errors.New("Invalid format: length of sequence and quality lines do not match")
+		} else {
+			n = curr + len(qual)
+			return
+		}
 	}
-	n = curr + len(qual)
-	return
+	return 0, err
 }
 
 // seek sequences which add up to a size close to the configured chunk size (conf.CHUNK_SIZE, e.g. 1M)

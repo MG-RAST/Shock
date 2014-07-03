@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	Regex = regexp.MustCompile(`\s*>\S+[\S\t ]*[\n\r]+[A-Za-z\n\r]+`)
+	Regex = regexp.MustCompile(`^[\n\r]*>\S+[\S\t ]*[\n\r]+[A-Za-z\- ]+[\n\r]+`)
 )
 
 // Fasta sequence format reader type.
@@ -87,12 +87,26 @@ func (self *Reader) GetReadOffset() (n int, err error) {
 	if self.r == nil {
 		self.r = bufio.NewReader(self.f)
 	}
-	n = 1
+	n = 0
 	for {
 		read, er := self.r.ReadBytes('>')
 		if len(read) > 1 {
-			n += len(read) - 1
+			if er == io.EOF {
+				n += len(read)
+			} else if read[len(read)-2] != '\n' {
+				n += len(read)
+				continue
+			} else {
+				n += len(read) - 1
+			}
+			if read[len(read)-1] == '>' {
+				if unread_err := self.r.UnreadByte(); unread_err != nil {
+					err = unread_err
+				}
+			}
 			break
+		} else if len(read) == 1 {
+			n += 1
 		} else if er != nil {
 			err = er
 			break
