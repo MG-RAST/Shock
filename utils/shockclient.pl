@@ -22,7 +22,7 @@ my ($h, $help_text) = &parse_options (
 'options' => [
 	'',
 	'Actions:',
-	[ 'show=s'						, ""],
+	[ 'show=s'						, "show shock node and its attributes"],
 	[ 'upload'						, "upload files to Shock"],
 	[ 'delete=s'					, "delete Shock node"],
 	[ 'query=s'						, "querystring, e.g. key=value,key2=value2"],

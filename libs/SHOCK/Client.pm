@@ -191,7 +191,8 @@ sub request {
 			$self->agent->show_progress(1);
 			
 			$response_object = $self->agent->post(@method_args );
-			
+		} elsif ($method eq 'PUT') {
+			$response_object = $self->agent->put(@method_args );
 		} else {
 			die "not implemented yet";
 		}
@@ -242,6 +243,12 @@ sub post {
 	my ($self, $resource, $query, $headers) = @_;
 	
 	return $self->request('POST', $resource, $query, $headers);
+}
+
+sub put {
+	my ($self, $resource, $query, $headers) = @_;
+	
+	return $self->request('PUT', $resource, $query, $headers);
 }
 
 sub delete_node {
@@ -326,6 +333,20 @@ sub get_node {
 	return $self->get('/node/'.$node);
 	
 }
+
+
+sub put_node {
+    my ($self, $node, $query, $headers) = @_;
+    
+    unless ($node) {
+        print STDERR "[error] missing node\n";
+        return undef;
+    }
+    
+	return $self->put('/node/'.$node, $query, $headers);
+	
+}
+
 
 sub download_to_path2 {
 	 my ($self, $node, $path) = @_;
@@ -456,6 +477,10 @@ sub upload {
 	if (defined $hash{'attributes'}) { # file
 		#$content->{'attributes'} = [undef, "n/a", Content => $hash{'attributes'}]
 		$content->{'attributes'} = [$hash{'attributes'}];
+	}
+	
+	if (defined $hash{'attr'}) {
+		$hash{'attributes_str'} = $hash{'attr'};
 	}
 	if (defined $hash{'attributes_str'}) { # string
 		#$content->{'attributes_str'} = [undef, "n/a", Content => $hash{'attributes_str'}]
