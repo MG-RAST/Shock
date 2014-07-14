@@ -16,19 +16,20 @@ my $shocktoken = $ENV{'GLOBUSONLINE'} || $ENV{'KB_AUTH_TOKEN'};
 my ($h, $help_text) = &parse_options (
 'name' => 'shockclient.pl',
 'version' => '1',
-'synopsis' => 'shockclient.pl --show=<nodeid>',
+'synopsis' => 'shockclient.pl --show <nodeid or filename>',
 'examples' => 'shockclient.pl --upload *.fasta',
 'authors' => 'Wolfgang Gerlach',
 'options' => [
 	'',
 	'Actions:',
-	[ 'show=s'						, "show shock node and its attributes"],
-	[ 'upload'						, "upload files to Shock"],
-	[ 'delete=s'					, "delete Shock node"],
+	[ 'show'						, "show shock node and its attributes"],
+	[ 'upload'						, "upload files to Shock, file as parameter"],
+	[ 'delete'						, "delete Shock node"],
 	[ 'query=s'						, "querystring, e.g. key=value,key2=value2"],
-	[ 'querynode=s'					, "querystring, e.g. key=value,key2=value2"],
+	[ 'querynode=s'					, "querystring, e.g. key=value,key2=value2, this allows querying of fields outside of attributes section"],
 	[ 'download=s'					, ""],
-	[ 'makepublic=s'				, "make node public"],
+	[ 'modify_attr=s'				, "modify nested attributes by json diff '{\"test\":\"hello\", \"name\":\"\"}', empty strings do delete (arrays not well suppoeted yet!)"],
+	[ 'makepublic'					, "make node public"],
 	[ 'clean_tmp'					, ""],
 	'',
 	'Options:',
@@ -36,6 +37,7 @@ my ($h, $help_text) = &parse_options (
 	[ 'public'						, "uploaded files will be public (default private)"],
 	[ 'attributes_string=s'         , "string containing attributes to be uploaded with file, must be valid JSON" ],
 	[ 'attributes_file=s'           , "file containing attributes to be uploaded with file, must be valid JSON" ],
+	[ 'preview'						, "(modify_attr only): do make changes, just show result"],
 	[ 'url=s' 						, "url to Shock server (default $shockurl)" ],
 	[ 'token=s' 					, "default from \$KB_AUTH_TOKEN" ],
 	[ 'id_list'                     , "return nodes ids and not content for query (defualt off)" ],
@@ -68,6 +70,81 @@ unless (defined $shock) {
 }
 
 
+
+sub merge_hash {
+	my ($attr, $changes_hash) = @_;
+	
+	if (ref($attr) ne ref($changes_hash) ) {
+		die "hash types do not match, ".ref($attr)." and ".ref($changes_hash);
+	}
+	
+	if (ref($attr) eq 'HASH' ) {
+		foreach my $key (keys %$changes_hash) {
+			my $value = $changes_hash->{$key};
+			if (ref($value) eq '') {
+				if ($value ne '') {
+					$attr->{$key} = $value;
+				} else {
+					delete $attr->{$key};
+				}
+			} elsif (ref($value) eq 'HASH') {
+				# recurse
+				unless (defined $attr->{$key}) {
+					$attr->{$key} = {};
+				}
+				merge_hash($attr->{$key}, $value);
+			} elsif (ref($value) eq 'ARRAY') {
+				# recurse
+				unless (defined $attr->{$key}) {
+					$attr->{$key} = [];
+				}
+				merge_hash($attr->{$key}, $value);
+			} else {
+				die "got $key : ".ref($value);
+			}
+			
+		}
+		
+	} elsif (ref($attr) eq 'ARRAY' ) {
+		
+		#die "array not supported yet, too complicated.. ;-)"
+		#foreach $key (keys %$changes_hash) {
+		for (my $i=0 ; $i  < @{$changes_hash}; ++$i) {
+			
+			my $value = $changes_hash->[$i];
+			my $old_value = $attr->[$i];
+			
+			if (ref($value) ne ref($old_value)) {
+				die;
+			}
+			
+			if (ref($value) eq '') {
+				$attr->[$i] = $value;
+			} elsif (ref($value) eq 'HASH') {
+				# recurse
+				merge_hash($attr->[$i], $value);
+			} elsif (ref($value) eq 'ARRAY') {
+				# recurse
+				merge_hash($attr->[$i], $value);
+			} else {
+				die "$value of type ".ref($value);
+			}
+			
+			
+		}
+		
+	} else {
+		die;
+	}
+	
+}
+
+
+
+
+
+
+
 my $value = undef;
 
 if (defined($value = $h->{"query"})) {
@@ -85,8 +162,50 @@ if (defined($value = $h->{"query"})) {
 	}
 	
 	exit(0);
-} elsif (defined($value = $h->{"querynode"})) {
+} elsif (defined($value=$h->{"modify_attr"})) {
+
 	
+	
+	my @nodes = split(',', join(',', @ARGV)); # get comma and space separated nodes
+	
+	print 'converting json into hash: '.$value."\n";
+	my $changes_hash = $shock->json->decode( $value );
+	pprint_json($changes_hash);
+		
+	
+	foreach my $node (@nodes) {
+		my $response =  $shock->get_node($node);
+		pprint_json($response);
+		
+		my $attr = $response->{'data'}->{'attributes'};
+		print "original attributes:\n";
+		pprint_json($attr);
+		
+		merge_hash($attr, $changes_hash);
+		print "modified attributes:\n";
+		pprint_json($attr);
+		
+		my $new_attributes_string = $shock->json->pretty(0)->encode($attr);
+		print "new_attributes_string: $new_attributes_string\n";
+		#$shock->{'debug'} = 1;
+		unless (defined $h->{"preview"}) {
+			
+			
+			#my $ret = $shock->put_node($node, undef, {"attributes_str" => $new_attributes_string});
+			my $ret = $shock->set_node_attributes($node, $new_attributes_string);
+			if (defined($ret)) {
+				if (defined $ret->{'error'}) {
+					print STDERR "response error: ". $ret->{'error'}->[0]."\n";
+				}
+			}
+		}
+		
+	}
+	
+	exit(0);
+	
+} elsif (defined($value = $h->{"querynode"})) {
+	#this allows querying of fields outside of attributes section
 	my @queries = split(/,|\=/, $value);
 	my $response =  $shock->querynode(@queries);
 	
@@ -100,10 +219,10 @@ if (defined($value = $h->{"query"})) {
 	}
 	
 	exit(0);
-} elsif (defined($value = $h->{"delete"})) {
+} elsif (defined($h->{"delete"})) {
 	
 	
-	my @nodes = split(',', $value);
+	my @nodes = split(',', join(',', @ARGV)); # get comma and space separated nodes
 	
 	
 	foreach my $node (@nodes) {
@@ -165,33 +284,36 @@ if (defined($value = $h->{"query"})) {
 	}
 	
 	exit(0);
-} elsif (defined($value = $h->{"makepublic"})) {
-	print "make id $value public...\n" if $debug;
-	$shock->permisson_readable($value);
+} elsif (defined($h->{"makepublic"})) {
+	my @nodes = split(',', join(',', @ARGV)); # get comma and space separated nodes
+	foreach my $node (@nodes) {
+		print "make id $value public...\n" if $debug;
+		$shock->permisson_readable($value);
+	}
 	exit(0);
-} elsif (defined($value = $h->{"show"})) {
+} elsif (defined($h->{"show"})) {
 	
 	
-	my @nodes = split(',', $value);
+	my @nodes = split(',', join(',', @ARGV)); # get comma and space separated nodes
 	
 		
 	foreach my $node (@nodes) {
-		my $response =  $shock->get('node/'.$node);
+		my $response =  $shock->get_node($node);
 		pprint_json($response);
 	}
 	
 	
 	
 	exit(0);
-} elsif (defined($value = $h->{"download"})) {
+} elsif (defined($h->{"download"})) {
 	
 	
-	my @nodes = split(',', $value);
+	my @nodes = split(',', join(',', @ARGV)); # get comma and space separated nodes
 	
 	
 	foreach my $node (@nodes) {
 		
-		my $view_response =  $shock->get('node/'.$node);
+		my $view_response =  $shock->get_node($node);
 		pprint_json($view_response) if $debug;
 		#exit(0);
 		
@@ -254,5 +376,6 @@ if (defined($value = $h->{"query"})) {
 
 sub pprint_json {
     my ($data) = @_;
-    print STDOUT $shock->json->pretty->encode($data);
+   # print STDOUT $shock->json->pretty->encode($data);
+	print $shock->pretty($data);
 }
