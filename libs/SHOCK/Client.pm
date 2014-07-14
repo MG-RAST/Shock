@@ -181,13 +181,13 @@ sub request {
 		#print 'method_args: '.join(',', @method_args)."\n";
 		print 'method_args: '.Dumper(@method_args)."\n";
 	}
-	my $response_content = undef;
-    
 	
-	print "YYY\n";
+    #### http request
+	my $response_object = undef;
+	
     eval {
 		
-        my $response_object = undef;
+       
 		if ($self->{'debug'} ==1) {
 			print "invoking $method-request...\n";
 		}
@@ -203,15 +203,14 @@ sub request {
 			my $request = HTTP::Request::Common::POST(@method_args); # use POST, then change to PUT in next line !
 			$request->method('PUT');
 	
-			if ($self->{'debug'} ==1) {
-				print "request: ".Dumper($request)."\n";
-			}
+			#if ($self->{'debug'} ==1) {
+			#	print "request: ".Dumper($request)."\n";
+			#}
 			$response_object = $self->agent->request($request);
-			#$response_object = $self->agent->put(@method_args); #does not work multiform
+			#$response_object = $self->agent->put(@method_args); #does not work with multiform
 		} else {
 			die "method \"$method\" not implemented yet";
 		}
-		
 		
 		if ($self->{'debug'} ==1) {
 			print "content: ".$response_object->content."\n";
@@ -219,25 +218,33 @@ sub request {
 		if ($self->{'debug'} ==1) {
 			print "response_object: ".Dumper($response_object)."\n";
 		}
-		$response_content = $self->json->decode( $response_object->content );
-        
-		
 		
 		
     };
-    
 	if ($@) {
-		if (! ref($response_content) && ($is_download==0 )) {
-			print STDERR "[error] unable to connect to Shock ".$self->shock_url."\n";
-			return undef;
-		} elsif (exists($response_content->{error}) && $response_content->{error}) {
-			print STDERR "[error] unable to send $method request to Shock: ".$response_content->{error}[0]."\n";
-			return undef;
-		}
-		
+		print STDERR "[error] ".$@."\n";
+		return undef;
 	}
 	
-	return $response_content;
+	
+	#### JSON -> hash
+	my $response_content_hash = undef;
+	eval {
+		$response_content_hash = $self->json->decode( $response_object->content );
+	};
+	
+	if ($@) {
+		print STDERR "[error] ".$@."\n";
+		if (! ref($response_content_hash) && ($is_download==0 )) {
+			print STDERR "[error] unable to connect to Shock ".$self->shock_url." response_content is not a reference\n";
+		} elsif (exists($response_content_hash->{error}) && $response_content_hash->{error}) {
+			print STDERR "[error] unable to send $method request to Shock: ".$response_content_hash->{error}[0]."\n";
+		}
+		return undef;
+	}
+	
+	
+	return $response_content_hash;
 	
 }
 
