@@ -167,26 +167,12 @@ sub request {
 
 	}
 	
-	# PUT workaround
-	my $PUT_Content_Type;
-	my $PUT_Content;
 	
 	my $is_download = 0;
 	if (defined $headers) {
 		if (defined $headers->{':content_cb'}){
 			$is_download = 1;
 		}
-		
-		#if ($method eq 'PUT') {
-			#workaround!
-			#{Content_Type => 'multipart/form-data', Content => {"attributes_str" => [$attributes_json_string]}}
-		#	$PUT_Content_Type = $headers->{'Content_Type'};
-		#	$PUT_Content = $headers->{'Content'};
-		#	delete $headers->{'Content_Type'};
-		#	delete $headers->{'Content'};
-			
-		#}
-		
 		
 		push(@method_args, %$headers);
 		
@@ -197,11 +183,6 @@ sub request {
 	}
 	my $response_content = undef;
     
-	
-	#require HTTP::Request::Common;
-	
-	#my $newrequest = HTTP::Request::Common::POST($my_url);
-	my $newrequest = HTTP::Request::Common::POST(@method_args);
 	
 	print "YYY\n";
     eval {
