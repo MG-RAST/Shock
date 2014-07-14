@@ -27,7 +27,7 @@ my ($h, $help_text) = &parse_options (
 	[ 'delete'						, "delete Shock node"],
 	[ 'query=s'						, "querystring, e.g. key=value,key2=value2"],
 	[ 'querynode=s'					, "querystring, e.g. key=value,key2=value2, this allows querying of fields outside of attributes section"],
-	[ 'download=s'					, ""],
+	[ 'download'					, ""],
 	[ 'modify_attr=s'				, "modify nested attributes by json diff '{\"test\":\"hello\", \"name\":\"\"}', empty strings do delete (arrays not well suppoeted yet!)"],
 	[ 'makepublic'					, "make node public"],
 	[ 'clean_tmp'					, ""],
@@ -275,7 +275,7 @@ if (defined($value = $h->{"query"})) {
 				pprint_json($shock_node) if $debug;
 				die "id not found";
 		}
-		print $file." saved with id $id\n" if $debug;
+		print $file." saved with id $id\n";
 		
 		if (defined $h->{"public"}) {
 			print "make id $id public...\n" if $debug;
@@ -330,8 +330,14 @@ if (defined($value = $h->{"query"})) {
 		if (! $response) {
 		    die "error downloading $node";
 		} else {
-		    print "$node downloaded to $filename\n" if $debug;
+			if (-e $filename) {
+				print "Node $node downloaded to $filename\n";
+			} else {
+				die "file \"$filename\" not found";
+			}
 		}
+		
+		
 	}
 	
 	
