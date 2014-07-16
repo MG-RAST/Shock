@@ -154,7 +154,8 @@ sub print_nodes {
 			die "specify only nodes or node_ids";
 		}
 		
-		$node_ids = \map {$_->{'id'}} @{$nodes};
+		my @node_array = map {$_->{'id'}} @{$nodes};
+		$node_ids = \@node_array;
 	}
 	
 	unless (defined $node_ids) {
