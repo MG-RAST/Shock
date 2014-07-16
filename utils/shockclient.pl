@@ -329,7 +329,7 @@ if (defined($value = $h->{"query"})) {
 		my $response =  $shock->get_node($node);
 		#push (@{$view_nodes}, $shock_node->{'data'});
 		#pprint_json($response);
-		print_nodes($response->{'data'}, undef);
+		print_nodes([$response->{'data'}], undef);
 	}
 	
 	
