@@ -4,12 +4,16 @@ use strict;
 use warnings;
 no warnings('once');
 
+use IO::Handle; # needed due to some bug in UserAgent.pm
+
 use File::Basename;
 use Data::Dumper;
 use JSON;
 use LWP::UserAgent;
 use URI::Escape;
 use HTTP::Request::Common;
+
+
 
 our $global_debug = 0;
 
@@ -225,7 +229,10 @@ sub request {
 		print STDERR "[error] ".$@."\n";
 		return undef;
 	}
-	
+	unless ($response_object->is_success) {
+		print STDERR "response->status_line: ", $response_object->status_line, "\n";
+		return undef;
+	}
 	
 	#### JSON -> hash
 	my $response_content_hash = undef;
@@ -243,6 +250,14 @@ sub request {
 		return undef;
 	}
 	
+	if (exists($response_content_hash->{error}) && $response_content_hash->{error}) {
+		print STDERR "[error] unable to send $method request to Shock: ".$response_content_hash->{error}[0]."\n";
+		return undef;
+	}
+	
+	if ($self->{'debug'} ==1) {
+		print "returning response_object...\n";
+	}
 	
 	return $response_content_hash;
 	

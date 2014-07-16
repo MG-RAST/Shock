@@ -40,7 +40,7 @@ my ($h, $help_text) = &parse_options (
 	[ 'preview'						, "(modify_attr only): do make changes, just show result"],
 	[ 'url=s' 						, "url to Shock server (default $shockurl)" ],
 	[ 'token=s' 					, "default from \$KB_AUTH_TOKEN" ],
-	[ 'id_list'                     , "return nodes ids and not content for query (defualt off)" ],
+	[ 'id_list'                     , "return nodes ids and not content for query (default off)" ],
 	[ 'debug' 					    , "more verbose mode for debugging (default off)" ],
 	[ 'help|h'						, "", { hidden => 1  }]
 	]
@@ -153,10 +153,11 @@ if (defined($value = $h->{"query"})) {
 	my $response =  $shock->query(@queries);
 	
 	if (defined($h->{"id_list"})) {
-	    my @nodes = ();
+		my @nodes = ();
     	foreach my $node_obj (@{$response->{'data'}}) {
-    	    print $node_obj->{'id'}."\n";
+			push(@nodes, $node_obj->{'id'});
     	}
+		 print join(',', @nodes)."\n";
 	} else {
 	    pprint_json($response);
 	}
@@ -346,10 +347,10 @@ if (defined($value = $h->{"query"})) {
 	
 } elsif (defined($h->{"clean_tmp"})) {
 	
-	my $shock = new SHOCK::Client($shockurl, $shocktoken);
-	unless (defined $shock) {
-		die;
-	}
+	#my $shock = new SHOCK::Client($shockurl, $shocktoken);
+	#unless (defined $shock) {
+	#	die;
+	#}
 	
 	my $response =  $shock->query('temporary' => 1);
 	
