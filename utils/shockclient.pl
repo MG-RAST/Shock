@@ -40,7 +40,8 @@ my ($h, $help_text) = &parse_options (
 	[ 'preview'						, "(modify_attr only): do make changes, just show result"],
 	[ 'url=s' 						, "url to Shock server (default $shockurl)" ],
 	[ 'token=s' 					, "default from \$KB_AUTH_TOKEN" ],
-	[ 'id_list'                     , "return nodes ids and not content for query (default off)" ],
+	[ 'ids'     	                , "return only node ids, formatted as comma-separated values" ],
+	[ 'id_list'                     , "return only node ids, one id per line" ],
 	[ 'debug' 					    , "more verbose mode for debugging (default off)" ],
 	[ 'help|h'						, "", { hidden => 1  }]
 	]
@@ -139,8 +140,39 @@ sub merge_hash {
 	
 }
 
-
-
+# print node IDs or complete node structs
+# 1. arg is array ref of nodes
+# 2. arg is array ref of string IDs
+sub print_nodes {
+	my ($nodes, $node_ids) = shift(@_);
+	
+	
+	
+	if (defined $nodes) {
+		
+		if (defined $node_ids) {
+			die "specify only nodes or node_ids";
+		}
+		
+		$node_ids = \map {$_->{'id'}} @{$nodes};
+	}
+	
+	unless (defined $node_ids) {
+		die "no nodes found";
+	}
+	
+	
+	if (defined($h->{"id_list"})) {
+		print join("\n", @{$node_ids})."\n";
+	} elsif (defined($h->{"ids"})) {
+		print join(',', @{$node_ids})."\n";
+	} else {
+	    pprint_json($nodes);
+	}
+		
+	return;
+	
+}
 
 
 
@@ -152,16 +184,8 @@ if (defined($value = $h->{"query"})) {
 	my @queries = split(/,|\=/, $value);
 	my $response =  $shock->query(@queries);
 	
-	if (defined($h->{"id_list"})) {
-		my @nodes = ();
-    	foreach my $node_obj (@{$response->{'data'}}) {
-			push(@nodes, $node_obj->{'id'});
-    	}
-		 print join(',', @nodes)."\n";
-	} else {
-	    pprint_json($response);
-	}
-	
+	print_nodes($response->{'data'});
+		
 	exit(0);
 } elsif (defined($value=$h->{"modify_attr"})) {
 
@@ -210,14 +234,7 @@ if (defined($value = $h->{"query"})) {
 	my @queries = split(/,|\=/, $value);
 	my $response =  $shock->querynode(@queries);
 	
-	if (defined($h->{"id_list"})) {
-	    my @nodes = ();
-    	foreach my $node_obj (@{$response->{'data'}}) {
-    	    print $node_obj->{'id'}."\n";
-    	}
-	} else {
-	    pprint_json($response);
-	}
+	print_nodes($response->{'data'});
 	
 	exit(0);
 } elsif (defined($h->{"delete"})) {
@@ -283,6 +300,8 @@ if (defined($value = $h->{"query"})) {
 			$shock->permisson_readable($id);
 		}
 	}
+	
+	print_nodes();
 	
 	exit(0);
 } elsif (defined($h->{"makepublic"})) {
