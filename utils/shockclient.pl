@@ -167,6 +167,9 @@ sub print_nodes {
 	} elsif (defined($h->{"ids"})) {
 		print join(',', @{$node_ids})."\n";
 	} else {
+		unless (defined $nodes) {
+			die "node objects not found";
+		}
 	    pprint_json($nodes);
 	}
 		
@@ -184,7 +187,7 @@ if (defined($value = $h->{"query"})) {
 	my @queries = split(/,|\=/, $value);
 	my $response =  $shock->query(@queries);
 	
-	print_nodes($response->{'data'});
+	print_nodes($response->{'data'}, undef);
 		
 	exit(0);
 } elsif (defined($value=$h->{"modify_attr"})) {
@@ -234,7 +237,7 @@ if (defined($value = $h->{"query"})) {
 	my @queries = split(/,|\=/, $value);
 	my $response =  $shock->querynode(@queries);
 	
-	print_nodes($response->{'data'});
+	print_nodes($response->{'data'}, undef);
 	
 	exit(0);
 } elsif (defined($h->{"delete"})) {
@@ -274,6 +277,8 @@ if (defined($value = $h->{"query"})) {
         #$attr = $shock->json->decode($json_str);
 	}
 	
+	my $uploaded_nodes=[];
+	
 	foreach my $file (@files) {
 		
 		print "uploading ".$file."...\n" if $debug;
@@ -295,13 +300,15 @@ if (defined($value = $h->{"query"})) {
 		}
 		print $file." saved with id $id\n";
 		
+		push (@{$uploaded_nodes}, $shock_node->{'data'});
+		
 		if (defined $h->{"public"}) {
 			print "make id $id public...\n" if $debug;
 			$shock->permisson_readable($id);
 		}
 	}
 	
-	print_nodes();
+	print_nodes($uploaded_nodes, undef);
 	
 	exit(0);
 } elsif (defined($h->{"makepublic"})) {
@@ -316,10 +323,12 @@ if (defined($value = $h->{"query"})) {
 	
 	my @nodes = split(',', join(',', @ARGV)); # get comma and space separated nodes
 	
-		
+	
 	foreach my $node (@nodes) {
 		my $response =  $shock->get_node($node);
-		pprint_json($response);
+		#push (@{$view_nodes}, $shock_node->{'data'});
+		#pprint_json($response);
+		print_nodes($response->{'data'}, undef);
 	}
 	
 	
