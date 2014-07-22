@@ -26,21 +26,30 @@ type User struct {
 // Initialize creates a copy of the mongodb connection and then uses that connection to
 // create the Users collection in mongodb. Then, it ensures that there is a unique index
 // on the uuid key and the username key in this collection, creating the indexes if necessary.
-func Initialize() {
+func Initialize() (err error) {
 	session := db.Connection.Session.Copy()
 	defer session.Close()
 	c := session.DB(conf.Conf["mongodb-database"]).C("Users")
-	c.EnsureIndex(mgo.Index{Key: []string{"uuid"}, Unique: true})
-	c.EnsureIndex(mgo.Index{Key: []string{"username"}, Unique: true})
+	if err = c.EnsureIndex(mgo.Index{Key: []string{"uuid"}, Unique: true}); err != nil {
+		return err
+	}
+	if err = c.EnsureIndex(mgo.Index{Key: []string{"username"}, Unique: true}); err != nil {
+		return err
+	}
 
 	// Setting admin users based on config file.  First, set all users to Admin = false
-	c.UpdateAll(bson.M{}, bson.M{"shock_admin": false})
+	if _, err = c.UpdateAll(bson.M{}, bson.M{"$set": bson.M{"shock_admin": false}}); err != nil {
+		return err
+	}
 
 	// This config parameter contains a string that should be a comma-separated list of users that are Admins.
 	adminUsers := strings.Split(conf.Conf["admin-users"], ",")
 	for _, v := range adminUsers {
-		c.Update(bson.M{"username": v}, bson.M{"$set": bson.M{"shock_admin": true}})
+		if err = c.Update(bson.M{"username": v}, bson.M{"$set": bson.M{"shock_admin": true}}); err != nil {
+			return err
+		}
 	}
+	return
 }
 
 func New(username string, password string, isAdmin bool) (u *User, err error) {
