@@ -189,9 +189,31 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			// load index obj and info
 			idxName := query.Get("index")
 			idxInfo, ok := n.Indexes[idxName]
+
 			if !ok {
-				return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index")
+				if idxName == "size" {
+					totalunits := n.File.Size / conf.CHUNK_SIZE
+					m := n.File.Size % conf.CHUNK_SIZE
+					if m != 0 {
+						totalunits += 1
+					}
+					n.Indexes["size"] = node.IdxInfo{
+						Type:        "size",
+						TotalUnits:  totalunits,
+						AvgUnitSize: conf.CHUNK_SIZE,
+						Format:      "dynamic",
+					}
+					err = n.Save()
+					if err != nil {
+						err_msg := "Size index could not be auto-generated for node that did not have one."
+						logger.Error(err_msg)
+						return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+					}
+				} else {
+					return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index")
+				}
 			}
+
 			idx, err := n.DynamicIndex(idxName)
 			if err != nil {
 				return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
