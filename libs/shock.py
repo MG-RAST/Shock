@@ -172,7 +172,7 @@ class Client:
         if attr != '':
             pdata['attributes'] = self._get_handle(attr)
         if copy_index:
-            pdata['copy_index'] = 'true'
+            pdata['copy_indexes'] = 'true'
         mdata = MultipartEncoder(fields=pdata)
         headers = self.auth_header.copy()
         headers['Content-Type'] = mdata.content_type
