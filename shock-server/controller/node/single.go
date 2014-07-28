@@ -46,7 +46,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 	}
 
 	// Load node and handle user unauthorized
-	n, err := node.Load(id, u.Uuid)
+	n, err := node.Load(id, u)
 	if err != nil {
 		if err.Error() == e.UnAuth {
 			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
