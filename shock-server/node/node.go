@@ -120,14 +120,14 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 	// if copying node or creating subset node from parent, check if user has rights to the original node
 
 	if _, hasCopyData := params["copy_data"]; hasCopyData {
-		_, err = Load(params["copy_data"], u.Uuid)
+		_, err = Load(params["copy_data"], u)
 		if err != nil {
 			return
 		}
 	}
 
 	if _, hasParentNode := params["parent_node"]; hasParentNode {
-		_, err = Load(params["parent_node"], u.Uuid)
+		_, err = Load(params["parent_node"], u)
 		if err != nil {
 			return
 		}

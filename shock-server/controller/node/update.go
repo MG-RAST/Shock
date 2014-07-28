@@ -24,7 +24,7 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 		u = &user.User{Uuid: ""}
 	}
 
-	n, err := node.Load(id, u.Uuid)
+	n, err := node.Load(id, u)
 	if err != nil {
 		if err.Error() == e.UnAuth {
 			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
@@ -55,14 +55,14 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 	}
 
 	if _, hasCopyData := params["copy_data"]; hasCopyData {
-		_, err = node.Load(params["copy_data"], u.Uuid)
+		_, err = node.Load(params["copy_data"], u)
 		if err != nil {
 			return request.AuthError(err, ctx)
 		}
 	}
 
 	if _, hasParentNode := params["parent_node"]; hasParentNode {
-		_, err = node.Load(params["parent_node"], u.Uuid)
+		_, err = node.Load(params["parent_node"], u)
 		if err != nil {
 			return request.AuthError(err, ctx)
 		}

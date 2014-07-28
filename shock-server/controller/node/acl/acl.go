@@ -52,9 +52,9 @@ func AclRequest(ctx context.Context) {
 		}
 	}
 
-	// only the owner can view/edit acl's unless owner="" or owner=nil
+	// only the owner or an admin can view/edit acl's unless owner="" or owner=nil
 	// note: owner can only be empty when anonymous node creation is enabled in shock config.
-	if n.Acl.Owner != u.Uuid && n.Acl.Owner != "" {
+	if n.Acl.Owner != u.Uuid && n.Acl.Owner != "" && !u.Admin {
 		err_msg := "Only the node owner can edit/view node ACL's"
 		logger.Error(err_msg)
 		responder.RespondWithError(ctx, http.StatusUnauthorized, err_msg)
@@ -107,9 +107,9 @@ func AclTypedRequest(ctx context.Context) {
 		}
 	}
 
-	// only the owner can view/edit acl's unless owner="" or owner=nil
+	// only the owner or an admin can view/edit acl's unless owner="" or owner=nil
 	// note: owner can only be empty when anonymous node creation is enabled in shock config.
-	if n.Acl.Owner != u.Uuid && n.Acl.Owner != "" {
+	if n.Acl.Owner != u.Uuid && n.Acl.Owner != "" && !u.Admin {
 		err_msg := "Only the node owner can edit/view node ACL's"
 		logger.Error(err_msg)
 		responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)

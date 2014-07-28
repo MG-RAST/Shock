@@ -40,7 +40,7 @@ func IndexTypedRequest(ctx context.Context) {
 	}
 
 	// Load node and handle user unauthorized
-	n, err := node.Load(nid, u.Uuid)
+	n, err := node.Load(nid, u)
 	if err != nil {
 		if err.Error() == e.UnAuth {
 			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
