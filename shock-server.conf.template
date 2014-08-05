@@ -36,10 +36,12 @@ perf_log=false
 [Mongodb]
 # Mongodb configuration
 # Hostnames and ports hosts=host1[,host2:port,...,hostN]
+# attribute_indexes defines a list of fields in the Node's attribute struct that will be indexed
 hosts=localhost
 database=ShockDB
 user=
 password=
+attribute_indexes=
 
 [Paths]
 # site directory should contain the documentation files
