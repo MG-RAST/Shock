@@ -26,9 +26,10 @@ func Initialize() {
 	c.EnsureIndex(mgo.Index{Key: []string{"acl.read"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"acl.write"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"acl.delete"}, Background: true})
-	if conf.Conf["mongodb-indexes"] != "" {
+	if conf.Conf["mongodb-attribute-indexes"] != "" {
 		for _, v := range strings.Split(conf.Conf["mongodb-attribute-indexes"], ",") {
-			c.EnsureIndex(mgo.Index{Key: []string{strings.TrimSpace(v)}, Background: true})
+			v = "attributes." + strings.TrimSpace(v)
+			c.EnsureIndex(mgo.Index{Key: []string{v}, Background: true})
 		}
 	}
 }
