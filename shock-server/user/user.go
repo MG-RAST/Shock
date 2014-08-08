@@ -46,7 +46,13 @@ func Initialize() (err error) {
 	adminUsers := strings.Split(conf.Conf["admin-users"], ",")
 	for _, v := range adminUsers {
 		if err = c.Update(bson.M{"username": v}, bson.M{"$set": bson.M{"shock_admin": true}}); err != nil {
-			return err
+			u, err := New(v, "", true)
+			if err != nil {
+				return err
+			}
+			if err := u.Save(); err != nil {
+				return err
+			}
 		}
 	}
 	return
