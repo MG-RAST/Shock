@@ -36,7 +36,8 @@ var (
 // of shock-server packages. Parses config and populates
 // the Conf variable.
 func Initialize() {
-	flag.StringVar(&CONFIG_FILE, "conf", "/usr/local/shock/conf/shock.cfg", "path to config file")
+	gopath := os.Getenv("GOPATH")
+	flag.StringVar(&CONFIG_FILE, "conf", gopath + "/src/github.com/MG-RAST/Shock/shock-server.conf.template", "path to config file")
 	flag.StringVar(&RELOAD, "reload", "", "path or url to shock data. WARNING this will drop all current data.")
 	flag.Parse()
 	c, err := config.ReadDefault(CONFIG_FILE)

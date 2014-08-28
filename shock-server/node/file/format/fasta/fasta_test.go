@@ -1,8 +1,6 @@
-package fasta_test
+package fasta
 
 import (
-	. "github.com/MG-RAST/Shock/shock-server/node/file/format/fasta"
-	//"regexp"
 	"testing"
 )
 
