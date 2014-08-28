@@ -45,7 +45,7 @@ func Initialize() (err error) {
 	// This config parameter contains a string that should be a comma-separated list of users that are Admins.
 	adminUsers := strings.Split(conf.Conf["admin-users"], ",")
 	for _, v := range adminUsers {
-		if info, err = c.UpdateAll(bson.M{"username": v}, bson.M{"$set": bson.M{"shock_admin": true}}); err != nil {
+		if info, err := c.UpdateAll(bson.M{"username": v}, bson.M{"$set": bson.M{"shock_admin": true}}); err != nil {
 			if err != nil {
 				return err
 			} else if info.Updated == 0 {
