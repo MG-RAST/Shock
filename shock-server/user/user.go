@@ -45,13 +45,17 @@ func Initialize() (err error) {
 	// This config parameter contains a string that should be a comma-separated list of users that are Admins.
 	adminUsers := strings.Split(conf.Conf["admin-users"], ",")
 	for _, v := range adminUsers {
-		if err = c.Update(bson.M{"username": v}, bson.M{"$set": bson.M{"shock_admin": true}}); err != nil {
-			u, err := New(v, "", true)
+		if info, err = c.UpdateAll(bson.M{"username": v}, bson.M{"$set": bson.M{"shock_admin": true}}); err != nil {
 			if err != nil {
 				return err
-			}
-			if err := u.Save(); err != nil {
-				return err
+			} else if info.Updated == 0 {
+				u, err := New(v, "", true)
+				if err != nil {
+					return err
+				}
+				if err := u.Save(); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -125,5 +129,6 @@ func (u *User) Save() (err error) {
 	session := db.Connection.Session.Copy()
 	defer session.Close()
 	c := session.DB(conf.Conf["mongodb-database"]).C("Users")
-	return c.Insert(&u)
+	_, err = c.Upsert(bson.M{"uuid": u.Uuid}, &u)
+	return
 }
