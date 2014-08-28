@@ -14,6 +14,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/util"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"hash"
+	"io"
 	"math/rand"
 	"net"
 	"net/http"
@@ -77,20 +78,12 @@ func DataUpload(r *http.Request) (params map[string]string, files node.FormFiles
 	files["upload"] = node.FormFile{Name: "filename", Path: tmpPath, Checksum: make(map[string]string)}
 	if tmpFile, err := os.Create(tmpPath); err == nil {
 		defer tmpFile.Close()
-		md5c := make(chan checkSumCom)
-		writeChecksum(md5.New, md5c)
-		for {
-			buffer := make([]byte, 32*1024)
-			n, err := r.Body.Read(buffer)
-			if n == 0 || err != nil {
-				md5c <- checkSumCom{n: 0}
-				break
-			}
-			md5c <- checkSumCom{buf: buffer[0:n], n: n}
-			tmpFile.Write(buffer[0:n])
+		md5h := md5.New()
+		dst := io.MultiWriter(tmpFile, md5h)
+		if _, err = io.Copy(dst, r.Body); err != nil {
+			return nil, nil, err
 		}
-		md5r := <-md5c
-		files["upload"].Checksum["md5"] = md5r.checksum
+		files["upload"].Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
 	} else {
 		return nil, nil, err
 	}
@@ -126,44 +119,18 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 					return nil, nil, errors.New("invalid file param: " + part.FormName())
 				}
 				tmpPath = fmt.Sprintf("%s/temp/%d%d", conf.Conf["data-path"], rand.Int(), rand.Int())
-				/*
-					if fname[len(fname)-3:] == ".gz" && params["decompress"] == "true" {
-						fname = fname[:len(fname)-3]
-						reader, err = gzip.NewReader(&part)
-						if err != nil {
-							break
-						}
-					} else {
-						reader = &part
-					}
-				*/
 				files[part.FormName()] = node.FormFile{Name: part.FileName(), Path: tmpPath, Checksum: make(map[string]string)}
 				if tmpFile, err := os.Create(tmpPath); err == nil {
 					defer tmpFile.Close()
 					if part.FormName() == "upload" {
-						md5c := make(chan checkSumCom)
-						writeChecksum(md5.New, md5c)
-						for {
-							buffer := make([]byte, 32*1024)
-							n, err := part.Read(buffer)
-							if n == 0 || err != nil {
-								md5c <- checkSumCom{n: 0}
-								break
-							}
-							md5c <- checkSumCom{buf: buffer[0:n], n: n}
-							tmpFile.Write(buffer[0:n])
+						md5h := md5.New()
+						dst := io.MultiWriter(tmpFile, md5h)
+						if _, err = io.Copy(dst, part); err != nil {
+							return nil, nil, err
 						}
-						md5r := <-md5c
-						files[part.FormName()].Checksum["md5"] = md5r.checksum
+						files[part.FormName()].Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
 					} else {
-						for {
-							buffer := make([]byte, 32*1024)
-							n, err := part.Read(buffer)
-							if n == 0 || err != nil {
-								break
-							}
-							tmpFile.Write(buffer[0:n])
-						}
+						io.Copy(tmpFile, part)
 					}
 				} else {
 					return nil, nil, err
