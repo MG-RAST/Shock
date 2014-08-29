@@ -13,8 +13,8 @@ func TestForm(t *testing.T) {
 	f.AddParam("parts", "25")
 
 	gopath := os.Getenv("GOPATH")
-	f.AddFile("upload", gopath + "/src/github.com/MG-RAST/Shock/shock-server/testdata/nr_subset1.fa")
-	f.AddFile("upload", gopath + "/src/github.com/MG-RAST/Shock/shock-server/testdata/nr_subset2.fa")
+	f.AddFile("upload", gopath+"/src/github.com/MG-RAST/Shock/shock-server/testdata/nr_subset1.fa")
+	f.AddFile("upload", gopath+"/src/github.com/MG-RAST/Shock/shock-server/testdata/nr_subset2.fa")
 	if err := f.Create(); err != nil {
 		println(err.Error())
 	}
