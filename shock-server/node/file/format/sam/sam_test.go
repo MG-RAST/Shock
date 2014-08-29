@@ -1,8 +1,7 @@
-package sam_test
+package sam
 
 import (
 	"fmt"
-	. "github.com/MG-RAST/Shock/shock-server/node/file/format/sam"
 	"io"
 	"io/ioutil"
 	"os"
@@ -10,7 +9,8 @@ import (
 )
 
 var (
-	sample = "../../../testdata/sample1.sam"
+	gopath = os.Getenv("GOPATH")
+	sample = gopath + "/src/github.com/MG-RAST/Shock/shock-server/testdata/sample1.sam"
 	Idx    [][]int64 //list of {offset, length} pair
 )
 

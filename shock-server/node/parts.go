@@ -7,6 +7,7 @@ import (
 	"fmt"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/golib/mgo/bson"
+	"io"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -93,21 +94,12 @@ func (node *Node) addVirtualParts(ids []string) (err error) {
 	if reader, err := node.FileReader(); err == nil {
 		defer reader.Close()
 		md5h := md5.New()
-		buffer := make([]byte, 32*1024)
-		size := 0
-		for {
-			n, err := reader.Read(buffer)
-			if n == 0 || err != nil {
-				break
-			}
-			md5h.Write(buffer[0:n])
-			size = size + n
+		n, err := io.Copy(md5h, reader)
+		if err != nil {
+			return err
 		}
-
-		var md5s []byte
-		md5s = md5h.Sum(md5s)
-		node.File.Checksum["md5"] = fmt.Sprintf("%x", md5s)
-		node.File.Size = int64(size)
+		node.File.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
+		node.File.Size = n
 	} else {
 		return err
 	}

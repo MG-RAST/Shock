@@ -91,7 +91,7 @@ func LoadFromDisk(id string) (n *Node, err error) {
 	}
 	path := getPath(id)
 	if nbson, err := ioutil.ReadFile(path + "/" + id + ".bson"); err != nil {
-		return nil, errors.New("Node does not exist")
+		return nil, errors.New(e.NodeDoesNotExist)
 	} else {
 		n = new(Node)
 		if err = bson.Unmarshal(nbson, &n); err != nil {

@@ -10,6 +10,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
+	"github.com/MG-RAST/golib/mgo"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"net/http"
 	"os"
@@ -45,13 +46,13 @@ func IndexTypedRequest(ctx context.Context) {
 		if err.Error() == e.UnAuth {
 			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 			return
-		} else if err.Error() == e.MongoDocNotFound {
+		} else if err == mgo.ErrNotFound {
 			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found.")
 			return
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			err_msg := "Err@index:LoadNode: " + err.Error()
+			err_msg := "Err@index:LoadNode: " + nid + ":" + err.Error()
 			logger.Error(err_msg)
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			return

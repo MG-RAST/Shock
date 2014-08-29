@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
+	"io"
 	"math/rand"
 	"os"
 	"syscall"
@@ -144,32 +145,32 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 		}
 	}
 
-	var tmpFile *os.File
-	if action == "copy_file" {
-		if tmpFile, err = os.Create(tmpPath); err != nil {
-			return err
-		}
-		defer tmpFile.Close()
-	}
-
-	md5h := md5.New()
+	// Open file for reading.
 	f, err := os.Open(path)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	for {
-		buffer := make([]byte, 10240)
-		n, err := f.Read(buffer)
-		if n == 0 || err != nil {
-			break
+	// Set writer
+	var dst io.Writer
+	md5h := md5.New()
+
+	if action == "copy_file" {
+		tmpFile, err := os.Create(tmpPath)
+		if err != nil {
+			return err
 		}
-		md5h.Write(buffer[0:n])
-		if action == "copy_file" {
-			tmpFile.Write(buffer[0:n])
-		}
+		defer tmpFile.Close()
+		dst = io.MultiWriter(tmpFile, md5h)
+	} else {
+		dst = md5h
 	}
+
+	if _, err = io.Copy(dst, f); err != nil {
+		return err
+	}
+
 	node.File.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
 
 	//fill size index info
@@ -214,16 +215,11 @@ func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
 			if err != nil {
 				return err
 			}
-			for {
-				buffer := make([]byte, 10240)
-				n, err := part.Read(buffer)
-				if n == 0 || err != nil {
-					break
-				}
-				out.Write(buffer[0:n])
-				md5h.Write(buffer[0:n])
+			defer part.Close()
+			dst := io.MultiWriter(out, md5h)
+			if _, err = io.Copy(dst, part); err != nil {
+				return err
 			}
-			part.Close()
 		}
 	}
 	fileStat, err := os.Stat(fmt.Sprintf("%s/%s.data", node.Path(), node.Id))

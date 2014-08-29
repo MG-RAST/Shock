@@ -6,6 +6,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
+	"github.com/MG-RAST/golib/mgo"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"net/http"
 )
@@ -26,12 +27,12 @@ func (cr *NodeController) Delete(id string, ctx context.Context) error {
 	if err != nil {
 		if err.Error() == e.UnAuth {
 			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
-		} else if err.Error() == e.MongoDocNotFound {
+		} else if err == mgo.ErrNotFound {
 			return responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			err_msg := "Err@node_Read:Delete: " + err.Error()
+			err_msg := "Err@node_Delete:LoadNode: " + id + ":" + err.Error()
 			logger.Error(err_msg)
 			return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 		}
