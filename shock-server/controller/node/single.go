@@ -15,6 +15,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
+	"github.com/MG-RAST/golib/mgo"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"io"
 	"io/ioutil"
@@ -50,22 +51,14 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 	if err != nil {
 		if err.Error() == e.UnAuth {
 			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
-		} else if err.Error() == e.MongoDocNotFound {
+		} else if err == mgo.ErrNotFound {
 			return responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			logger.Error("Err@node_Read:LoadNode:" + id + ":" + err.Error())
-
-			n, err = node.LoadFromDisk(id)
-			if err.Error() == "Node does not exist" {
-				logger.Error(err.Error())
-				return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
-			} else if err != nil {
-				err_msg := "Err@node_Read:LoadNodeFromDisk:" + id + ":" + err.Error()
-				logger.Error(err_msg)
-				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
-			}
+			err_msg := "Err@node_Read:LoadNode: " + id + ":" + err.Error()
+			logger.Error(err_msg)
+			return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 		}
 	}
 

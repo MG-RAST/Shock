@@ -10,6 +10,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/golib/go-uuid/uuid"
+	"github.com/MG-RAST/golib/mgo"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"net/http"
 	"strings"
@@ -39,13 +40,13 @@ func AclRequest(ctx context.Context) {
 	// Load node and handle user unauthorized
 	n, err := node.LoadUnauth(nid)
 	if err != nil {
-		if err.Error() == e.MongoDocNotFound {
+		if err == mgo.ErrNotFound {
 			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
 			return
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			err_msg := "Err@node_Read:LoadNode: " + err.Error()
+			err_msg := "Err@node_Read:LoadNode: " + nid + ":" + err.Error()
 			logger.Error(err_msg)
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			return
@@ -94,13 +95,13 @@ func AclTypedRequest(ctx context.Context) {
 	// Load node and handle user unauthorized
 	n, err := node.LoadUnauth(nid)
 	if err != nil {
-		if err.Error() == e.MongoDocNotFound {
+		if err == mgo.ErrNotFound {
 			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
 			return
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			err_msg := "Err@node_Read:LoadNode: " + err.Error()
+			err_msg := "Err@node_Read:LoadNode: " + nid + ":" + err.Error()
 			logger.Error(err_msg)
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			return
