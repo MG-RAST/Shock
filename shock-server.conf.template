@@ -20,10 +20,10 @@ create-user=false
 
 [Auth]
 # defaults to local user management with basis auth
-basic=true
+#basic=true
 # comment line above and uncomment below to use Globus Online as auth provider
-#globus_token_url=https://nexus.api.globusonline.org/goauth/token?grant_type=client_credentials
-#globus_profile_url=https://nexus.api.globusonline.org/users
+globus_token_url=https://nexus.api.globusonline.org/goauth/token?grant_type=client_credentials
+globus_profile_url=https://nexus.api.globusonline.org/users
 
 [External]
 # URL displayed at base URL
@@ -36,10 +36,12 @@ perf_log=false
 [Mongodb]
 # Mongodb configuration
 # Hostnames and ports hosts=host1[,host2:port,...,hostN]
+# attribute_indexes defines a list of fields in the Node's attribute struct that will be indexed
 hosts=localhost
 database=ShockDB
 user=
 password=
+attribute_indexes=
 
 [Paths]
 # site directory should contain the documentation files

@@ -10,6 +10,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/golib/go-uuid/uuid"
+	"github.com/MG-RAST/golib/mgo"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"net/http"
 	"strings"
@@ -39,22 +40,22 @@ func AclRequest(ctx context.Context) {
 	// Load node and handle user unauthorized
 	n, err := node.LoadUnauth(nid)
 	if err != nil {
-		if err.Error() == e.MongoDocNotFound {
+		if err == mgo.ErrNotFound {
 			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
 			return
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			err_msg := "Err@node_Read:LoadNode: " + err.Error()
+			err_msg := "Err@node_Read:LoadNode: " + nid + ":" + err.Error()
 			logger.Error(err_msg)
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			return
 		}
 	}
 
-	// only the owner can view/edit acl's unless owner="" or owner=nil
+	// only the owner or an admin can view/edit acl's unless owner="" or owner=nil
 	// note: owner can only be empty when anonymous node creation is enabled in shock config.
-	if n.Acl.Owner != u.Uuid && n.Acl.Owner != "" {
+	if n.Acl.Owner != u.Uuid && n.Acl.Owner != "" && !u.Admin {
 		err_msg := "Only the node owner can edit/view node ACL's"
 		logger.Error(err_msg)
 		responder.RespondWithError(ctx, http.StatusUnauthorized, err_msg)
@@ -94,22 +95,22 @@ func AclTypedRequest(ctx context.Context) {
 	// Load node and handle user unauthorized
 	n, err := node.LoadUnauth(nid)
 	if err != nil {
-		if err.Error() == e.MongoDocNotFound {
+		if err == mgo.ErrNotFound {
 			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
 			return
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			err_msg := "Err@node_Read:LoadNode: " + err.Error()
+			err_msg := "Err@node_Read:LoadNode: " + nid + ":" + err.Error()
 			logger.Error(err_msg)
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			return
 		}
 	}
 
-	// only the owner can view/edit acl's unless owner="" or owner=nil
+	// only the owner or an admin can view/edit acl's unless owner="" or owner=nil
 	// note: owner can only be empty when anonymous node creation is enabled in shock config.
-	if n.Acl.Owner != u.Uuid && n.Acl.Owner != "" {
+	if n.Acl.Owner != u.Uuid && n.Acl.Owner != "" && !u.Admin {
 		err_msg := "Only the node owner can edit/view node ACL's"
 		logger.Error(err_msg)
 		responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)

@@ -9,6 +9,7 @@ use Data::Dumper;
 use JSON;
 use LWP::UserAgent;
 use URI::Escape;
+use HTTP::Request::Common;
 
 our $global_debug = 0;
 
@@ -96,6 +97,8 @@ sub create_url {
 	
 	my $my_url = $self->shock_url . "/$resource";
 	
+	
+	
 	#if (defined $self->token) {
 	#	$query{'auth'}=$self->token;
 	#}
@@ -164,6 +167,7 @@ sub request {
 
 	}
 	
+	
 	my $is_download = 0;
 	if (defined $headers) {
 		if (defined $headers->{':content_cb'}){
@@ -171,59 +175,80 @@ sub request {
 		}
 		
 		push(@method_args, %$headers);
+		
 	}
 	if ($self->{'debug'} ==1) {
 		#print 'method_args: '.join(',', @method_args)."\n";
 		print 'method_args: '.Dumper(@method_args)."\n";
 	}
-	my $response_content = undef;
-    
+	
+    #### http request
+	my $response_object = undef;
+	
     eval {
 		
-        my $response_object = undef;
+       
+		if ($self->{'debug'} ==1) {
+			print "invoking $method-request...\n";
+		}
 		
         if ($method eq 'GET') {
-			$response_object = $self->agent->get(@method_args );
+			$response_object = $self->agent->get(@method_args);
 		} elsif ($method eq 'DELETE') {
-			$response_object = $self->agent->delete(@method_args );
+			$response_object = $self->agent->delete(@method_args);
 		} elsif ($method eq 'POST') {
-			
 			$self->agent->show_progress(1);
-			
-			$response_object = $self->agent->post(@method_args );
-			
+			$response_object = $self->agent->post(@method_args);
+		} elsif ($method eq 'PUT') {
+			my $request = HTTP::Request::Common::POST(@method_args); # use POST, then change to PUT in next line !
+			$request->method('PUT');
+	
+			#if ($self->{'debug'} ==1) {
+			#	print "request: ".Dumper($request)."\n";
+			#}
+			$response_object = $self->agent->request($request);
+			#$response_object = $self->agent->put(@method_args); #does not work with multiform
 		} else {
-			die "not implemented yet";
+			die "method \"$method\" not implemented yet";
 		}
+		
 		if ($self->{'debug'} ==1) {
 			print "content: ".$response_object->content."\n";
 		}
 		if ($self->{'debug'} ==1) {
-			print Dumper($response_object)."\n";
+			print "response_object: ".Dumper($response_object)."\n";
 		}
-		$response_content = $self->json->decode( $response_object->content );
-        
-		
 		
 		
     };
-    
 	if ($@) {
-		if (! ref($response_content) && ($is_download==0 )) {
-			print STDERR "[error] unable to connect to Shock ".$self->shock_url."\n";
-			return undef;
-		} elsif (exists($response_content->{error}) && $response_content->{error}) {
-			print STDERR "[error] unable to send $method request to Shock: ".$response_content->{error}[0]."\n";
-			return undef;
-		}
-		
+		print STDERR "[error] ".$@."\n";
+		return undef;
 	}
 	
-	return $response_content;
+	
+	#### JSON -> hash
+	my $response_content_hash = undef;
+	eval {
+		$response_content_hash = $self->json->decode( $response_object->content );
+	};
+	
+	if ($@) {
+		print STDERR "[error] ".$@."\n";
+		if (! ref($response_content_hash) && ($is_download==0 )) {
+			print STDERR "[error] unable to connect to Shock ".$self->shock_url." response_content is not a reference\n";
+		} elsif (exists($response_content_hash->{error}) && $response_content_hash->{error}) {
+			print STDERR "[error] unable to send $method request to Shock: ".$response_content_hash->{error}[0]."\n";
+		}
+		return undef;
+	}
+	
+	
+	return $response_content_hash;
 	
 }
 
-
+# basic requests
 sub get {
 	#print 'get: '.join(',',@_)."\n";
 	my ($self, $resource, $query, $headers) = @_;
@@ -243,6 +268,19 @@ sub post {
 	
 	return $self->request('POST', $resource, $query, $headers);
 }
+
+sub put {
+	my ($self, $resource, $query, $headers) = @_;
+	
+	return $self->request('PUT', $resource, $query, $headers);
+}
+
+sub post_node {
+    my ($self, $node, $query, $headers ) = @_;
+    
+	return $self->post('node/'.$node, $query, $headers);
+}
+
 
 sub delete_node {
     my ($self, $node) = @_;
@@ -283,6 +321,7 @@ sub query { # https://github.com/MG-RAST/Shock/wiki/API
 }
 
 #query node (!= attributes)
+#this allows querying of fields outside of attributes section
 sub querynode { # https://github.com/MG-RAST/Shock/wiki/API
 	
 	my ($self, %query) = @_;
@@ -319,11 +358,38 @@ sub get_node {
     my ($self, $node) = @_;
     
     unless ($node) {
-        print STDERR "[error] missing node\n";
+        print STDERR "[error, get_node] missing node\n";
         return undef;
     }
     
 	return $self->get('/node/'.$node);
+	
+}
+
+
+sub put_node {
+    my ($self, $node, $query, $headers) = @_;
+    
+    unless ($node) {
+        print STDERR "[error, put_node] missing node\n";
+        return undef;
+    }
+    
+	return $self->put('/node/'.$node, $query, $headers);
+	
+}
+
+
+sub set_node_attributes {
+	my ($self, $node, $attributes_json_string) = @_;
+	
+	
+	
+	
+	return $self->put_node($node, undef, {Content_Type => 'multipart/form-data', Content => {"attributes_str" => $attributes_json_string}});
+	#return $self->put_node($node, undef, {Content => {}, Content_Type => 'multipart/form-data'});
+	#return $self->put_node($node, undef, {Content_Type => 'multipart/form-data', Content => {"attributes_str" => [undef, "n/a", Content => $attributes_json_string]}});
+	
 	
 }
 
@@ -456,6 +522,10 @@ sub upload {
 	if (defined $hash{'attributes'}) { # file
 		#$content->{'attributes'} = [undef, "n/a", Content => $hash{'attributes'}]
 		$content->{'attributes'} = [$hash{'attributes'}];
+	}
+	
+	if (defined $hash{'attr'}) {
+		$hash{'attributes_str'} = $hash{'attr'};
 	}
 	if (defined $hash{'attributes_str'}) { # string
 		#$content->{'attributes_str'} = [undef, "n/a", Content => $hash{'attributes_str'}]

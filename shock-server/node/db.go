@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/db"
+	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/golib/mgo"
 	"github.com/MG-RAST/golib/mgo/bson"
 	"io/ioutil"
@@ -25,9 +26,10 @@ func Initialize() {
 	c.EnsureIndex(mgo.Index{Key: []string{"acl.read"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"acl.write"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"acl.delete"}, Background: true})
-	if conf.Conf["mongodb-indexes"] != "" {
+	if conf.Conf["mongodb-attribute-indexes"] != "" {
 		for _, v := range strings.Split(conf.Conf["mongodb-attribute-indexes"], ",") {
-			c.EnsureIndex(mgo.Index{Key: []string{strings.TrimSpace(v)}, Background: true})
+			v = "attributes." + strings.TrimSpace(v)
+			c.EnsureIndex(mgo.Index{Key: []string{v}, Background: true})
 		}
 	}
 }
@@ -68,14 +70,14 @@ func dbFind(q bson.M, results *Nodes, options map[string]int) (count int, err er
 	return
 }
 
-func Load(id string, uuid string) (n *Node, err error) {
+func Load(id string, u *user.User) (n *Node, err error) {
 	session := db.Connection.Session.Copy()
 	defer session.Close()
 	c := session.DB(conf.Conf["mongodb-database"]).C("Nodes")
 	n = new(Node)
 	if err = c.Find(bson.M{"id": id}).One(&n); err == nil {
-		rights := n.Acl.Check(uuid)
-		if !rights["read"] {
+		rights := n.Acl.Check(u.Uuid)
+		if !rights["read"] && !u.Admin {
 			return nil, errors.New("User Unauthorized")
 		}
 		return n, nil

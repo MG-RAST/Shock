@@ -91,7 +91,7 @@ func LoadFromDisk(id string) (n *Node, err error) {
 	}
 	path := getPath(id)
 	if nbson, err := ioutil.ReadFile(path + "/" + id + ".bson"); err != nil {
-		return nil, errors.New("Node does not exist")
+		return nil, errors.New(e.NodeDoesNotExist)
 	} else {
 		n = new(Node)
 		if err = bson.Unmarshal(nbson, &n); err != nil {
@@ -120,14 +120,14 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 	// if copying node or creating subset node from parent, check if user has rights to the original node
 
 	if _, hasCopyData := params["copy_data"]; hasCopyData {
-		_, err = Load(params["copy_data"], u.Uuid)
+		_, err = Load(params["copy_data"], u)
 		if err != nil {
 			return
 		}
 	}
 
 	if _, hasParentNode := params["parent_node"]; hasParentNode {
-		_, err = Load(params["parent_node"], u.Uuid)
+		_, err = Load(params["parent_node"], u)
 		if err != nil {
 			return
 		}

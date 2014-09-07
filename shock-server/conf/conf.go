@@ -36,7 +36,8 @@ var (
 // of shock-server packages. Parses config and populates
 // the Conf variable.
 func Initialize() {
-	flag.StringVar(&CONFIG_FILE, "conf", "/usr/local/shock/conf/shock.cfg", "path to config file")
+	gopath := os.Getenv("GOPATH")
+	flag.StringVar(&CONFIG_FILE, "conf", gopath+"/src/github.com/MG-RAST/Shock/shock-server.conf.template", "path to config file")
 	flag.StringVar(&RELOAD, "reload", "", "path or url to shock data. WARNING this will drop all current data.")
 	flag.Parse()
 	c, err := config.ReadDefault(CONFIG_FILE)
@@ -142,6 +143,7 @@ func Print() {
 	} else if Conf["auth-type"] == "globus" {
 		fmt.Printf("##### Auth #####\ntype:\tglobus\ntoken_url:\t%s\nprofile_url:\t%s\n\n", Conf["globus_token_url"], Conf["globus_profile_url"])
 	}
+	fmt.Printf("##### Admin #####\nusers:\t%s\n\n", Conf["admin-users"])
 	fmt.Printf("##### Paths #####\nsite:\t%s\ndata:\t%s\nlogs:\t%s\nlocal_paths:\t%s\n\n", Conf["site-path"], Conf["data-path"], Conf["logs-path"], Conf["local-paths"])
 	if Bool(Conf["ssl"]) {
 		fmt.Printf("##### SSL #####\nenabled:\t%s\nkey:\t%s\ncert:\t%s\n\n", Conf["ssl"], Conf["ssl-key"], Conf["ssl-cert"])

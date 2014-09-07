@@ -15,6 +15,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
+	"github.com/MG-RAST/golib/mgo"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"io"
 	"io/ioutil"
@@ -46,26 +47,18 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 	}
 
 	// Load node and handle user unauthorized
-	n, err := node.Load(id, u.Uuid)
+	n, err := node.Load(id, u)
 	if err != nil {
 		if err.Error() == e.UnAuth {
 			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
-		} else if err.Error() == e.MongoDocNotFound {
+		} else if err == mgo.ErrNotFound {
 			return responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			logger.Error("Err@node_Read:LoadNode:" + id + ":" + err.Error())
-
-			n, err = node.LoadFromDisk(id)
-			if err.Error() == "Node does not exist" {
-				logger.Error(err.Error())
-				return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
-			} else if err != nil {
-				err_msg := "Err@node_Read:LoadNodeFromDisk:" + id + ":" + err.Error()
-				logger.Error(err_msg)
-				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
-			}
+			err_msg := "Err@node_Read:LoadNode: " + id + ":" + err.Error()
+			logger.Error(err_msg)
+			return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 		}
 	}
 
@@ -189,9 +182,31 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			// load index obj and info
 			idxName := query.Get("index")
 			idxInfo, ok := n.Indexes[idxName]
+
 			if !ok {
-				return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index")
+				if idxName == "size" {
+					totalunits := n.File.Size / conf.CHUNK_SIZE
+					m := n.File.Size % conf.CHUNK_SIZE
+					if m != 0 {
+						totalunits += 1
+					}
+					n.Indexes["size"] = node.IdxInfo{
+						Type:        "size",
+						TotalUnits:  totalunits,
+						AvgUnitSize: conf.CHUNK_SIZE,
+						Format:      "dynamic",
+					}
+					err = n.Save()
+					if err != nil {
+						err_msg := "Size index could not be auto-generated for node that did not have one."
+						logger.Error(err_msg)
+						return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+					}
+				} else {
+					return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index")
+				}
 			}
+
 			idx, err := n.DynamicIndex(idxName)
 			if err != nil {
 				return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
