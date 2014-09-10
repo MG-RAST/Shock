@@ -104,6 +104,9 @@ func fetchProfile(t string) (u *user.User, err error) {
 				if err = json.Unmarshal(body, &u); err != nil {
 					return nil, err
 				} else {
+					if u.Username == "" {
+						return nil, errors.New(e.InvalidAuth)
+					}
 					if err = u.SetMongoInfo(); err != nil {
 						return nil, err
 					}
