@@ -232,6 +232,9 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 
 	// set attributes from file
 	if _, hasAttr := files["attributes"]; hasAttr {
+		if _, hasAttrStr := params["attributes_str"]; hasAttrStr {
+			return errors.New("Cannot define an attributes file and an attributes_str parameter in the same request.")
+		}
 		if err = node.SetAttributes(files["attributes"]); err != nil {
 			return err
 		}
@@ -241,6 +244,9 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 
 	// set attributes from json string
 	if _, hasAttrStr := params["attributes_str"]; hasAttrStr {
+		if _, hasAttr := files["attributes"]; hasAttr {
+			return errors.New("Cannot define an attributes file and an attributes_str parameter in the same request.")
+		}
 		if err = node.SetAttributesFromString(params["attributes_str"]); err != nil {
 			return err
 		}

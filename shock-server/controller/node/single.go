@@ -39,7 +39,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 
 	// Fake public user
 	if u == nil {
-		if conf.Bool(conf.Conf["anon-read"]) {
+		if conf.ANON_READ {
 			u = &user.User{Uuid: ""}
 		} else {
 			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
