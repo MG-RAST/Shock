@@ -25,6 +25,7 @@ var (
 func AclRequest(ctx context.Context) {
 	nid := ctx.PathValue("nid")
 
+	// Try to authenticate user.
 	u, err := request.Authenticate(ctx.HttpRequest())
 	if err != nil && err.Error() != e.NoAuth {
 		request.AuthError(err, ctx)
@@ -42,15 +43,12 @@ func AclRequest(ctx context.Context) {
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
-			return
 		} else {
-			// In theory the db connection could be lost between
-			// checking user and load but seems unlikely.
 			err_msg := "Err@node_Read:LoadNode: " + nid + ":" + err.Error()
 			logger.Error(err_msg)
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
-			return
 		}
+		return
 	}
 
 	// only the owner or an admin can view/edit acl's unless owner="" or owner=nil
@@ -97,15 +95,12 @@ func AclTypedRequest(ctx context.Context) {
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
-			return
 		} else {
-			// In theory the db connection could be lost between
-			// checking user and load but seems unlikely.
 			err_msg := "Err@node_Read:LoadNode: " + nid + ":" + err.Error()
 			logger.Error(err_msg)
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
-			return
 		}
+		return
 	}
 
 	// only the owner or an admin can view/edit acl's unless owner="" or owner=nil
@@ -118,6 +113,9 @@ func AclTypedRequest(ctx context.Context) {
 	}
 
 	requestMethod := ctx.HttpRequest().Method
+
+	// At this point we know we're dealing with an admin or the node owner.
+	// Admins and node owners can view/edit/delete ACLs
 	if requestMethod != "GET" {
 		ids, err := parseAclRequestTyped(ctx)
 		if err != nil {

@@ -21,7 +21,7 @@ func (cr *NodeController) Create(ctx context.Context) error {
 
 	// Fake public user
 	if u == nil {
-		if conf.Bool(conf.Conf["anon-write"]) {
+		if conf.ANON_WRITE {
 			u = &user.User{Uuid: ""}
 		} else {
 			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)

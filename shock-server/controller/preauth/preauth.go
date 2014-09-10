@@ -17,7 +17,6 @@ func PreAuthRequest(ctx context.Context) {
 		err_msg := "err:@preAuth load: " + err.Error()
 		logger.Error(err_msg)
 		responder.RespondWithError(ctx, 500, err_msg)
-		return
 	} else {
 		if n, err := node.LoadUnauth(p.NodeId); err == nil {
 			switch p.Type {
@@ -28,7 +27,6 @@ func PreAuthRequest(ctx context.Context) {
 				}
 				streamDownload(ctx, n, filename)
 				preauth.Delete(id)
-				return
 			default:
 				responder.RespondWithError(ctx, 500, "Preauthorization type not supported: "+p.Type)
 			}
