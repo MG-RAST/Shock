@@ -16,7 +16,7 @@ users=
 # values: true/false
 read=true
 write=false
-create-user=false
+delete=false
 
 [Auth]
 # defaults to local user management with basis auth
