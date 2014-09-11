@@ -3,12 +3,15 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 	//"github.com/MG-RAST/Shock/shock-server/auth/basic"
 	"github.com/MG-RAST/Shock/shock-server/auth/globus"
 	//"github.com/MG-RAST/Shock/shock-server/auth/mgrast"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
+	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/user"
+	"os"
 )
 
 // authCache is a
@@ -35,8 +38,15 @@ func Authenticate(header string) (u *user.User, err error) {
 	} else {
 		for _, auth := range authMethods {
 			if u, err := auth(header); u != nil && err == nil {
-				authCache.add(header, u)
-				return u, nil
+				if &u == nil {
+					err_msg := fmt.Sprintf("ERROR: received pointer to empty user object from auth method for header = %v\n", header)
+					logger.Error(err_msg)
+					fmt.Fprintln(os.Stderr, err_msg)
+					return nil, errors.New(e.InvalidAuth)
+				} else {
+					authCache.add(header, u)
+					return u, nil
+				}
 			} else {
 				return nil, err
 			}
