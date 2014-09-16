@@ -45,18 +45,16 @@ func IndexTypedRequest(ctx context.Context) {
 	if err != nil {
 		if err.Error() == e.UnAuth {
 			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
-			return
 		} else if err == mgo.ErrNotFound {
 			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found.")
-			return
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
 			err_msg := "Err@index:LoadNode: " + nid + ":" + err.Error()
 			logger.Error(err_msg)
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
-			return
 		}
+		return
 	}
 
 	switch ctx.HttpRequest().Method {
@@ -72,6 +70,7 @@ func IndexTypedRequest(ctx context.Context) {
 				err_msg := err.Error()
 				logger.Error(err_msg)
 				responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+				return
 			}
 			responder.RespondOK(ctx)
 		} else {
@@ -99,11 +98,10 @@ func IndexTypedRequest(ctx context.Context) {
 		if _, has := n.Indexes[idxType]; has {
 			if idxType == "size" {
 				responder.RespondOK(ctx)
-				return
 			} else if !forceRebuild {
 				responder.RespondWithError(ctx, http.StatusBadRequest, "This index already exists, please add the parameter 'force_rebuild=1' to force a rebuild of the existing index.")
-				return
 			}
+			return
 		}
 
 		if !n.HasFile() {
@@ -139,11 +137,10 @@ func IndexTypedRequest(ctx context.Context) {
 					return
 				}
 				responder.RespondOK(ctx)
-				return
 			} else {
 				responder.RespondWithError(ctx, http.StatusBadRequest, "Index type bai requires .bam file.")
-				return
 			}
+			return
 		}
 
 		subsetSize := int64(0)
@@ -287,7 +284,6 @@ func IndexTypedRequest(ctx context.Context) {
 		}
 
 		responder.RespondOK(ctx)
-		return
 
 	default:
 		responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")

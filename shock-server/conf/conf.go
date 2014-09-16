@@ -30,6 +30,10 @@ var (
 
 	// Default Chunksize for size virtual index
 	CHUNK_SIZE int64 = 1048576
+
+	ANON_READ   = true
+	ANON_WRITE  = false
+	ANON_DELETE = false
 )
 
 // Initialize is an explicit init. Enables outside use
@@ -61,9 +65,9 @@ func Initialize() {
 	}
 
 	// Access-Control
-	Conf["anon-write"], _ = c.String("Anonymous", "write")
-	Conf["anon-read"], _ = c.String("Anonymous", "read")
-	Conf["anon-user"], _ = c.String("Anonymous", "create-user")
+	ANON_READ, _ = c.Bool("Anonymous", "read")
+	ANON_WRITE, _ = c.Bool("Anonymous", "write")
+	ANON_DELETE, _ = c.Bool("Anonymous", "delete")
 
 	// Auth
 	Conf["basic_auth"], _ = c.String("Auth", "basic")
@@ -137,7 +141,7 @@ func Bool(s string) bool {
 
 // Print prints the configuration loads to stdout
 func Print() {
-	fmt.Printf("####### Anonymous ######\nread:\t%s\nwrite:\t%s\ncreate-user:\t%s\n\n", Conf["anon-read"], Conf["anon-write"], Conf["anon-user"])
+	fmt.Printf("####### Anonymous ######\nread:\t%s\nwrite:\t%s\ndelete:\t%s\n\n", ANON_DELETE, ANON_DELETE, ANON_DELETE)
 	if Conf["auth-type"] == "basic" {
 		fmt.Printf("##### Auth #####\ntype:\tbasic\n\n")
 	} else if Conf["auth-type"] == "globus" {

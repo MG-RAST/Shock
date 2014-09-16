@@ -43,7 +43,7 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 			q["$or"] = []bson.M{bson.M{"acl.read": []string{}}, bson.M{"acl.read": u.Uuid}, bson.M{"acl.owner": u.Uuid}}
 		}
 	} else {
-		if conf.Bool(conf.Conf["anon-read"]) {
+		if conf.ANON_READ {
 			// select on only nodes with no read rights set
 			q["acl.read"] = []string{}
 		} else {
