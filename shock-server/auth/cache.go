@@ -1,9 +1,7 @@
 package auth
 
 import (
-	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/user"
-	"os"
 	"time"
 )
 
@@ -28,7 +26,6 @@ func (c *cache) lookup(header string) *user.User {
 }
 
 func (c *cache) add(header string, u *user.User) {
-	fmt.Fprintf(os.Stderr, "header = %v\n", header)
 	c.m[header] = cacheValue{
 		expires: time.Now().Add(1 * time.Hour),
 		user:    u,
