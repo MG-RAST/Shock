@@ -26,6 +26,10 @@ class Client:
     auth_header = {}
     token = ''
     template = "An exception of type {0} occured. Arguments:\n{1!r}"
+    methods = { 'get': requests.get,
+                'put': requests.put,
+                'post': requests.post,
+                'delete': requests.delete }
     
     def __init__(self, shock_url, token=''):
         self.shock_url = shock_url
@@ -49,12 +53,7 @@ class Client:
         if acl and user:
             url += '/'+acl+'?users='+urllib.quote(user)
         try:
-            if method == 'get':
-                req = requests.get(url, headers=self.auth_header)
-            elif method == 'put':
-                req = requests.put(url, headers=self.auth_header)
-            elif method == 'delete':
-                req = requests.delete(url, headers=self.auth_header)
+            req = self.methods[method](url, headers=self.auth_header)
         except Exception as ex:
             message = self.template.format(type(ex).__name__, ex.args)
             raise Exception(u'Unable to connect to Shock server %s\n%s' %(url, message))
@@ -64,7 +63,7 @@ class Client:
         if not (rj and isinstance(rj, dict) and all([key in rj for key in ['status','data','error']])):
             raise Exception(u'Return data not valid Shock format')
         if rj['error']:
-            raise Exception('Shock error: %d: %s'%(rj['status'], rj['error'][0]))
+            raise Exception('Shock error %s: %s'%(rj['status'], rj['error'][0]))
         return rj['data']
     
     def get_node(self, node):
@@ -77,7 +76,7 @@ class Client:
     def _get_node_data(self, path):
         url = self.shock_url+'/node'+path
         try:
-            rget = requests.get(url, headers=self.auth_header, allow_redirects=True)
+            rget = self.methods['get'](url, headers=self.auth_header)
         except Exception as ex:
             message = self.template.format(type(ex).__name__, ex.args)
             raise Exception(u'Unable to connect to Shock server %s\n%s' %(url, message))
@@ -87,7 +86,7 @@ class Client:
         if not (rj and isinstance(rj, dict) and all([key in rj for key in ['status','data','error']])):
             raise Exception(u'Return data not valid Shock format')
         if rj['error']:
-            raise Exception('Shock error: %d: %s'%(rj['status'], rj['error'][0]))
+            raise Exception('Shock error %s: %s'%(rj['status'], rj['error'][0]))
         return rj['data']
     
     def download_to_string(self, node, index=None, part=None, chunk=None, binary=False):
@@ -117,7 +116,7 @@ class Client:
             if chunk:
                 url += '&chunk_size='+str(chunk)
         try:
-            rget = requests.get(url, headers=self.auth_header, stream=stream)
+            rget = self.methods['get'](url, headers=self.auth_header, stream=stream)
         except Exception as ex:
             message = self.template.format(type(ex).__name__, ex.args)
             raise Exception(u'Unable to connect to Shock server %s\n%s' %(url, message))
@@ -128,13 +127,13 @@ class Client:
     def delete_node(self, node):
         url = self.shock_url+'/node/'+node
         try:
-            req = requests.delete(url, headers=self.auth_header)
+            req = self.methods['delete'](url, headers=self.auth_header)
             rj  = req.json()
         except Exception as ex:
             message = self.template.format(type(ex).__name__, ex.args)
             raise Exception(u'Unable to connect to Shock server %s\n%s' %(url, message))
         if rj['error']:
-            raise Exception(u'Shock error %s : %s'%(rj['status'], rj['error'][0]))
+            raise Exception(u'Shock error %s: %s (%s)'%(rj['status'], rj['error'][0], node))
         return rj
     
     def index_node(self, node, index, column=None):
@@ -142,13 +141,13 @@ class Client:
         if column is not None:
             url += '?number='+str(column)
         try:
-            req = requests.put(url, headers=self.auth_header)
+            req = self.methods['put'](url, headers=self.auth_header)
             rj  = req.json()
         except Exception as ex:
             message = self.template.format(type(ex).__name__, ex.args)
             raise Exception(u'Unable to connect to Shock server %s\n%s' %(url, message))
         if rj['error']:
-            raise Exception(u'Shock error %s : %s'%(rj['status'], rj['error'][0]))
+            raise Exception(u'Shock error %s: %s (%s)'%(rj['status'], rj['error'][0], node))
         return rj
     
     def index_subset(self, node, name, parent, subset_file):
@@ -158,13 +157,13 @@ class Client:
         headers = self.auth_header.copy()
         headers['Content-Type'] = mdata.content_type
         try:
-            req = requests.put(url, headers=headers, data=mdata, allow_redirects=True)
-            rj = req.json()
+            req = self.methods['put'](url, headers=headers, data=mdata, allow_redirects=True)
+            rj  = req.json()
         except Exception as ex:
             message = self.template.format(type(ex).__name__, ex.args)
             raise Exception(u'Unable to connect to Shock server %s\n%s' %(url, message))
         if rj['error']:
-            raise Exception(u'Shock error %s : %s'%(rj['status'], rj['error'][0]))
+            raise Exception(u'Shock error %s: %s (%s)'%(rj['status'], rj['error'][0], node))
         return rj        
     
     def copy_node(self, parent_node, attr='', copy_index=True):
@@ -173,18 +172,18 @@ class Client:
         if attr != '':
             pdata['attributes'] = self._get_handle(attr)
         if copy_index:
-            pdata['copy_index'] = 'true'
+            pdata['copy_indexes'] = 'true'
         mdata = MultipartEncoder(fields=pdata)
         headers = self.auth_header.copy()
         headers['Content-Type'] = mdata.content_type
         try:
-            req = requests.post(url, headers=headers, data=mdata, allow_redirects=True)
-            rj = req.json()
+            req = self.methods['post'](url, headers=headers, data=mdata, allow_redirects=True)
+            rj  = req.json()
         except Exception as ex:
             message = self.template.format(type(ex).__name__, ex.args)
             raise Exception(u'Unable to connect to Shock server %s\n%s' %(url, message))
         if rj['error']:
-            raise Exception(u'Shock error %s : %s'%(rj['status'], rj['error'][0]))
+            raise Exception(u'Shock error %s: %s'%(rj['status'], rj['error'][0]))
         return rj['data']
     
     def create_node(self, data='', attr='', data_name=''):
@@ -194,12 +193,12 @@ class Client:
     # form == True for multi-part form
     # form == False for data POST of file
     def upload(self, node='', data='', attr='', file_name='', form=True):
-        method = 'POST'
+        method = 'post'
         files = {}
         url = self.shock_url+'/node'
         if node != '':
             url = '%s/%s'%(url, node)
-            method = 'PUT'
+            method = 'put'
         if data != '':
             files['upload'] = self._get_handle(data, file_name)
         if attr != '':
@@ -209,21 +208,15 @@ class Client:
             headers = self.auth_header.copy()
             headers['Content-Type'] = mdata.content_type
             try:
-                if method == 'PUT':
-                    req = requests.put(url, headers=headers, data=mdata, allow_redirects=True)
-                else:
-                    req = requests.post(url, headers=headers, data=mdata, allow_redirects=True)
-                rj = req.json()
+                req = self.methods[method](url, headers=headers, data=mdata, allow_redirects=True)
+                rj  = req.json()
             except Exception as ex:
                 message = self.template.format(type(ex).__name__, ex.args)
                 raise Exception(u'Unable to connect to Shock server %s\n%s' %(url, message))
         elif (not form) and data:
             try:
-                if method == 'PUT':
-                    req = requests.put(url, headers=self.auth_header, data=files['upload'][1], allow_redirects=True)
-                else:
-                    req = requests.post(url, headers=self.auth_header, data=files['upload'][1], allow_redirects=True)
-                rj = req.json()
+                req = self.methods[method](url, headers=self.auth_header, data=files['upload'][1], allow_redirects=True)
+                rj  = req.json()
             except Exception as ex:
                 message = self.template.format(type(ex).__name__, ex.args)
                 raise Exception(u'Unable to connect to Shock server %s\n%s' %(url, message))
@@ -232,7 +225,7 @@ class Client:
         if not (req.ok):
             raise Exception(u'Unable to connect to Shock server %s: %s' %(url, req.raise_for_status()))
         if rj['error']:
-            raise Exception(u'Shock error %s : %s'%(rj['status'], rj['error'][0]))
+            raise Exception(u'Shock error %s: %s%s'%(rj['status'], rj['error'][0], ' ('+node+')' if node else ''))
         return rj['data']
     
     # handles 3 cases

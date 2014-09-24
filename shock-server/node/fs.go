@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
+	"github.com/MG-RAST/Shock/shock-server/node/file/index"
+	"io"
 	"math/rand"
 	"os"
 	"syscall"
@@ -30,7 +32,74 @@ func (node *Node) SetFile(file FormFile) (err error) {
 		Type:        "size",
 		TotalUnits:  totalunits,
 		AvgUnitSize: conf.CHUNK_SIZE,
+		Format:      "dynamic",
 	}
+	err = node.Save()
+	return
+}
+
+func (node *Node) SetFileFromSubset(subsetIndices FormFile) (err error) {
+	// load parent node
+	var n *Node
+	n, err = LoadUnauth(node.Subset.Parent.Id)
+	if err != nil {
+		return err
+	}
+
+	if _, indexExists := n.Indexes[node.Subset.Parent.IndexName]; !indexExists {
+		return errors.New("Index '" + node.Subset.Parent.IndexName + "' does not exist for parent node.")
+	}
+
+	parentIndexFile := n.IndexPath() + "/" + node.Subset.Parent.IndexName + ".idx"
+	if _, statErr := os.Stat(parentIndexFile); statErr != nil {
+		return errors.New("Could not stat index file for parent node where parent node = '" + node.Subset.Parent.Id + "' and index = '" + node.Subset.Parent.IndexName + "'.")
+	}
+
+	// we default to "array" index format for backwards compatibility
+	indexFormat := "array"
+	if n.Indexes[node.Subset.Parent.IndexName].Format == "array" || n.Indexes[node.Subset.Parent.IndexName].Format == "matrix" {
+		indexFormat = n.Indexes[node.Subset.Parent.IndexName].Format
+	}
+
+	f, _ := os.Open(subsetIndices.Path)
+	defer f.Close()
+	idxer := index.NewSubsetIndexer(f)
+	coIndexPath := node.Path() + "/" + node.Id + ".subset.idx"
+	oIndexPath := node.Path() + "/idx/" + node.Subset.Parent.IndexName + ".idx"
+
+	coCount, oCount, oSize, err := index.CreateSubsetNodeIndexes(&idxer, coIndexPath, oIndexPath, parentIndexFile, indexFormat, n.Indexes[node.Subset.Parent.IndexName].TotalUnits)
+	if err != nil {
+		return
+	}
+
+	// this info refers to the compressed index for the subset node's data file
+	node.Subset.Index.Path = coIndexPath
+	node.Subset.Index.TotalUnits = coCount
+	node.Subset.Index.AvgUnitSize = oSize / coCount
+	node.Subset.Index.Format = "array"
+	node.File.Size = oSize
+
+	// this info is for the subset index that's been created in the index folder
+	node.Indexes[node.Subset.Parent.IndexName] = IdxInfo{
+		Type:        "subset",
+		TotalUnits:  oCount,
+		AvgUnitSize: oSize / oCount,
+		Format:      indexFormat,
+	}
+
+	// fill size index info
+	totalunits := node.File.Size / conf.CHUNK_SIZE
+	m := node.File.Size % conf.CHUNK_SIZE
+	if m != 0 {
+		totalunits += 1
+	}
+	node.Indexes["size"] = IdxInfo{
+		Type:        "size",
+		TotalUnits:  totalunits,
+		AvgUnitSize: conf.CHUNK_SIZE,
+		Format:      "dynamic",
+	}
+
 	err = node.Save()
 	return
 }
@@ -76,32 +145,32 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 		}
 	}
 
-	var tmpFile *os.File
-	if action == "copy_file" {
-		if tmpFile, err = os.Create(tmpPath); err != nil {
-			return err
-		}
-		defer tmpFile.Close()
-	}
-
-	md5h := md5.New()
+	// Open file for reading.
 	f, err := os.Open(path)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	for {
-		buffer := make([]byte, 10240)
-		n, err := f.Read(buffer)
-		if n == 0 || err != nil {
-			break
+	// Set writer
+	var dst io.Writer
+	md5h := md5.New()
+
+	if action == "copy_file" {
+		tmpFile, err := os.Create(tmpPath)
+		if err != nil {
+			return err
 		}
-		md5h.Write(buffer[0:n])
-		if action == "copy_file" {
-			tmpFile.Write(buffer[0:n])
-		}
+		defer tmpFile.Close()
+		dst = io.MultiWriter(tmpFile, md5h)
+	} else {
+		dst = md5h
 	}
+
+	if _, err = io.Copy(dst, f); err != nil {
+		return err
+	}
+
 	node.File.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
 
 	//fill size index info
@@ -114,6 +183,7 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 		Type:        "size",
 		TotalUnits:  totalunits,
 		AvgUnitSize: conf.CHUNK_SIZE,
+		Format:      "dynamic",
 	}
 
 	if action == "copy_file" {
@@ -145,16 +215,11 @@ func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
 			if err != nil {
 				return err
 			}
-			for {
-				buffer := make([]byte, 10240)
-				n, err := part.Read(buffer)
-				if n == 0 || err != nil {
-					break
-				}
-				out.Write(buffer[0:n])
-				md5h.Write(buffer[0:n])
+			defer part.Close()
+			dst := io.MultiWriter(out, md5h)
+			if _, err = io.Copy(dst, part); err != nil {
+				return err
 			}
-			part.Close()
 		}
 	}
 	fileStat, err := os.Stat(fmt.Sprintf("%s/%s.data", node.Path(), node.Id))
@@ -164,6 +229,20 @@ func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
 	node.File.Name = node.Id
 	node.File.Size = fileStat.Size()
 	node.File.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
+
+	//fill size index info
+	totalunits := node.File.Size / conf.CHUNK_SIZE
+	m := node.File.Size % conf.CHUNK_SIZE
+	if m != 0 {
+		totalunits += 1
+	}
+	node.Indexes["size"] = IdxInfo{
+		Type:        "size",
+		TotalUnits:  totalunits,
+		AvgUnitSize: conf.CHUNK_SIZE,
+		Format:      "dynamic",
+	}
+
 	err = node.Save()
 	return
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
+	"github.com/MG-RAST/golib/mgo"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"net/http"
 	"os"
@@ -40,31 +41,36 @@ func IndexTypedRequest(ctx context.Context) {
 	}
 
 	// Load node and handle user unauthorized
-	n, err := node.Load(nid, u.Uuid)
+	n, err := node.Load(nid, u)
 	if err != nil {
 		if err.Error() == e.UnAuth {
 			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
-			return
-		} else if err.Error() == e.MongoDocNotFound {
+		} else if err == mgo.ErrNotFound {
 			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found.")
-			return
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			err_msg := "Err@index:LoadNode: " + err.Error()
+			err_msg := "Err@index:LoadNode: " + nid + ":" + err.Error()
 			logger.Error(err_msg)
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
-			return
 		}
+		return
 	}
 
 	switch ctx.HttpRequest().Method {
 	case "DELETE":
+		rights := n.Acl.Check(u.Uuid)
+		if !rights["write"] {
+			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+			return
+		}
+
 		if _, has := n.Indexes[idxType]; has {
 			if err := n.DeleteIndex(idxType); err != nil {
 				err_msg := err.Error()
 				logger.Error(err_msg)
 				responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+				return
 			}
 			responder.RespondOK(ctx)
 		} else {
@@ -79,8 +85,22 @@ func IndexTypedRequest(ctx context.Context) {
 		}
 
 	case "PUT":
+		rights := n.Acl.Check(u.Uuid)
+		if !rights["write"] {
+			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+			return
+		}
+
+		// Gather query params
+		query := ctx.HttpRequest().URL.Query()
+		_, forceRebuild := query["force_rebuild"]
+
 		if _, has := n.Indexes[idxType]; has {
-			responder.RespondOK(ctx)
+			if idxType == "size" {
+				responder.RespondOK(ctx)
+			} else if !forceRebuild {
+				responder.RespondWithError(ctx, http.StatusBadRequest, "This index already exists, please add the parameter 'force_rebuild=1' to force a rebuild of the existing index.")
+			}
 			return
 		}
 
@@ -106,20 +126,26 @@ func IndexTypedRequest(ctx context.Context) {
 
 		if idxType == "bai" {
 			//bam index is created by the command-line tool samtools
+			if n.Type == "subset" {
+				responder.RespondWithError(ctx, http.StatusBadRequest, "Shock does not support bam index creation on subset nodes.")
+				return
+			}
+
 			if ext := n.FileExt(); ext == ".bam" {
 				if err := index.CreateBamIndex(n.FilePath()); err != nil {
-					responder.RespondWithError(ctx, http.StatusBadRequest, "Error while creating bam index.")
+					responder.RespondWithError(ctx, http.StatusInternalServerError, "Error while creating bam index.")
 					return
 				}
 				responder.RespondOK(ctx)
-				return
 			} else {
 				responder.RespondWithError(ctx, http.StatusBadRequest, "Index type bai requires .bam file.")
-				return
 			}
+			return
 		}
 
+		subsetSize := int64(0)
 		count := int64(0)
+		indexFormat := ""
 		subsetName := ""
 		if idxType == "subset" {
 			// Utilizing the multipart form parser since we need to upload a file.
@@ -157,7 +183,13 @@ func IndexTypedRequest(ctx context.Context) {
 			f, _ := os.Open(subsetIndices.Path)
 			defer f.Close()
 			idxer := index.NewSubsetIndexer(f)
-			count, err = index.CreateSubsetIndex(&idxer, n.IndexPath()+"/"+newIndex+".idx", n.IndexPath()+"/"+parentIndex+".idx")
+
+			// we default to "array" index format for backwards compatibility
+			indexFormat = "array"
+			if n.Indexes[parentIndex].Format == "array" || n.Indexes[parentIndex].Format == "matrix" {
+				indexFormat = n.Indexes[parentIndex].Format
+			}
+			count, subsetSize, err = index.CreateSubsetIndex(&idxer, n.IndexPath()+"/"+newIndex+".idx", n.IndexPath()+"/"+parentIndex+".idx", indexFormat, n.Indexes[parentIndex].TotalUnits)
 			if err != nil {
 				logger.Error("err " + err.Error())
 				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
@@ -167,6 +199,11 @@ func IndexTypedRequest(ctx context.Context) {
 		} else if idxType == "column" {
 			// Gather query params
 			query := ctx.HttpRequest().URL.Query()
+
+			if n.Type == "subset" {
+				responder.RespondWithError(ctx, http.StatusBadRequest, "Shock does not support column index creation on subset nodes.")
+				return
+			}
 
 			if _, exists := query["number"]; !exists {
 				err_msg := "Index type column requires a number parameter in the url."
@@ -188,18 +225,28 @@ func IndexTypedRequest(ctx context.Context) {
 			f, _ := os.Open(n.FilePath())
 			defer f.Close()
 			idxer := index.NewColumnIndexer(f)
-			count, err = index.CreateColumnIndex(&idxer, num, n.IndexPath()+"/"+idxType+".idx")
+			count, indexFormat, err = index.CreateColumnIndex(&idxer, num, n.IndexPath()+"/"+idxType+".idx")
 			if err != nil {
 				logger.Error("err " + err.Error())
 				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
 				return
 			}
 		} else {
+			if n.Type == "subset" && (idxType != "chunkrecord" || n.Subset.Parent.IndexName != "record") {
+				responder.RespondWithError(ctx, http.StatusBadRequest, "For subset nodes, Shock currently only supports subset and chunkrecord indexes. Also, for a chunkrecord index, the subset node must have been generated from a record index.")
+				return
+			}
+
 			newIndexer := index.Indexers[idxType]
 			f, _ := os.Open(n.FilePath())
 			defer f.Close()
-			idxer := newIndexer(f)
-			count, err = idxer.Create(n.IndexPath() + "/" + idxType + ".idx")
+			var idxer index.Indexer
+			if n.Type == "subset" {
+				idxer = newIndexer(f, n.Type, n.Subset.Index.Format, n.IndexPath()+"/"+n.Subset.Parent.IndexName+".idx")
+			} else {
+				idxer = newIndexer(f, n.Type, "", "")
+			}
+			count, indexFormat, err = idxer.Create(n.IndexPath() + "/" + idxType + ".idx")
 			if err != nil {
 				logger.Error("err " + err.Error())
 				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
@@ -216,6 +263,7 @@ func IndexTypedRequest(ctx context.Context) {
 			Type:        idxType,
 			TotalUnits:  count,
 			AvgUnitSize: n.File.Size / count,
+			Format:      indexFormat,
 		}
 
 		//if idxType == "chunkrecord" {
@@ -223,8 +271,8 @@ func IndexTypedRequest(ctx context.Context) {
 		//}
 
 		if idxType == "subset" {
-			idxInfo.AvgUnitSize = -1
 			idxType = subsetName
+			idxInfo.AvgUnitSize = subsetSize / count
 		}
 
 		if err := n.SetIndexInfo(idxType, idxInfo); err != nil {
@@ -236,7 +284,6 @@ func IndexTypedRequest(ctx context.Context) {
 		}
 
 		responder.RespondOK(ctx)
-		return
 
 	default:
 		responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")

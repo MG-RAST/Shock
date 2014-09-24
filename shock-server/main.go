@@ -23,16 +23,19 @@ import (
 	"os/signal"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 )
 
 type resource struct {
-	R []string `json:"resources"`
-	U string   `json:"url"`
-	D string   `json:"documentation"`
+	A []string `json:"attribute_indexes"`
 	C string   `json:"contact"`
+	D string   `json:"documentation"`
 	I string   `json:"id"`
+	R []string `json:"resources"`
 	T string   `json:"type"`
+	U string   `json:"url"`
+	V string   `json:"version"`
 }
 
 func mapRoutes() {
@@ -71,34 +74,54 @@ func mapRoutes() {
 	})
 
 	goweb.Map("/preauth/{id}", func(ctx context.Context) error {
+		if ctx.HttpRequest().Method == "OPTIONS" {
+			return responder.RespondOK(ctx)
+		}
 		pcon.PreAuthRequest(ctx)
 		return nil
 	})
 
 	goweb.Map("/node/{nid}/acl/{type}", func(ctx context.Context) error {
+		if ctx.HttpRequest().Method == "OPTIONS" {
+			return responder.RespondOK(ctx)
+		}
 		acon.AclTypedRequest(ctx)
 		return nil
 	})
 
 	goweb.Map("/node/{nid}/acl/", func(ctx context.Context) error {
+		if ctx.HttpRequest().Method == "OPTIONS" {
+			return responder.RespondOK(ctx)
+		}
 		acon.AclRequest(ctx)
 		return nil
 	})
 
 	goweb.Map("/node/{nid}/index/{idxType}", func(ctx context.Context) error {
+		if ctx.HttpRequest().Method == "OPTIONS" {
+			return responder.RespondOK(ctx)
+		}
 		icon.IndexTypedRequest(ctx)
 		return nil
 	})
 
 	goweb.Map("/", func(ctx context.Context) error {
 		host := util.ApiUrl(ctx)
+
+		attrs := strings.Split(conf.Conf["mongodb-attribute-indexes"], ",")
+		for k, v := range attrs {
+			attrs[k] = strings.TrimSpace(v)
+		}
+
 		r := resource{
-			R: []string{"node"},
-			U: host + "/",
-			D: host + "/documentation.html",
+			A: attrs,
 			C: conf.Conf["admin-email"],
+			D: host + "/wiki/",
 			I: "Shock",
+			R: []string{"node"},
 			T: "Shock",
+			U: host + "/",
+			V: "[% VERSION %]",
 		}
 		return responder.WriteResponseObject(ctx, http.StatusOK, r)
 	})
@@ -106,8 +129,7 @@ func mapRoutes() {
 	nodeController := new(ncon.NodeController)
 	goweb.MapController(nodeController)
 
-	goweb.MapStatic("/assets", conf.Conf["site-path"]+"/assets")
-	goweb.MapStaticFile("/documentation.html", conf.Conf["site-path"]+"/pages/main.html")
+	goweb.MapStatic("/wiki", conf.Conf["site-path"])
 
 	// Map the favicon
 	//goweb.MapStaticFile("/favicon.ico", "static-files/favicon.ico")

@@ -13,6 +13,7 @@ import (
 	"github.com/MG-RAST/golib/mgo/bson"
 	"io/ioutil"
 	"os"
+	"time"
 )
 
 type Node struct {
@@ -27,12 +28,14 @@ type Node struct {
 	Tags         []string          `bson:"tags" json:"tags"`
 	Revisions    []Node            `bson:"revisions" json:"-"`
 	Linkages     []linkage         `bson:"linkage" json:"linkages"`
-	CreatedOn    string            `bson:"created_on" json:"created_on"`
-	LastModified string            `bson:"last_modified" json:"last_modified"`
+	CreatedOn    time.Time         `bson:"created_on" json:"created_on"`
+	LastModified time.Time         `bson:"last_modified" json:"last_modified"`
+	Type         string            `bson:"type" json:"type"`
+	Subset       Subset            `bson:"subset" json:"-"`
 }
 
 type linkage struct {
-	Type      string   `bson: "relation" json:"relation"`
+	Type      string   `bson:"relation" json:"relation"`
 	Ids       []string `bson:"ids" json:"ids"`
 	Operation string   `bson:"operation" json:"operation"`
 }
@@ -43,6 +46,7 @@ type IdxInfo struct {
 	Type        string `bson:"index_type" json:"-"`
 	TotalUnits  int64  `bson:"total_units" json:"total_units"`
 	AvgUnitSize int64  `bson:"average_unit_size" json:"average_unit_size"`
+	Format      string `bson:"format" json:"-"`
 }
 
 type FormFiles map[string]FormFile
@@ -53,12 +57,31 @@ type FormFile struct {
 	Checksum map[string]string
 }
 
+// Subset is used to store information about a subset node's parent and its index.
+// A subset node's index defines the subset of the data file that this node represents.
+// A subset node's index is immutable after it is defined.
+type Subset struct {
+	Parent Parent            `bson:"parent" json:"-"`
+	Index  SubsetNodeIdxInfo `bson:"index" json:"-"`
+}
+
+type Parent struct {
+	Id        string `bson:"id" json:"-"`
+	IndexName string `bson:"index_name" json:"-"`
+}
+
+type SubsetNodeIdxInfo struct {
+	Path        string `bson:"path" json:"-"`
+	TotalUnits  int64  `bson:"total_units" json:"-"`
+	AvgUnitSize int64  `bson:"average_unit_size" json:"-"`
+	Format      string `bson:"format" json:"-"`
+}
+
 func New() (node *Node) {
 	node = new(Node)
 	node.Indexes = make(map[string]IdxInfo)
 	node.File.Checksum = make(map[string]string)
 	node.setId()
-	node.LastModified = "-"
 	return
 }
 
@@ -68,7 +91,7 @@ func LoadFromDisk(id string) (n *Node, err error) {
 	}
 	path := getPath(id)
 	if nbson, err := ioutil.ReadFile(path + "/" + id + ".bson"); err != nil {
-		return nil, errors.New("Node does not exist")
+		return nil, errors.New(e.NodeDoesNotExist)
 	} else {
 		n = new(Node)
 		if err = bson.Unmarshal(nbson, &n); err != nil {
@@ -94,14 +117,24 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 		}
 	}
 
+	// if copying node or creating subset node from parent, check if user has rights to the original node
+
 	if _, hasCopyData := params["copy_data"]; hasCopyData {
-		_, err = Load(params["copy_data"], u.Uuid)
+		_, err = Load(params["copy_data"], u)
+		if err != nil {
+			return
+		}
+	}
+
+	if _, hasParentNode := params["parent_node"]; hasParentNode {
+		_, err = Load(params["parent_node"], u)
 		if err != nil {
 			return
 		}
 	}
 
 	node = New()
+	node.Type = "basic"
 	if u.Uuid != "" {
 		node.Acl.SetOwner(u.Uuid)
 		node.Acl.Set(u.Uuid, acl.Rights{"read": true, "write": true, "delete": true})
@@ -146,13 +179,12 @@ func (node *Node) FileReader() (reader file.ReaderAt, err error) {
 	return os.Open(node.FilePath())
 }
 
-func (node *Node) Index(name string) (idx index.Index, err error) {
+func (node *Node) DynamicIndex(name string) (idx index.Index, err error) {
 	if index.Has(name) {
 		idx = index.NewVirtual(name, node.FilePath(), node.File.Size, 10240)
 	} else {
 		if _, has := node.Indexes[name]; has {
 			idx = index.New()
-			err = idx.Load(node.IndexPath() + "/" + name + ".idx")
 		} else {
 			err_str := fmt.Sprintf("Node %s does not have index of type %s.", node.Id, name)
 			err = errors.New(err_str)
@@ -164,7 +196,7 @@ func (node *Node) Index(name string) (idx index.Index, err error) {
 func (node *Node) Delete() (err error) {
 	// check to make sure this node isn't referenced by a vnode
 	virtualNodes := Nodes{}
-	if _, err = dbFind(bson.M{"virtual_parts": node.Id}, &virtualNodes, nil); err != nil {
+	if _, err = dbFind(bson.M{"file.virtual_parts": node.Id}, &virtualNodes, nil); err != nil {
 		return err
 	}
 	if len(virtualNodes) != 0 {
@@ -235,6 +267,15 @@ func (node *Node) SetAttributes(attr FormFile) (err error) {
 		return
 	}
 	err = json.Unmarshal(attributes, &node.Attributes)
+	if err != nil {
+		return
+	}
+	err = node.Save()
+	return
+}
+
+func (node *Node) SetAttributesFromString(attributes string) (err error) {
+	err = json.Unmarshal([]byte(attributes), &node.Attributes)
 	if err != nil {
 		return
 	}

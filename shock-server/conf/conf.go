@@ -30,13 +30,18 @@ var (
 
 	// Default Chunksize for size virtual index
 	CHUNK_SIZE int64 = 1048576
+
+	ANON_READ   = true
+	ANON_WRITE  = false
+	ANON_DELETE = false
 )
 
 // Initialize is an explicit init. Enables outside use
 // of shock-server packages. Parses config and populates
 // the Conf variable.
 func Initialize() {
-	flag.StringVar(&CONFIG_FILE, "conf", "/usr/local/shock/conf/shock.cfg", "path to config file")
+	gopath := os.Getenv("GOPATH")
+	flag.StringVar(&CONFIG_FILE, "conf", gopath+"/src/github.com/MG-RAST/Shock/shock-server.conf.template", "path to config file")
 	flag.StringVar(&RELOAD, "reload", "", "path or url to shock data. WARNING this will drop all current data.")
 	flag.Parse()
 	c, err := config.ReadDefault(CONFIG_FILE)
@@ -60,9 +65,9 @@ func Initialize() {
 	}
 
 	// Access-Control
-	Conf["anon-write"], _ = c.String("Anonymous", "write")
-	Conf["anon-read"], _ = c.String("Anonymous", "read")
-	Conf["anon-user"], _ = c.String("Anonymous", "create-user")
+	ANON_READ, _ = c.Bool("Anonymous", "read")
+	ANON_WRITE, _ = c.Bool("Anonymous", "write")
+	ANON_DELETE, _ = c.Bool("Anonymous", "delete")
 
 	// Auth
 	Conf["basic_auth"], _ = c.String("Auth", "basic")
@@ -72,6 +77,7 @@ func Initialize() {
 
 	// Admin
 	Conf["admin-email"], _ = c.String("Admin", "email")
+	Conf["admin-users"], _ = c.String("Admin", "users")
 
 	// Paths
 	Conf["site-path"], _ = c.String("Paths", "site")
@@ -91,6 +97,7 @@ func Initialize() {
 	}
 	Conf["mongodb-user"], _ = c.String("Mongodb", "user")
 	Conf["mongodb-password"], _ = c.String("Mongodb", "password")
+	Conf["mongodb-attribute-indexes"], _ = c.String("Mongodb", "attribute_indexes")
 
 	// parse Node-Indices
 	NODE_IDXS = map[string]idxOpts{}
@@ -134,12 +141,13 @@ func Bool(s string) bool {
 
 // Print prints the configuration loads to stdout
 func Print() {
-	fmt.Printf("####### Anonymous ######\nread:\t%s\nwrite:\t%s\ncreate-user:\t%s\n\n", Conf["anon-read"], Conf["anon-write"], Conf["anon-user"])
+	fmt.Printf("####### Anonymous ######\nread:\t%s\nwrite:\t%s\ndelete:\t%s\n\n", ANON_DELETE, ANON_DELETE, ANON_DELETE)
 	if Conf["auth-type"] == "basic" {
 		fmt.Printf("##### Auth #####\ntype:\tbasic\n\n")
 	} else if Conf["auth-type"] == "globus" {
 		fmt.Printf("##### Auth #####\ntype:\tglobus\ntoken_url:\t%s\nprofile_url:\t%s\n\n", Conf["globus_token_url"], Conf["globus_profile_url"])
 	}
+	fmt.Printf("##### Admin #####\nusers:\t%s\n\n", Conf["admin-users"])
 	fmt.Printf("##### Paths #####\nsite:\t%s\ndata:\t%s\nlogs:\t%s\nlocal_paths:\t%s\n\n", Conf["site-path"], Conf["data-path"], Conf["logs-path"], Conf["local-paths"])
 	if Bool(Conf["ssl"]) {
 		fmt.Printf("##### SSL #####\nenabled:\t%s\nkey:\t%s\ncert:\t%s\n\n", Conf["ssl"], Conf["ssl-key"], Conf["ssl-cert"])

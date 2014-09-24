@@ -1,8 +1,7 @@
-package conf_test
+package conf
 
 import (
 	"fmt"
-	. "github.com/MG-RAST/Shock/shock-client/conf"
 	"testing"
 )
 

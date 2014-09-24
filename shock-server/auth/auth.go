@@ -3,12 +3,15 @@ package auth
 
 import (
 	"errors"
-	"github.com/MG-RAST/Shock/shock-server/auth/basic"
+	"fmt"
+	//"github.com/MG-RAST/Shock/shock-server/auth/basic"
 	"github.com/MG-RAST/Shock/shock-server/auth/globus"
-	"github.com/MG-RAST/Shock/shock-server/auth/mgrast"
+	//"github.com/MG-RAST/Shock/shock-server/auth/mgrast"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
+	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/user"
+	"os"
 )
 
 // authCache is a
@@ -18,15 +21,15 @@ var authMethods []func(string) (*user.User, error)
 func Initialize() {
 	authCache = cache{m: make(map[string]cacheValue)}
 	authMethods = []func(string) (*user.User, error){}
-	if conf.Conf["basic_auth"] != "" {
-		authMethods = append(authMethods, basic.Auth)
-	}
+	//if conf.Conf["basic_auth"] != "" {
+	//	authMethods = append(authMethods, basic.Auth)
+	//}
 	if conf.Conf["globus_token_url"] != "" && conf.Conf["globus_profile_url"] != "" {
 		authMethods = append(authMethods, globus.Auth)
 	}
-	if conf.Conf["mgrast_oauth_url"] != "" {
-		authMethods = append(authMethods, mgrast.Auth)
-	}
+	//if conf.Conf["mgrast_oauth_url"] != "" {
+	//	authMethods = append(authMethods, mgrast.Auth)
+	//}
 }
 
 func Authenticate(header string) (u *user.User, err error) {
@@ -34,9 +37,18 @@ func Authenticate(header string) (u *user.User, err error) {
 		return u, nil
 	} else {
 		for _, auth := range authMethods {
-			if u, _ := auth(header); u != nil {
-				authCache.add(header, u)
-				return u, nil
+			if u, err := auth(header); u != nil && err == nil {
+				if &u == nil {
+					err_msg := fmt.Sprintf("ERROR: received pointer to empty user object from auth method for header = %v\n", header)
+					logger.Error(err_msg)
+					fmt.Fprintln(os.Stderr, err_msg)
+					return nil, errors.New(e.InvalidAuth)
+				} else {
+					authCache.add(header, u)
+					return u, nil
+				}
+			} else {
+				return nil, err
 			}
 		}
 	}

@@ -10,7 +10,6 @@ var (
 )
 
 const (
-	MongoDocNotFound         = "Not found"
 	InvalidAuth              = "Invalid Auth Header"
 	UnAuth                   = "User Unauthorized"
 	NoAuth                   = "No Authorization"
@@ -20,4 +19,5 @@ const (
 	InvalidIndex             = "Invalid Index"
 	InvalidFileTypeForFilter = "Invalid file type for filter"
 	NodeReferenced           = "Node referenced by virtual node"
+	NodeDoesNotExist         = "Node does not exist"
 )
