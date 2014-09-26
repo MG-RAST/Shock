@@ -12,38 +12,38 @@ type Acl struct {
 
 type Rights map[string]bool
 
-func (a *Acl) SetOwner(uuid string) {
-	a.Owner = uuid
+func (a *Acl) SetOwner(str string) {
+	a.Owner = str
 	return
 }
 
-func (a *Acl) UnSet(uuid string, r Rights) {
+func (a *Acl) UnSet(str string, r Rights) {
 	if r["read"] {
-		a.Read = del(a.Read, uuid)
+		a.Read = del(a.Read, str)
 	}
 	if r["write"] {
-		a.Write = del(a.Write, uuid)
+		a.Write = del(a.Write, str)
 	}
 	if r["delete"] {
-		a.Delete = del(a.Delete, uuid)
+		a.Delete = del(a.Delete, str)
 	}
 	return
 }
 
-func (a *Acl) Set(uuid string, r Rights) {
+func (a *Acl) Set(str string, r Rights) {
 	if r["read"] {
-		a.Read = insert(a.Read, uuid)
+		a.Read = insert(a.Read, str)
 	}
 	if r["write"] {
-		a.Write = insert(a.Write, uuid)
+		a.Write = insert(a.Write, str)
 	}
 	if r["delete"] {
-		a.Delete = insert(a.Delete, uuid)
+		a.Delete = insert(a.Delete, str)
 	}
 	return
 }
 
-func (a *Acl) Check(uuid string) (r Rights) {
+func (a *Acl) Check(str string) (r Rights) {
 	r = Rights{"read": false, "write": false, "delete": false}
 	acls := map[string][]string{"read": a.Read, "write": a.Write, "delete": a.Delete}
 	for k, v := range acls {
@@ -51,7 +51,7 @@ func (a *Acl) Check(uuid string) (r Rights) {
 			r[k] = true
 		} else {
 			for _, id := range v {
-				if uuid == id {
+				if str == id {
 					r[k] = true
 					break
 				}

@@ -141,7 +141,7 @@ func Bool(s string) bool {
 
 // Print prints the configuration loads to stdout
 func Print() {
-	fmt.Printf("####### Anonymous ######\nread:\t%s\nwrite:\t%s\ndelete:\t%s\n\n", ANON_DELETE, ANON_DELETE, ANON_DELETE)
+	fmt.Printf("####### Anonymous ######\nread:\t%v\nwrite:\t%v\ndelete:\t%v\n\n", ANON_DELETE, ANON_DELETE, ANON_DELETE)
 	if Conf["auth-type"] == "basic" {
 		fmt.Printf("##### Auth #####\ntype:\tbasic\n\n")
 	} else if Conf["auth-type"] == "globus" {
