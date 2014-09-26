@@ -46,7 +46,7 @@ func AclRequest(ctx context.Context) {
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			err_msg := "Err@node_Read:LoadNode: " + err.Error()
+			err_msg := "Err@acl:LoadNode: " + nid + err.Error()
 			logger.Error(err_msg)
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			return
@@ -104,7 +104,7 @@ func AclTypedRequest(ctx context.Context) {
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			err_msg := "Err@node_Read:LoadNode: " + err.Error()
+			err_msg := "Err@acl:LoadNode: " + nid + err.Error()
 			logger.Error(err_msg)
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			return

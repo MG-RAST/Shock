@@ -30,22 +30,25 @@ func IndexTypedRequest(ctx context.Context) {
 	idxType := ctx.PathValue("idxType")
 
 	u, err := request.Authenticate(ctx.HttpRequest())
-	if err != nil && err.Error() != e.NoAuth {
-		request.AuthError(err, ctx)
-		return
-	}
-
-	// Fake public user
-	if u == nil {
-		u = &user.User{Uuid: ""}
-	}
-
-	// Load node and handle user unauthorized
-	n, err := node.Load(nid, u)
 	if err != nil {
-		if err.Error() == e.UnAuth {
-			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
-		} else if err == mgo.ErrNotFound {
+		if err.Error() != e.NoAuth {
+			request.AuthError(err, ctx)
+			return
+		} else {
+			responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
+			return
+		}
+	}
+
+	// public user (no auth) can be used in some cases
+	if u == nil {
+		u = &user.User{Uuid: "public"}
+	}
+
+	// Load node by id
+	n, err := node.LoadUnauth(nid)
+	if err != nil {
+		if err == mgo.ErrNotFound {
 			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found.")
 		} else {
 			// In theory the db connection could be lost between
