@@ -26,13 +26,9 @@ func (c *cache) lookup(header string) *user.User {
 }
 
 func (c *cache) add(header string, u *user.User) {
-	user := u
-	foo := header
-	expires := time.Now().Add(1 * time.Hour)
-	bar := cacheValue{
-		expires: expires,
-		user:    user,
+	c.m[header] = cacheValue{
+		expires: time.Now().Add(1 * time.Hour),
+		user:    u,
 	}
-	c.m[foo] = bar
 	return
 }
