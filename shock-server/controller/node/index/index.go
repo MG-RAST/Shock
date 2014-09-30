@@ -275,6 +275,21 @@ func IndexTypedRequest(ctx context.Context) {
 			idxInfo.AvgUnitSize = subsetSize / count
 		}
 
+		// reload node by id before updating mongo document (attempting to avoid race conditions)
+		n, err := node.LoadUnauth(nid)
+		if err != nil {
+			if err == mgo.ErrNotFound {
+				responder.RespondWithError(ctx, http.StatusNotFound, "Node deleted during index creation.")
+			} else {
+				// In theory the db connection could be lost between
+				// checking user and load but seems unlikely.
+				err_msg := "Err@index:LoadNode: " + nid + ":" + err.Error()
+				logger.Error(err_msg)
+				responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+			}
+			return
+		}
+
 		if err := n.SetIndexInfo(idxType, idxInfo); err != nil {
 			logger.Error("err@node.SetIndexInfo: " + err.Error())
 		}
