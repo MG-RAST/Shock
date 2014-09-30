@@ -3,6 +3,7 @@ package acl
 
 import (
 	"errors"
+	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
@@ -27,10 +28,15 @@ func AclRequest(ctx context.Context) {
 	nid := ctx.PathValue("nid")
 
 	u, err := request.Authenticate(ctx.HttpRequest())
-	if err != nil {
-		if err.Error() != e.NoAuth {
-			request.AuthError(err, ctx)
-			return
+	if err != nil && err.Error() != e.NoAuth {
+		request.AuthError(err, ctx)
+		return
+	}
+
+	// public user (no auth) can perform a GET operation with the proper node permissions
+	if u == nil {
+		if conf.ANON_READ {
+			u = &user.User{Uuid: "public"}
 		} else {
 			responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
 			return
@@ -78,16 +84,10 @@ func AclTypedRequest(ctx context.Context) {
 	rtype := ctx.PathValue("type")
 	rmeth := ctx.HttpRequest().Method
 
-	// acl require auth even for public data
 	u, err := request.Authenticate(ctx.HttpRequest())
-	if err != nil {
-		if err.Error() != e.NoAuth {
-			request.AuthError(err, ctx)
-			return
-		} else {
-			responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
-			return
-		}
+	if err != nil && err.Error() != e.NoAuth {
+		request.AuthError(err, ctx)
+		return
 	}
 
 	if !validAclTypes[rtype] {
@@ -107,6 +107,18 @@ func AclTypedRequest(ctx context.Context) {
 			err_msg := "Err@acl:LoadNode: " + nid + err.Error()
 			logger.Error(err_msg)
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+			return
+		}
+	}
+
+	// public user (no auth) can perform a GET operation given the proper node permissions
+	if u == nil {
+		rights := n.Acl.Check("public")
+		if rmeth == "GET" && conf.ANON_READ && (rights["read"] || n.Acl.Owner == "public") {
+			responder.RespondWithData(ctx, n.Acl)
+			return
+		} else {
+			responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
 			return
 		}
 	}
