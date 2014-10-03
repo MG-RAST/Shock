@@ -21,7 +21,6 @@ type Node struct {
 	Version      string            `bson:"version" json:"version"`
 	File         file.File         `bson:"file" json:"file"`
 	Attributes   interface{}       `bson:"attributes" json:"attributes"`
-	Public       bool              `bson:"public" json:"public"`
 	Indexes      Indexes           `bson:"indexes" json:"indexes"`
 	Acl          acl.Acl           `bson:"acl" json:"-"`
 	VersionParts map[string]string `bson:"version_parts" json:"-"`
@@ -120,14 +119,14 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 	// if copying node or creating subset node from parent, check if user has rights to the original node
 
 	if _, hasCopyData := params["copy_data"]; hasCopyData {
-		_, err = Load(params["copy_data"], u)
+		_, err = Load(params["copy_data"])
 		if err != nil {
 			return
 		}
 	}
 
 	if _, hasParentNode := params["parent_node"]; hasParentNode {
-		_, err = Load(params["parent_node"], u)
+		_, err = Load(params["parent_node"])
 		if err != nil {
 			return
 		}
@@ -135,14 +134,9 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 
 	node = New()
 	node.Type = "basic"
-	if u.Uuid != "" {
-		node.Acl.SetOwner(u.Uuid)
-		node.Acl.Set(u.Uuid, acl.Rights{"read": true, "write": true, "delete": true})
-		node.Public = false
-	} else {
-		node.Acl = acl.Acl{Owner: "", Read: make([]string, 0), Write: make([]string, 0), Delete: make([]string, 0)}
-		node.Public = true
-	}
+
+	node.Acl.SetOwner(u.Uuid)
+	node.Acl.Set(u.Uuid, acl.Rights{"read": true, "write": true, "delete": true})
 
 	err = node.Mkdir()
 	if err != nil {

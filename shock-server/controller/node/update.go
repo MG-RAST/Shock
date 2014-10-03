@@ -20,17 +20,20 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 		return request.AuthError(err, ctx)
 	}
 
-	// Fake public user
+	// public user (no auth) can be used in some cases
 	if u == nil {
-		u = &user.User{Uuid: ""}
+		if conf.ANON_WRITE {
+			u = &user.User{Uuid: "public"}
+		} else {
+			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
+		}
 	}
 
-	n, err := node.Load(id, u)
+	// Load node by id
+	n, err := node.Load(id)
 	if err != nil {
-		if err.Error() == e.UnAuth {
-			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
-		} else if err == mgo.ErrNotFound {
-			return responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
+		if err == mgo.ErrNotFound {
+			return responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
@@ -41,7 +44,7 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 	}
 
 	rights := n.Acl.Check(u.Uuid)
-	if !rights["write"] {
+	if rights["write"] == false && u.Admin == false && n.Acl.Owner != u.Uuid {
 		return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 	}
 
@@ -56,14 +59,14 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 	}
 
 	if _, hasCopyData := params["copy_data"]; hasCopyData {
-		_, err = node.Load(params["copy_data"], u)
+		_, err = node.Load(params["copy_data"])
 		if err != nil {
 			return request.AuthError(err, ctx)
 		}
 	}
 
 	if _, hasParentNode := params["parent_node"]; hasParentNode {
-		_, err = node.Load(params["parent_node"], u)
+		_, err = node.Load(params["parent_node"])
 		if err != nil {
 			return request.AuthError(err, ctx)
 		}

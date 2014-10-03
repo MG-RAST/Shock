@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/db"
-	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/golib/mgo"
 	"github.com/MG-RAST/golib/mgo/bson"
 	"io/ioutil"
@@ -71,24 +70,7 @@ func dbFind(q bson.M, results *Nodes, options map[string]int) (count int, err er
 	return
 }
 
-func Load(id string, u *user.User) (n *Node, err error) {
-	session := db.Connection.Session.Copy()
-	defer session.Close()
-	c := session.DB(conf.Conf["mongodb-database"]).C("Nodes")
-	n = new(Node)
-	if err = c.Find(bson.M{"id": id}).One(&n); err == nil {
-		rights := n.Acl.Check(u.Uuid)
-		if !rights["read"] && !u.Admin {
-			return nil, errors.New("User Unauthorized")
-		}
-		return n, nil
-	} else {
-		return nil, err
-	}
-	return
-}
-
-func LoadUnauth(id string) (n *Node, err error) {
+func Load(id string) (n *Node, err error) {
 	session := db.Connection.Session.Copy()
 	defer session.Close()
 	c := session.DB(conf.Conf["mongodb-database"]).C("Nodes")

@@ -28,42 +28,44 @@ type m map[string]string
 func IndexTypedRequest(ctx context.Context) {
 	nid := ctx.PathValue("nid")
 	idxType := ctx.PathValue("idxType")
+	rmeth := ctx.HttpRequest().Method
 
 	u, err := request.Authenticate(ctx.HttpRequest())
-	if err != nil {
-		if err.Error() != e.NoAuth {
-			request.AuthError(err, ctx)
-			return
+	if err != nil && err.Error() != e.NoAuth {
+		request.AuthError(err, ctx)
+		return
+	}
+
+	// public user (no auth) can be used in some cases
+	if u == nil {
+		if (rmeth == "GET" && conf.ANON_READ) || (rmeth == "PUT" && conf.ANON_WRITE) || (rmeth == "DELETE" && conf.ANON_WRITE) {
+			u = &user.User{Uuid: "public"}
 		} else {
 			responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
 			return
 		}
 	}
 
-	// public user (no auth) can be used in some cases
-	if u == nil {
-		u = &user.User{Uuid: "public"}
-	}
-
 	// Load node by id
-	n, err := node.LoadUnauth(nid)
+	n, err := node.Load(nid)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found.")
+			responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			err_msg := "Err@index:LoadNode: " + nid + ":" + err.Error()
+			err_msg := "Err@node_Index:LoadNode: " + nid + ":" + err.Error()
 			logger.Error(err_msg)
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 		}
 		return
 	}
 
-	switch ctx.HttpRequest().Method {
+	rights := n.Acl.Check(u.Uuid)
+
+	switch rmeth {
 	case "DELETE":
-		rights := n.Acl.Check(u.Uuid)
-		if !rights["write"] {
+		if rights["write"] == false && u.Admin == false && n.Acl.Owner != u.Uuid {
 			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 			return
 		}
@@ -81,6 +83,11 @@ func IndexTypedRequest(ctx context.Context) {
 		}
 
 	case "GET":
+		if rights["read"] == false && u.Admin == false && n.Acl.Owner != u.Uuid {
+			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+			return
+		}
+
 		if v, has := n.Indexes[idxType]; has {
 			responder.RespondWithData(ctx, map[string]interface{}{idxType: v})
 		} else {
@@ -88,8 +95,7 @@ func IndexTypedRequest(ctx context.Context) {
 		}
 
 	case "PUT":
-		rights := n.Acl.Check(u.Uuid)
-		if !rights["write"] {
+		if rights["write"] == false && u.Admin == false && n.Acl.Owner != u.Uuid {
 			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 			return
 		}
@@ -279,14 +285,14 @@ func IndexTypedRequest(ctx context.Context) {
 		}
 
 		// reload node by id before updating mongo document (attempting to avoid race conditions)
-		n, err := node.LoadUnauth(nid)
+		n, err := node.Load(nid)
 		if err != nil {
 			if err == mgo.ErrNotFound {
 				responder.RespondWithError(ctx, http.StatusNotFound, "Node deleted during index creation.")
 			} else {
 				// In theory the db connection could be lost between
 				// checking user and load but seems unlikely.
-				err_msg := "Err@index:LoadNode: " + nid + ":" + err.Error()
+				err_msg := "Err@node_Index:LoadNode: " + nid + ":" + err.Error()
 				logger.Error(err_msg)
 				responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			}

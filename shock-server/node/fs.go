@@ -41,7 +41,7 @@ func (node *Node) SetFile(file FormFile) (err error) {
 func (node *Node) SetFileFromSubset(subsetIndices FormFile) (err error) {
 	// load parent node
 	var n *Node
-	n, err = LoadUnauth(node.Subset.Parent.Id)
+	n, err = Load(node.Subset.Parent.Id)
 	if err != nil {
 		return err
 	}

@@ -123,7 +123,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 	} else if isCopyUpload {
 		var n *Node
-		n, err = LoadUnauth(params["copy_data"])
+		n, err = Load(params["copy_data"])
 		if err != nil {
 			return err
 		}
@@ -179,7 +179,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 
 		var n *Node
-		n, err = LoadUnauth(params["parent_node"])
+		n, err = Load(params["parent_node"])
 		if err != nil {
 			return err
 		}
@@ -349,7 +349,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 func (node *Node) Save() (err error) {
 	node.UpdateVersion()
 	if len(node.Revisions) == 0 || node.Revisions[len(node.Revisions)-1].Version != node.Version {
-		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Public, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified, node.Type, node.Subset}
+		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified, node.Type, node.Subset}
 		node.Revisions = append(node.Revisions, n)
 	}
 	if node.CreatedOn.String() == "0001-01-01 00:00:00 +0000 UTC" {
