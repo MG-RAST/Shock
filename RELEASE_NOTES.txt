@@ -1,0 +1,16 @@
+# v0.9.1
+
+Modified node ACL's to explicitly include a "public" string in the ACL if
+that ACL is public. The previous behavior was to consider an ACL "public"
+if that ACL was empty. This was restrictive in terms of managing ACL's.
+Also, the "Public" field was removed from the node document because this
+information will be solely managed by the ACL's.
+
+To remove the "Public" field from all nodes in an existing Shock database,
+the following mongo commands should be executed:
+> use ShockDB
+> db.Nodes.update(
+  {},
+  { $unset: {'public':1} },
+  { multi: true }
+)
