@@ -26,6 +26,7 @@ var (
 // GET is the only action implemented here.
 func AclRequest(ctx context.Context) {
 	nid := ctx.PathValue("nid")
+	rmeth := ctx.HttpRequest().Method
 
 	u, err := request.Authenticate(ctx.HttpRequest())
 	if err != nil && err.Error() != e.NoAuth {
@@ -35,7 +36,7 @@ func AclRequest(ctx context.Context) {
 
 	// public user (no auth) can perform a GET operation with the proper node permissions
 	if u == nil {
-		if conf.ANON_READ {
+		if rmeth == "GET" && conf.ANON_READ {
 			u = &user.User{Uuid: "public"}
 		} else {
 			responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
@@ -70,7 +71,7 @@ func AclRequest(ctx context.Context) {
 		return
 	}
 
-	if ctx.HttpRequest().Method == "GET" {
+	if rmeth == "GET" {
 		responder.RespondWithData(ctx, n.Acl)
 	} else {
 		responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
