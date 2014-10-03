@@ -45,15 +45,15 @@ func AclRequest(ctx context.Context) {
 	}
 
 	// Load node by id
-	n, err := node.LoadUnauth(nid)
+	n, err := node.Load(nid)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
+			responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
 			return
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			err_msg := "Err@acl:LoadNode: " + nid + err.Error()
+			err_msg := "Err@node_Acl:LoadNode: " + nid + err.Error()
 			logger.Error(err_msg)
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			return
@@ -97,15 +97,15 @@ func AclTypedRequest(ctx context.Context) {
 	}
 
 	// Load node by id
-	n, err := node.LoadUnauth(nid)
+	n, err := node.Load(nid)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
+			responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
 			return
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			err_msg := "Err@acl:LoadNode: " + nid + err.Error()
+			err_msg := "Err@node_Acl:LoadNode: " + nid + err.Error()
 			logger.Error(err_msg)
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			return

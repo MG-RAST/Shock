@@ -123,7 +123,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 	} else if isCopyUpload {
 		var n *Node
-		n, err = LoadUnauth(params["copy_data"])
+		n, err = Load(params["copy_data"])
 		if err != nil {
 			return err
 		}
@@ -179,7 +179,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 
 		var n *Node
-		n, err = LoadUnauth(params["parent_node"])
+		n, err = Load(params["parent_node"])
 		if err != nil {
 			return err
 		}

@@ -37,22 +37,20 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		return request.AuthError(err, ctx)
 	}
 
-	// Fake public user
+	// public user (no auth) can be used in some cases
 	if u == nil {
 		if conf.ANON_READ {
-			u = &user.User{Uuid: ""}
+			u = &user.User{Uuid: "public"}
 		} else {
 			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
 		}
 	}
 
-	// Load node and handle user unauthorized
-	n, err := node.Load(id, u)
+	// Load node by id
+	n, err := node.Load(id)
 	if err != nil {
-		if err.Error() == e.UnAuth {
-			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
-		} else if err == mgo.ErrNotFound {
-			return responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
+		if err == mgo.ErrNotFound {
+			return responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
@@ -60,6 +58,11 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			logger.Error(err_msg)
 			return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 		}
+	}
+
+	rights := n.Acl.Check(u.Uuid)
+	if rights["read"] == false && u.Admin == false && n.Acl.Owner != u.Uuid {
+		return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 	}
 
 	// Gather query params
