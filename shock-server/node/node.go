@@ -21,7 +21,6 @@ type Node struct {
 	Version      string            `bson:"version" json:"version"`
 	File         file.File         `bson:"file" json:"file"`
 	Attributes   interface{}       `bson:"attributes" json:"attributes"`
-	Public       bool              `bson:"public" json:"public"`
 	Indexes      Indexes           `bson:"indexes" json:"indexes"`
 	Acl          acl.Acl           `bson:"acl" json:"-"`
 	VersionParts map[string]string `bson:"version_parts" json:"-"`
@@ -138,10 +137,8 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 	if u.Uuid != "" {
 		node.Acl.SetOwner(u.Uuid)
 		node.Acl.Set(u.Uuid, acl.Rights{"read": true, "write": true, "delete": true})
-		node.Public = false
 	} else {
 		node.Acl = acl.Acl{Owner: "", Read: make([]string, 0), Write: make([]string, 0), Delete: make([]string, 0)}
-		node.Public = true
 	}
 
 	err = node.Mkdir()
