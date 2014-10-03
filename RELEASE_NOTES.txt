@@ -1,4 +1,4 @@
-# v0.9.1
+# v0.9.2
 
 Modified node ACL's to explicitly include a "public" string in the ACL if
 that ACL is public. The previous behavior was to consider an ACL "public"
@@ -14,3 +14,44 @@ the following mongo commands should be executed:
   { $unset: {'public':1} },
   { multi: true }
 )
+
+The permissions for specific Shock actions are listed below:
+
+#####POST
+ 
+* Permitted by: everyone
+  - /node create node
+
+#####GET
+
+* Permitted by: everyone
+  - / resource listing
+  - /wiki/  this documentation
+
+* Permitted by: admin, node owner, users in read ACL, or everyone if node is publicly readable
+  - /node  list nodes, query
+  - /node/&lt;node_id&gt;  view node, download file (full or partial)
+  - /node/&lt;node_id&gt;/acl  view node acls
+  - /node/&lt;node_id&gt;/acl/&lt;type&gt;  view node acls of type &lt;type&gt;
+
+#####PUT
+
+* Permitted by: admin, node owner, users in write ACL, or everyone if node is publicly writable
+  - /node/&lt;node_id&gt;  modify node (e.g. update attributes of existing node)
+  - /node/&lt;node_id&gt;/acl  modify node acls
+  - /node/&lt;node_id&gt;/acl/&lt;type&gt;  modify node acls of type &lt;type&gt;
+  - /node/&lt;node_id&gt;/index/&lt;type&gt;  create node indexes
+
+#####DELETE
+
+* Permitted by: admin, node owner, users in delete ACL, or everyone if node is publicly deletable
+  - /node/&lt;node_id&gt; delete node
+
+* Permitted by: admin, node owner, users in write ACL, or everyone if node is publicly writable
+  - /node/&lt;node_id&gt;/inde/&lt;type&gt; delete node index
+
+* Permitted by: admin, node owner, users in write ACL, or everyone if node is publicly writable
+  - /node/&lt;node_id&gt;/acl/&lt;type&gt;?users=<user-ids_or_uuids> delete users from ACL
+
+
+NOTE: Although a node may be designated as publicly readable, writable, or deletable, user authentication may still be required depending on the Shock server's configuration.
