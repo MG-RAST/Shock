@@ -16,10 +16,10 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	//	"time"
 )
 
-type M map[string]interface{}
-type ListOfMaps []M
+const shortForm = "2006-01-02"
 
 // GET: /node
 // To do:
@@ -35,17 +35,20 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 
 	// Setup query and nodes objects
 	q := bson.M{}
+	qAcls := bson.M{}
+	qOpts := bson.M{}
+	qPerm := bson.M{}
 	nodes := node.Nodes{}
 
 	if u != nil {
 		// Admin sees all
 		if !u.Admin {
-			q["$or"] = []bson.M{bson.M{"acl.read": "public"}, bson.M{"acl.read": u.Uuid}, bson.M{"acl.owner": u.Uuid}}
+			qPerm["$or"] = []bson.M{bson.M{"acl.read": "public"}, bson.M{"acl.read": u.Uuid}, bson.M{"acl.owner": u.Uuid}}
 		}
 	} else {
 		if conf.ANON_READ {
 			// select on only nodes that are publicly readable
-			q["acl.read"] = "public"
+			qPerm["acl.read"] = "public"
 		} else {
 			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
 		}
@@ -61,38 +64,21 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 				value := query.Get(key)
 				if value != "" {
 					if numValue, err := strconv.Atoi(value); err == nil {
-						q["$or"] = ListOfMaps{{keyStr: value}, {keyStr: numValue}}
+						qOpts["$or"] = []bson.M{bson.M{keyStr: value}, bson.M{keyStr: numValue}}
 					} else if value == "null" {
-						q["$or"] = ListOfMaps{{keyStr: value}, {keyStr: nil}}
+						qOpts["$or"] = []bson.M{bson.M{keyStr: value}, bson.M{keyStr: nil}}
 					} else {
-						q[keyStr] = value
+						qOpts[keyStr] = value
 					}
 				} else {
-					existsMap := map[string]bool{
-						"$exists": true,
-					}
-					q[keyStr] = existsMap
+					qOpts[keyStr] = map[string]bool{"$exists": true}
 				}
 			}
 		}
 	} else if _, ok := query["querynode"]; ok {
 		for key := range query {
 			if _, found := paramlist[key]; !found {
-				value := query.Get(key)
-				if value != "" {
-					if numValue, err := strconv.Atoi(value); err == nil {
-						q["$or"] = ListOfMaps{{key: value}, {key: numValue}}
-					} else if value == "null" {
-						q["$or"] = ListOfMaps{{key: value}, {key: nil}}
-					} else {
-						q[key] = value
-					}
-				} else {
-					existsMap := map[string]bool{
-						"$exists": true,
-					}
-					q[key] = existsMap
-				}
+
 			}
 		}
 	}
@@ -107,6 +93,8 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 		offset = util.ToInt(query.Get("offset"))
 	}
 
+	var MArray []bson.M
+
 	// Allowing user to query based on ACL's with a comma-separated list of users.
 	// Users can be written as a username or a UUID.
 	for _, atype := range []string{"owner", "read", "write", "delete"} {
@@ -114,7 +102,8 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 			users := strings.Split(query.Get(atype), ",")
 			for _, v := range users {
 				if uuid.Parse(v) != nil {
-					q["acl."+atype] = v
+					//qAcls["$and"] = {qAcls["$and"], bson.M{"acl." + atype: v}}
+					MArray = append(MArray, bson.M{"acl." + atype: v})
 				} else {
 					u := user.User{Username: v}
 					if err := u.SetMongoInfo(); err != nil {
@@ -122,34 +111,23 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 						logger.Error(err_msg)
 						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 					}
-					q["acl."+atype] = u.Uuid
+					MArray = append(MArray, bson.M{"acl." + atype: u.Uuid})
 				}
 			}
 		}
 	}
 
-	if _, ok := query["public_owner"]; ok {
-		// If search is for public_owner AND owner = non-empty string then return zero nodes, no nodes can match this query.
-		if _, exists := q["acl.owner"]; exists {
-			return responder.RespondWithPaginatedData(ctx, nodes, limit, offset, 0)
+	// Allowing users to query based on whether ACL is public
+	for _, atype := range []string{"owner", "read", "write", "delete"} {
+		if _, ok := query["public_"+atype]; ok {
+			MArray = append(MArray, bson.M{"acl." + atype: "public"})
 		}
-		q["acl.owner"] = ""
 	}
 
-	// Allowing users to query based on whether ACL is public
-	for _, atype := range []string{"read", "write", "delete"} {
-		if _, ok := query["public_"+atype]; ok {
-			sizeMap := map[string]int{
-				"$size": 0,
-			}
-			// Currently a node cannot be public and have an ACL at the same time, so this returns zero nodes.
-			if _, exists := q["acl."+atype]; exists {
-				return responder.RespondWithPaginatedData(ctx, nodes, limit, offset, 0)
-			} else {
-				q["acl."+atype] = sizeMap
-			}
-		}
-	}
+	qAcls["$and"] = MArray
+
+	// Combine permissions query with query parameters and ACL query into one AND clause
+	q["$and"] = []bson.M{qPerm, qOpts, qAcls}
 
 	// Get nodes from db
 	count, err := nodes.GetPaginated(q, limit, offset)
