@@ -19,8 +19,6 @@ import (
 	//	"time"
 )
 
-const shortForm = "2006-01-02"
-
 // GET: /node
 // To do:
 // - Iterate node queries
@@ -54,34 +52,91 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 		}
 	}
 
-	// Gather params to make db query. Do not include the
-	// following list.
+	// bson.M is a convenient alias for a map[string]interface{} map, useful for dealing with BSON in a native way.
+	var OptsMArray []bson.M
+
+	// Gather params to make db query. Do not include the following list.
 	paramlist := map[string]int{"limit": 1, "offset": 1, "query": 1, "querynode": 1, "owner": 1, "read": 1, "write": 1, "delete": 1, "public_owner": 1, "public_read": 1, "public_write": 1, "public_delete": 1}
 	if _, ok := query["query"]; ok {
 		for key := range query {
 			if _, found := paramlist[key]; !found {
 				keyStr := fmt.Sprintf("attributes.%s", key)
-				value := query.Get(key)
-				if value != "" {
-					if numValue, err := strconv.Atoi(value); err == nil {
-						qOpts["$or"] = []bson.M{bson.M{keyStr: value}, bson.M{keyStr: numValue}}
-					} else if value == "null" {
-						qOpts["$or"] = []bson.M{bson.M{keyStr: value}, bson.M{keyStr: nil}}
+				for _, value := range query[key] {
+					if value != "" {
+						if numValue, err := strconv.Atoi(value); err == nil {
+							OptsMArray = append(OptsMArray, bson.M{"$or": []bson.M{bson.M{keyStr: value}, bson.M{keyStr: numValue}}})
+						} else if value == "null" {
+							OptsMArray = append(OptsMArray, bson.M{"$or": []bson.M{bson.M{keyStr: value}, bson.M{keyStr: nil}}})
+						} else {
+							OptsMArray = append(OptsMArray, bson.M{keyStr: value})
+						}
 					} else {
-						qOpts[keyStr] = value
+						OptsMArray = append(OptsMArray, bson.M{keyStr: map[string]bool{"$exists": true}})
 					}
-				} else {
-					qOpts[keyStr] = map[string]bool{"$exists": true}
 				}
 			}
 		}
 	} else if _, ok := query["querynode"]; ok {
 		for key := range query {
 			if _, found := paramlist[key]; !found {
-
+				for _, value := range query[key] {
+					if value != "" {
+						if numValue, err := strconv.Atoi(value); err == nil {
+							OptsMArray = append(OptsMArray, bson.M{"$or": []bson.M{bson.M{key: value}, bson.M{key: numValue}}})
+						} else if value == "null" {
+							OptsMArray = append(OptsMArray, bson.M{"$or": []bson.M{bson.M{key: value}, bson.M{key: nil}}})
+						} else {
+							OptsMArray = append(OptsMArray, bson.M{key: value})
+						}
+					} else {
+						OptsMArray = append(OptsMArray, bson.M{key: map[string]bool{"$exists": true}})
+					}
+				}
 			}
 		}
 	}
+
+	if len(OptsMArray) > 0 {
+		qOpts["$and"] = OptsMArray
+	}
+
+	// bson.M is a convenient alias for a map[string]interface{} map, useful for dealing with BSON in a native way.
+	var AclsMArray []bson.M
+
+	// Allowing user to query based on ACL's with a comma-separated list of users.
+	// Users can be written as a username or a UUID.
+	for _, atype := range []string{"owner", "read", "write", "delete"} {
+		if _, ok := query[atype]; ok {
+			users := strings.Split(query.Get(atype), ",")
+			for _, v := range users {
+				if uuid.Parse(v) != nil {
+					AclsMArray = append(AclsMArray, bson.M{"acl." + atype: v})
+				} else {
+					u := user.User{Username: v}
+					if err := u.SetMongoInfo(); err != nil {
+						err_msg := "err " + err.Error()
+						logger.Error(err_msg)
+						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					}
+					AclsMArray = append(AclsMArray, bson.M{"acl." + atype: u.Uuid})
+				}
+			}
+		}
+	}
+
+	// Allowing users to query based on whether ACL is public
+	for _, atype := range []string{"owner", "read", "write", "delete"} {
+		if _, ok := query["public_"+atype]; ok {
+			AclsMArray = append(AclsMArray, bson.M{"acl." + atype: "public"})
+		}
+	}
+
+	if len(AclsMArray) > 0 {
+		qAcls["$and"] = AclsMArray
+	}
+
+	// Combine permissions query with query parameters and ACL query into one AND clause
+	q["$and"] = []bson.M{qPerm, qOpts, qAcls}
 
 	// defaults
 	limit := 25
@@ -92,42 +147,6 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 	if _, ok := query["offset"]; ok {
 		offset = util.ToInt(query.Get("offset"))
 	}
-
-	var MArray []bson.M
-
-	// Allowing user to query based on ACL's with a comma-separated list of users.
-	// Users can be written as a username or a UUID.
-	for _, atype := range []string{"owner", "read", "write", "delete"} {
-		if _, ok := query[atype]; ok {
-			users := strings.Split(query.Get(atype), ",")
-			for _, v := range users {
-				if uuid.Parse(v) != nil {
-					//qAcls["$and"] = {qAcls["$and"], bson.M{"acl." + atype: v}}
-					MArray = append(MArray, bson.M{"acl." + atype: v})
-				} else {
-					u := user.User{Username: v}
-					if err := u.SetMongoInfo(); err != nil {
-						err_msg := "err " + err.Error()
-						logger.Error(err_msg)
-						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
-					}
-					MArray = append(MArray, bson.M{"acl." + atype: u.Uuid})
-				}
-			}
-		}
-	}
-
-	// Allowing users to query based on whether ACL is public
-	for _, atype := range []string{"owner", "read", "write", "delete"} {
-		if _, ok := query["public_"+atype]; ok {
-			MArray = append(MArray, bson.M{"acl." + atype: "public"})
-		}
-	}
-
-	qAcls["$and"] = MArray
-
-	// Combine permissions query with query parameters and ACL query into one AND clause
-	q["$and"] = []bson.M{qPerm, qOpts, qAcls}
 
 	// Get nodes from db
 	count, err := nodes.GetPaginated(q, limit, offset)
