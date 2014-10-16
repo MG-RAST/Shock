@@ -16,10 +16,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	//	"time"
 )
-
-type M map[string]interface{}
-type ListOfMaps []M
 
 // GET: /node
 // To do:
@@ -35,67 +33,110 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 
 	// Setup query and nodes objects
 	q := bson.M{}
+	qAcls := bson.M{}
+	qOpts := bson.M{}
+	qPerm := bson.M{}
 	nodes := node.Nodes{}
 
 	if u != nil {
 		// Admin sees all
 		if !u.Admin {
-			q["$or"] = []bson.M{bson.M{"acl.read": "public"}, bson.M{"acl.read": u.Uuid}, bson.M{"acl.owner": u.Uuid}}
+			qPerm["$or"] = []bson.M{bson.M{"acl.read": "public"}, bson.M{"acl.read": u.Uuid}, bson.M{"acl.owner": u.Uuid}}
 		}
 	} else {
 		if conf.ANON_READ {
 			// select on only nodes that are publicly readable
-			q["acl.read"] = "public"
+			qPerm["acl.read"] = "public"
 		} else {
 			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
 		}
 	}
 
-	// Gather params to make db query. Do not include the
-	// following list.
+	// bson.M is a convenient alias for a map[string]interface{} map, useful for dealing with BSON in a native way.
+	var OptsMArray []bson.M
+
+	// Gather params to make db query. Do not include the following list.
 	paramlist := map[string]int{"limit": 1, "offset": 1, "query": 1, "querynode": 1, "owner": 1, "read": 1, "write": 1, "delete": 1, "public_owner": 1, "public_read": 1, "public_write": 1, "public_delete": 1}
 	if _, ok := query["query"]; ok {
 		for key := range query {
 			if _, found := paramlist[key]; !found {
 				keyStr := fmt.Sprintf("attributes.%s", key)
-				value := query.Get(key)
-				if value != "" {
-					if numValue, err := strconv.Atoi(value); err == nil {
-						q["$or"] = ListOfMaps{{keyStr: value}, {keyStr: numValue}}
-					} else if value == "null" {
-						q["$or"] = ListOfMaps{{keyStr: value}, {keyStr: nil}}
+				for _, value := range query[key] {
+					if value != "" {
+						if numValue, err := strconv.Atoi(value); err == nil {
+							OptsMArray = append(OptsMArray, bson.M{"$or": []bson.M{bson.M{keyStr: value}, bson.M{keyStr: numValue}}})
+						} else if value == "null" {
+							OptsMArray = append(OptsMArray, bson.M{"$or": []bson.M{bson.M{keyStr: value}, bson.M{keyStr: nil}}})
+						} else {
+							OptsMArray = append(OptsMArray, bson.M{keyStr: value})
+						}
 					} else {
-						q[keyStr] = value
+						OptsMArray = append(OptsMArray, bson.M{keyStr: map[string]bool{"$exists": true}})
 					}
-				} else {
-					existsMap := map[string]bool{
-						"$exists": true,
-					}
-					q[keyStr] = existsMap
 				}
 			}
 		}
 	} else if _, ok := query["querynode"]; ok {
 		for key := range query {
 			if _, found := paramlist[key]; !found {
-				value := query.Get(key)
-				if value != "" {
-					if numValue, err := strconv.Atoi(value); err == nil {
-						q["$or"] = ListOfMaps{{key: value}, {key: numValue}}
-					} else if value == "null" {
-						q["$or"] = ListOfMaps{{key: value}, {key: nil}}
+				for _, value := range query[key] {
+					if value != "" {
+						if numValue, err := strconv.Atoi(value); err == nil {
+							OptsMArray = append(OptsMArray, bson.M{"$or": []bson.M{bson.M{key: value}, bson.M{key: numValue}}})
+						} else if value == "null" {
+							OptsMArray = append(OptsMArray, bson.M{"$or": []bson.M{bson.M{key: value}, bson.M{key: nil}}})
+						} else {
+							OptsMArray = append(OptsMArray, bson.M{key: value})
+						}
 					} else {
-						q[key] = value
+						OptsMArray = append(OptsMArray, bson.M{key: map[string]bool{"$exists": true}})
 					}
-				} else {
-					existsMap := map[string]bool{
-						"$exists": true,
-					}
-					q[key] = existsMap
 				}
 			}
 		}
 	}
+
+	if len(OptsMArray) > 0 {
+		qOpts["$and"] = OptsMArray
+	}
+
+	// bson.M is a convenient alias for a map[string]interface{} map, useful for dealing with BSON in a native way.
+	var AclsMArray []bson.M
+
+	// Allowing user to query based on ACL's with a comma-separated list of users.
+	// Users can be written as a username or a UUID.
+	for _, atype := range []string{"owner", "read", "write", "delete"} {
+		if _, ok := query[atype]; ok {
+			users := strings.Split(query.Get(atype), ",")
+			for _, v := range users {
+				if uuid.Parse(v) != nil {
+					AclsMArray = append(AclsMArray, bson.M{"acl." + atype: v})
+				} else {
+					u := user.User{Username: v}
+					if err := u.SetMongoInfo(); err != nil {
+						err_msg := "err " + err.Error()
+						logger.Error(err_msg)
+						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					}
+					AclsMArray = append(AclsMArray, bson.M{"acl." + atype: u.Uuid})
+				}
+			}
+		}
+	}
+
+	// Allowing users to query based on whether ACL is public
+	for _, atype := range []string{"owner", "read", "write", "delete"} {
+		if _, ok := query["public_"+atype]; ok {
+			AclsMArray = append(AclsMArray, bson.M{"acl." + atype: "public"})
+		}
+	}
+
+	if len(AclsMArray) > 0 {
+		qAcls["$and"] = AclsMArray
+	}
+
+	// Combine permissions query with query parameters and ACL query into one AND clause
+	q["$and"] = []bson.M{qPerm, qOpts, qAcls}
 
 	// defaults
 	limit := 25
@@ -105,50 +146,6 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 	}
 	if _, ok := query["offset"]; ok {
 		offset = util.ToInt(query.Get("offset"))
-	}
-
-	// Allowing user to query based on ACL's with a comma-separated list of users.
-	// Users can be written as a username or a UUID.
-	for _, atype := range []string{"owner", "read", "write", "delete"} {
-		if _, ok := query[atype]; ok {
-			users := strings.Split(query.Get(atype), ",")
-			for _, v := range users {
-				if uuid.Parse(v) != nil {
-					q["acl."+atype] = v
-				} else {
-					u := user.User{Username: v}
-					if err := u.SetMongoInfo(); err != nil {
-						err_msg := "err " + err.Error()
-						logger.Error(err_msg)
-						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
-					}
-					q["acl."+atype] = u.Uuid
-				}
-			}
-		}
-	}
-
-	if _, ok := query["public_owner"]; ok {
-		// If search is for public_owner AND owner = non-empty string then return zero nodes, no nodes can match this query.
-		if _, exists := q["acl.owner"]; exists {
-			return responder.RespondWithPaginatedData(ctx, nodes, limit, offset, 0)
-		}
-		q["acl.owner"] = ""
-	}
-
-	// Allowing users to query based on whether ACL is public
-	for _, atype := range []string{"read", "write", "delete"} {
-		if _, ok := query["public_"+atype]; ok {
-			sizeMap := map[string]int{
-				"$size": 0,
-			}
-			// Currently a node cannot be public and have an ACL at the same time, so this returns zero nodes.
-			if _, exists := q["acl."+atype]; exists {
-				return responder.RespondWithPaginatedData(ctx, nodes, limit, offset, 0)
-			} else {
-				q["acl."+atype] = sizeMap
-			}
-		}
 	}
 
 	// Get nodes from db
