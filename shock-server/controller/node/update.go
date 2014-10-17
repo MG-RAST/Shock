@@ -52,6 +52,8 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 		logger.Perf("START PUT data: " + id)
 	}
 	params, files, err := request.ParseMultipartForm(ctx.HttpRequest())
+	// clean up temp dir !!
+	defer node.RemoveAllFormFiles(files)
 	if err != nil {
 		err_msg := "err@node_ParseMultipartForm: " + err.Error()
 		logger.Error(err_msg)
