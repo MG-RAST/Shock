@@ -13,8 +13,6 @@ use LWP::UserAgent;
 use URI::Escape;
 use HTTP::Request::Common;
 
-
-
 our $global_debug = 0;
 
 1;
@@ -297,6 +295,8 @@ sub post_node {
 }
 
 
+
+
 sub delete_node {
     my ($self, $node) = @_;
     
@@ -343,6 +343,8 @@ sub querynode { # https://github.com/MG-RAST/Shock/wiki/API
 	
 	$query{'querynode'} = undef;
 	
+	my $limit = $query{'limit'};
+	
 	my $response = $self->get('node', \%query);
 	#print Dumper ($response);
 	
@@ -353,6 +355,10 @@ sub querynode { # https://github.com/MG-RAST/Shock/wiki/API
 	
 	unless (defined $response->{'total_count'}) {
 		die;
+	}
+	
+	if (defined $limit) {
+		return $response;
 	}
 	
 	if ($response->{'total_count'} > 25) {
@@ -647,6 +653,10 @@ sub upload_temporary_files {
 sub permisson_readable {
 	my ($self, $nodeid) = @_;
 	
+	unless (defined $nodeid) {
+		die "nodeid not defined";
+	}
+	
 	my $node_accls = $self->get("node/$nodeid/acl") || return undef;
 	unless ($node_accls->{'status'} == 200) {
 		return undef;
@@ -810,5 +820,15 @@ sub cached_download {
 }
 
 
+# helper function
 
+sub getNodeFromURL {
+	my ($url) = @_;
+	#print "url: $url\n";
+	my ($node) = $url =~ /node\/(.*)(\?download)?/;
+	#print "node: $node\n";
+	
+	return $node;
+	
+}
 
