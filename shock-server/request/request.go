@@ -1,6 +1,8 @@
 package request
 
 import (
+	"compress/bzip2"
+	"compress/gzip"
 	"crypto/md5"
 	"errors"
 	"fmt"
@@ -119,19 +121,40 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 					return nil, nil, errors.New("invalid file param: " + part.FormName())
 				}
 				tmpPath = fmt.Sprintf("%s/temp/%d%d", conf.Conf["data-path"], rand.Int(), rand.Int())
-				files[part.FormName()] = node.FormFile{Name: part.FileName(), Path: tmpPath, Checksum: make(map[string]string)}
+				formfile := node.FormFile{Name: part.FileName(), Path: tmpPath, Checksum: make(map[string]string)}
 				if tmpFile, err := os.Create(tmpPath); err == nil {
 					defer tmpFile.Close()
-					if part.FormName() == "upload" {
+					if util.IsValidUploadFile(part.FormName()) {
 						md5h := md5.New()
 						dst := io.MultiWriter(tmpFile, md5h)
-						if _, err = io.Copy(dst, part); err != nil {
-							return nil, nil, err
+						if part.FormName() == "upload" {
+							if _, err = io.Copy(dst, part); err != nil {
+							    // tmpFile.Close()
+							    // rm tmpFile
+								return nil, nil, err
+							}
+						} else if part.FormName() == "gzip" {
+							g, gerr := gzip.NewReader(part)
+							if gerr != nil {
+								return nil, nil, gerr
+							}
+							defer g.Close()
+							if _, err = io.Copy(dst, g); err != nil {
+								return nil, nil, err
+							}
+							formfile.Name = g.Header.Name
+						} else if part.FormName() == "bzip2" {
+							b := bzip2.NewReader(part)
+							if _, err = io.Copy(dst, b); err != nil {
+								return nil, nil, err
+							}
+							formfile.Name = util.StripSuffix(part.FileName())
 						}
-						files[part.FormName()].Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
+						formfile.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
 					} else {
 						io.Copy(tmpFile, part)
 					}
+					files[part.FormName()] = formfile
 				} else {
 					return nil, nil, err
 				}

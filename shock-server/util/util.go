@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -15,7 +16,8 @@ const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"
 // Arrays to check for valid param and file form names for node creation and updating, and also acl modification.
 // Note: indexing and querying do not use functions that use these arrays and thus we don't have to include those field names.
 var validParams = []string{"action", "all", "attributes_str", "copy_data", "copy_indexes", "delete", "file_name", "format", "ids", "index_name", "linkage", "operation", "owner", "parent_index", "parent_node", "parts", "path", "read", "source", "tags", "type", "users", "write"}
-var validFiles = []string{"attributes", "subset_indices", "upload"}
+var validFiles = []string{"attributes", "subset_indices", "upload", "gzip", "bzip2"}
+var validUpload = []string{"upload", "gzip", "bzip2"}
 
 type UrlResponse struct {
 	Url       string `json:"url"`
@@ -79,6 +81,13 @@ func StringInSlice(a string, list []string) bool {
 	return false
 }
 
+func StripSuffix(file string) string {
+	if i := strings.LastIndex(file, "."); i > -1 {
+		return file[:i]
+	}
+	return file
+}
+
 func IsValidParamName(a string) bool {
 	for _, b := range validParams {
 		if b == a {
@@ -90,6 +99,15 @@ func IsValidParamName(a string) bool {
 
 func IsValidFileName(a string) bool {
 	for _, b := range validFiles {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+func IsValidUploadFile(a string) bool {
+	for _, b := range validUpload {
 		if b == a {
 			return true
 		}
