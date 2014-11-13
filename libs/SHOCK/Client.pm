@@ -12,6 +12,7 @@ use JSON;
 use LWP::UserAgent;
 use URI::Escape;
 use HTTP::Request::Common;
+use HTTP::Request::StreamingUpload;
 
 our $global_debug = 0;
 
@@ -563,26 +564,30 @@ sub upload {
 	
 	if (defined $hash{fh}) {
 		my $response = undef;
+		print STDERR "using StreamingUpload\n" if $self->debug;
+		
 		eval {
 			my $post = HTTP::Request::StreamingUpload->new(
-				POST => $Conf::shock_url.'/node',
-				fh => $io_handle,
+				POST => $self->shock_url.'/node',
+				fh => $hash{fh},
 				headers => HTTP::Headers->new(
 					'Content_Type' => 'application/octet-stream',
 					'Authorization' => 'OAuth '.$self->token
 					)
 			);
+			print Dumper($post)."\n" if $self->debug;
 			my $req = LWP::UserAgent->new->request($post);
 			$response = $self->json->decode( $req->content );
 		};
 		if ($@ || (! ref($response))) {
-			print STDERR "Unable to connect to Shock server";
+			print STDERR "Unable to connect to Shock server\n";
 			return undef;
 		} elsif (exists($response->{error}) && $response->{error}) {
-			print STDERR "Unable to POST to Shock: ".$response->{error}[0];
+			print STDERR "Unable to POST to Shock: ".$response->{error}[0]."\n";
 			return undef;
 		}
-		
+	
+	
 		return $response;
 	}
 	

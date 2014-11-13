@@ -5,6 +5,8 @@ use warnings;
 
 use lib ".";
 use SHOCK::Client;
+use Data::Dumper;
+
 
 eval "use USAGEPOD qw(parse_options); 1"
 or die "module USAGEPOD.pm required: wget https://raw.github.com/MG-RAST/MG-RAST-Tools/master/tools/lib/USAGEPOD.pm";
@@ -24,6 +26,7 @@ my ($h, $help_text) = &parse_options (
 	'Actions:',
 	[ 'show'						, "show shock node and its attributes"],
 	[ 'upload'						, "upload files to Shock, file as parameter"],
+	[ 'stream'						, "use command stdout to upload to shock"],
 	[ 'delete'						, "delete Shock node"],
 	[ 'query=s'						, "querystring only for attributes, e.g. key=value,key2=value2"],
 	[ 'querynode=s'					, "querystring, e.g. owner=value,attributes.key2=value2, this allows querying of fields outside of attributes section"],
@@ -311,7 +314,7 @@ if (defined($value = $h->{"query"})) {
 	
 	
 	exit(0);
-} elsif (defined($h->{"upload"})) {
+} elsif (defined($h->{"upload"}) || defined($h->{"stream"}) ) {
 	
 	
 	my @files = @ARGV;
@@ -341,7 +344,20 @@ if (defined($value = $h->{"query"})) {
 		print "uploading ".$file."...\n" if $debug;
 		
 		#my $shock_node = $attr ? $shock->upload('file' => $file, 'attr' => $attr) : $shock->upload('file' => $file);
-		my $shock_node = $shock->upload('file' => $file, $attr_type => $attr_value);
+		my $shock_node =undef;
+		if (defined($h->{"upload"})) {
+			$shock_node = $shock->upload('file' => $file, $attr_type => $attr_value);
+		} elsif (defined($h->{"stream"})) {
+			print STDERR "invoke: ".$file."\n";
+			open (my $fh, $file." |") || die "Failed: $!\n";
+			
+			$shock_node = $shock->upload('fh' => $fh, $attr_type => $attr_value);
+			print Dumper($shock_node);
+			close($fh); # do I need to close ?
+			
+		} else {
+			die;
+		}
 		unless (defined $shock_node) {
 			die "unknown error uploading $file";
 		}
