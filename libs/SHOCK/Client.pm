@@ -513,6 +513,7 @@ sub create_node {
 #example:     upload(data => 'hello world'), where data is scalar or reference to scalar
 #example:  or upload(file => 'myworld.txt')
 #example:  or upload(file => 'myworld.txt', attr => {some hash})
+#example:  or upload(fh => filehandle, attr => {some hash})
 # TODO implement PUT here or in another function
 sub upload {
     my ($self, %hash) = @_;
@@ -558,7 +559,33 @@ sub upload {
         #$content->{attributes} = $self->_get_handle($hash{attr});
 	#	$content->{'attributes'} = [undef, "n/a", Content => $hash{'attr'}]
     #}
-    
+	
+	
+	if (defined $hash{fh}) {
+		my $response = undef;
+		eval {
+			my $post = HTTP::Request::StreamingUpload->new(
+				POST => $Conf::shock_url.'/node',
+				fh => $io_handle,
+				headers => HTTP::Headers->new(
+					'Content_Type' => 'application/octet-stream',
+					'Authorization' => 'OAuth '.$self->token
+					)
+			);
+			my $req = LWP::UserAgent->new->request($post);
+			$response = $self->json->decode( $req->content );
+		};
+		if ($@ || (! ref($response))) {
+			print STDERR "Unable to connect to Shock server";
+			return undef;
+		} elsif (exists($response->{error}) && $response->{error}) {
+			print STDERR "Unable to POST to Shock: ".$response->{error}[0];
+			return undef;
+		}
+		
+		return $response;
+	}
+	
     $HTTP::Request::Common::DYNAMIC_FILE_UPLOAD = 1;
 	
 	return $self->post('node', undef, {Content_Type => 'multipart/form-data', Content => $content}); # resource, query, headers
