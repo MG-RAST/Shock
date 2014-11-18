@@ -141,11 +141,15 @@ func Bool(s string) bool {
 
 // Print prints the configuration loads to stdout
 func Print() {
-	fmt.Printf("####### Anonymous ######\nread:\t%s\nwrite:\t%s\ndelete:\t%s\n\n", ANON_DELETE, ANON_DELETE, ANON_DELETE)
-	if Conf["auth-type"] == "basic" {
-		fmt.Printf("##### Auth #####\ntype:\tbasic\n\n")
-	} else if Conf["auth-type"] == "globus" {
-		fmt.Printf("##### Auth #####\ntype:\tglobus\ntoken_url:\t%s\nprofile_url:\t%s\n\n", Conf["globus_token_url"], Conf["globus_profile_url"])
+	fmt.Printf("####### Anonymous ######\nread:\t%v\nwrite:\t%v\ndelete:\t%v\n\n", ANON_DELETE, ANON_DELETE, ANON_DELETE)
+	if (Conf["globus_token_url"] != "" && Conf["globus_profile_url"] != "") || Conf["mgrast_oauth_url"] != "" {
+		fmt.Printf("##### Auth #####\n")
+		if Conf["globus_token_url"] != "" && Conf["globus_profile_url"] != "" {
+			fmt.Printf("type:\tglobus\ntoken_url:\t%s\nprofile_url:\t%s\n\n", Conf["globus_token_url"], Conf["globus_profile_url"])
+		}
+		if Conf["mgrast_oauth_url"] != "" {
+			fmt.Printf("type:\tmgrast\noauth_url:\t%s\n\n", Conf["mgrast_oauth_url"])
+		}
 	}
 	fmt.Printf("##### Admin #####\nusers:\t%s\n\n", Conf["admin-users"])
 	fmt.Printf("##### Paths #####\nsite:\t%s\ndata:\t%s\nlogs:\t%s\nlocal_paths:\t%s\n\n", Conf["site-path"], Conf["data-path"], Conf["logs-path"], Conf["local-paths"])
