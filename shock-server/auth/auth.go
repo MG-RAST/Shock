@@ -6,7 +6,7 @@ import (
 	"fmt"
 	//"github.com/MG-RAST/Shock/shock-server/auth/basic"
 	"github.com/MG-RAST/Shock/shock-server/auth/globus"
-	//"github.com/MG-RAST/Shock/shock-server/auth/mgrast"
+	"github.com/MG-RAST/Shock/shock-server/auth/mgrast"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
@@ -27,9 +27,9 @@ func Initialize() {
 	if conf.Conf["globus_token_url"] != "" && conf.Conf["globus_profile_url"] != "" {
 		authMethods = append(authMethods, globus.Auth)
 	}
-	//if conf.Conf["mgrast_oauth_url"] != "" {
-	//	authMethods = append(authMethods, mgrast.Auth)
-	//}
+	if conf.Conf["mgrast_oauth_url"] != "" {
+		authMethods = append(authMethods, mgrast.Auth)
+	}
 }
 
 func Authenticate(header string) (u *user.User, err error) {
@@ -47,8 +47,6 @@ func Authenticate(header string) (u *user.User, err error) {
 					authCache.add(header, u)
 					return u, nil
 				}
-			} else {
-				return nil, err
 			}
 		}
 	}
