@@ -56,9 +56,9 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 	var OptsMArray []bson.M
 
 	// Gather params to make db query. Do not include the following list.
-	paramlist := map[string]int{"limit": 1, "offset": 1, "query": 1, "querynode": 1, "owner": 1, "read": 1, "write": 1, "delete": 1, "public_owner": 1, "public_read": 1, "public_write": 1, "public_delete": 1}
 	if _, ok := query["query"]; ok {
 		for key := range query {
+			paramlist := map[string]int{"limit": 1, "offset": 1, "query": 1}
 			if _, found := paramlist[key]; !found {
 				keyStr := fmt.Sprintf("attributes.%s", key)
 				for _, value := range query[key] {
@@ -78,6 +78,7 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 		}
 	} else if _, ok := query["querynode"]; ok {
 		for key := range query {
+			paramlist := map[string]int{"limit": 1, "offset": 1, "querynode": 1, "owner": 1, "read": 1, "write": 1, "delete": 1, "public_owner": 1, "public_read": 1, "public_write": 1, "public_delete": 1}
 			if _, found := paramlist[key]; !found {
 				for _, value := range query[key] {
 					if value != "" {
@@ -104,30 +105,32 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 	var AclsMArray []bson.M
 
 	// Allowing user to query based on ACL's with a comma-separated list of users.
+	// Restricting ACL queries to just the querynode operation.
 	// Users can be written as a username or a UUID.
-	for _, atype := range []string{"owner", "read", "write", "delete"} {
-		if _, ok := query[atype]; ok {
-			users := strings.Split(query.Get(atype), ",")
-			for _, v := range users {
-				if uuid.Parse(v) != nil {
-					AclsMArray = append(AclsMArray, bson.M{"acl." + atype: v})
-				} else {
-					u := user.User{Username: v}
-					if err := u.SetMongoInfo(); err != nil {
-						err_msg := "err " + err.Error()
-						logger.Error(err_msg)
-						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+	if _, qok := query["querynode"]; qok {
+		for _, atype := range []string{"owner", "read", "write", "delete"} {
+			if _, ok := query[atype]; ok {
+				users := strings.Split(query.Get(atype), ",")
+				for _, v := range users {
+					if uuid.Parse(v) != nil {
+						AclsMArray = append(AclsMArray, bson.M{"acl." + atype: v})
+					} else {
+						u := user.User{Username: v}
+						if err := u.SetMongoInfo(); err != nil {
+							err_msg := "err " + err.Error()
+							logger.Error(err_msg)
+							return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+						}
+						AclsMArray = append(AclsMArray, bson.M{"acl." + atype: u.Uuid})
 					}
-					AclsMArray = append(AclsMArray, bson.M{"acl." + atype: u.Uuid})
 				}
 			}
 		}
-	}
-
-	// Allowing users to query based on whether ACL is public
-	for _, atype := range []string{"owner", "read", "write", "delete"} {
-		if _, ok := query["public_"+atype]; ok {
-			AclsMArray = append(AclsMArray, bson.M{"acl." + atype: "public"})
+		// Allowing users to query based on whether ACL is public
+		for _, atype := range []string{"owner", "read", "write", "delete"} {
+			if _, ok := query["public_"+atype]; ok {
+				AclsMArray = append(AclsMArray, bson.M{"acl." + atype: "public"})
+			}
 		}
 	}
 
