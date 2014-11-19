@@ -56,7 +56,11 @@ func New() *Logger {
 		fmt.Fprintln(os.Stderr, "ERROR: error creating access log file")
 		os.Exit(1)
 	}
-	l.logs["access"].AddFilter("access", l4g.FINEST, accessf.SetFormat("[%D %T] %M").SetRotate(true).SetRotateDaily(true))
+	if conf.LOG_ROTATE {
+		l.logs["access"].AddFilter("access", l4g.FINEST, accessf.SetFormat("[%D %T] %M").SetRotate(true).SetRotateDaily(true))
+	} else {
+		l.logs["access"].AddFilter("access", l4g.FINEST, accessf.SetFormat("[%D %T] %M"))
+	}
 
 	l.logs["error"] = make(l4g.Logger)
 	errorf := l4g.NewFileLogWriter(conf.Conf["logs-path"]+"/error.log", false)
@@ -64,7 +68,11 @@ func New() *Logger {
 		fmt.Fprintln(os.Stderr, "ERROR: error creating error log file")
 		os.Exit(1)
 	}
-	l.logs["error"].AddFilter("error", l4g.FINEST, errorf.SetFormat("[%D %T] [%L] %M").SetRotate(true).SetRotateDaily(true))
+	if conf.LOG_ROTATE {
+		l.logs["error"].AddFilter("error", l4g.FINEST, errorf.SetFormat("[%D %T] [%L] %M").SetRotate(true).SetRotateDaily(true))
+	} else {
+		l.logs["error"].AddFilter("error", l4g.FINEST, errorf.SetFormat("[%D %T] [%L] %M"))
+	}
 
 	l.logs["perf"] = make(l4g.Logger)
 	perff := l4g.NewFileLogWriter(conf.Conf["logs-path"]+"/perf.log", false)
@@ -72,7 +80,11 @@ func New() *Logger {
 		fmt.Fprintln(os.Stderr, "ERROR: error creating perf log file")
 		os.Exit(1)
 	}
-	l.logs["perf"].AddFilter("perf", l4g.FINEST, perff.SetFormat("[%D %T] [%L] %M").SetRotate(true).SetRotateDaily(true))
+	if conf.LOG_ROTATE {
+		l.logs["perf"].AddFilter("perf", l4g.FINEST, perff.SetFormat("[%D %T] [%L] %M").SetRotate(true).SetRotateDaily(true))
+	} else {
+		l.logs["perf"].AddFilter("perf", l4g.FINEST, perff.SetFormat("[%D %T] [%L] %M"))
+	}
 
 	go func() {
 		select {
