@@ -33,6 +33,7 @@ api-url=http://localhost
 [Log]
 # Logs performance of some Shock operations
 perf_log=false
+rotate=true
 
 [Mongodb]
 # Mongodb configuration

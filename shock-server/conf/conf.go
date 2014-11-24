@@ -34,6 +34,9 @@ var (
 	ANON_READ   = true
 	ANON_WRITE  = false
 	ANON_DELETE = false
+
+	// Default is true, will rotate logs daily
+	LOG_ROTATE = true
 )
 
 // Initialize is an explicit init. Enables outside use
@@ -131,6 +134,8 @@ func Initialize() {
 	}
 
 	Conf["perf-log"], _ = c.String("Log", "perf_log")
+	LOG_ROTATE, _ = c.Bool("Log", "rotate")
+
 }
 
 // Bool is a convenience wrapper around strconv.ParseBool
@@ -162,5 +167,10 @@ func Print() {
 	fmt.Printf("##### Address #####\nip:\t%s\nport:\t%s\n\n", Conf["api-ip"], Conf["api-port"])
 	if Bool(Conf["perf-log"]) {
 		fmt.Printf("##### PerfLog enabled #####\n\n")
+	}
+	if LOG_ROTATE {
+		fmt.Printf("##### Log rotation enabled #####\n\n")
+	} else {
+		fmt.Printf("##### Log rotation disabled #####\n\n")
 	}
 }
