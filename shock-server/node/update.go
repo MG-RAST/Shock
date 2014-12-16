@@ -137,7 +137,22 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		node.File.Size = n.File.Size
 		node.File.Checksum = n.File.Checksum
 		node.File.Format = n.File.Format
-		node.Type = "copy"
+
+		if n.Type == "subset" {
+			node.Subset = n.Subset
+			subsetIndexFile := n.Path() + "/" + n.Id + ".subset.idx"
+			// The subset index file is required for creating a copy of a subset node.
+			if _, err := os.Stat(subsetIndexFile); err == nil {
+				if _, cerr := util.CopyFile(subsetIndexFile, node.Path()+"/"+node.Id+".subset.idx"); cerr != nil {
+					return cerr
+				}
+			} else {
+				return err
+			}
+			node.Type = "subset"
+		} else {
+			node.Type = "copy"
+		}
 
 		// Copy node indexes
 		if _, copyIndex := params["copy_indexes"]; copyIndex && (len(n.Indexes) > 0) {
