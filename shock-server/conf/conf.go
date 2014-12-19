@@ -146,7 +146,7 @@ func Bool(s string) bool {
 
 // Print prints the configuration loads to stdout
 func Print() {
-	fmt.Printf("####### Anonymous ######\nread:\t%v\nwrite:\t%v\ndelete:\t%v\n\n", ANON_DELETE, ANON_DELETE, ANON_DELETE)
+	fmt.Printf("####### Anonymous ######\nread:\t%v\nwrite:\t%v\ndelete:\t%v\n\n", ANON_READ, ANON_WRITE, ANON_DELETE)
 	if (Conf["globus_token_url"] != "" && Conf["globus_profile_url"] != "") || Conf["mgrast_oauth_url"] != "" {
 		fmt.Printf("##### Auth #####\n")
 		if Conf["globus_token_url"] != "" && Conf["globus_profile_url"] != "" {
