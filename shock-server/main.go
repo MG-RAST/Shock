@@ -28,14 +28,15 @@ import (
 )
 
 type resource struct {
-	A []string `json:"attribute_indexes"`
-	C string   `json:"contact"`
-	D string   `json:"documentation"`
-	I string   `json:"id"`
-	R []string `json:"resources"`
-	T string   `json:"type"`
-	U string   `json:"url"`
-	V string   `json:"version"`
+	A []string        `json:"attribute_indexes"`
+	C string          `json:"contact"`
+	D string          `json:"documentation"`
+	I string          `json:"id"`
+	P map[string]bool `json:"anonymous_permissions"`
+	R []string        `json:"resources"`
+	T string          `json:"type"`
+	U string          `json:"url"`
+	V string          `json:"version"`
 }
 
 func mapRoutes() {
@@ -113,11 +114,17 @@ func mapRoutes() {
 			attrs[k] = strings.TrimSpace(v)
 		}
 
+		perms := make(map[string]bool)
+		perms["read"] = conf.ANON_READ
+		perms["write"] = conf.ANON_WRITE
+		perms["delete"] = conf.ANON_DELETE
+
 		r := resource{
 			A: attrs,
 			C: conf.Conf["admin-email"],
 			D: host + "/wiki/",
 			I: "Shock",
+			P: perms,
 			R: []string{"node"},
 			T: "Shock",
 			U: host + "/",
