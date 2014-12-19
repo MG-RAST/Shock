@@ -32,6 +32,7 @@ type resource struct {
 	C string          `json:"contact"`
 	D string          `json:"documentation"`
 	I string          `json:"id"`
+	O []string        `json:"auth"`
 	P map[string]bool `json:"anonymous_permissions"`
 	R []string        `json:"resources"`
 	T string          `json:"type"`
@@ -109,7 +110,7 @@ func mapRoutes() {
 	goweb.Map("/", func(ctx context.Context) error {
 		host := util.ApiUrl(ctx)
 
-		attrs := strings.Split(conf.Conf["mongodb-attribute-indexes"], ",")
+		attrs := strings.Split(conf.MONGODB_ATTRIBUTE_INDEXES, ",")
 		for k, v := range attrs {
 			attrs[k] = strings.TrimSpace(v)
 		}
@@ -119,11 +120,20 @@ func mapRoutes() {
 		perms["write"] = conf.ANON_WRITE
 		perms["delete"] = conf.ANON_DELETE
 
+		var auth []string
+		if conf.AUTH_GLOBUS_TOKEN_URL != "" && conf.AUTH_GLOBUS_PROFILE_URL != "" {
+			auth = append(auth, "globus")
+		}
+		if conf.AUTH_MGRAST_OAUTH_URL != "" {
+			auth = append(auth, "mgrast")
+		}
+
 		r := resource{
 			A: attrs,
-			C: conf.Conf["admin-email"],
+			C: conf.ADMIN_EMAIL,
 			D: host + "/wiki/",
 			I: "Shock",
+			O: auth,
 			P: perms,
 			R: []string{"node"},
 			T: "Shock",
@@ -136,7 +146,7 @@ func mapRoutes() {
 	nodeController := new(ncon.NodeController)
 	goweb.MapController(nodeController)
 
-	goweb.MapStatic("/wiki", conf.Conf["site-path"])
+	goweb.MapStatic("/wiki", conf.PATH_SITE)
 
 	// Map the favicon
 	//goweb.MapStaticFile("/favicon.ico", "static-files/favicon.ico")
@@ -166,7 +176,7 @@ func main() {
 	conf.Print()
 
 	// check if necessary directories exist or created
-	for _, path := range []string{conf.Conf["site-path"], conf.Conf["data-path"], conf.Conf["logs-path"], conf.Conf["data-path"] + "/temp"} {
+	for _, path := range []string{conf.PATH_SITE, conf.PATH_DATA, conf.PATH_LOGS, conf.PATH_DATA + "/temp"} {
 		if _, err := os.Stat(path); err != nil && os.IsNotExist(err) {
 			if err := os.Mkdir(path, 0777); err != nil {
 				fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
@@ -201,8 +211,8 @@ func main() {
 
 	fmt.Println("##### Procs #####")
 	fmt.Printf("Number of available CPUs = %d\n", avail)
-	if conf.Conf["GOMAXPROCS"] != "" {
-		if setting, err := strconv.Atoi(conf.Conf["GOMAXPROCS"]); err != nil {
+	if conf.GOMAXPROCS != "" {
+		if setting, err := strconv.Atoi(conf.GOMAXPROCS); err != nil {
 			err_msg := "ERROR: could not interpret configured GOMAXPROCS value as integer.\n"
 			fmt.Fprintf(os.Stderr, err_msg)
 			logger.Error("ERROR: " + err_msg)
@@ -221,10 +231,10 @@ func main() {
 		runtime.GOMAXPROCS(avail)
 	}
 
-	if conf.Conf["pidfile"] != "" {
-		f, err := os.Create(conf.Conf["pidfile"])
+	if conf.PATH_PIDFILE != "" {
+		f, err := os.Create(conf.PATH_PIDFILE)
 		if err != nil {
-			err_msg := "Could not create pid file: " + conf.Conf["pidfile"] + "\n"
+			err_msg := "Could not create pid file: " + conf.PATH_PIDFILE + "\n"
 			fmt.Fprintf(os.Stderr, err_msg)
 			logger.Error("ERROR: " + err_msg)
 			os.Exit(1)
@@ -235,10 +245,10 @@ func main() {
 		fmt.Fprintln(f, pid)
 
 		fmt.Println("##### pidfile #####")
-		fmt.Printf("pid: %d saved to file: %s\n\n", pid, conf.Conf["pidfile"])
+		fmt.Printf("pid: %d saved to file: %s\n\n", pid, conf.PATH_PIDFILE)
 	}
 
-	Address := conf.Conf["api-ip"] + ":" + conf.Conf["api-port"]
+	Address := conf.API_IP + ":" + conf.API_PORT
 	mapRoutes()
 
 	s := &http.Server{

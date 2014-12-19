@@ -51,7 +51,7 @@ func authToken(t string) (u *user.User, err error) {
 	client := &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
-	req, err := http.NewRequest("GET", conf.Conf["mgrast_oauth_url"], nil)
+	req, err := http.NewRequest("GET", conf.AUTH_MGRAST_OAUTH_URL, nil)
 	if err != nil {
 		return nil, err
 	}

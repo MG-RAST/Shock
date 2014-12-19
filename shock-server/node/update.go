@@ -104,7 +104,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		if action, hasAction := params["action"]; !hasAction || (action != "copy_file" && action != "move_file" && action != "keep_file") {
 			return errors.New("path upload requires action field equal to copy_file, move_file or keep_file")
 		}
-		localpaths := strings.Split(conf.Conf["local-paths"], ",")
+		localpaths := strings.Split(conf.PATH_LOCAL, ",")
 		if len(localpaths) <= 0 {
 			return errors.New("local files path uploads must be configured. Please contact your Shock administrator.")
 		}

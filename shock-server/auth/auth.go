@@ -18,13 +18,10 @@ var authMethods []func(string) (*user.User, error)
 func Initialize() {
 	authCache = cache{m: make(map[string]cacheValue)}
 	authMethods = []func(string) (*user.User, error){}
-	//if conf.Conf["basic_auth"] != "" {
-	//	authMethods = append(authMethods, basic.Auth)
-	//}
-	if conf.Conf["globus_token_url"] != "" && conf.Conf["globus_profile_url"] != "" {
+	if conf.AUTH_GLOBUS_TOKEN_URL != "" && conf.AUTH_GLOBUS_PROFILE_URL != "" {
 		authMethods = append(authMethods, globus.Auth)
 	}
-	if conf.Conf["mgrast_oauth_url"] != "" {
+	if conf.AUTH_MGRAST_OAUTH_URL != "" {
 		authMethods = append(authMethods, mgrast.Auth)
 	}
 }

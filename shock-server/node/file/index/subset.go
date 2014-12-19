@@ -35,7 +35,7 @@ func (s *subset) Create(string) (count int64, err error) {
 // type "array" is currently supported.
 func CreateSubsetIndex(s *subset, oifile string, ifile string, iformat string, ilength int64) (count int64, size int64, err error) {
 	if iformat == "array" {
-		tmpFilePath := fmt.Sprintf("%s/temp/%d%d.idx", conf.Conf["data-path"], rand.Int(), rand.Int())
+		tmpFilePath := fmt.Sprintf("%s/temp/%d%d.idx", conf.PATH_DATA, rand.Int(), rand.Int())
 
 		ifh, err := os.Open(ifile)
 		if err != nil {
@@ -133,8 +133,8 @@ func CreateSubsetIndex(s *subset, oifile string, ifile string, iformat string, i
 func CreateSubsetNodeIndexes(s *subset, cofile string, ofile string, ifile string, iformat string, ilength int64) (coCount int64, oCount int64, oSize int64, err error) {
 	if iformat == "array" {
 		// create temporary output file (oTmpFilePath) for subset index and temporary output file (coTmpFilePath) for compressed subset index
-		oTmpFilePath := fmt.Sprintf("%s/temp/%d%d.idx", conf.Conf["data-path"], rand.Int(), rand.Int())
-		coTmpFilePath := fmt.Sprintf("%s/temp/%d%d.idx", conf.Conf["data-path"], rand.Int(), rand.Int())
+		oTmpFilePath := fmt.Sprintf("%s/temp/%d%d.idx", conf.PATH_DATA, rand.Int(), rand.Int())
+		coTmpFilePath := fmt.Sprintf("%s/temp/%d%d.idx", conf.PATH_DATA, rand.Int(), rand.Int())
 
 		var ifh *os.File
 		ifh, err = os.Open(ifile)

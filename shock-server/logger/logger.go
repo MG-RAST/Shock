@@ -51,7 +51,7 @@ func Perf(message string) {
 func New() *Logger {
 	l := &Logger{queue: make(chan m, 1024), logs: map[string]l4g.Logger{}}
 	l.logs["access"] = make(l4g.Logger)
-	accessf := l4g.NewFileLogWriter(conf.Conf["logs-path"]+"/access.log", false)
+	accessf := l4g.NewFileLogWriter(conf.PATH_LOGS+"/access.log", false)
 	if accessf == nil {
 		fmt.Fprintln(os.Stderr, "ERROR: error creating access log file")
 		os.Exit(1)
@@ -63,7 +63,7 @@ func New() *Logger {
 	}
 
 	l.logs["error"] = make(l4g.Logger)
-	errorf := l4g.NewFileLogWriter(conf.Conf["logs-path"]+"/error.log", false)
+	errorf := l4g.NewFileLogWriter(conf.PATH_LOGS+"/error.log", false)
 	if errorf == nil {
 		fmt.Fprintln(os.Stderr, "ERROR: error creating error log file")
 		os.Exit(1)
@@ -75,7 +75,7 @@ func New() *Logger {
 	}
 
 	l.logs["perf"] = make(l4g.Logger)
-	perff := l4g.NewFileLogWriter(conf.Conf["logs-path"]+"/perf.log", false)
+	perff := l4g.NewFileLogWriter(conf.PATH_LOGS+"/perf.log", false)
 	if perff == nil {
 		fmt.Fprintln(os.Stderr, "ERROR: error creating perf log file")
 		os.Exit(1)
