@@ -120,7 +120,7 @@ func IndexTypedRequest(ctx context.Context) {
 			return
 		}
 
-		if conf.Bool(conf.Conf["perf-log"]) {
+		if conf.LOG_PERF {
 			logger.Perf("START indexing: " + nid)
 		}
 
@@ -294,7 +294,7 @@ func IndexTypedRequest(ctx context.Context) {
 			logger.Error("err@node.SetIndexInfo: " + err.Error())
 		}
 
-		if conf.Bool(conf.Conf["perf-log"]) {
+		if conf.LOG_PERF {
 			logger.Perf("END indexing: " + nid)
 		}
 
