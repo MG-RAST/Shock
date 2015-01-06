@@ -31,18 +31,23 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 	query := ctx.HttpRequest().URL.Query()
 
 	// Setup query and nodes objects
+	// Note: query is composed of 3 sub-query objects:
+	// 1) qPerm - user permissions (system-defined)
+	// 2) qOpts - query options (user-defined)
+	// 3) qAcls - ACL queries (user-defined)
 	q := bson.M{}
-	qAcls := bson.M{}
-	qOpts := bson.M{}
 	qPerm := bson.M{}
+	qOpts := bson.M{}
+	qAcls := bson.M{}
 	nodes := node.Nodes{}
 
 	if u != nil {
-		// Admin sees all
+		// Skip this part if user is an admin
 		if !u.Admin {
 			qPerm["$or"] = []bson.M{bson.M{"acl.read": "public"}, bson.M{"acl.read": u.Uuid}, bson.M{"acl.owner": u.Uuid}}
 		}
 	} else {
+		// User is anonymous
 		if conf.ANON_READ {
 			// select on only nodes that are publicly readable
 			qPerm["acl.read"] = "public"
@@ -56,8 +61,8 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 
 	// Gather params to make db query. Do not include the following list.
 	if _, ok := query["query"]; ok {
+		paramlist := map[string]int{"limit": 1, "offset": 1, "query": 1}
 		for key := range query {
-			paramlist := map[string]int{"limit": 1, "offset": 1, "query": 1}
 			if _, found := paramlist[key]; !found {
 				keyStr := fmt.Sprintf("attributes.%s", key)
 				for _, value := range query[key] {
@@ -76,8 +81,8 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 			}
 		}
 	} else if _, ok := query["querynode"]; ok {
+		paramlist := map[string]int{"limit": 1, "offset": 1, "querynode": 1, "owner": 1, "read": 1, "write": 1, "delete": 1, "public_owner": 1, "public_read": 1, "public_write": 1, "public_delete": 1}
 		for key := range query {
-			paramlist := map[string]int{"limit": 1, "offset": 1, "querynode": 1, "owner": 1, "read": 1, "write": 1, "delete": 1, "public_owner": 1, "public_read": 1, "public_write": 1, "public_delete": 1}
 			if _, found := paramlist[key]; !found {
 				for _, value := range query[key] {
 					if value != "" {
