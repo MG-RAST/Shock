@@ -156,7 +156,7 @@ func (node *Node) FileReader() (reader file.ReaderAt, err error) {
 	if node.File.Virtual {
 		readers := []file.ReaderAt{}
 		nodes := Nodes{}
-		if _, err := dbFind(bson.M{"id": bson.M{"$in": node.File.VirtualParts}}, &nodes, nil); err != nil {
+		if _, err := dbFind(bson.M{"id": bson.M{"$in": node.File.VirtualParts}}, &nodes, "", nil); err != nil {
 			return nil, err
 		}
 		if len(nodes) > 0 {
@@ -190,7 +190,7 @@ func (node *Node) DynamicIndex(name string) (idx index.Index, err error) {
 func (node *Node) Delete() (err error) {
 	// check to make sure this node isn't referenced by a vnode
 	virtualNodes := Nodes{}
-	if _, err = dbFind(bson.M{"file.virtual_parts": node.Id}, &virtualNodes, nil); err != nil {
+	if _, err = dbFind(bson.M{"file.virtual_parts": node.Id}, &virtualNodes, "", nil); err != nil {
 		return err
 	}
 	if len(virtualNodes) != 0 {
@@ -206,7 +206,7 @@ func (node *Node) Delete() (err error) {
 	}
 	newDataFilePath := ""
 	copiedNodes := Nodes{}
-	if _, err = dbFind(bson.M{"file.path": dataFilePath}, &copiedNodes, nil); err != nil {
+	if _, err = dbFind(bson.M{"file.path": dataFilePath}, &copiedNodes, "", nil); err != nil {
 		return err
 	}
 	if len(copiedNodes) != 0 && dataFileExists {
