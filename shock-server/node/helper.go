@@ -11,7 +11,7 @@ import (
 
 // has
 func (node *Node) HasFile() bool {
-	if node.File.Name == "" && node.File.Size == 0 && len(node.File.Checksum) == 0 && node.File.Path == "" {
+	if node.File.Size == 0 && len(node.File.Checksum) == 0 {
 		return false
 	}
 	return true

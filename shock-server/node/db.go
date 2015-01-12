@@ -50,13 +50,16 @@ func dbUpsert(n *Node) (err error) {
 	return
 }
 
-func dbFind(q bson.M, results *Nodes, options map[string]int) (count int, err error) {
+func dbFind(q bson.M, results *Nodes, order string, options map[string]int) (count int, err error) {
 	session := db.Connection.Session.Copy()
 	defer session.Close()
 	c := session.DB(conf.Conf["mongodb-database"]).C("Nodes")
+	if order == "" {
+		order = "created_on"
+	}
 	if limit, has := options["limit"]; has {
 		if offset, has := options["offset"]; has {
-			query := c.Find(q)
+			query := c.Find(q).Sort(order)
 			if count, err = query.Count(); err != nil {
 				return 0, err
 			}
@@ -66,7 +69,7 @@ func dbFind(q bson.M, results *Nodes, options map[string]int) (count int, err er
 			return 0, errors.New("store.db.Find options limit and offset must be used together")
 		}
 	}
-	err = c.Find(q).All(results)
+	err = c.Find(q).Sort(order).All(results)
 	return
 }
 
@@ -84,7 +87,7 @@ func Load(id string) (n *Node, err error) {
 }
 
 func LoadNodes(ids []string) (n Nodes, err error) {
-	if _, err = dbFind(bson.M{"id": bson.M{"$in": ids}}, &n, nil); err == nil {
+	if _, err = dbFind(bson.M{"id": bson.M{"$in": ids}}, &n, "", nil); err == nil {
 		return n, err
 	}
 	return nil, err
