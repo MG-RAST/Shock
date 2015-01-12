@@ -124,23 +124,23 @@ func AclTypedRequest(ctx context.Context) {
 		}
 	}
 
-	// Parse user list
-	ids, err := parseAclRequestTyped(ctx)
-	if err != nil {
-		responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
-		return
-	}
-
 	// Users that are not an admin or the node owner can only delete themselves from an ACL.
 	if n.Acl.Owner != u.Uuid && u.Admin == false {
+		// Users that are not an admin or the node owner cannot remove public from ACL's.
+		if (rtype == "public_read" || rtype == "public_write" || rtype == "public_delete" || rtype == "public_all") {
+			responder.RespondWithError(ctx, http.StatusBadRequest, "Users that are not node owners can only delete themselves from ACLs.")
+			return
+		}
+
+		// Parse user list
+		ids, err := parseAclRequestTyped(ctx)
+		if err != nil {
+			responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
 		if rmeth == "DELETE" {
-			ids, err := parseAclRequestTyped(ctx)
-			if err != nil {
-				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
-				return
-			}
 			if len(ids) != 1 || (len(ids) == 1 && ids[0] != u.Uuid) {
-				responder.RespondWithError(ctx, http.StatusBadRequest, "Non-owners of a node can delete one and only user from the ACLs (themselves).")
+				responder.RespondWithError(ctx, http.StatusBadRequest, "Users that are not node owners can only delete themselves from ACLs.")
 				return
 			}
 			if rtype == "owner" {
@@ -156,7 +156,7 @@ func AclTypedRequest(ctx context.Context) {
 			responder.RespondWithData(ctx, n.Acl)
 			return
 		}
-		responder.RespondWithError(ctx, http.StatusBadRequest, "Users that are not job owners can only delete themselves from ACLs.")
+		responder.RespondWithError(ctx, http.StatusBadRequest, "Users that are not node owners can only delete themselves from ACLs.")
 		return
 	}
 
@@ -166,6 +166,22 @@ func AclTypedRequest(ctx context.Context) {
 		responder.RespondWithData(ctx, n.Acl)
 		return
 	} else if rmeth == "POST" || rmeth == "PUT" {
+		if rtype == "public_read" {
+			n.Acl.Set("public", map[string]bool{"read": true})
+		} else if rtype == "public_write" {
+			n.Acl.Set("public", map[string]bool{"write": true})
+		} else if rtype == "public_delete" {
+			n.Acl.Set("public", map[string]bool{"delete": true})
+		} else if rtype == "public_all" {
+			n.Acl.Set("public", map[string]bool{"read": true, "write": true, "delete": true})
+		}
+
+		// Parse user list
+		ids, err := parseAclRequestTyped(ctx)
+		if err != nil {
+			responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
 		if rtype == "owner" {
 			if len(ids) == 1 {
 				n.Acl.SetOwner(ids[0])
@@ -177,14 +193,6 @@ func AclTypedRequest(ctx context.Context) {
 			for _, i := range ids {
 				n.Acl.Set(i, map[string]bool{"read": true, "write": true, "delete": true})
 			}
-		} else if rtype == "public_read" {
-			n.Acl.Set("public", map[string]bool{"read": true})
-		} else if rtype == "public_write" {
-			n.Acl.Set("public", map[string]bool{"write": true})
-		} else if rtype == "public_delete" {
-			n.Acl.Set("public", map[string]bool{"delete": true})
-		} else if rtype == "public_all" {
-			n.Acl.Set("public", map[string]bool{"read": true, "write": true, "delete": true})
 		} else {
 			for _, i := range ids {
 				n.Acl.Set(i, map[string]bool{rtype: true})
@@ -194,14 +202,7 @@ func AclTypedRequest(ctx context.Context) {
 		responder.RespondWithData(ctx, n.Acl)
 		return
 	} else if rmeth == "DELETE" {
-		if rtype == "owner" {
-			responder.RespondWithError(ctx, http.StatusBadRequest, "Deleting ownership is not a supported request type.")
-			return
-		} else if rtype == "all" {
-			for _, i := range ids {
-				n.Acl.UnSet(i, map[string]bool{"read": true, "write": true, "delete": true})
-			}
-		} else if rtype == "public_read" {
+		if rtype == "public_read" {
 			n.Acl.UnSet("public", map[string]bool{"read": true})
 		} else if rtype == "public_write" {
 			n.Acl.UnSet("public", map[string]bool{"write": true})
@@ -209,6 +210,21 @@ func AclTypedRequest(ctx context.Context) {
 			n.Acl.UnSet("public", map[string]bool{"delete": true})
 		} else if rtype == "public_all" {
 			n.Acl.UnSet("public", map[string]bool{"read": true, "write": true, "delete": true})
+		}
+
+		// Parse user list
+		ids, err := parseAclRequestTyped(ctx)
+		if err != nil {
+			responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+		if rtype == "owner" {
+			responder.RespondWithError(ctx, http.StatusBadRequest, "Deleting ownership is not a supported request type.")
+			return
+		} else if rtype == "all" {
+			for _, i := range ids {
+				n.Acl.UnSet(i, map[string]bool{"read": true, "write": true, "delete": true})
+			}
 		} else {
 			for _, i := range ids {
 				n.Acl.UnSet(i, map[string]bool{rtype: true})
