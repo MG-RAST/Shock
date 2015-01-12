@@ -14,8 +14,19 @@ import (
 	"github.com/MG-RAST/golib/mgo/bson"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
+	"time"
+)
+
+var (
+	RangeRegex = regexp.MustCompile(`^([\[\]]{1})(.*);(.*)([\]\[]{1})$`)
+)
+
+const (
+	longDateForm  = "2006-01-02T15:04:05-07:00"
+	shortDateForm = "2006-01-02"
 )
 
 // GET: /node
@@ -70,13 +81,7 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 				keyStr := fmt.Sprintf("attributes.%s", key)
 				for _, value := range query[key] {
 					if value != "" {
-						if numValue, err := strconv.Atoi(value); err == nil {
-							OptsMArray = append(OptsMArray, bson.M{"$or": []bson.M{bson.M{keyStr: value}, bson.M{keyStr: numValue}}})
-						} else if value == "null" {
-							OptsMArray = append(OptsMArray, bson.M{"$or": []bson.M{bson.M{keyStr: value}, bson.M{keyStr: nil}}})
-						} else {
-							OptsMArray = append(OptsMArray, bson.M{keyStr: value})
-						}
+						OptsMArray = append(OptsMArray, parseOption(keyStr, value))
 					} else {
 						OptsMArray = append(OptsMArray, bson.M{keyStr: map[string]bool{"$exists": true}})
 					}
@@ -89,13 +94,7 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 			if _, found := paramlist[key]; !found {
 				for _, value := range query[key] {
 					if value != "" {
-						if numValue, err := strconv.Atoi(value); err == nil {
-							OptsMArray = append(OptsMArray, bson.M{"$or": []bson.M{bson.M{key: value}, bson.M{key: numValue}}})
-						} else if value == "null" {
-							OptsMArray = append(OptsMArray, bson.M{"$or": []bson.M{bson.M{key: value}, bson.M{key: nil}}})
-						} else {
-							OptsMArray = append(OptsMArray, bson.M{key: value})
-						}
+						OptsMArray = append(OptsMArray, parseOption(key, value))
 					} else {
 						OptsMArray = append(OptsMArray, bson.M{key: map[string]bool{"$exists": true}})
 					}
@@ -174,4 +173,115 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 		return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 	}
 	return responder.RespondWithPaginatedData(ctx, nodes, limit, offset, count)
+}
+
+func parseOption(key string, value string) bson.M {
+	not := false
+	// If value starts with ! then set flag to encapsulate query with $not operator and
+	//  remove ! character from the beginning of the value string
+	if value[0] == '!' {
+		value = value[1:]
+		not = true
+	}
+
+	// Parsing query option into bson.M query object
+	opt := bson.M{}
+
+	// Only one of the following conditions can be met at a time
+	// mongodb doesn't allow for negating the entire query so the logic
+	//   has to be written for each case below when the not flag is set.
+	if numValue, err := strconv.Atoi(value); err == nil {
+		// numeric values
+		if not {
+			opt = bson.M{"$and": []bson.M{bson.M{key: bson.M{"$ne": value}}, bson.M{key: bson.M{"$ne": numValue}}}}
+		} else {
+			opt = bson.M{"$or": []bson.M{bson.M{key: value}, bson.M{key: numValue}}}
+		}
+	} else if value == "null" {
+		// value is "null" => nil
+		if not {
+			opt = bson.M{"$and": []bson.M{bson.M{key: bson.M{"$ne": value}}, bson.M{key: bson.M{"$ne": nil}}}}
+		} else {
+			opt = bson.M{"$or": []bson.M{bson.M{key: value}, bson.M{key: nil}}}
+		}
+	} else if matches := RangeRegex.FindStringSubmatch(value); len(matches) > 0 {
+		// value matches the regex for a range
+		lowerBound := bson.M{}
+		upperBound := bson.M{}
+		var val1 interface{} = matches[2]
+		var val2 interface{} = matches[3]
+		parseTypedValue(&val1)
+		parseTypedValue(&val2)
+		if not {
+			if matches[1] == "[" {
+				lowerBound = bson.M{key: bson.M{"$lt": val1}}
+			} else {
+				lowerBound = bson.M{key: bson.M{"$lte": val1}}
+			}
+			if matches[4] == "]" {
+				upperBound = bson.M{key: bson.M{"$gt": val2}}
+			} else {
+				upperBound = bson.M{key: bson.M{"$gte": val2}}
+			}
+			opt = bson.M{"$or": []bson.M{lowerBound, upperBound}}
+		} else {
+			if matches[1] == "[" {
+				lowerBound = bson.M{key: bson.M{"$gte": val1}}
+			} else {
+				lowerBound = bson.M{key: bson.M{"$gt": val1}}
+			}
+			if matches[4] == "]" {
+				upperBound = bson.M{key: bson.M{"$lte": val2}}
+			} else {
+				upperBound = bson.M{key: bson.M{"$lt": val2}}
+			}
+			opt = bson.M{"$and": []bson.M{lowerBound, upperBound}}
+		}
+	} else if string(value[0]) == "*" || string(value[len(value)-1]) == "*" {
+		// value starts or ends with wildcard, or both
+		// Note: The $not operator could probably be used for some of these queries but
+		//       the $not operator does not support operations with the $regex operator
+		//       thus I have built the opposite regexes below for the "not" option.
+		if not {
+			if string(value[0]) != "*" {
+				value = value[0 : len(value)-1]
+				opt = bson.M{key: bson.M{"$regex": "^(?!" + value + ").*$"}}
+			} else if string(value[len(value)-1]) != "*" {
+				value = value[1:]
+				opt = bson.M{key: bson.M{"$regex": "^.*(?<!" + value + ")$"}}
+			} else {
+				value = value[1 : len(value)-1]
+				opt = bson.M{key: bson.M{"$regex": "^((?!" + value + ").)*$"}}
+			}
+		} else {
+			if string(value[0]) != "*" {
+				value = value[0 : len(value)-1]
+				opt = bson.M{key: bson.M{"$regex": "^" + value}}
+			} else if string(value[len(value)-1]) != "*" {
+				value = value[1:]
+				opt = bson.M{key: bson.M{"$regex": value + "$"}}
+			} else {
+				value = value[1 : len(value)-1]
+				opt = bson.M{key: bson.M{"$regex": value}}
+			}
+		}
+	} else {
+		if not {
+			opt = bson.M{key: bson.M{"$ne": value}}
+		} else {
+			opt = bson.M{key: value}
+		}
+	}
+	return opt
+}
+
+func parseTypedValue(i *interface{}) {
+	if val, err := strconv.Atoi((*i).(string)); err == nil {
+		*i = val
+	} else if t, err := time.Parse(longDateForm, (*i).(string)); err == nil {
+		*i = t
+	} else if t, err := time.Parse(shortDateForm, (*i).(string)); err == nil {
+		*i = t
+	}
+	return
 }
