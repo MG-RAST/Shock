@@ -27,15 +27,27 @@ import (
 	"time"
 )
 
+const (
+	longDateForm = "2006-01-02T15:04:05-07:00"
+)
+
+type anonymous struct {
+	Read   bool `json:"read"`
+	Write  bool `json:"write"`
+	Delete bool `json:"delete"`
+}
+
 type resource struct {
-	A []string `json:"attribute_indexes"`
-	C string   `json:"contact"`
-	D string   `json:"documentation"`
-	I string   `json:"id"`
-	R []string `json:"resources"`
-	T string   `json:"type"`
-	U string   `json:"url"`
-	V string   `json:"version"`
+	A []string  `json:"attribute_indexes"`
+	C string    `json:"contact"`
+	D string    `json:"documentation"`
+	I string    `json:"id"`
+	P anonymous `json:"anonymous_permissions"`
+	R []string  `json:"resources"`
+	S string    `json:"server_time"`
+	T string    `json:"type"`
+	U string    `json:"url"`
+	V string    `json:"version"`
 }
 
 func mapRoutes() {
@@ -113,12 +125,18 @@ func mapRoutes() {
 			attrs[k] = strings.TrimSpace(v)
 		}
 
+		anonPerms := new(anonymous)
+		anonPerms.Read = conf.ANON_READ
+		anonPerms.Write = conf.ANON_WRITE
+		anonPerms.Delete = conf.ANON_DELETE
+
 		r := resource{
 			A: attrs,
 			C: conf.Conf["admin-email"],
 			D: host + "/wiki/",
 			I: "Shock",
 			R: []string{"node"},
+			S: time.Now().Format(longDateForm),
 			T: "Shock",
 			U: host + "/",
 			V: "[% VERSION %]",
