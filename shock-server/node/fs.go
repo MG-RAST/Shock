@@ -112,7 +112,7 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 	node.File.Name = fileStat.Name()
 	node.File.Size = fileStat.Size()
 
-	tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.Conf["data-path"], rand.Int(), rand.Int())
+	tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
 
 	if action != "copy_file" && action != "move_file" && action != "keep_file" {
 		return errors.New("setting file from path requires action field equal to copy_file, move_file or keep_file")

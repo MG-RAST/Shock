@@ -104,7 +104,8 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		if action, hasAction := params["action"]; !hasAction || (action != "copy_file" && action != "move_file" && action != "keep_file") {
 			return errors.New("path upload requires action field equal to copy_file, move_file or keep_file")
 		}
-		if len(conf.Conf["local-paths"]) <= 0 {
+		localpaths := strings.Split(conf.PATH_LOCAL, ",")
+		if len(localpaths) <= 0 {
 			return errors.New("local files path uploads must be configured. Please contact your Shock administrator.")
 		}
 		localpaths := strings.Split(conf.Conf["local-paths"], ",")
@@ -137,7 +138,22 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		node.File.Size = n.File.Size
 		node.File.Checksum = n.File.Checksum
 		node.File.Format = n.File.Format
-		node.Type = "copy"
+
+		if n.Type == "subset" {
+			node.Subset = n.Subset
+			subsetIndexFile := n.Path() + "/" + n.Id + ".subset.idx"
+			// The subset index file is required for creating a copy of a subset node.
+			if _, err := os.Stat(subsetIndexFile); err == nil {
+				if _, cerr := util.CopyFile(subsetIndexFile, node.Path()+"/"+node.Id+".subset.idx"); cerr != nil {
+					return cerr
+				}
+			} else {
+				return err
+			}
+			node.Type = "subset"
+		} else {
+			node.Type = "copy"
+		}
 
 		// Copy node indexes
 		if _, copyIndex := params["copy_indexes"]; copyIndex && (len(n.Indexes) > 0) {

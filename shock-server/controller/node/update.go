@@ -48,7 +48,7 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 		return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 	}
 
-	if conf.Bool(conf.Conf["perf-log"]) {
+	if conf.LOG_PERF {
 		logger.Perf("START PUT data: " + id)
 	}
 	params, files, err := request.ParseMultipartForm(ctx.HttpRequest())
@@ -79,7 +79,7 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 		return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 	}
 	responder.RespondWithData(ctx, n)
-	if conf.Bool(conf.Conf["perf-log"]) {
+	if conf.LOG_PERF {
 		logger.Perf("END PUT data: " + id)
 	}
 	return nil
