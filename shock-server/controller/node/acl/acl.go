@@ -128,7 +128,7 @@ func AclTypedRequest(ctx context.Context) {
 	if n.Acl.Owner != u.Uuid && u.Admin == false {
 		// Users that are not an admin or the node owner cannot remove public from ACL's.
 		if rtype == "public_read" || rtype == "public_write" || rtype == "public_delete" || rtype == "public_all" {
-			responder.RespondWithError(ctx, http.StatusBadRequest, "Users that are not node owners can only delete themselves from ACLs.")
+			responder.RespondWithError(ctx, http.StatusBadRequest, "Users that are not node owners can delete only themselves from ACLs.")
 			return
 		}
 
@@ -140,7 +140,7 @@ func AclTypedRequest(ctx context.Context) {
 		}
 		if rmeth == "DELETE" {
 			if len(ids) != 1 || (len(ids) == 1 && ids[0] != u.Uuid) {
-				responder.RespondWithError(ctx, http.StatusBadRequest, "Users that are not node owners can only delete themselves from ACLs.")
+				responder.RespondWithError(ctx, http.StatusBadRequest, "Users that are not node owners can delete only themselves from ACLs.")
 				return
 			}
 			if rtype == "owner" {
@@ -156,7 +156,7 @@ func AclTypedRequest(ctx context.Context) {
 			responder.RespondWithData(ctx, n.Acl)
 			return
 		}
-		responder.RespondWithError(ctx, http.StatusBadRequest, "Users that are not node owners can only delete themselves from ACLs.")
+		responder.RespondWithError(ctx, http.StatusBadRequest, "Users that are not node owners can delete only themselves from ACLs.")
 		return
 	}
 
