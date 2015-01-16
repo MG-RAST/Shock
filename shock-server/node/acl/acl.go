@@ -10,7 +10,55 @@ type Acl struct {
 	Delete []string `bson:"delete" json:"delete"`
 }
 
+// struct for public status of ACL's
+type publicAcl struct {
+	Read   bool `bson:"read" json:"read"`
+	Write  bool `bson:"write" json:"write"`
+	Delete bool `bson:"delete" json:"delete"`
+}
+
+// ACL struct that is returned to user
+type DisplayAcl struct {
+	Owner  string    `bson:"owner" json:"owner"`
+	Read   []string  `bson:"read" json:"read"`
+	Write  []string  `bson:"write" json:"write"`
+	Delete []string  `bson:"delete" json:"delete"`
+	Public publicAcl `bson:"public" json:"public"`
+}
+
 type Rights map[string]bool
+
+func (a *Acl) FormatDisplayAcl() (dAcl DisplayAcl) {
+	dAcl.Owner = a.Owner
+	dAcl.Read = []string{}
+	dAcl.Write = []string{}
+	dAcl.Delete = []string{}
+	dAcl.Public.Read = false
+	dAcl.Public.Write = false
+	dAcl.Public.Delete = false
+	for _, v := range a.Read {
+		if v == "public" {
+			dAcl.Public.Read = true
+		} else {
+			dAcl.Read = insert(dAcl.Read, v)
+		}
+	}
+	for _, v := range a.Write {
+		if v == "public" {
+			dAcl.Public.Write = true
+		} else {
+			dAcl.Write = insert(dAcl.Write, v)
+		}
+	}
+	for _, v := range a.Delete {
+		if v == "public" {
+			dAcl.Public.Delete = true
+		} else {
+			dAcl.Delete = insert(dAcl.Delete, v)
+		}
+	}
+	return
+}
 
 func (a *Acl) SetOwner(str string) {
 	a.Owner = str

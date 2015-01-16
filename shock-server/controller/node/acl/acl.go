@@ -72,7 +72,7 @@ func AclRequest(ctx context.Context) {
 	}
 
 	if rmeth == "GET" {
-		responder.RespondWithData(ctx, n.Acl)
+		responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl())
 	} else {
 		responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
 	}
