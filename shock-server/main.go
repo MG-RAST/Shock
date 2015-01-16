@@ -145,7 +145,7 @@ func mapRoutes() {
 			D: host + "/wiki/",
 			I: "Shock",
 			O: auth,
-			P: anonPerms,
+			P: *anonPerms,
 			R: []string{"node"},
 			S: time.Now().Format(longDateForm),
 			T: "Shock",
