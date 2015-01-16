@@ -108,7 +108,6 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		if len(localpaths) <= 0 {
 			return errors.New("local files path uploads must be configured. Please contact your Shock administrator.")
 		}
-		localpaths := strings.Split(conf.Conf["local-paths"], ",")
 		var success = false
 		for _, p := range localpaths {
 			if strings.HasPrefix(params["path"], p) {
