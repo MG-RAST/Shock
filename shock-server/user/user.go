@@ -14,13 +14,12 @@ type Users []User
 
 // User struct
 type User struct {
-	Uuid         string      `bson:"uuid" json:"uuid"`
-	Username     string      `bson:"username" json:"username"`
-	Fullname     string      `bson:"fullname" json:"fullname"`
-	Email        string      `bson:"email" json:"email"`
-	Password     string      `bson:"password" json:"-"`
-	Admin        bool        `bson:"shock_admin" json:"shock_admin"`
-	CustomFields interface{} `bson:"custom_fields" json:"custom_fields"`
+	Uuid     string `bson:"uuid" json:"uuid"`
+	Username string `bson:"username" json:"username"`
+	Fullname string `bson:"fullname" json:"fullname"`
+	Email    string `bson:"email" json:"email"`
+	Password string `bson:"password" json:"-"`
+	Admin    bool   `bson:"shock_admin" json:"shock_admin"`
 }
 
 // Initialize creates a copy of the mongodb connection and then uses that connection to
