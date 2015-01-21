@@ -61,6 +61,14 @@ func (node *Node) SetFileFromSubset(subsetIndices FormFile) (err error) {
 		indexFormat = n.Indexes[node.Subset.Parent.IndexName].Format
 	}
 
+	if fi, statErr := os.Stat(subsetIndices.Path); statErr != nil {
+		return errors.New("Could not stat uploaded subset_indices file.")
+	} else {
+		if fi.Size() == 0 {
+			return errors.New("Uploaded subset_indices file is size zero.  This is prohibited.")
+		}
+	}
+
 	f, _ := os.Open(subsetIndices.Path)
 	defer f.Close()
 	idxer := index.NewSubsetIndexer(f)
