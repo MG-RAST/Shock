@@ -194,9 +194,10 @@ func Print() {
 	fmt.Printf("##### Admin #####\nusers:\t%s\n\n", ADMIN_USERS)
 	fmt.Printf("##### Paths #####\nsite:\t%s\ndata:\t%s\nlogs:\t%s\nlocal_paths:\t%s\n\n", PATH_SITE, PATH_DATA, PATH_LOGS, PATH_LOCAL)
 	if SSL {
-		fmt.Printf("##### SSL #####\nenabled:\t%s\nkey:\t%s\ncert:\t%s\n\n", SSL, SSL_KEY, SSL_CERT)
+		fmt.Printf("##### SSL enabled #####\n")
+		fmt.Printf("##### SSL key:\t%s\n##### SSL cert:\t%s\n\n", SSL_KEY, SSL_CERT)
 	} else {
-		fmt.Printf("##### SSL #####\nenabled:\t%s\n\n", SSL)
+		fmt.Printf("##### SSL disabled #####\n\n")
 	}
 	fmt.Printf("##### Mongodb #####\nhost(s):\t%s\ndatabase:\t%s\n\n", MONGODB_HOSTS, MONGODB_DATABASE)
 	fmt.Printf("##### Address #####\nip:\t%s\nport:\t%s\n\n", API_IP, API_PORT)
