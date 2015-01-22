@@ -72,7 +72,12 @@ func AclRequest(ctx context.Context) {
 	}
 
 	if rmeth == "GET" {
-		responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl())
+		query := ctx.HttpRequest().URL.Query()
+		verbosity := ""
+		if _, ok := query["verbosity"]; ok {
+			verbosity = query.Get("verbosity")
+		}
+		responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
 	} else {
 		responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
 	}
@@ -84,6 +89,11 @@ func AclTypedRequest(ctx context.Context) {
 	nid := ctx.PathValue("nid")
 	rtype := ctx.PathValue("type")
 	rmeth := ctx.HttpRequest().Method
+	query := ctx.HttpRequest().URL.Query()
+	verbosity := ""
+	if _, ok := query["verbosity"]; ok {
+		verbosity = query.Get("verbosity")
+	}
 
 	u, err := request.Authenticate(ctx.HttpRequest())
 	if err != nil && err.Error() != e.NoAuth {
@@ -116,7 +126,7 @@ func AclTypedRequest(ctx context.Context) {
 	if u == nil {
 		rights := n.Acl.Check("public")
 		if rmeth == "GET" && conf.ANON_READ && (rights["read"] || n.Acl.Owner == "public") {
-			responder.RespondWithData(ctx, n.Acl)
+			responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
 			return
 		} else {
 			responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
@@ -128,7 +138,7 @@ func AclTypedRequest(ctx context.Context) {
 	if n.Acl.Owner != u.Uuid && u.Admin == false {
 		// Users that are not an admin or the node owner cannot remove public from ACL's.
 		if rtype == "public_read" || rtype == "public_write" || rtype == "public_delete" || rtype == "public_all" {
-			responder.RespondWithError(ctx, http.StatusBadRequest, "Users that are not node owners can delete only themselves from ACLs.")
+			responder.RespondWithError(ctx, http.StatusBadRequest, "Users that are not node owners can only delete themselves from ACLs.")
 			return
 		}
 
@@ -153,17 +163,17 @@ func AclTypedRequest(ctx context.Context) {
 				n.Acl.UnSet(ids[0], map[string]bool{rtype: true})
 			}
 			n.Save()
-			responder.RespondWithData(ctx, n.Acl)
+			responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
 			return
 		}
-		responder.RespondWithError(ctx, http.StatusBadRequest, "Users that are not node owners can delete only themselves from ACLs.")
+		responder.RespondWithError(ctx, http.StatusBadRequest, "Users that are not node owners can only delete themselves from ACLs.")
 		return
 	}
 
 	// At this point we know we're dealing with an admin or the node owner.
 	// Admins and node owners can view/edit/delete ACLs
 	if rmeth == "GET" {
-		responder.RespondWithData(ctx, n.Acl)
+		responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
 		return
 	} else if rmeth == "POST" || rmeth == "PUT" {
 		if rtype == "public_read" || rtype == "public_write" || rtype == "public_delete" || rtype == "public_all" {
@@ -177,7 +187,7 @@ func AclTypedRequest(ctx context.Context) {
 				n.Acl.Set("public", map[string]bool{"read": true, "write": true, "delete": true})
 			}
 			n.Save()
-			responder.RespondWithData(ctx, n.Acl)
+			responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
 			return
 		}
 
@@ -204,7 +214,7 @@ func AclTypedRequest(ctx context.Context) {
 			}
 		}
 		n.Save()
-		responder.RespondWithData(ctx, n.Acl)
+		responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
 		return
 	} else if rmeth == "DELETE" {
 		if rtype == "public_read" || rtype == "public_write" || rtype == "public_delete" || rtype == "public_all" {
@@ -218,7 +228,7 @@ func AclTypedRequest(ctx context.Context) {
 				n.Acl.UnSet("public", map[string]bool{"read": true, "write": true, "delete": true})
 			}
 			n.Save()
-			responder.RespondWithData(ctx, n.Acl)
+			responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
 			return
 		}
 
@@ -241,7 +251,7 @@ func AclTypedRequest(ctx context.Context) {
 			}
 		}
 		n.Save()
-		responder.RespondWithData(ctx, n.Acl)
+		responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
 		return
 	} else {
 		responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
