@@ -30,6 +30,8 @@ func (cr *NodeController) Create(ctx context.Context) error {
 
 	// Parse uploaded form
 	params, files, err := request.ParseMultipartForm(ctx.HttpRequest())
+	// clean up temp dir !!
+	defer node.RemoveAllFormFiles(files)
 	if err != nil {
 		if err.Error() == "request Content-Type isn't multipart/form-data" {
 			// If not multipart/form-data it will try to read the Body of the
