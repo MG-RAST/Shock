@@ -56,6 +56,20 @@ type FormFile struct {
 	Checksum map[string]string
 }
 
+func (formfile *FormFile) Remove() {
+	if _, err := os.Stat(formfile.Path); err == nil {
+		os.Remove(formfile.Path)
+	}
+	return
+}
+
+func RemoveAllFormFiles(formfiles FormFiles) {
+	for _, formfile := range formfiles {
+		formfile.Remove()
+	}
+	return
+}
+
 // Subset is used to store information about a subset node's parent and its index.
 // A subset node's index defines the subset of the data file that this node represents.
 // A subset node's index is immutable after it is defined.

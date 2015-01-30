@@ -159,6 +159,8 @@ func IndexTypedRequest(ctx context.Context) {
 		if idxType == "subset" {
 			// Utilizing the multipart form parser since we need to upload a file.
 			params, files, err := request.ParseMultipartForm(ctx.HttpRequest())
+			// clean up temp dir !!
+			defer node.RemoveAllFormFiles(files)
 			if err != nil {
 				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
 				return
