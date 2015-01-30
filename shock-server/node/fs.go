@@ -61,6 +61,14 @@ func (node *Node) SetFileFromSubset(subsetIndices FormFile) (err error) {
 		indexFormat = n.Indexes[node.Subset.Parent.IndexName].Format
 	}
 
+	if fi, statErr := os.Stat(subsetIndices.Path); statErr != nil {
+		return errors.New("Could not stat uploaded subset_indices file.")
+	} else {
+		if fi.Size() == 0 {
+			return errors.New("Uploaded subset_indices file is size zero.  This is prohibited.")
+		}
+	}
+
 	f, _ := os.Open(subsetIndices.Path)
 	defer f.Close()
 	idxer := index.NewSubsetIndexer(f)
@@ -112,7 +120,7 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 	node.File.Name = fileStat.Name()
 	node.File.Size = fileStat.Size()
 
-	tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.Conf["data-path"], rand.Int(), rand.Int())
+	tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
 
 	if action != "copy_file" && action != "move_file" && action != "keep_file" {
 		return errors.New("setting file from path requires action field equal to copy_file, move_file or keep_file")

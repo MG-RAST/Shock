@@ -64,7 +64,7 @@ func fetchToken(u string, p string) (t *token, err error) {
 	client := &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
-	req, err := http.NewRequest("GET", conf.Conf["globus_token_url"], nil)
+	req, err := http.NewRequest("GET", conf.AUTH_GLOBUS_TOKEN_URL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -88,10 +88,15 @@ func fetchToken(u string, p string) (t *token, err error) {
 
 // fetchProfile validiates token by using it to fetch user profile
 func fetchProfile(t string) (u *user.User, err error) {
+	// First check to see if this could possibly be a globus token (contain string 'globus').  If not, return error.
+	if strings.Contains(t, "globus") == false {
+		return nil, errors.New(e.InvalidAuth)
+	}
+
 	client := &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
-	req, err := http.NewRequest("GET", conf.Conf["globus_profile_url"]+"/"+clientId(t), nil)
+	req, err := http.NewRequest("GET", conf.AUTH_GLOBUS_PROFILE_URL+"/"+clientId(t), nil)
 	if err != nil {
 		return nil, err
 	}

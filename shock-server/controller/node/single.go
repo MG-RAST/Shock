@@ -497,7 +497,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				if err = json.Unmarshal(body, &r); err != nil {
 					err_msg := "err:@node_Read POST: " + err.Error()
 					logger.Error(err_msg)
-					return responder.WriteResponseObject(ctx, http.StatusInternalServerError, err_msg)
+					return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 				} else {
 					return responder.WriteResponseObject(ctx, http.StatusOK, r)
 				}
@@ -505,11 +505,11 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				r := responseWrapper{}
 				body, _ := ioutil.ReadAll(res.Body)
 				if err = json.Unmarshal(body, &r); err == nil {
-					err_msg := res.Status + ": " + (*r.Error)[0]
+					err_msg := "err:@node_Read POST " + post_url + " = " + res.Status + ":" + (*r.Error)[0]
 					logger.Error(err_msg)
 					return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 				} else {
-					err_msg := "request error: " + res.Status
+					err_msg := "err:@node_Read POST " + post_url + " = " + res.Status
 					logger.Error(err_msg)
 					return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 				}

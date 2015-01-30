@@ -75,7 +75,7 @@ func AuthError(err error, ctx context.Context) error {
 func DataUpload(r *http.Request) (params map[string]string, files node.FormFiles, err error) {
 	params = make(map[string]string)
 	files = make(node.FormFiles)
-	tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.Conf["data-path"], rand.Int(), rand.Int())
+	tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
 
 	files["upload"] = node.FormFile{Name: "filename", Path: tmpPath, Checksum: make(map[string]string)}
 	if tmpFile, err := os.Create(tmpPath); err == nil {
@@ -120,7 +120,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 				if _, er := strconv.Atoi(part.FormName()); er != nil && !util.IsValidFileName(part.FormName()) {
 					return nil, files, errors.New("invalid file param: " + part.FormName())
 				}
-				tmpPath = fmt.Sprintf("%s/temp/%d%d", conf.Conf["data-path"], rand.Int(), rand.Int())
+				tmpPath = fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
 				files[part.FormName()] = node.FormFile{Name: part.FileName(), Path: tmpPath, Checksum: make(map[string]string)}
 				if tmpFile, err := os.Create(tmpPath); err == nil {
 					defer tmpFile.Close()

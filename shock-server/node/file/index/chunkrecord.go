@@ -40,7 +40,7 @@ func NewChunkRecordIndexer(f *os.File, nType string, snFormat string, snRecordIn
 
 func (i *chunkRecord) Create(file string) (count int64, format string, err error) {
 	if i.t != "subset" {
-		tmpFilePath := fmt.Sprintf("%s/temp/%d%d.idx", conf.Conf["data-path"], rand.Int(), rand.Int())
+		tmpFilePath := fmt.Sprintf("%s/temp/%d%d.idx", conf.PATH_DATA, rand.Int(), rand.Int())
 
 		var f *os.File
 		f, err = os.Create(tmpFilePath)
@@ -107,7 +107,7 @@ func (i *chunkRecord) Create(file string) (count int64, format string, err error
 
 			// For matrix formatted indexes, we are basically building a list of lists.  The parent index file will give the offset and length
 			// for a list of indexes in the record index file.  In this way we can build a chunkrecord index that will point to a list of record indices.
-			parentTmpFilePath := fmt.Sprintf("%s/temp/%d%d.idx", conf.Conf["data-path"], rand.Int(), rand.Int())
+			parentTmpFilePath := fmt.Sprintf("%s/temp/%d%d.idx", conf.PATH_DATA, rand.Int(), rand.Int())
 
 			var pfh *os.File
 			pfh, err = os.Create(parentTmpFilePath)

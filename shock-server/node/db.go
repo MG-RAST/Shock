@@ -17,7 +17,7 @@ import (
 func Initialize() {
 	session := db.Connection.Session.Copy()
 	defer session.Close()
-	c := session.DB(conf.Conf["mongodb-database"]).C("Nodes")
+	c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
 	c.EnsureIndex(mgo.Index{Key: []string{"id"}, Unique: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"file.path"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"file.virtual_parts"}, Background: true})
@@ -25,9 +25,8 @@ func Initialize() {
 	c.EnsureIndex(mgo.Index{Key: []string{"acl.read"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"acl.write"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"acl.delete"}, Background: true})
-	c.EnsureIndex(mgo.Index{Key: []string{"attributes"}, Background: true})
-	if conf.Conf["mongodb-attribute-indexes"] != "" {
-		for _, v := range strings.Split(conf.Conf["mongodb-attribute-indexes"], ",") {
+	if conf.MONGODB_ATTRIBUTE_INDEXES != "" {
+		for _, v := range strings.Split(conf.MONGODB_ATTRIBUTE_INDEXES, ",") {
 			v = "attributes." + strings.TrimSpace(v)
 			c.EnsureIndex(mgo.Index{Key: []string{v}, Background: true})
 		}
@@ -37,7 +36,7 @@ func Initialize() {
 func dbDelete(q bson.M) (err error) {
 	session := db.Connection.Session.Copy()
 	defer session.Close()
-	c := session.DB(conf.Conf["mongodb-database"]).C("Nodes")
+	c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
 	_, err = c.RemoveAll(q)
 	return
 }
@@ -45,7 +44,7 @@ func dbDelete(q bson.M) (err error) {
 func dbUpsert(n *Node) (err error) {
 	session := db.Connection.Session.Copy()
 	defer session.Close()
-	c := session.DB(conf.Conf["mongodb-database"]).C("Nodes")
+	c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
 	_, err = c.Upsert(bson.M{"id": n.Id}, &n)
 	return
 }
@@ -53,7 +52,7 @@ func dbUpsert(n *Node) (err error) {
 func dbFind(q bson.M, results *Nodes, order string, options map[string]int) (count int, err error) {
 	session := db.Connection.Session.Copy()
 	defer session.Close()
-	c := session.DB(conf.Conf["mongodb-database"]).C("Nodes")
+	c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
 	if order == "" {
 		order = "created_on"
 	}
@@ -76,7 +75,7 @@ func dbFind(q bson.M, results *Nodes, order string, options map[string]int) (cou
 func Load(id string) (n *Node, err error) {
 	session := db.Connection.Session.Copy()
 	defer session.Close()
-	c := session.DB(conf.Conf["mongodb-database"]).C("Nodes")
+	c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
 	n = new(Node)
 	if err = c.Find(bson.M{"id": id}).One(&n); err == nil {
 		return n, nil

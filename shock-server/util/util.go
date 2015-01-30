@@ -66,8 +66,8 @@ func ToInt(s string) (i int) {
 }
 
 func ApiUrl(ctx context.Context) string {
-	if conf.Conf["api-url"] != "" {
-		return conf.Conf["api-url"]
+	if conf.API_URL != "" {
+		return conf.API_URL
 	}
 	return "http://" + ctx.HttpRequest().Host
 }
