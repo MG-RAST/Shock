@@ -72,6 +72,7 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 
 	// default sort field and direction (can only be changed with querynode operator, not query operator)
 	order := "created_on"
+	direction := "-"
 
 	// Gather params to make db query. Do not include the following list.
 	if _, ok := query["query"]; ok {
@@ -105,8 +106,8 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 			order = query.Get("order")
 		}
 		if _, ok := query["direction"]; ok {
-			if query.Get("direction") == "desc" {
-				order = "-" + order
+			if query.Get("direction") == "asc" {
+				direction = ""
 			}
 		}
 	}
@@ -166,6 +167,7 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 	}
 
 	// Get nodes from db
+	order = direction + order
 	count, err := nodes.GetPaginated(q, limit, offset, order)
 	if err != nil {
 		err_msg := "err " + err.Error()
