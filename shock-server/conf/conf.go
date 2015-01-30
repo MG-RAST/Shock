@@ -73,6 +73,9 @@ var (
 	SSL      = false
 	SSL_KEY  = ""
 	SSL_CERT = ""
+
+	// Versions
+	VERSIONS = make(map[string]int)
 )
 
 // Initialize is an explicit init. Enables outside use
@@ -89,6 +92,15 @@ func Initialize() {
 		os.Exit(1)
 	}
 
+	// Admin
+	ADMIN_EMAIL, _ = c.String("Admin", "email")
+	ADMIN_USERS, _ = c.String("Admin", "users")
+
+	// Access-Control
+	ANON_READ, _ = c.Bool("Anonymous", "read")
+	ANON_WRITE, _ = c.Bool("Anonymous", "write")
+	ANON_DELETE, _ = c.Bool("Anonymous", "delete")
+
 	// Address
 	API_IP, _ = c.String("Address", "api-ip")
 	API_PORT, _ = c.String("Address", "api-port")
@@ -96,47 +108,27 @@ func Initialize() {
 	// URLs
 	API_URL, _ = c.String("External", "api-url")
 
-	// SSL
-	SSL, _ = c.Bool("SSL", "enable")
-	if SSL {
-		SSL_KEY, _ = c.String("SSL", "key")
-		SSL_CERT, _ = c.String("SSL", "cert")
-	}
-
-	// Access-Control
-	ANON_READ, _ = c.Bool("Anonymous", "read")
-	ANON_WRITE, _ = c.Bool("Anonymous", "write")
-	ANON_DELETE, _ = c.Bool("Anonymous", "delete")
-
 	// Auth
 	AUTH_BASIC, _ = c.Bool("Auth", "basic")
 	AUTH_GLOBUS_TOKEN_URL, _ = c.String("Auth", "globus_token_url")
 	AUTH_GLOBUS_PROFILE_URL, _ = c.String("Auth", "globus_profile_url")
 	AUTH_MGRAST_OAUTH_URL, _ = c.String("Auth", "mgrast_oauth_url")
 
-	// Admin
-	ADMIN_EMAIL, _ = c.String("Admin", "email")
-	ADMIN_USERS, _ = c.String("Admin", "users")
-
-	// Paths
-	PATH_SITE, _ = c.String("Paths", "site")
-	PATH_DATA, _ = c.String("Paths", "data")
-	PATH_LOGS, _ = c.String("Paths", "logs")
-	PATH_LOCAL, _ = c.String("Paths", "local_paths")
-	PATH_PIDFILE, _ = c.String("Paths", "pidfile")
-
 	// Runtime
 	GOMAXPROCS, _ = c.String("Runtime", "GOMAXPROCS")
 
+	LOG_PERF, _ = c.Bool("Log", "perf_log")
+	LOG_ROTATE, _ = c.Bool("Log", "rotate")
+
 	// Mongodb
-	MONGODB_HOSTS, _ = c.String("Mongodb", "hosts")
+	MONGODB_ATTRIBUTE_INDEXES, _ = c.String("Mongodb", "attribute_indexes")
 	if MONGODB_DATABASE, err = c.String("Mongodb", "database"); err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: Mongodb database must be set in config file.")
 		os.Exit(1)
 	}
-	MONGODB_USER, _ = c.String("Mongodb", "user")
+	MONGODB_HOSTS, _ = c.String("Mongodb", "hosts")
 	MONGODB_PASSWORD, _ = c.String("Mongodb", "password")
-	MONGODB_ATTRIBUTE_INDEXES, _ = c.String("Mongodb", "attribute_indexes")
+	MONGODB_USER, _ = c.String("Mongodb", "user")
 
 	// parse Node-Indices
 	NODE_IDXS = map[string]idxOpts{}
@@ -169,8 +161,23 @@ func Initialize() {
 		NODE_IDXS[opt] = opts
 	}
 
-	LOG_PERF, _ = c.Bool("Log", "perf_log")
-	LOG_ROTATE, _ = c.Bool("Log", "rotate")
+	// Paths
+	PATH_SITE, _ = c.String("Paths", "site")
+	PATH_DATA, _ = c.String("Paths", "data")
+	PATH_LOGS, _ = c.String("Paths", "logs")
+	PATH_LOCAL, _ = c.String("Paths", "local_paths")
+	PATH_PIDFILE, _ = c.String("Paths", "pidfile")
+
+	// SSL
+	SSL, _ = c.Bool("SSL", "enable")
+	if SSL {
+		SSL_KEY, _ = c.String("SSL", "key")
+		SSL_CERT, _ = c.String("SSL", "cert")
+	}
+
+	VERSIONS["ACL"] = 2
+	VERSIONS["Auth"] = 1
+	VERSIONS["Node"] = 2
 }
 
 // Bool is a convenience wrapper around strconv.ParseBool
