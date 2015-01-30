@@ -15,6 +15,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
+	"github.com/MG-RAST/Shock/shock-server/versions"
 	"github.com/MG-RAST/golib/stretchr/goweb"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"net"
@@ -174,18 +175,38 @@ func main() {
 	conf.Initialize()
 	logger.Initialize()
 	if err := db.Initialize(); err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
-		logger.Error("ERROR: " + err.Error())
+		fmt.Fprintf(os.Stderr, "Err@db.Initialize: %v\n", err)
+		logger.Error("Err@db.Initialize: " + err.Error())
 		os.Exit(1)
 	}
 	user.Initialize()
 	node.Initialize()
 	preauth.Initialize()
 	auth.Initialize()
-
-	// print conf
+	if err := versions.Initialize(); err != nil {
+		fmt.Fprintf(os.Stderr, "Err@versions.Initialize: %v\n", err)
+		logger.Error("Err@versions.Initialize: " + err.Error())
+		os.Exit(1)
+	}
+	if err := versions.RunVersionUpdates(); err != nil {
+		fmt.Fprintf(os.Stderr, "Err@versions.RunVersionUpdates: %v\n", err)
+		logger.Error("Err@versions.RunVersionUpdates: " + err.Error())
+		os.Exit(1)
+	}
+	// After version updates have succeeded without error, we can push the configured version numbers into the mongo db
+	// Note: configured version numbers are configured in conf.go but are NOT user configurable by design
+	if err := versions.PushVersionsToDatabase(); err != nil {
+		fmt.Fprintf(os.Stderr, "Err@versions.PushVersionsToDatabase: %v\n", err)
+		logger.Error("Err@versions.PushVersionsToDatabase: " + err.Error())
+		os.Exit(1)
+	}
 	printLogo()
 	conf.Print()
+	if err := versions.Print(); err != nil {
+		fmt.Fprintf(os.Stderr, "Err@versions.Print: %v\n", err)
+		logger.Error("Err@versions.Print: " + err.Error())
+		os.Exit(1)
+	}
 
 	// check if necessary directories exist or created
 	for _, path := range []string{conf.PATH_SITE, conf.PATH_DATA, conf.PATH_LOGS, conf.PATH_DATA + "/temp"} {
