@@ -30,11 +30,26 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	//
 	// Note that all paths for node operations in this function must end with "err = node.Save()" to save node state.
 
-	if _, uploadMisplaced := params["upload"]; uploadMisplaced {
-		return errors.New("upload form field must be file encoded.")
+	for _, u := range util.ValidUpload {
+		if _, uploadMisplaced := params[u]; uploadMisplaced {
+			return errors.New(fmt.Sprintf("%s form field must be file encoded", u))
+		}
 	}
 
-	_, isRegularUpload := files["upload"]
+	isRegularUpload := false
+	uploadFile := ""
+	uploadCount := 0
+	for _, u := range util.ValidUpload {
+		if _, hasRegularUpload := files[u]; hasRegularUpload {
+			isRegularUpload = true
+			uploadFile = u
+			uploadCount += 1
+		}
+	}
+	if uploadCount > 1 {
+		return errors.New("only one upload file allowed")
+	}
+
 	_, isPartialUpload := params["parts"]
 
 	isVirtualNode := false
@@ -64,10 +79,10 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	}
 
 	if isRegularUpload {
-		if err = node.SetFile(files["upload"]); err != nil {
+		if err = node.SetFile(files[uploadFile]); err != nil {
 			return err
 		}
-		delete(files, "upload")
+		delete(files, uploadFile)
 	} else if isPartialUpload {
 		node.Type = "parts"
 		if params["parts"] == "unknown" {
@@ -123,7 +138,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 	} else if isCopyUpload {
 		var n *Node
-		n, err = LoadUnauth(params["copy_data"])
+		n, err = Load(params["copy_data"])
 		if err != nil {
 			return err
 		}
@@ -194,7 +209,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 
 		var n *Node
-		n, err = LoadUnauth(params["parent_node"])
+		n, err = Load(params["parent_node"])
 		if err != nil {
 			return err
 		}
@@ -253,7 +268,6 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		if err = node.SetAttributes(files["attributes"]); err != nil {
 			return err
 		}
-		os.Remove(files["attributes"].Path)
 		delete(files, "attributes")
 	}
 
@@ -364,7 +378,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 func (node *Node) Save() (err error) {
 	node.UpdateVersion()
 	if len(node.Revisions) == 0 || node.Revisions[len(node.Revisions)-1].Version != node.Version {
-		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Public, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified, node.Type, node.Subset}
+		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified, node.Type, node.Subset}
 		node.Revisions = append(node.Revisions, n)
 	}
 	if node.CreatedOn.String() == "0001-01-01 00:00:00 +0000 UTC" {

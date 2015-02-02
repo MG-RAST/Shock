@@ -18,7 +18,7 @@ func PreAuthRequest(ctx context.Context) {
 		logger.Error(err_msg)
 		responder.RespondWithError(ctx, 500, err_msg)
 	} else {
-		if n, err := node.LoadUnauth(p.NodeId); err == nil {
+		if n, err := node.Load(p.NodeId); err == nil {
 			switch p.Type {
 			case "download":
 				filename := n.Id

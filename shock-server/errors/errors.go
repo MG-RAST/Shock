@@ -20,4 +20,5 @@ const (
 	InvalidFileTypeForFilter = "Invalid file type for filter"
 	NodeReferenced           = "Node referenced by virtual node"
 	NodeDoesNotExist         = "Node does not exist"
+	NodeNotFound             = "Node not found"
 )

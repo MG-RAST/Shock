@@ -1,11 +1,13 @@
 package node
 
 import (
+	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
+	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/golib/mgo"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"net/http"
@@ -18,17 +20,20 @@ func (cr *NodeController) Delete(id string, ctx context.Context) error {
 		return request.AuthError(err, ctx)
 	}
 
+	// public user (no auth) can be used in some cases
 	if u == nil {
-		return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
+		if conf.ANON_DELETE {
+			u = &user.User{Uuid: "public"}
+		} else {
+			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
+		}
 	}
 
-	// Load node and handle user unauthorized
-	n, err := node.Load(id, u)
+	// Load node by id
+	n, err := node.Load(id)
 	if err != nil {
-		if err.Error() == e.UnAuth {
-			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
-		} else if err == mgo.ErrNotFound {
-			return responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
+		if err == mgo.ErrNotFound {
+			return responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
@@ -39,7 +44,7 @@ func (cr *NodeController) Delete(id string, ctx context.Context) error {
 	}
 
 	rights := n.Acl.Check(u.Uuid)
-	if !rights["delete"] {
+	if rights["delete"] == false && u.Admin == false && n.Acl.Owner != u.Uuid {
 		return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 	}
 

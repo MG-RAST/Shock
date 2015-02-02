@@ -15,6 +15,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
+	"github.com/MG-RAST/Shock/shock-server/versions"
 	"github.com/MG-RAST/golib/stretchr/goweb"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"net"
@@ -27,17 +28,28 @@ import (
 	"time"
 )
 
+const (
+	longDateForm = "2006-01-02T15:04:05-07:00"
+)
+
+type anonymous struct {
+	Read   bool `json:"read"`
+	Write  bool `json:"write"`
+	Delete bool `json:"delete"`
+}
+
 type resource struct {
-	A []string        `json:"attribute_indexes"`
-	C string          `json:"contact"`
-	D string          `json:"documentation"`
-	I string          `json:"id"`
-	O []string        `json:"auth"`
-	P map[string]bool `json:"anonymous_permissions"`
-	R []string        `json:"resources"`
-	T string          `json:"type"`
-	U string          `json:"url"`
-	V string          `json:"version"`
+	A []string  `json:"attribute_indexes"`
+	C string    `json:"contact"`
+	D string    `json:"documentation"`
+	I string    `json:"id"`
+	O []string  `json:"auth"`
+	P anonymous `json:"anonymous_permissions"`
+	R []string  `json:"resources"`
+	S string    `json:"server_time"`
+	T string    `json:"type"`
+	U string    `json:"url"`
+	V string    `json:"version"`
 }
 
 func mapRoutes() {
@@ -115,10 +127,10 @@ func mapRoutes() {
 			attrs[k] = strings.TrimSpace(v)
 		}
 
-		perms := make(map[string]bool)
-		perms["read"] = conf.ANON_READ
-		perms["write"] = conf.ANON_WRITE
-		perms["delete"] = conf.ANON_DELETE
+		anonPerms := new(anonymous)
+		anonPerms.Read = conf.ANON_READ
+		anonPerms.Write = conf.ANON_WRITE
+		anonPerms.Delete = conf.ANON_DELETE
 
 		var auth []string
 		if conf.AUTH_GLOBUS_TOKEN_URL != "" && conf.AUTH_GLOBUS_PROFILE_URL != "" {
@@ -134,8 +146,9 @@ func mapRoutes() {
 			D: host + "/wiki/",
 			I: "Shock",
 			O: auth,
-			P: perms,
+			P: *anonPerms,
 			R: []string{"node"},
+			S: time.Now().Format(longDateForm),
 			T: "Shock",
 			U: host + "/",
 			V: "[% VERSION %]",
@@ -162,18 +175,38 @@ func main() {
 	conf.Initialize()
 	logger.Initialize()
 	if err := db.Initialize(); err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
-		logger.Error("ERROR: " + err.Error())
+		fmt.Fprintf(os.Stderr, "Err@db.Initialize: %v\n", err)
+		logger.Error("Err@db.Initialize: " + err.Error())
 		os.Exit(1)
 	}
 	user.Initialize()
 	node.Initialize()
 	preauth.Initialize()
 	auth.Initialize()
-
-	// print conf
+	if err := versions.Initialize(); err != nil {
+		fmt.Fprintf(os.Stderr, "Err@versions.Initialize: %v\n", err)
+		logger.Error("Err@versions.Initialize: " + err.Error())
+		os.Exit(1)
+	}
+	if err := versions.RunVersionUpdates(); err != nil {
+		fmt.Fprintf(os.Stderr, "Err@versions.RunVersionUpdates: %v\n", err)
+		logger.Error("Err@versions.RunVersionUpdates: " + err.Error())
+		os.Exit(1)
+	}
+	// After version updates have succeeded without error, we can push the configured version numbers into the mongo db
+	// Note: configured version numbers are configured in conf.go but are NOT user configurable by design
+	if err := versions.PushVersionsToDatabase(); err != nil {
+		fmt.Fprintf(os.Stderr, "Err@versions.PushVersionsToDatabase: %v\n", err)
+		logger.Error("Err@versions.PushVersionsToDatabase: " + err.Error())
+		os.Exit(1)
+	}
 	printLogo()
 	conf.Print()
+	if err := versions.Print(); err != nil {
+		fmt.Fprintf(os.Stderr, "Err@versions.Print: %v\n", err)
+		logger.Error("Err@versions.Print: " + err.Error())
+		os.Exit(1)
+	}
 
 	// check if necessary directories exist or created
 	for _, path := range []string{conf.PATH_SITE, conf.PATH_DATA, conf.PATH_LOGS, conf.PATH_DATA + "/temp"} {

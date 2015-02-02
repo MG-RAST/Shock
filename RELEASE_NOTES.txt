@@ -1,0 +1,60 @@
+# v0.9.5
+
+- Sort Shock query results by date by default (newest to oldest)
+- Expanded querynode feature set (sort by field, query for field by range, query for field
+  not equal, query for field begins with/ends with)
+- Added verbose option to node ACLs (expands uuid list in ACLs to user structs).
+- Expanded admin permitted operations to include update and delele in addition to read.
+- Made setting a file name for a node non-dependent on whether file has been set.
+- Added to base resource call the list of permitted actions without auth (anonymous).
+- Bug fix for copying subset nodes.
+- Better formatting for configuration printed at startup.
+- Modified node ACLs to explicitly include a "public" string in the ACL if
+if that ACL is public. The previous behavior was to consider an ACL "public"
+if that ACL was empty. This was restrictive in terms of managing ACLs.
+Also, the "Public" field was removed from the node document because this
+information will be solely managed by the ACLs.
+
+Note: Shock has been updated to check for the version of the ACL and Node
+schema in the mongo database at startup time. If either of these are found
+to be outdated, the user will be prompted to run updates on both of these.
+
+The permissions for specific Shock actions are listed below:
+
+#####POST
+ 
+* Permitted by: everyone
+  - /node create node
+
+#####GET
+
+* Permitted by: everyone
+  - / resource listing
+  - /wiki/  this documentation
+
+* Permitted by: admin, node owner, users in read ACL, or everyone if node is publicly readable
+  - /node  list nodes, query
+  - /node/&lt;node_id&gt;  view node, download file (full or partial)
+  - /node/&lt;node_id&gt;/acl  view node acls
+  - /node/&lt;node_id&gt;/acl/&lt;type&gt;  view node acls of type &lt;type&gt;
+
+#####PUT
+
+* Permitted by: admin, node owner, users in write ACL, or everyone if node is publicly writable
+  - /node/&lt;node_id&gt;  modify node (e.g. update attributes of existing node)
+  - /node/&lt;node_id&gt;/acl  modify node acls
+  - /node/&lt;node_id&gt;/acl/&lt;type&gt;  modify node acls of type &lt;type&gt;
+  - /node/&lt;node_id&gt;/index/&lt;type&gt;  create node indexes
+
+#####DELETE
+
+* Permitted by: admin, node owner, users in delete ACL, or everyone if node is publicly deletable
+  - /node/&lt;node_id&gt; delete node
+
+* Permitted by: admin, node owner, users in write ACL, or everyone if node is publicly writable
+  - /node/&lt;node_id&gt;/inde/&lt;type&gt; delete node index
+
+* Permitted by: admin, node owner, users in write ACL, or everyone if node is publicly writable
+  - /node/&lt;node_id&gt;/acl/&lt;type&gt;?users=<user-ids_or_uuids> delete users from ACL
+
+NOTE: Although a node may be designated as publicly readable, writable, or deletable, user authentication may still be required depending on the Shock server's configuration.
