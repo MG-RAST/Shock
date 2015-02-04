@@ -37,22 +37,20 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		return request.AuthError(err, ctx)
 	}
 
-	// Fake public user
+	// public user (no auth) can be used in some cases
 	if u == nil {
 		if conf.ANON_READ {
-			u = &user.User{Uuid: ""}
+			u = &user.User{Uuid: "public"}
 		} else {
 			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
 		}
 	}
 
-	// Load node and handle user unauthorized
-	n, err := node.Load(id, u)
+	// Load node by id
+	n, err := node.Load(id)
 	if err != nil {
-		if err.Error() == e.UnAuth {
-			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
-		} else if err == mgo.ErrNotFound {
-			return responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
+		if err == mgo.ErrNotFound {
+			return responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
@@ -60,6 +58,11 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			logger.Error(err_msg)
 			return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 		}
+	}
+
+	rights := n.Acl.Check(u.Uuid)
+	if rights["read"] == false && u.Admin == false && n.Acl.Owner != u.Uuid {
+		return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 	}
 
 	// Gather query params
@@ -494,7 +497,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				if err = json.Unmarshal(body, &r); err != nil {
 					err_msg := "err:@node_Read POST: " + err.Error()
 					logger.Error(err_msg)
-					return responder.WriteResponseObject(ctx, http.StatusInternalServerError, err_msg)
+					return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 				} else {
 					return responder.WriteResponseObject(ctx, http.StatusOK, r)
 				}
@@ -502,11 +505,11 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				r := responseWrapper{}
 				body, _ := ioutil.ReadAll(res.Body)
 				if err = json.Unmarshal(body, &r); err == nil {
-					err_msg := res.Status + ": " + (*r.Error)[0]
+					err_msg := "err:@node_Read POST " + post_url + " = " + res.Status + ":" + (*r.Error)[0]
 					logger.Error(err_msg)
 					return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 				} else {
-					err_msg := "request error: " + res.Status
+					err_msg := "err:@node_Read POST " + post_url + " = " + res.Status
 					logger.Error(err_msg)
 					return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 				}

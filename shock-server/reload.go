@@ -26,7 +26,7 @@ func reload(source string) (err error) {
 		return reloadFromUrl(source)
 	} else {
 		fmt.Println("source-type: dir")
-		if source == conf.Conf["data-path"] {
+		if source == conf.PATH_DATA {
 			fmt.Println("source dir is the same as conf data dir: db reload only.")
 		} else {
 			return errors.New("source dir is not the same as conf data dir: copy not implemented yet")

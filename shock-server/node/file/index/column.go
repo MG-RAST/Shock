@@ -31,7 +31,7 @@ func (c *column) Create(string) (count int64, format string, err error) {
 }
 
 func CreateColumnIndex(c *column, column int, ofile string) (count int64, format string, err error) {
-	tmpFilePath := fmt.Sprintf("%s/temp/%d%d.idx", conf.Conf["data-path"], rand.Int(), rand.Int())
+	tmpFilePath := fmt.Sprintf("%s/temp/%d%d.idx", conf.PATH_DATA, rand.Int(), rand.Int())
 
 	f, err := os.Create(tmpFilePath)
 	if err != nil {

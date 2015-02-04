@@ -77,7 +77,7 @@ func (node *Node) initParts(partsCount string) (err error) {
 
 func (node *Node) addVirtualParts(ids []string) (err error) {
 	nodes := Nodes{}
-	if _, err := dbFind(bson.M{"id": bson.M{"$in": ids}}, &nodes, nil); err != nil {
+	if _, err := dbFind(bson.M{"id": bson.M{"$in": ids}}, &nodes, "", nil); err != nil {
 		return err
 	}
 	if len(ids) != len(nodes) {

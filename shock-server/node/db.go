@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/db"
-	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/golib/mgo"
 	"github.com/MG-RAST/golib/mgo/bson"
 	"io/ioutil"
@@ -18,7 +17,7 @@ import (
 func Initialize() {
 	session := db.Connection.Session.Copy()
 	defer session.Close()
-	c := session.DB(conf.Conf["mongodb-database"]).C("Nodes")
+	c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
 	c.EnsureIndex(mgo.Index{Key: []string{"id"}, Unique: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"file.path"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"file.virtual_parts"}, Background: true})
@@ -26,8 +25,8 @@ func Initialize() {
 	c.EnsureIndex(mgo.Index{Key: []string{"acl.read"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"acl.write"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"acl.delete"}, Background: true})
-	if conf.Conf["mongodb-attribute-indexes"] != "" {
-		for _, v := range strings.Split(conf.Conf["mongodb-attribute-indexes"], ",") {
+	if conf.MONGODB_ATTRIBUTE_INDEXES != "" {
+		for _, v := range strings.Split(conf.MONGODB_ATTRIBUTE_INDEXES, ",") {
 			v = "attributes." + strings.TrimSpace(v)
 			c.EnsureIndex(mgo.Index{Key: []string{v}, Background: true})
 		}
@@ -37,7 +36,7 @@ func Initialize() {
 func dbDelete(q bson.M) (err error) {
 	session := db.Connection.Session.Copy()
 	defer session.Close()
-	c := session.DB(conf.Conf["mongodb-database"]).C("Nodes")
+	c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
 	_, err = c.RemoveAll(q)
 	return
 }
@@ -45,18 +44,21 @@ func dbDelete(q bson.M) (err error) {
 func dbUpsert(n *Node) (err error) {
 	session := db.Connection.Session.Copy()
 	defer session.Close()
-	c := session.DB(conf.Conf["mongodb-database"]).C("Nodes")
+	c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
 	_, err = c.Upsert(bson.M{"id": n.Id}, &n)
 	return
 }
 
-func dbFind(q bson.M, results *Nodes, options map[string]int) (count int, err error) {
+func dbFind(q bson.M, results *Nodes, order string, options map[string]int) (count int, err error) {
 	session := db.Connection.Session.Copy()
 	defer session.Close()
-	c := session.DB(conf.Conf["mongodb-database"]).C("Nodes")
+	c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
+	if order == "" {
+		order = "created_on"
+	}
 	if limit, has := options["limit"]; has {
 		if offset, has := options["offset"]; has {
-			query := c.Find(q)
+			query := c.Find(q).Sort(order)
 			if count, err = query.Count(); err != nil {
 				return 0, err
 			}
@@ -66,31 +68,14 @@ func dbFind(q bson.M, results *Nodes, options map[string]int) (count int, err er
 			return 0, errors.New("store.db.Find options limit and offset must be used together")
 		}
 	}
-	err = c.Find(q).All(results)
+	err = c.Find(q).Sort(order).All(results)
 	return
 }
 
-func Load(id string, u *user.User) (n *Node, err error) {
+func Load(id string) (n *Node, err error) {
 	session := db.Connection.Session.Copy()
 	defer session.Close()
-	c := session.DB(conf.Conf["mongodb-database"]).C("Nodes")
-	n = new(Node)
-	if err = c.Find(bson.M{"id": id}).One(&n); err == nil {
-		rights := n.Acl.Check(u.Uuid)
-		if !rights["read"] && !u.Admin {
-			return nil, errors.New("User Unauthorized")
-		}
-		return n, nil
-	} else {
-		return nil, err
-	}
-	return
-}
-
-func LoadUnauth(id string) (n *Node, err error) {
-	session := db.Connection.Session.Copy()
-	defer session.Close()
-	c := session.DB(conf.Conf["mongodb-database"]).C("Nodes")
+	c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
 	n = new(Node)
 	if err = c.Find(bson.M{"id": id}).One(&n); err == nil {
 		return n, nil
@@ -101,7 +86,7 @@ func LoadUnauth(id string) (n *Node, err error) {
 }
 
 func LoadNodes(ids []string) (n Nodes, err error) {
-	if _, err = dbFind(bson.M{"id": bson.M{"$in": ids}}, &n, nil); err == nil {
+	if _, err = dbFind(bson.M{"id": bson.M{"$in": ids}}, &n, "", nil); err == nil {
 		return n, err
 	}
 	return nil, err
