@@ -18,13 +18,14 @@ func Initialize() {
 	session := db.Connection.Session.Copy()
 	defer session.Close()
 	c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
-	c.EnsureIndex(mgo.Index{Key: []string{"id"}, Unique: true})
-	c.EnsureIndex(mgo.Index{Key: []string{"file.path"}, Background: true})
-	c.EnsureIndex(mgo.Index{Key: []string{"file.virtual_parts"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"acl.owner"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"acl.read"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"acl.write"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"acl.delete"}, Background: true})
+	c.EnsureIndex(mgo.Index{Key: []string{"created_on"}, Background: true})
+	c.EnsureIndex(mgo.Index{Key: []string{"file.path"}, Background: true})
+	c.EnsureIndex(mgo.Index{Key: []string{"file.virtual_parts"}, Background: true})
+	c.EnsureIndex(mgo.Index{Key: []string{"id"}, Unique: true})
 	if conf.MONGODB_ATTRIBUTE_INDEXES != "" {
 		for _, v := range strings.Split(conf.MONGODB_ATTRIBUTE_INDEXES, ",") {
 			v = "attributes." + strings.TrimSpace(v)
