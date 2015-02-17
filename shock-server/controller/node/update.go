@@ -44,7 +44,8 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 	}
 
 	rights := n.Acl.Check(u.Uuid)
-	if rights["write"] == false && u.Admin == false && n.Acl.Owner != u.Uuid {
+	prights := n.Acl.Check("public")
+	if rights["write"] == false && u.Admin == false && n.Acl.Owner != u.Uuid && prights["write"] == false {
 		return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 	}
 
