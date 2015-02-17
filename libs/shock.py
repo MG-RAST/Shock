@@ -136,11 +136,16 @@ class Client:
             raise Exception(u'Shock error %s: %s (%s)'%(rj['status'], rj['error'][0], node))
         return rj
     
-    def index_node(self, node, index, column=None):
+    def index_node(self, node, index, column=None, force=False):
         url = "%s/node/%s/index/%s"%(self.shock_url, node, index)
+        params = {}
         if column is not None:
-            url += '?number='+str(column)
+            params['number'] = str(column)
+        if force:
+            params['force_rebuild'] = 1
         try:
+            if params:
+                url += '?'+urllib.urlencode(params)
             req = self.methods['put'](url, headers=self.auth_header)
             rj  = req.json()
         except Exception as ex:

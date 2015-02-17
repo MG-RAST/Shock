@@ -107,10 +107,11 @@ func IndexTypedRequest(ctx context.Context) {
 		if _, has := n.Indexes[idxType]; has {
 			if idxType == "size" {
 				responder.RespondOK(ctx)
+				return
 			} else if !forceRebuild {
 				responder.RespondWithError(ctx, http.StatusBadRequest, "This index already exists, please add the parameter 'force_rebuild=1' to force a rebuild of the existing index.")
+				return
 			}
-			return
 		}
 
 		if !n.HasFile() {

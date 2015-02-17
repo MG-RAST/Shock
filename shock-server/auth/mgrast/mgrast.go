@@ -40,7 +40,7 @@ func Auth(header string) (*user.User, error) {
 	case "mgrast", "oauth":
 		return authToken(strings.Split(header, " ")[1])
 	case "basic":
-		return nil, errors.New("This authentication method does not support username/password authentication. Please use MG-RAST your token.")
+		return nil, errors.New("This authentication method does not support username/password authentication. Please use your MG-RAST token.")
 	default:
 		return nil, errors.New("Invalid authentication header.")
 	}
