@@ -19,7 +19,9 @@ import (
 //Modification functions
 func (node *Node) Update(params map[string]string, files FormFiles) (err error) {
 	// Exclusive conditions
-	// 1. has files[upload] (regular upload)
+	// 1.1. has files[upload] (regular upload)
+	// 1.2. has files[gzip] (compressed upload)
+	// 1.3. has files[bzip2] (compressed upload)
 	// 2. has params[parts] (partial upload support)
 	// 3. has params[type] & params[source] (v_node)
 	// 4. has params[path] (set from local path)

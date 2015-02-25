@@ -105,7 +105,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 	tmpPath := ""
 	for {
 		if part, err := reader.NextPart(); err == nil {
-			// params don't have a FileName() and files must have FormName() of either "upload", "attributes", or an integer
+			// params don't have a FileName() and files must have FormName() of either "upload", "gzip", "bzip2", "attributes", or an integer
 			if part.FileName() == "" {
 				if !util.IsValidParamName(part.FormName()) {
 					return nil, files, errors.New("invalid param: " + part.FormName())
