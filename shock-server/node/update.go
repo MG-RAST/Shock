@@ -53,6 +53,12 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	}
 
 	_, isPartialUpload := params["parts"]
+	hasPartsFile := false
+	for key, _ := range files {
+		if _, errf := strconv.Atoi(key); errf == nil {
+			hasPartsFile = true
+		}
+	}
 
 	isVirtualNode := false
 	if t, hasType := params["type"]; hasType && t == "virtual" {
@@ -73,10 +79,12 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		return errors.New("path parameter incompatible with copy_data and/or parent_node parameter")
 	} else if isCopyUpload && isSubsetUpload {
 		return errors.New("copy_data parameter incompatible with parent_node parameter")
+	} else if isRegularUpload && hasPartsFile {
+		return errors.New("upload file and parts file are incompatible")
 	}
 
 	// Check if immutable
-	if (isRegularUpload || isPartialUpload || isVirtualNode || isPathUpload || isCopyUpload || isSubsetUpload) && node.HasFile() {
+	if (isRegularUpload || isPartialUpload || hasPartsFile || isVirtualNode || isPathUpload || isCopyUpload || isSubsetUpload) && node.HasFile() {
 		return errors.New(e.FileImut)
 	}
 
@@ -294,45 +302,32 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	}
 
 	// handle part file
-	LockMgr.LockPartOp()
-	parts_count := node.partsCount()
-	if parts_count > 0 || node.isVarLen() {
-		for key, file := range files {
-			if node.HasFile() {
-				LockMgr.UnlockPartOp()
-				return errors.New(e.FileImut)
-			}
-			keyn, errf := strconv.Atoi(key)
-			if errf == nil && (keyn <= parts_count || node.isVarLen()) {
-				err = node.addPart(keyn-1, &file)
-				if err != nil {
-					LockMgr.UnlockPartOp()
-					return err
+	if hasPartsFile {
+		if node.HasFile() {
+			return errors.New(e.FileImut)
+		}
+		if node.Type != "parts" {
+			return errors.New("This is not a parts node and thus does not support uploading in parts.")
+		}
+		LockMgr.LockPartOp()
+		parts_count := node.partsCount()
+		if parts_count > 0 || node.isVarLen() {
+			for key, file := range files {
+				keyn, errf := strconv.Atoi(key)
+				if errf == nil && (keyn <= parts_count || node.isVarLen()) {
+					err = node.addPart(keyn-1, &file)
+					if err != nil {
+						LockMgr.UnlockPartOp()
+						return err
+					}
 				}
-			} else {
-				LockMgr.UnlockPartOp()
-				return errors.New("invalid file parameter")
 			}
+		} else {
+			LockMgr.UnlockPartOp()
+			return errors.New("Unable to retrieve parts info for node.")
 		}
-	} else if node.HasFile() {
-		// if node has a file and user is trying to perform parts upload, return error that file is immutable.
-		for key, _ := range files {
-			if _, errf := strconv.Atoi(key); errf == nil {
-				LockMgr.UnlockPartOp()
-				return errors.New(e.FileImut)
-			}
-		}
-	} else if parts_count == -1 {
-		// if node is not variable length and user is trying to perform parts upload, return error that node is not variable
-		for key, _ := range files {
-			if _, errf := strconv.Atoi(key); errf == nil {
-				LockMgr.UnlockPartOp()
-				return errors.New("This is not a variable length node and thus does not support uploading in parts.")
-			}
-		}
+		LockMgr.UnlockPartOp()
 	}
-
-	LockMgr.UnlockPartOp()
 
 	// update relatives
 	if _, hasRelation := params["linkage"]; hasRelation {
