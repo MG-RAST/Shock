@@ -16,10 +16,11 @@ import (
 type partsFile []string
 
 type partsList struct {
-	Count  int         `json:"count"`
-	Length int         `json:"length"`
-	VarLen bool        `json:"varlen"`
-	Parts  []partsFile `json:"parts"`
+	Count       int         `json:"count"`
+	Length      int         `json:"length"`
+	VarLen      bool        `json:"varlen"`
+	Parts       []partsFile `json:"parts"`
+	Compression string      `json:"compression"`
 }
 
 // Parts functions
@@ -58,7 +59,7 @@ func (node *Node) isVarLen() bool {
 	return p.VarLen
 }
 
-func (node *Node) initParts(partsCount string) (err error) {
+func (node *Node) initParts(partsCount string, compressionFormat string) (err error) {
 	// Function should only be called with a postive integer or string 'unknown'
 	count, cerr := strconv.Atoi(partsCount)
 	if partsCount != "unknown" && cerr != nil {
@@ -67,9 +68,9 @@ func (node *Node) initParts(partsCount string) (err error) {
 	p := &partsList{}
 	err = os.MkdirAll(fmt.Sprintf("%s/parts", node.Path()), 0777)
 	if partsCount == "unknown" {
-		p = &partsList{Count: 0, Length: 0, VarLen: true, Parts: make([]partsFile, 0)}
+		p = &partsList{Count: 0, Length: 0, VarLen: true, Parts: make([]partsFile, 0), Compression: compressionFormat}
 	} else {
-		p = &partsList{Count: count, Length: 0, VarLen: false, Parts: make([]partsFile, count)}
+		p = &partsList{Count: count, Length: 0, VarLen: false, Parts: make([]partsFile, count), Compression: compressionFormat}
 	}
 	err = node.writeParts(p)
 	return

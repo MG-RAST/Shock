@@ -1,6 +1,8 @@
 package node
 
 import (
+	"compress/bzip2"
+	"compress/gzip"
 	"crypto/md5"
 	"errors"
 	"fmt"
@@ -206,35 +208,98 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 }
 
 func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
-	out, err := os.Create(fmt.Sprintf("%s/%s.data", node.Path(), node.Id))
-	if err != nil {
-		return
+	out, oerr := os.Create(fmt.Sprintf("%s/%s.data", node.Path(), node.Id))
+	if oerr != nil {
+		return oerr
 	}
 	defer out.Close()
-	md5h := md5.New()
-	for i := 1; i <= p.Count; i++ {
-		filename := fmt.Sprintf("%s/parts/%d", node.Path(), i)
 
-		// skip this portion unless either
-		// 1. file exists, or
-		// 2. file does not exist and allowEmpty == false
-		if _, errf := os.Stat(filename); errf == nil || (errf != nil && allowEmpty == false) {
-			part, err := os.Open(filename)
-			if err != nil {
-				return err
+	pReader, pWriter := io.Pipe()
+	defer pReader.Close()
+
+	cError := make(chan error)
+	cKill := make(chan bool)
+
+	// goroutine to add file readers to pipe while gzip reads pipe
+	// allows us to only open one file at a time but stream the data to gzip as if it was one reader
+	go func() {
+		var ferr error
+		killed := false
+		for i := 1; i <= p.Count; i++ {
+			select {
+			case <-cKill:
+				killed = true
+				break
+			default:
 			}
-			defer part.Close()
-			dst := io.MultiWriter(out, md5h)
-			if _, err = io.Copy(dst, part); err != nil {
-				return err
+			filename := fmt.Sprintf("%s/parts/%d", node.Path(), i)
+			// skip this portion unless either
+			// 1. file exists, or
+			// 2. file does not exist and allowEmpty == false
+			if _, errf := os.Stat(filename); errf == nil || (errf != nil && allowEmpty == false) {
+				part, err := os.Open(filename)
+				if err != nil {
+					ferr = err
+					break
+				}
+				_, err = io.Copy(pWriter, part)
+				part.Close()
+				if err != nil {
+					ferr = err
+					break
+				}
 			}
 		}
+		pWriter.Close()
+		select {
+		case <-cKill:
+			killed = true
+		default:
+		}
+		if killed {
+			return
+		}
+		cError <- ferr
+	}()
+
+	md5h := md5.New()
+	dst := io.MultiWriter(out, md5h)
+
+	// write from pipe to outfile / md5
+	var cerr error
+	if p.Compression == "gzip" {
+		// handle "gzip" file
+		g, gerr := gzip.NewReader(pReader)
+		if gerr != nil {
+			close(cKill)
+			return gerr
+		}
+		defer g.Close()
+		_, cerr = io.Copy(dst, g)
+	} else if p.Compression == "bzip2" {
+		// handle "bzip2" file
+		b := bzip2.NewReader(pReader)
+		_, cerr = io.Copy(dst, b)
+	} else {
+		// handle all others
+		_, cerr = io.Copy(dst, pReader)
 	}
+	// get any errors from channel
+	if eerr := <-cError; eerr != nil {
+		return eerr
+	}
+	if cerr != nil {
+		return cerr
+	}
+
+	// get file info and update node
 	fileStat, err := os.Stat(fmt.Sprintf("%s/%s.data", node.Path(), node.Id))
 	if err != nil {
-		return
+		return err
 	}
-	node.File.Name = node.Id
+	if node.File.Name == "" {
+		node.File.Name = node.Id
+	}
 	node.File.Size = fileStat.Size()
 	node.File.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
 
