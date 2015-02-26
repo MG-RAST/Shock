@@ -61,7 +61,8 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 	}
 
 	rights := n.Acl.Check(u.Uuid)
-	if rights["read"] == false && u.Admin == false && n.Acl.Owner != u.Uuid {
+	prights := n.Acl.Check("public")
+	if rights["read"] == false && u.Admin == false && n.Acl.Owner != u.Uuid && prights["read"] == false {
 		return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 	}
 
