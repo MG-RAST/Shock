@@ -8,8 +8,8 @@
 # config: /etc/shock/shock-server.conf
  
 NAME="shock-server"
-PID_FILE="/var/run/${NAME}.pid"
 LOG_FILE="/var/log/${NAME}.log"
+PID_FILE="/etc/shock/data/pidfile"
 CONF_FILE="/etc/shock/${NAME}.conf"
 
 start() {
@@ -18,8 +18,7 @@ start() {
 	    echo "is already running!"
     else
 	    $NAME -conf $CONF_FILE > $LOG_FILE 2>&1 &
-	    sleep 2
-	    echo `ps -ef | grep -v grep | grep 'shock-server' | awk '{print $2}'` > $PID_FILE
+	    sleep 1
 	    echo "(Done)"
     fi
     return 0
@@ -30,7 +29,7 @@ stop() {
     if [ -f $PID_FILE ]; then
 	    PIDN=`cat $PID_FILE`
 	    kill $PIDN 2>&1
-	    sleep 2
+	    sleep 1
 	    rm $PID_FILE
 	    echo "(Done)"
     else
@@ -42,7 +41,12 @@ stop() {
 status() {
     if [ -f $PID_FILE ]; then
 	    PIDN=`cat $PID_FILE`
-	    echo "$NAME is running with pid $PIDN."
+	    PSTAT=`ps -p $PIDN | grep -v -w 'PID'`
+	    if [ -z "$PSTAT" ]; then
+	        echo "$NAME has pidfile ($PIDN) but is not running."
+	    else
+	        echo "$NAME is running with pid $PIDN."
+	    fi
     else
 	    echo "$NAME is not running."
     fi
