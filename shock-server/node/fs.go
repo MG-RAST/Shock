@@ -208,11 +208,11 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 }
 
 func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
-	out, oerr := os.Create(fmt.Sprintf("%s/%s.data", node.Path(), node.Id))
+	outf := fmt.Sprintf("%s/%s.data", node.Path(), node.Id)
+	outh, oerr := os.Create(outf)
 	if oerr != nil {
 		return oerr
 	}
-	defer out.Close()
 
 	pReader, pWriter := io.Pipe()
 	defer pReader.Close()
@@ -263,15 +263,18 @@ func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
 	}()
 
 	md5h := md5.New()
-	dst := io.MultiWriter(out, md5h)
+	dst := io.MultiWriter(outh, md5h)
 
 	// write from pipe to outfile / md5
 	var cerr error
 	if p.Compression == "gzip" {
 		// handle "gzip" file
+		// messy cleanup when returning before goroutine done
 		g, gerr := gzip.NewReader(pReader)
 		if gerr != nil {
 			close(cKill)
+			outh.Close()
+			os.Remove(outf)
 			return gerr
 		}
 		defer g.Close()
@@ -284,18 +287,24 @@ func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
 		// handle all others
 		_, cerr = io.Copy(dst, pReader)
 	}
-	// get any errors from channel
+
+	// get any errors from channel / finish copy
 	if eerr := <-cError; eerr != nil {
+		outh.Close()
+		os.Remove(outf)
 		return eerr
 	}
 	if cerr != nil {
+		outh.Close()
+		os.Remove(outf)
 		return cerr
 	}
+	outh.Close()
 
 	// get file info and update node
-	fileStat, err := os.Stat(fmt.Sprintf("%s/%s.data", node.Path(), node.Id))
-	if err != nil {
-		return err
+	fileStat, ferr := os.Stat(outf)
+	if ferr != nil {
+		return ferr
 	}
 	if node.File.Name == "" {
 		node.File.Name = node.Id
