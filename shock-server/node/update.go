@@ -95,8 +95,9 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		delete(files, uploadFile)
 	} else if isPartialUpload {
 		node.Type = "parts"
+		compressionFormat := params["compression"]
 		if params["parts"] == "unknown" {
-			if err = node.initParts("unknown"); err != nil {
+			if err = node.initParts("unknown", compressionFormat); err != nil {
 				return err
 			}
 		} else if params["parts"] == "close" {
@@ -113,7 +114,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			if n < 1 {
 				return errors.New("parts cannot be less than 1")
 			}
-			if err = node.initParts(params["parts"]); err != nil {
+			if err = node.initParts(params["parts"], compressionFormat); err != nil {
 				return err
 			}
 		}
