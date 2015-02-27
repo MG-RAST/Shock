@@ -116,29 +116,18 @@ func LoadFromDisk(id string) (n *Node, err error) {
 
 func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (node *Node, err error) {
 	for param := range params {
-		if !util.IsValidParamName(param) {
-			return nil, errors.New("invalid param: " + param)
-		}
 		if param == "parts" && params[param] == "close" {
 			return nil, errors.New("Cannot set parts=close when creating a node, did you do a POST when you meant to PUT?")
 		}
 	}
 
-	for file := range files {
-		if !util.IsValidFileName(file) {
-			return nil, errors.New("invalid file param: " + file)
-		}
-	}
-
 	// if copying node or creating subset node from parent, check if user has rights to the original node
-
 	if _, hasCopyData := params["copy_data"]; hasCopyData {
 		_, err = Load(params["copy_data"])
 		if err != nil {
 			return
 		}
 	}
-
 	if _, hasParentNode := params["parent_node"]; hasParentNode {
 		_, err = Load(params["parent_node"])
 		if err != nil {

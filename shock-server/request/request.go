@@ -105,7 +105,8 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 	tmpPath := ""
 	for {
 		if part, err := reader.NextPart(); err == nil {
-			// params don't have a FileName() and files must have FormName() of either "upload", "attributes", or an integer
+			// params don't have a FileName()
+			// files must have FormName() of either "upload", "gzip", "bzip2", "attributes", "subset_indices", or an integer
 			if part.FileName() == "" {
 				if !util.IsValidParamName(part.FormName()) {
 					return nil, files, errors.New("invalid param: " + part.FormName())
@@ -117,22 +118,23 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 				}
 				params[part.FormName()] = fmt.Sprintf("%s", buffer[0:n])
 			} else {
-				if _, er := strconv.Atoi(part.FormName()); er != nil && !util.IsValidFileName(part.FormName()) {
+				isPartsFile := false
+				if _, er := strconv.Atoi(part.FormName()); er == nil {
+					isPartsFile = true
+				}
+				if !isPartsFile && !util.IsValidFileName(part.FormName()) {
 					return nil, files, errors.New("invalid file param: " + part.FormName())
 				}
 				tmpPath = fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
 				files[part.FormName()] = node.FormFile{Name: part.FileName(), Path: tmpPath, Checksum: make(map[string]string)}
 				if tmpFile, err := os.Create(tmpPath); err == nil {
 					defer tmpFile.Close()
-					if util.IsValidUploadFile(part.FormName()) {
+					if util.IsValidUploadFile(part.FormName()) || isPartsFile {
 						md5h := md5.New()
 						dst := io.MultiWriter(tmpFile, md5h)
 						var tmpform = files[part.FormName()]
-						if part.FormName() == "upload" {
-							if _, err = io.Copy(dst, part); err != nil {
-								return nil, files, err
-							}
-						} else if part.FormName() == "gzip" {
+						if part.FormName() == "gzip" {
+							// handle "gzip" file
 							g, gerr := gzip.NewReader(part)
 							if gerr != nil {
 								return nil, files, gerr
@@ -143,15 +145,22 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 							}
 							tmpform.Name = g.Header.Name
 						} else if part.FormName() == "bzip2" {
+							// handle "bzip2" file
 							b := bzip2.NewReader(part)
 							if _, err = io.Copy(dst, b); err != nil {
 								return nil, files, err
 							}
 							tmpform.Name = util.StripSuffix(part.FileName())
+						} else {
+							// handle "upload" and parts (integer) files
+							if _, err = io.Copy(dst, part); err != nil {
+								return nil, files, err
+							}
 						}
 						tmpform.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
 						files[part.FormName()] = tmpform
 					} else {
+						// handle "attributes" and "subset_indices" files
 						io.Copy(tmpFile, part)
 					}
 				} else {
@@ -163,13 +172,6 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 		} else {
 			break
 		}
-	}
-
-	_, hasUpload := files["upload"]
-	_, hasCopyData := params["copy_data"]
-	if hasUpload && hasCopyData {
-		err = errors.New("Cannot specify upload file path and copy_data node in same request.")
-		return nil, files, err
 	}
 	return
 }
