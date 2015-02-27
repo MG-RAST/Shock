@@ -313,7 +313,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		if node.HasFile() {
 			return errors.New(e.FileImut)
 		}
-		if node.Type != "parts" {
+		if (node.Type != "parts") || (node.Parts == nil) {
 			return errors.New("This is not a parts node and thus does not support uploading in parts.")
 		}
 		LockMgr.LockPartOp()
