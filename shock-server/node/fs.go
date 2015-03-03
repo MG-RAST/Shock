@@ -213,6 +213,7 @@ func (node *Node) SetFileFromParts(allowEmpty bool) (err error) {
 	if oerr != nil {
 		return oerr
 	}
+	defer outh.Close()
 
 	pReader, pWriter := io.Pipe()
 	defer pReader.Close()
@@ -273,7 +274,6 @@ func (node *Node) SetFileFromParts(allowEmpty bool) (err error) {
 		g, gerr := gzip.NewReader(pReader)
 		if gerr != nil {
 			close(cKill)
-			outh.Close()
 			os.Remove(outf)
 			return gerr
 		}
@@ -290,16 +290,13 @@ func (node *Node) SetFileFromParts(allowEmpty bool) (err error) {
 
 	// get any errors from channel / finish copy
 	if eerr := <-cError; eerr != nil {
-		outh.Close()
 		os.Remove(outf)
 		return eerr
 	}
 	if cerr != nil {
-		outh.Close()
 		os.Remove(outf)
 		return cerr
 	}
-	outh.Close()
 
 	// get file info and update node
 	fileStat, ferr := os.Stat(outf)
