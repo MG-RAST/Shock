@@ -116,12 +116,6 @@ func LoadFromDisk(id string) (n *Node, err error) {
 }
 
 func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (node *Node, err error) {
-	for param := range params {
-		if param == "parts" && params[param] == "close" {
-			return nil, errors.New("Cannot set parts=close when creating a node, did you do a POST when you meant to PUT?")
-		}
-	}
-
 	// if copying node or creating subset node from parent, check if user has rights to the original node
 	if _, hasCopyData := params["copy_data"]; hasCopyData {
 		_, err = Load(params["copy_data"])
@@ -153,6 +147,86 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 	}
 
 	err = node.Save()
+	return
+}
+
+func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFiles, archiveId string) (nodes []*Node, err error) {
+	// get parent node
+	archiveNode, err := Load(archiveId)
+	if err != nil {
+		return
+	}
+	if archiveNode.File.Size == 0 {
+		return nil, errors.New("parent archive node has no file")
+	}
+
+	// get format
+	aFormat, hasFormat := params["archive_format"]
+	if !hasFormat {
+		return nil, errors.New("missing archive_format parameter. use one of: " + archiveList)
+	}
+	if !isValidArchive(aFormat) {
+		return nil, errors.New("invalid archive_format parameter. use one of: " + archiveList)
+	}
+
+	// check attributes
+	attrFile := false
+	attrStr := false
+	if _, hasAttrFile := files["attributes"]; hasAttrFile {
+		attrFile = true
+	}
+	if _, hasAttrStr := params["attributes_str"]; hasAttrStr {
+		attrStr = true
+	}
+	if attrFile && attrStr {
+		return nil, errors.New("Cannot define an attributes file and an attributes_str parameter in the same request.")
+	}
+
+	// get files / delete unpack dir when done
+	fileList, unpackDir, err := filesFromArchive(aFormat, archiveNode.FilePath())
+	defer os.RemoveAll(unpackDir)
+	if err != nil {
+		return
+	}
+
+	// build nodes
+	var tempNodes []*Node
+	for _, file := range fileList {
+		// create link
+		link := linkage{Type: "parent", Operation: aFormat, Ids: []string{archiveId}}
+		// create and populate node
+		node := New()
+		node.Type = "basic"
+		node.Linkages = append(node.Linkages, link)
+		node.Acl.SetOwner(u.Uuid)
+		node.Acl.Set(u.Uuid, acl.Rights{"read": true, "write": true, "delete": true})
+		if err = node.Mkdir(); err != nil {
+			return
+		}
+		// set attributes
+		if attrFile {
+			if err = node.SetAttributes(files["attributes"]); err != nil {
+				return
+			}
+		} else if attrStr {
+			if err = node.SetAttributesFromString(params["attributes_str"]); err != nil {
+				return
+			}
+		}
+		// set file
+		if err = node.SetFile(file); err != nil {
+			return
+		}
+		tempNodes = append(tempNodes, node)
+	}
+
+	// save nodes, only return those that were created / saved
+	for _, n := range tempNodes {
+		if err = n.Save(); err != nil {
+			return
+		}
+		nodes = append(nodes, n)
+	}
 	return
 }
 
