@@ -207,7 +207,7 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 	return
 }
 
-func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
+func (node *Node) SetFileFromParts(allowEmpty bool) (err error) {
 	outf := fmt.Sprintf("%s/%s.data", node.Path(), node.Id)
 	outh, oerr := os.Create(outf)
 	if oerr != nil {
@@ -225,7 +225,7 @@ func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
 	go func() {
 		var ferr error
 		killed := false
-		for i := 1; i <= p.Count; i++ {
+		for i := 1; i <= node.Parts.Count; i++ {
 			select {
 			case <-cKill:
 				killed = true
@@ -267,7 +267,7 @@ func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
 
 	// write from pipe to outfile / md5
 	var cerr error
-	if p.Compression == "gzip" {
+	if node.Parts.Compression == "gzip" {
 		// handle "gzip" file
 		// messy cleanup when returning before goroutine done
 		g, gerr := gzip.NewReader(pReader)
@@ -279,7 +279,7 @@ func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
 		}
 		defer g.Close()
 		_, cerr = io.Copy(dst, g)
-	} else if p.Compression == "bzip2" {
+	} else if node.Parts.Compression == "bzip2" {
 		// handle "bzip2" file
 		b := bzip2.NewReader(pReader)
 		_, cerr = io.Copy(dst, b)

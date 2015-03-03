@@ -94,28 +94,34 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 		delete(files, uploadFile)
 	} else if isPartialUpload {
-		node.Type = "parts"
-		compressionFormat := params["compression"]
-		if params["parts"] == "unknown" {
-			if err = node.initParts("unknown", compressionFormat); err != nil {
-				return err
+		// close variable length parts
+		if params["parts"] == "close" {
+			if (node.Type != "parts") || (node.Parts == nil) || !node.Parts.VarLen {
+				return errors.New("can only call 'close' on unknown parts node")
 			}
-		} else if params["parts"] == "close" {
 			if err = node.closeVarLenPartial(); err != nil {
 				return err
 			}
-		} else if node.isVarLen() || node.partsCount() > 0 {
+		} else if (node.Parts != nil) && (node.Parts.VarLen || node.Parts.Count > 0) {
 			return errors.New("parts already set")
 		} else {
-			n, err := strconv.Atoi(params["parts"])
-			if err != nil {
-				return errors.New("parts must be an integer or 'unknown'")
-			}
-			if n < 1 {
-				return errors.New("parts cannot be less than 1")
-			}
-			if err = node.initParts(params["parts"], compressionFormat); err != nil {
-				return err
+			// set parts struct
+			compressionFormat := params["compression"]
+			if params["parts"] == "unknown" {
+				if err = node.initParts("unknown", compressionFormat); err != nil {
+					return err
+				}
+			} else {
+				n, err := strconv.Atoi(params["parts"])
+				if err != nil {
+					return errors.New("parts must be an integer or 'unknown'")
+				}
+				if n < 1 {
+					return errors.New("parts cannot be less than 1")
+				}
+				if err = node.initParts(params["parts"], compressionFormat); err != nil {
+					return err
+				}
 			}
 		}
 	} else if isVirtualNode {
@@ -307,15 +313,14 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		if node.HasFile() {
 			return errors.New(e.FileImut)
 		}
-		if node.Type != "parts" {
+		if (node.Type != "parts") || (node.Parts == nil) {
 			return errors.New("This is not a parts node and thus does not support uploading in parts.")
 		}
 		LockMgr.LockPartOp()
-		parts_count := node.partsCount()
-		if parts_count > 0 || node.isVarLen() {
+		if node.Parts.Count > 0 || node.Parts.VarLen {
 			for key, file := range files {
 				keyn, errf := strconv.Atoi(key)
-				if errf == nil && (keyn <= parts_count || node.isVarLen()) {
+				if errf == nil && (keyn <= node.Parts.Count || node.Parts.VarLen) {
 					err = node.addPart(keyn-1, &file)
 					if err != nil {
 						LockMgr.UnlockPartOp()
@@ -376,7 +381,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 func (node *Node) Save() (err error) {
 	node.UpdateVersion()
 	if len(node.Revisions) == 0 || node.Revisions[len(node.Revisions)-1].Version != node.Version {
-		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified, node.Type, node.Subset}
+		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified, node.Type, node.Subset, node.Parts}
 		node.Revisions = append(node.Revisions, n)
 	}
 	if node.CreatedOn.String() == "0001-01-01 00:00:00 +0000 UTC" {

@@ -31,6 +31,7 @@ type Node struct {
 	LastModified time.Time         `bson:"last_modified" json:"last_modified"`
 	Type         string            `bson:"type" json:"type"`
 	Subset       Subset            `bson:"subset" json:"-"`
+	Parts        *partsList        `bson:"parts" json:"parts"`
 }
 
 type linkage struct {
