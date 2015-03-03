@@ -50,7 +50,7 @@ func streamDownload(ctx context.Context, n *node.Node, filename string) {
 		responder.RespondWithError(ctx, 500, err_msg)
 		return
 	}
-	s := &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: nil}
+	s := &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: nil, FilterType: ""}
 	err = s.Stream()
 	if err != nil {
 		// causes "multiple response.WriteHeader calls" error but better than no response

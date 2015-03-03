@@ -19,11 +19,17 @@ type Streamer struct {
 	Filename    string
 	Size        int64
 	Filter      filter.FilterFunc
+	FilterType  string
 }
 
 func (s *Streamer) Stream() (err error) {
+	fileName := fmt.Sprintf(" attachment; filename=%s", s.Filename)
+	if (s.FilterType == "gzip") || (s.FilterType == "zip") {
+		fileName = fmt.Sprintf(" attachment; filename=%s.%s", s.Filename, s.FilterType)
+	}
+
 	s.W.Header().Set("Content-Type", s.ContentType)
-	s.W.Header().Set("Content-Disposition", fmt.Sprintf(" attachment; filename=%s", s.Filename))
+	s.W.Header().Set("Content-Disposition", fileName)
 	s.W.Header().Set("Connection", "close")
 	s.W.Header().Set("Access-Control-Allow-Headers", "Authorization")
 	s.W.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS")
@@ -32,10 +38,15 @@ func (s *Streamer) Stream() (err error) {
 	if s.Size > 0 && s.Filter == nil {
 		s.W.Header().Set("Content-Length", fmt.Sprint(s.Size))
 	}
-	for _, sr := range s.R {
+
+	for i, sr := range s.R {
+		n := s.Filename
+		if len(s.R) > 1 {
+			n = fmt.Sprintf("%s.%d", s.Filename, i+1)
+		}
 		var rs io.Reader
 		if s.Filter != nil {
-			rs = s.Filter(sr)
+			rs = s.Filter(sr, n)
 		} else {
 			rs = sr
 		}
@@ -56,10 +67,14 @@ func (s *Streamer) StreamRaw() (err error) {
 	if s.Size > 0 && s.Filter == nil {
 		s.W.Header().Set("Content-Length", fmt.Sprint(s.Size))
 	}
-	for _, sr := range s.R {
+	for i, sr := range s.R {
+		n := s.Filename
+		if len(s.R) > 1 {
+			n = fmt.Sprintf("%s.%d", s.Filename, i+1)
+		}
 		var rs io.Reader
 		if s.Filter != nil {
-			rs = s.Filter(sr)
+			rs = s.Filter(sr, n)
 		} else {
 			rs = sr
 		}

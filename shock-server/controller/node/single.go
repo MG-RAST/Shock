@@ -70,9 +70,11 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 	query := ctx.HttpRequest().URL.Query()
 
 	var fFunc filter.FilterFunc = nil
+	var fType string = ""
 	if _, ok := query["filter"]; ok {
 		if filter.Has(query.Get("filter")) {
 			fFunc = filter.Filter(query.Get("filter"))
+			fType = query.Get("filter")
 		}
 	}
 
@@ -130,7 +132,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				logger.Error(err_msg)
 				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			}
-			s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: length, Filter: fFunc}
+			s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: length, Filter: fFunc, FilterType: fType}
 			s.R = append(s.R, io.NewSectionReader(r, seek, length))
 			if download_raw {
 				err = s.StreamRaw()
@@ -156,7 +158,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					return responder.RespondWithError(ctx, http.StatusBadRequest, "subset nodes do not support bam indices")
 				}
 
-				s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc}
+				s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, FilterType: fType}
 
 				var region string
 				if _, ok := query["region"]; ok {
@@ -232,7 +234,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			}
 
 			var size int64 = 0
-			s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Filter: fFunc}
+			s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Filter: fFunc, FilterType: fType}
 
 			_, hasPart := query["part"]
 			if n.Type == "subset" && idxName == "chunkrecord" {
@@ -353,7 +355,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 
 				idx := index.New()
 
-				s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc}
+				s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, FilterType: fType}
 
 				fullRange := "1-" + strconv.FormatInt(n.Subset.Index.TotalUnits, 10)
 				recSlice, err := idx.Range(fullRange, n.Path()+"/"+n.Id+".subset.idx", n.Subset.Index.TotalUnits)
@@ -391,7 +393,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					logger.Error(err_msg)
 					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				}
-				s := &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc}
+				s := &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, FilterType: fType}
 				if download_raw {
 					err = s.StreamRaw()
 					if err != nil {
