@@ -1,4 +1,4 @@
-package node
+package archive
 
 import (
 	"archive/tar"
@@ -16,10 +16,18 @@ import (
 	"strings"
 )
 
+var validUncompress = []string{"gzip", "bzip2"}
+var validCompress = []string{"gzip", "zip"}
 var validArchive = []string{"zip", "tar", "tar.gz", "tar.bz2"}
-var archiveList = strings.Join(validArchive, ", ")
+var ArchiveList = strings.Join(validArchive, ", ")
 
-func isValidArchive(a string) bool {
+type FormFile struct {
+	Name     string
+	Path     string
+	Checksum map[string]string
+}
+
+func IsValidArchive(a string) bool {
 	for _, b := range validArchive {
 		if b == a {
 			return true
@@ -28,7 +36,25 @@ func isValidArchive(a string) bool {
 	return false
 }
 
-func filesFromArchive(format string, filePath string) (fileList []FormFile, unpackDir string, err error) {
+func IsValidUncompress(a string) bool {
+	for _, b := range validUncompress {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+func IsValidCompress(a string) bool {
+	for _, b := range validCompress {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+func FilesFromArchive(format string, filePath string) (fileList []FormFile, unpackDir string, err error) {
 	// set unpack dir
 	unpackDir = fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
 	if err = os.Mkdir(unpackDir, 0777); err != nil {
@@ -44,7 +70,7 @@ func filesFromArchive(format string, filePath string) (fileList []FormFile, unpa
 	} else if format == "tar.bz2" {
 		fileList, err = unTar(filePath, unpackDir, "bzip2")
 	} else {
-		return nil, unpackDir, errors.New("invalid archive format. must be one of: " + archiveList)
+		return nil, unpackDir, errors.New("invalid archive format. must be one of: " + ArchiveList)
 	}
 	return
 }
@@ -177,4 +203,31 @@ func unZip(filePath string, unpackDir string) (fileList []FormFile, err error) {
 		}
 	}
 	return
+}
+
+func CompressReader(format string, filename string, inReader io.ReadCloser) (outReader io.ReadCloser) {
+	if IsValidCompress(format) {
+		pReader, pWriter := io.Pipe()
+		if format == "gzip" {
+			gWriter := gzip.NewWriter(pWriter)
+			gWriter.Header.Name = filename
+			go func() {
+				io.Copy(gWriter, inReader)
+				gWriter.Close()
+				pWriter.Close()
+			}()
+		} else if format == "zip" {
+			zWriter := zip.NewWriter(pWriter)
+			zFile, _ := zWriter.Create(filename)
+			go func() {
+				io.Copy(zFile, inReader)
+				zWriter.Close()
+				pWriter.Close()
+			}()
+		}
+		return pReader
+	} else {
+		// just return input reader if no valid compression
+		return inReader
+	}
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
+	"github.com/MG-RAST/Shock/shock-server/node/archive"
 	"github.com/MG-RAST/Shock/shock-server/util"
 	"github.com/MG-RAST/golib/mgo/bson"
 	"io/ioutil"
@@ -106,7 +107,12 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			return errors.New("parts already set")
 		} else {
 			// set parts struct
-			compressionFormat := params["compression"]
+			var compressionFormat string = ""
+			if compress, ok := params["compression"]; ok {
+				if archive.IsValidUncompress(compress) {
+					compressionFormat = compress
+				}
+			}
 			if params["parts"] == "unknown" {
 				if err = node.initParts("unknown", compressionFormat); err != nil {
 					return err

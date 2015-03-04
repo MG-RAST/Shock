@@ -6,6 +6,7 @@ import (
 	"fmt"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/node/acl"
+	"github.com/MG-RAST/Shock/shock-server/node/archive"
 	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/user"
@@ -163,10 +164,10 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFi
 	// get format
 	aFormat, hasFormat := params["archive_format"]
 	if !hasFormat {
-		return nil, errors.New("missing archive_format parameter. use one of: " + archiveList)
+		return nil, errors.New("missing archive_format parameter. use one of: " + archive.ArchiveList)
 	}
-	if !isValidArchive(aFormat) {
-		return nil, errors.New("invalid archive_format parameter. use one of: " + archiveList)
+	if !archive.IsValidArchive(aFormat) {
+		return nil, errors.New("invalid archive_format parameter. use one of: " + archive.ArchiveList)
 	}
 
 	// check attributes
@@ -183,7 +184,7 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFi
 	}
 
 	// get files / delete unpack dir when done
-	fileList, unpackDir, err := filesFromArchive(aFormat, archiveNode.FilePath())
+	fileList, unpackDir, err := archive.FilesFromArchive(aFormat, archiveNode.FilePath())
 	defer os.RemoveAll(unpackDir)
 	if err != nil {
 		return
@@ -214,7 +215,8 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFi
 			}
 		}
 		// set file
-		if err = node.SetFile(file); err != nil {
+		f := FormFile{Name: file.Name, Path: file.Path, Checksum: file.Checksum}
+		if err = node.SetFile(f); err != nil {
 			return
 		}
 		tempNodes = append(tempNodes, node)

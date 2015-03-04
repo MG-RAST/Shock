@@ -7,6 +7,7 @@ import (
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
+	"github.com/MG-RAST/Shock/shock-server/node/archive"
 	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/node/filter"
@@ -70,11 +71,15 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 	query := ctx.HttpRequest().URL.Query()
 
 	var fFunc filter.FilterFunc = nil
-	var fType string = ""
 	if _, ok := query["filter"]; ok {
 		if filter.Has(query.Get("filter")) {
 			fFunc = filter.Filter(query.Get("filter"))
-			fType = query.Get("filter")
+		}
+	}
+	var compressionFormat string = ""
+	if _, ok := query["compression"]; ok {
+		if archive.IsValidCompress(query.Get("compression")) {
+			compressionFormat = query.Get("compression")
 		}
 	}
 
@@ -87,6 +92,9 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			return responder.RespondWithError(ctx, http.StatusBadRequest, "Node has no file")
 		}
 		filename := n.Id
+		if n.File.Name != "" {
+		    filename = n.File.Name
+		}
 		if _, ok := query["filename"]; ok {
 			filename = query.Get("filename")
 		}
@@ -132,24 +140,13 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				logger.Error(err_msg)
 				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			}
-			s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: length, Filter: fFunc, FilterType: fType}
+			s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: length, Filter: fFunc, Compression: compressionFormat}
 			s.R = append(s.R, io.NewSectionReader(r, seek, length))
-			if download_raw {
-				err = s.StreamRaw()
-				if err != nil {
-					// causes "multiple response.WriteHeader calls" error but better than no response
-					err_msg := "err:@node_Read s.StreamRaw: " + err.Error()
-					logger.Error(err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
-				}
-			} else {
-				err = s.Stream()
-				if err != nil {
-					// causes "multiple response.WriteHeader calls" error but better than no response
-					err_msg := "err:@node_Read s.Stream: " + err.Error()
-					logger.Error(err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
-				}
+			if err = s.Stream(download_raw); err != nil {
+				// causes "multiple response.WriteHeader calls" error but better than no response
+				err_msg := "err:@node_Read s.Stream: " + err.Error()
+				logger.Error(err_msg)
+				return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 			}
 		} else if _, ok := query["index"]; ok {
 			//handling bam file
@@ -158,7 +155,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					return responder.RespondWithError(ctx, http.StatusBadRequest, "subset nodes do not support bam indices")
 				}
 
-				s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, FilterType: fType}
+				s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, Compression: compressionFormat}
 
 				var region string
 				if _, ok := query["region"]; ok {
@@ -234,7 +231,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			}
 
 			var size int64 = 0
-			s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Filter: fFunc, FilterType: fType}
+			s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Filter: fFunc, Compression: compressionFormat}
 
 			_, hasPart := query["part"]
 			if n.Type == "subset" && idxName == "chunkrecord" {
@@ -324,22 +321,11 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				}
 			}
 			s.Size = size
-			if download_raw {
-				err = s.StreamRaw()
-				if err != nil {
-					// causes "multiple response.WriteHeader calls" error but better than no response
-					err_msg := "err:@node_Read s.StreamRaw: " + err.Error()
-					logger.Error(err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
-				}
-			} else {
-				err = s.Stream()
-				if err != nil {
-					// causes "multiple response.WriteHeader calls" error but better than no response
-					err_msg := "err:@node_Read s.Stream: " + err.Error()
-					logger.Error(err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
-				}
+			if err = s.Stream(download_raw); err != nil {
+				// causes "multiple response.WriteHeader calls" error but better than no response
+				err_msg := "err:@node_Read s.Stream: " + err.Error()
+				logger.Error(err_msg)
+				return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 			}
 			// download full file
 		} else {
@@ -355,7 +341,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 
 				idx := index.New()
 
-				s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, FilterType: fType}
+				s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, Compression: compressionFormat}
 
 				fullRange := "1-" + strconv.FormatInt(n.Subset.Index.TotalUnits, 10)
 				recSlice, err := idx.Range(fullRange, n.Path()+"/"+n.Id+".subset.idx", n.Subset.Index.TotalUnits)
@@ -365,23 +351,11 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				for _, rec := range recSlice {
 					s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
 				}
-
-				if download_raw {
-					err = s.StreamRaw()
-					if err != nil {
-						// causes "multiple response.WriteHeader calls" error but better than no response
-						err_msg := "err:@node_Read s.StreamRaw: " + err.Error()
-						logger.Error(err_msg)
-						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
-					}
-				} else {
-					err = s.Stream()
-					if err != nil {
-						// causes "multiple response.WriteHeader calls" error but better than no response
-						err_msg := "err:@node_Read s.Stream: " + err.Error()
-						logger.Error(err_msg)
-						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
-					}
+				if err = s.Stream(download_raw); err != nil {
+					// causes "multiple response.WriteHeader calls" error but better than no response
+					err_msg := "err:@node_Read s.Stream: " + err.Error()
+					logger.Error(err_msg)
+					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				}
 			} else {
 				nf, err := n.FileReader()
@@ -393,23 +367,12 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					logger.Error(err_msg)
 					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				}
-				s := &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, FilterType: fType}
-				if download_raw {
-					err = s.StreamRaw()
-					if err != nil {
-						// causes "multiple response.WriteHeader calls" error but better than no response
-						err_msg := "err:@node_Read s.StreamRaw: " + err.Error()
-						logger.Error(err_msg)
-						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
-					}
-				} else {
-					err = s.Stream()
-					if err != nil {
-						// causes "multiple response.WriteHeader calls" error but better than no response
-						err_msg := "err:@node_Read s.Stream: " + err.Error()
-						logger.Error(err_msg)
-						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
-					}
+				s := &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, Compression: compressionFormat}
+				if err = s.Stream(download_raw); err != nil {
+					// causes "multiple response.WriteHeader calls" error but better than no response
+					err_msg := "err:@node_Read s.Stream: " + err.Error()
+					logger.Error(err_msg)
+					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				}
 			}
 		}

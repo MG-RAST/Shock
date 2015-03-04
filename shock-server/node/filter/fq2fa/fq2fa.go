@@ -15,7 +15,7 @@ type Reader struct {
 	overflow []byte
 }
 
-func NewReader(f file.SectionReader, n string) io.Reader {
+func NewReader(f file.SectionReader) io.Reader {
 	return &Reader{
 		f:        f,
 		r:        fastq.NewReader(f),
