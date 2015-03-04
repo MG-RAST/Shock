@@ -226,8 +226,23 @@ func CompressReader(format string, filename string, inReader io.ReadCloser) (out
 			}()
 		}
 		return pReader
-	} else {
-		// just return input reader if no valid compression
-		return inReader
 	}
+	// just return input reader if no valid compression
+	return inReader
+}
+
+func UncompressReader(format string, inReader io.Reader) (outReader io.Reader, err error) {
+	if IsValidUncompress(format) {
+		if format == "gzip" {
+			gWriter, gerr := gzip.NewReader(inReader)
+			if gerr != nil {
+				return nil, gerr
+			}
+			return gWriter, nil
+		} else if format == "bzip2" {
+			bWriter := bzip2.NewReader(inReader)
+			return bWriter, nil
+		}
+	}
+	return inReader, nil
 }

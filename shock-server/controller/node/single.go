@@ -93,7 +93,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		}
 		filename := n.Id
 		if n.File.Name != "" {
-		    filename = n.File.Name
+			filename = n.File.Name
 		}
 		if _, ok := query["filename"]; ok {
 			filename = query.Get("filename")
