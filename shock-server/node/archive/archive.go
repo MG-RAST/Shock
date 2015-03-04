@@ -83,25 +83,14 @@ func unTar(filePath string, unpackDir string, compression string) (fileList []Fo
 	}
 	defer openFile.Close()
 
-	// tarball handle
-	var tarBallReader *tar.Reader
-
 	// filter through compression if use
-	if compression == "gzip" {
-		gReader, gerr := gzip.NewReader(openFile)
-		if gerr != nil {
-			return nil, gerr
-		}
-		defer gReader.Close()
-		tarBallReader = tar.NewReader(gReader)
-	} else if compression == "bzip2" {
-		bReader := bzip2.NewReader(openFile)
-		tarBallReader = tar.NewReader(bReader)
-	} else {
-		tarBallReader = tar.NewReader(openFile)
+	ucReader, ucErr := UncompressReader(compression, openFile)
+	if ucErr != nil {
+		return nil, ucErr
 	}
 
 	// extract tarball
+	tarBallReader := tar.NewReader(ucReader)
 	for {
 		header, nerr := tarBallReader.Next()
 		if nerr != nil {
