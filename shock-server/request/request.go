@@ -1,8 +1,6 @@
 package request
 
 import (
-	"compress/bzip2"
-	"compress/gzip"
 	"crypto/md5"
 	"errors"
 	"fmt"
@@ -11,6 +9,7 @@ import (
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
+	"github.com/MG-RAST/Shock/shock-server/node/archive"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
@@ -130,38 +129,27 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 				if tmpFile, err := os.Create(tmpPath); err == nil {
 					defer tmpFile.Close()
 					if util.IsValidUploadFile(part.FormName()) || isPartsFile {
+						// handle upload or parts files
+						var tmpform = files[part.FormName()]
 						md5h := md5.New()
 						dst := io.MultiWriter(tmpFile, md5h)
-						var tmpform = files[part.FormName()]
-						if part.FormName() == "gzip" {
-							// handle "gzip" file
-							g, gerr := gzip.NewReader(part)
-							if gerr != nil {
-								return nil, files, gerr
-							}
-							defer g.Close()
-							if _, err = io.Copy(dst, g); err != nil {
-								return nil, files, err
-							}
-							tmpform.Name = g.Header.Name
-						} else if part.FormName() == "bzip2" {
-							// handle "bzip2" file
-							b := bzip2.NewReader(part)
-							if _, err = io.Copy(dst, b); err != nil {
-								return nil, files, err
-							}
+						ucReader, ucErr := archive.UncompressReader(part.FormName(), part)
+						if ucErr != nil {
+							return nil, files, ucErr
+						}
+						if _, err = io.Copy(dst, ucReader); err != nil {
+							return nil, files, err
+						}
+						if archive.IsValidUncompress(part.FormName()) {
 							tmpform.Name = util.StripSuffix(part.FileName())
-						} else {
-							// handle "upload" and parts (integer) files
-							if _, err = io.Copy(dst, part); err != nil {
-								return nil, files, err
-							}
 						}
 						tmpform.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
 						files[part.FormName()] = tmpform
 					} else {
 						// handle "attributes" and "subset_indices" files
-						io.Copy(tmpFile, part)
+						if _, err = io.Copy(tmpFile, part); err != nil {
+							return nil, files, err
+						}
 					}
 				} else {
 					return nil, files, err

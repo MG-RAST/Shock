@@ -1,12 +1,11 @@
 package node
 
 import (
-	"compress/bzip2"
-	"compress/gzip"
 	"crypto/md5"
 	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
+	"github.com/MG-RAST/Shock/shock-server/node/archive"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"io"
 	"math/rand"
@@ -213,6 +212,7 @@ func (node *Node) SetFileFromParts(allowEmpty bool) (err error) {
 	if oerr != nil {
 		return oerr
 	}
+	defer outh.Close()
 
 	pReader, pWriter := io.Pipe()
 	defer pReader.Close()
@@ -266,40 +266,24 @@ func (node *Node) SetFileFromParts(allowEmpty bool) (err error) {
 	dst := io.MultiWriter(outh, md5h)
 
 	// write from pipe to outfile / md5
-	var cerr error
-	if node.Parts.Compression == "gzip" {
-		// handle "gzip" file
-		// messy cleanup when returning before goroutine done
-		g, gerr := gzip.NewReader(pReader)
-		if gerr != nil {
-			close(cKill)
-			outh.Close()
-			os.Remove(outf)
-			return gerr
-		}
-		defer g.Close()
-		_, cerr = io.Copy(dst, g)
-	} else if node.Parts.Compression == "bzip2" {
-		// handle "bzip2" file
-		b := bzip2.NewReader(pReader)
-		_, cerr = io.Copy(dst, b)
-	} else {
-		// handle all others
-		_, cerr = io.Copy(dst, pReader)
+	// handle optional compression
+	ucReader, ucErr := archive.UncompressReader(node.Parts.Compression, pReader)
+	if ucErr != nil {
+		close(cKill)
+		os.Remove(outf)
+		return ucErr
 	}
+	_, cerr := io.Copy(dst, ucReader)
 
 	// get any errors from channel / finish copy
 	if eerr := <-cError; eerr != nil {
-		outh.Close()
 		os.Remove(outf)
 		return eerr
 	}
 	if cerr != nil {
-		outh.Close()
 		os.Remove(outf)
 		return cerr
 	}
-	outh.Close()
 
 	// get file info and update node
 	fileStat, ferr := os.Stat(outf)
