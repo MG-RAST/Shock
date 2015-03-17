@@ -110,6 +110,9 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 				direction = ""
 			}
 		}
+	} else {
+		// return error if no query type is used
+		return responder.RespondWithError(ctx, http.StatusBadRequest, "no query type specified, use one of: query, querynode")
 	}
 
 	if len(OptsMArray) > 0 {
