@@ -69,14 +69,22 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 
 	// Gather query params
 	query := ctx.HttpRequest().URL.Query()
-
+	// set defaults
+	filename := n.Id
+	if n.File.Name != "" {
+		filename = n.File.Name
+	}
 	var fFunc filter.FilterFunc = nil
+	var compressionFormat string = ""
+	// use query params if exist
+	if _, ok := query["filename"]; ok {
+		filename = query.Get("filename")
+	}
 	if _, ok := query["filter"]; ok {
 		if filter.Has(query.Get("filter")) {
 			fFunc = filter.Filter(query.Get("filter"))
 		}
 	}
-	var compressionFormat string = ""
 	if _, ok := query["compression"]; ok {
 		if archive.IsValidCompress(query.Get("compression")) {
 			compressionFormat = query.Get("compression")
@@ -85,18 +93,10 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 
 	// Switch though param flags
 	// ?download=1 or ?download_raw=1
-
 	_, download_raw := query["download_raw"]
 	if _, ok := query["download"]; ok || download_raw {
 		if !n.HasFile() {
 			return responder.RespondWithError(ctx, http.StatusBadRequest, "Node has no file")
-		}
-		filename := n.Id
-		if n.File.Name != "" {
-			filename = n.File.Name
-		}
-		if _, ok := query["filename"]; ok {
-			filename = query.Get("filename")
 		}
 
 		_, seek_ok := query["seek"]
@@ -384,10 +384,16 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		if !n.HasFile() {
 			return responder.RespondWithError(ctx, http.StatusBadRequest, "Node has no file")
 		} else {
+			// add options
 			options := map[string]string{}
-			if _, ok := query["filename"]; ok {
-				options["filename"] = query.Get("filename")
+			options["filename"] = filename
+			if fFunc != nil {
+				options["filter"] = query.Get("filter")
 			}
+			if compressionFormat != "" {
+				options["compression"] = compressionFormat
+			}
+			// set preauth
 			if p, err := preauth.New(util.RandString(20), "download", n.Id, options); err != nil {
 				err_msg := "err:@node_Read download_url: " + err.Error()
 				logger.Error(err_msg)
