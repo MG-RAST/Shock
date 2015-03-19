@@ -384,10 +384,18 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		if !n.HasFile() {
 			return responder.RespondWithError(ctx, http.StatusBadRequest, "Node has no file")
 		} else {
+			// add options
 			options := map[string]string{}
 			if _, ok := query["filename"]; ok {
 				options["filename"] = query.Get("filename")
 			}
+			if fFunc != nil {
+				options["filter"] = query.Get("filter")
+			}
+			if compressionFormat != "" {
+				options["compression"] = compressionFormat
+			}
+			// set preauth
 			if p, err := preauth.New(util.RandString(20), "download", n.Id, options); err != nil {
 				err_msg := "err:@node_Read download_url: " + err.Error()
 				logger.Error(err_msg)
