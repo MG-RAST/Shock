@@ -144,6 +144,7 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 
 	err = node.Update(params, files)
 	if err != nil {
+	    node.Rmdir()
 		return
 	}
 
@@ -205,18 +206,20 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFi
 			return
 		}
 		// set attributes
+		var aerr error
 		if attrFile {
-			if err = node.SetAttributes(files["attributes"]); err != nil {
-				return
-			}
+		    aerr = node.SetAttributes(files["attributes"])
 		} else if attrStr {
-			if err = node.SetAttributesFromString(params["attributes_str"]); err != nil {
-				return
-			}
+		    aerr = node.SetAttributesFromString(params["attributes_str"])
+		}
+		if aerr != nil {
+		    node.Rmdir()
+		    return
 		}
 		// set file
 		f := FormFile{Name: file.Name, Path: file.Path, Checksum: file.Checksum}
 		if err = node.SetFile(f); err != nil {
+		    node.Rmdir()
 			return
 		}
 		tempNodes = append(tempNodes, node)
@@ -225,6 +228,7 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFi
 	// save nodes, only return those that were created / saved
 	for _, n := range tempNodes {
 		if err = n.Save(); err != nil {
+		    n.Rmdir()
 			return
 		}
 		nodes = append(nodes, n)
