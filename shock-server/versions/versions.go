@@ -70,7 +70,7 @@ func RunVersionUpdates() (err error) {
 	dbVersionACL, ok2 := VersionMap["ACL"]
 
 	// Upgrading databases with ACL schema before version 2
-	if (ok1 && confVersionACL >= 2) && (!ok2 || (ok2 && dbVersionACL < confVersionACL)) {
+	if (ok1 && confVersionACL >= 2) && (!ok2 || (ok2 && dbVersionACL < 2)) {
 		consoleReader := bufio.NewReader(os.Stdin)
 		fmt.Print("The ACL schema version in your database needs updating to version 2.  Would you like the update to run? (y/n): ")
 		text, _ := consoleReader.ReadString('\n')
@@ -144,7 +144,7 @@ func RunVersionUpdates() (err error) {
 	dbVersionNode, ok2 := VersionMap["Node"]
 
 	// Updating databases with Node schema before version 2
-	if (ok1 && confVersionNode >= 2) && (!ok2 || (ok2 && dbVersionNode < confVersionNode)) {
+	if (ok1 && confVersionNode >= 2) && (!ok2 || (ok2 && dbVersionNode < 2)) {
 		consoleReader := bufio.NewReader(os.Stdin)
 		fmt.Print("The Node schema version in your database needs updating to version 2.  Would you like the update to run? (y/n): ")
 		text, _ := consoleReader.ReadString('\n')
@@ -164,7 +164,7 @@ func RunVersionUpdates() (err error) {
 	}
 
 	// Updating databases with Node schema before version 3
-	if (ok1 && confVersionNode >= 3) && (!ok2 || (ok2 && dbVersionNode < confVersionNode)) {
+	if (ok1 && confVersionNode >= 3) && (!ok2 || (ok2 && dbVersionNode < 3)) {
 		consoleReader := bufio.NewReader(os.Stdin)
 		fmt.Print("The Node schema version in your database needs updating to version 3.  Would you like the update to run? (y/n): ")
 		text, _ := consoleReader.ReadString('\n')
@@ -178,15 +178,19 @@ func RunVersionUpdates() (err error) {
 				pfile, perr := ioutil.ReadFile(pn.Path() + "/parts/parts.json")
 				// have file and no parts in node document - fix it
 				if (perr != nil) && (pn.Parts == nil) {
+					fmt.Println("Updating parts node: " + pn.Id)
 					pl := &node.PartsList{}
 					if err = json.Unmarshal(pfile, &pl); err != nil {
 						return err
 					}
+					fmt.Println("Created parts object")
 					if err = os.RemoveAll(pn.Path() + "/parts/parts.json"); err != nil {
 						return err
 					}
+					fmt.Println("Deleted parts file")
 					pn.Parts = pl
 					pn.Save()
+					fmt.Println("Saved Node")
 				}
 			}
 
