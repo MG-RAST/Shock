@@ -183,14 +183,11 @@ func RunVersionUpdates() (err error) {
 					if err = json.Unmarshal(pfile, &pl); err != nil {
 						return err
 					}
-					fmt.Println("Created parts object")
 					if err = os.RemoveAll(pn.Path() + "/parts/parts.json"); err != nil {
 						return err
 					}
-					fmt.Println("Deleted parts file")
 					pn.Parts = pl
 					pn.Save()
-					fmt.Println("Saved Node")
 				}
 			}
 
