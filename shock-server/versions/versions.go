@@ -2,11 +2,14 @@ package versions
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/db"
+	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/golib/mgo"
 	"github.com/MG-RAST/golib/mgo/bson"
+	"io/ioutil"
 	"os"
 	"strconv"
 )
@@ -62,12 +65,14 @@ func PushVersionsToDatabase() (err error) {
 }
 
 func RunVersionUpdates() (err error) {
-	// Upgrading databases with ACL schema before version 2
+	// get ACL versions
 	confVersionACL, ok1 := conf.VERSIONS["ACL"]
 	dbVersionACL, ok2 := VersionMap["ACL"]
+
+	// Upgrading databases with ACL schema before version 2
 	if (ok1 && confVersionACL >= 2) && (!ok2 || (ok2 && dbVersionACL < confVersionACL)) {
 		consoleReader := bufio.NewReader(os.Stdin)
-		fmt.Print("The ACL schema version in your database needs updating.  Would you like the update to run? (y/n): ")
+		fmt.Print("The ACL schema version in your database needs updating to version 2.  Would you like the update to run? (y/n): ")
 		text, _ := consoleReader.ReadString('\n')
 		if text[0] == 'y' {
 			// Checking database to see if "public" already exists in a Node's ACL's somewhere.
@@ -105,7 +110,7 @@ func RunVersionUpdates() (err error) {
 				text, _ = consoleReader.ReadString('\n')
 			}
 			if text[0] == 'y' {
-				fmt.Println("Updating ACL's to version: " + strconv.Itoa(confVersionACL))
+				fmt.Println("Updating ACL's to version 2")
 				if _, err = c.UpdateAll(bson.M{"acl.owner": ""}, bson.M{"$set": bson.M{"acl.owner": "public"}}); err != nil {
 					return err
 				}
@@ -134,18 +139,20 @@ func RunVersionUpdates() (err error) {
 		}
 	}
 
-	// Updating databases with Node schema before version 2
+	// get Node versions
 	confVersionNode, ok1 := conf.VERSIONS["Node"]
 	dbVersionNode, ok2 := VersionMap["Node"]
+
+	// Updating databases with Node schema before version 2
 	if (ok1 && confVersionNode >= 2) && (!ok2 || (ok2 && dbVersionNode < confVersionNode)) {
 		consoleReader := bufio.NewReader(os.Stdin)
-		fmt.Print("The Node schema version in your database needs updating.  Would you like the update to run? (y/n): ")
+		fmt.Print("The Node schema version in your database needs updating to version 2.  Would you like the update to run? (y/n): ")
 		text, _ := consoleReader.ReadString('\n')
 		if text[0] == 'y' {
 			session := db.Connection.Session.Copy()
 			defer session.Close()
 			c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
-			fmt.Println("Updating Nodes to version: " + strconv.Itoa(confVersionNode))
+			fmt.Println("Updating Nodes to version 2")
 			if _, err = c.UpdateAll(bson.M{}, bson.M{"$unset": bson.M{"public": 1}}); err != nil {
 				return err
 			}
@@ -155,5 +162,39 @@ func RunVersionUpdates() (err error) {
 			os.Exit(0)
 		}
 	}
+
+	// Updating databases with Node schema before version 3
+	if (ok1 && confVersionNode >= 3) && (!ok2 || (ok2 && dbVersionNode < confVersionNode)) {
+		consoleReader := bufio.NewReader(os.Stdin)
+		fmt.Print("The Node schema version in your database needs updating to version 3.  Would you like the update to run? (y/n): ")
+		text, _ := consoleReader.ReadString('\n')
+		if text[0] == 'y' {
+			// get parts nodes
+			partsNodes := node.Nodes{}
+			if err = partsNodes.GetAll(bson.M{"type": "parts"}); err != nil {
+				return err
+			}
+			for _, pn := range partsNodes {
+				pfile, perr := ioutil.ReadFile(pn.Path() + "/parts/parts.json")
+				// have file and no parts in node document - fix it
+				if (perr != nil) && (pn.Parts == nil) {
+					pl := &node.PartsList{}
+					if err = json.Unmarshal(pfile, &pl); err != nil {
+						return err
+					}
+					if err = os.RemoveAll(pn.Path() + "/parts/parts.json"); err != nil {
+						return err
+					}
+					pn.Parts = pl
+					pn.Save()
+				}
+			}
+
+		} else {
+			fmt.Println("Exiting.")
+			os.Exit(0)
+		}
+	}
+
 	return
 }

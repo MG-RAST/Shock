@@ -32,7 +32,7 @@ type Node struct {
 	LastModified time.Time         `bson:"last_modified" json:"last_modified"`
 	Type         string            `bson:"type" json:"type"`
 	Subset       Subset            `bson:"subset" json:"-"`
-	Parts        *partsList        `bson:"parts" json:"parts"`
+	Parts        *PartsList        `bson:"parts" json:"parts"`
 }
 
 type linkage struct {
@@ -144,7 +144,7 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 
 	err = node.Update(params, files)
 	if err != nil {
-	    node.Rmdir()
+		node.Rmdir()
 		return
 	}
 
@@ -208,18 +208,18 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFi
 		// set attributes
 		var aerr error
 		if attrFile {
-		    aerr = node.SetAttributes(files["attributes"])
+			aerr = node.SetAttributes(files["attributes"])
 		} else if attrStr {
-		    aerr = node.SetAttributesFromString(params["attributes_str"])
+			aerr = node.SetAttributesFromString(params["attributes_str"])
 		}
 		if aerr != nil {
-		    node.Rmdir()
-		    return
+			node.Rmdir()
+			return
 		}
 		// set file
 		f := FormFile{Name: file.Name, Path: file.Path, Checksum: file.Checksum}
 		if err = node.SetFile(f); err != nil {
-		    node.Rmdir()
+			node.Rmdir()
 			return
 		}
 		tempNodes = append(tempNodes, node)
@@ -228,7 +228,7 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFi
 	// save nodes, only return those that were created / saved
 	for _, n := range tempNodes {
 		if err = n.Save(); err != nil {
-		    n.Rmdir()
+			n.Rmdir()
 			return
 		}
 		nodes = append(nodes, n)
