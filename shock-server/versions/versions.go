@@ -177,7 +177,7 @@ func RunVersionUpdates() (err error) {
 			for _, pn := range partsNodes {
 				pfile, perr := ioutil.ReadFile(pn.Path() + "/parts/parts.json")
 				// have file and no parts in node document - fix it
-				if (perr != nil) && (pn.Parts == nil) {
+				if (perr == nil) && (pn.Parts == nil) {
 					fmt.Println("Updating parts node: " + pn.Id)
 					pl := &node.PartsList{}
 					if err = json.Unmarshal(pfile, &pl); err != nil {
