@@ -173,6 +173,7 @@ func RunVersionUpdates() (err error) {
 		text, _ := consoleReader.ReadString('\n')
 		if text[0] == 'y' {
 			// get node iter
+			updated := 0
 			session := db.Connection.Session.Copy()
 			defer session.Close()
 			c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
@@ -193,9 +194,10 @@ func RunVersionUpdates() (err error) {
 					}
 					n.Parts = pl
 					n.Save()
+					updated += 1
 				}
 			}
-			fmt.Println("Node schema version 3 update complete.")
+			fmt.Println(fmt.Sprintf("Node schema version 3 update complete, updated %d nodes.", updated))
 		} else {
 			fmt.Println("Exiting.")
 			os.Exit(0)
@@ -212,6 +214,7 @@ func RunVersionUpdates() (err error) {
 			fmt.Print("Would you like to update node file info with timestamp from disk (otherwise current time is used)? (y/n): ")
 			ftext, _ := consoleReader.ReadString('\n')
 			// get node iter
+			updated := 0
 			session := db.Connection.Session.Copy()
 			defer session.Close()
 			c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
@@ -236,8 +239,9 @@ func RunVersionUpdates() (err error) {
 					n.Indexes[idxtype] = idxinfo
 				}
 				n.Save()
+				updated += 1
 			}
-			fmt.Println("Node schema version 4 update complete.")
+			fmt.Println(fmt.Sprintf("Node schema version 4 update complete, updated %d nodes.", updated))
 		} else {
 			fmt.Println("Exiting.")
 			os.Exit(0)
