@@ -172,21 +172,21 @@ func RunVersionUpdates() (err error) {
 		fmt.Print("The Node schema version in your database needs updating to version 3.  Would you like the update to run? (y/n): ")
 		text, _ := consoleReader.ReadString('\n')
 		if text[0] == 'y' {
-			// get node iter
+			// query for parts nodes with no md5sum
+			var n = new(node.Node)
 			updated := 0
+			query := bson.M{"$and": []bson.M{bson.M{"type": "parts"}, bson.M{"file.checksum.md5": bson.M{"$exists": false}}}}
+			// get node iter
 			session := db.Connection.Session.Copy()
 			defer session.Close()
 			c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
-			n := node.Node{}
-			// query for parts nodes with no md5sum
-			query := bson.M{"$and": []bson.M{bson.M{"type": "parts"}, bson.M{"file.checksum.md5": bson.M{"$exists": false}}}}
 			iter := c.Find(query).Iter()
 			defer iter.Close()
 			for iter.Next(n) {
+				//fmt.Println("Processing node: " + n.Id)
 				pfile, perr := ioutil.ReadFile(n.Path() + "/parts/parts.json")
 				// have file and no parts in node document - fix it
 				if (perr == nil) && (n.Parts == nil) {
-					fmt.Println("Updating parts node: " + n.Id)
 					pl := &node.PartsList{}
 					if err = json.Unmarshal(pfile, &pl); err != nil {
 						return err
@@ -215,17 +215,18 @@ func RunVersionUpdates() (err error) {
 		if utext[0] == 'y' {
 			fmt.Print("Would you like to update node file info with timestamp from disk (otherwise current time is used)? (y/n): ")
 			ftext, _ := consoleReader.ReadString('\n')
-			// get node iter
+			// query for all nodes with a file md5sum
+			var n = new(node.Node)
 			updated := 0
+			query := bson.M{"$and": []bson.M{bson.M{"file.checksum.md5": bson.M{"$exists": true}}, bson.M{"file.checksum.md5": bson.M{"$ne": ""}}}}
+			// get node iter
 			session := db.Connection.Session.Copy()
 			defer session.Close()
 			c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
-			n := node.Node{}
-			// query for all nodes with a file md5sum
-			query := bson.M{"$and": []bson.M{bson.M{"file.checksum.md5": bson.M{"$exists": true}}, bson.M{"file.checksum.md5": bson.M{"$ne": ""}}}}
 			iter := c.Find(query).Iter()
 			defer iter.Close()
 			for iter.Next(n) {
+				//fmt.Println("Processing node: " + n.Id)
 				if ftext[0] == 'y' {
 					// update file info from disk
 					if fileStat, ferr := os.Stat(n.FilePath()); ferr == nil {
