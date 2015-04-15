@@ -44,10 +44,11 @@ type linkage struct {
 type Indexes map[string]IdxInfo
 
 type IdxInfo struct {
-	Type        string `bson:"index_type" json:"-"`
-	TotalUnits  int64  `bson:"total_units" json:"total_units"`
-	AvgUnitSize int64  `bson:"average_unit_size" json:"average_unit_size"`
-	Format      string `bson:"format" json:"-"`
+	Type        string    `bson:"index_type" json:"-"`
+	TotalUnits  int64     `bson:"total_units" json:"total_units"`
+	AvgUnitSize int64     `bson:"average_unit_size" json:"average_unit_size"`
+	Format      string    `bson:"format" json:"-"`
+	CreatedOn   time.Time `bson:"created_on" json:"created_on"`
 }
 
 type FormFiles map[string]FormFile

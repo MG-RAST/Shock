@@ -198,6 +198,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 						TotalUnits:  totalunits,
 						AvgUnitSize: conf.CHUNK_SIZE,
 						Format:      "dynamic",
+						CreatedOn:   time.Now(),
 					}
 					err = n.Save()
 					if err != nil {

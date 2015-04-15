@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"time"
 )
 
 type Version struct {
@@ -129,7 +130,7 @@ func RunVersionUpdates() (err error) {
 				if _, err = c.Upsert(bson.M{"name": "ACL"}, bson.M{"$set": bson.M{"name": "ACL", "version": 2}}); err != nil {
 					return err
 				}
-				fmt.Println("ACL schema version update complete.")
+				fmt.Println("ACL schema version 2 update complete.")
 			} else {
 				os.Exit(0)
 			}
@@ -144,6 +145,7 @@ func RunVersionUpdates() (err error) {
 	dbVersionNode, ok2 := VersionMap["Node"]
 
 	// Updating databases with Node schema before version 2
+	// removing 'public' field
 	if (ok1 && confVersionNode >= 2) && (!ok2 || (ok2 && dbVersionNode < 2)) {
 		consoleReader := bufio.NewReader(os.Stdin)
 		fmt.Print("The Node schema version in your database needs updating to version 2.  Would you like the update to run? (y/n): ")
@@ -156,7 +158,7 @@ func RunVersionUpdates() (err error) {
 			if _, err = c.UpdateAll(bson.M{}, bson.M{"$unset": bson.M{"public": 1}}); err != nil {
 				return err
 			}
-			fmt.Println("Node schema version update complete.")
+			fmt.Println("Node schema version 2 update complete.")
 		} else {
 			fmt.Println("Exiting.")
 			os.Exit(0)
@@ -164,33 +166,78 @@ func RunVersionUpdates() (err error) {
 	}
 
 	// Updating databases with Node schema before version 3
+	// move parts info from file in node dir to part of node document
 	if (ok1 && confVersionNode >= 3) && (!ok2 || (ok2 && dbVersionNode < 3)) {
 		consoleReader := bufio.NewReader(os.Stdin)
 		fmt.Print("The Node schema version in your database needs updating to version 3.  Would you like the update to run? (y/n): ")
 		text, _ := consoleReader.ReadString('\n')
 		if text[0] == 'y' {
-			// get parts nodes
-			partsNodes := node.Nodes{}
-			if err = partsNodes.GetAll(bson.M{"type": "parts"}); err != nil {
-				return err
-			}
-			for _, pn := range partsNodes {
-				pfile, perr := ioutil.ReadFile(pn.Path() + "/parts/parts.json")
+			// get node iter
+			session := db.Connection.Session.Copy()
+			defer session.Close()
+			c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
+			n := node.Node{}
+			iter := c.Find(bson.M{"type": "parts"}).Iter()
+			defer iter.Close()
+			for iter.Next(n) {
+				pfile, perr := ioutil.ReadFile(n.Path() + "/parts/parts.json")
 				// have file and no parts in node document - fix it
-				if (perr == nil) && (pn.Parts == nil) {
-					fmt.Println("Updating parts node: " + pn.Id)
+				if (perr == nil) && (n.Parts == nil) {
+					fmt.Println("Updating parts node: " + n.Id)
 					pl := &node.PartsList{}
 					if err = json.Unmarshal(pfile, &pl); err != nil {
 						return err
 					}
-					if err = os.RemoveAll(pn.Path() + "/parts/parts.json"); err != nil {
+					if err = os.RemoveAll(n.Path() + "/parts/parts.json"); err != nil {
 						return err
 					}
-					pn.Parts = pl
-					pn.Save()
+					n.Parts = pl
+					n.Save()
 				}
 			}
+			fmt.Println("Node schema version 3 update complete.")
+		} else {
+			fmt.Println("Exiting.")
+			os.Exit(0)
+		}
+	}
 
+	// Updating databases with Node schema before version 4
+	// add timestamp for file info and each index info
+	if (ok1 && confVersionNode >= 4) && (!ok2 || (ok2 && dbVersionNode < 4)) {
+		consoleReader := bufio.NewReader(os.Stdin)
+		fmt.Print("The Node schema version in your database needs updating to version 4.  Would you like the update to run? (y/n): ")
+		utext, _ := consoleReader.ReadString('\n')
+		if utext[0] == 'y' {
+			fmt.Print("Would you like to update node file info with timestamp from disk (otherwise current time is used)? (y/n): ")
+			ftext, _ := consoleReader.ReadString('\n')
+			// get node iter
+			session := db.Connection.Session.Copy()
+			defer session.Close()
+			c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
+			n := node.Node{}
+			iter := c.Find(bson.M{"file.checksum.md5": bson.M{"$ne": ""}}).Iter()
+			defer iter.Close()
+			for iter.Next(n) {
+				if ftext[0] == 'y' {
+					// update file info from disk
+					if fileStat, ferr := os.Stat(n.FilePath()); ferr == nil {
+						n.File.CreatedOn = fileStat.ModTime()
+					} else {
+						n.File.CreatedOn = time.Now()
+					}
+				} else {
+					// update file info with current
+					n.File.CreatedOn = time.Now()
+				}
+				// update index time
+				for idxtype, idxinfo := range n.Indexes {
+					idxinfo.CreatedOn = time.Now()
+					n.Indexes[idxtype] = idxinfo
+				}
+				n.Save()
+			}
+			fmt.Println("Node schema version 4 update complete.")
 		} else {
 			fmt.Println("Exiting.")
 			os.Exit(0)

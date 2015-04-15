@@ -175,6 +175,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		node.File.Size = n.File.Size
 		node.File.Checksum = n.File.Checksum
 		node.File.Format = n.File.Format
+		node.File.CreatedOn = time.Now()
 
 		if n.Type == "subset" {
 			node.Subset = n.Subset
