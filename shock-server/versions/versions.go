@@ -178,7 +178,9 @@ func RunVersionUpdates() (err error) {
 			defer session.Close()
 			c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
 			n := node.Node{}
-			iter := c.Find(bson.M{"type": "parts"}).Iter()
+			// query for parts nodes with no md5sum
+			query := bson.M{"$and": []bson.M{bson.M{"type": "parts"}, bson.M{"file.checksum.md5": bson.M{"$exists": false}}}}
+			iter := c.Find(query).Iter()
 			defer iter.Close()
 			for iter.Next(n) {
 				pfile, perr := ioutil.ReadFile(n.Path() + "/parts/parts.json")
@@ -219,7 +221,9 @@ func RunVersionUpdates() (err error) {
 			defer session.Close()
 			c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
 			n := node.Node{}
-			iter := c.Find(bson.M{"file.checksum.md5": bson.M{"$ne": ""}}).Iter()
+			// query for all nodes with a file md5sum
+			query := bson.M{"$and": []bson.M{bson.M{"file.checksum.md5": bson.M{"$exists": true}}, bson.M{"file.checksum.md5": bson.M{"$ne": ""}}}}
+			iter := c.Find(query).Iter()
 			defer iter.Close()
 			for iter.Next(n) {
 				if ftext[0] == 'y' {
