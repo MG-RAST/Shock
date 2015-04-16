@@ -13,7 +13,7 @@ import (
 
 type partsFile []string
 
-type partsList struct {
+type PartsList struct {
 	Count       int         `bson:"count" json:"count"`
 	Length      int         `bson:"length" json:"length"`
 	VarLen      bool        `bson:"varlen" json:"varlen"`
@@ -36,7 +36,7 @@ func (node *Node) initParts(partsCount string, compressionFormat string) (err er
 	}
 
 	node.Type = "parts"
-	node.Parts = &partsList{
+	node.Parts = &PartsList{
 		Count:       count,
 		Length:      0,
 		VarLen:      varlen,

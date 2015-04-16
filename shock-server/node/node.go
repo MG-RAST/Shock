@@ -32,7 +32,7 @@ type Node struct {
 	LastModified time.Time         `bson:"last_modified" json:"last_modified"`
 	Type         string            `bson:"type" json:"type"`
 	Subset       Subset            `bson:"subset" json:"-"`
-	Parts        *partsList        `bson:"parts" json:"parts"`
+	Parts        *PartsList        `bson:"parts" json:"parts"`
 }
 
 type linkage struct {
@@ -44,10 +44,11 @@ type linkage struct {
 type Indexes map[string]IdxInfo
 
 type IdxInfo struct {
-	Type        string `bson:"index_type" json:"-"`
-	TotalUnits  int64  `bson:"total_units" json:"total_units"`
-	AvgUnitSize int64  `bson:"average_unit_size" json:"average_unit_size"`
-	Format      string `bson:"format" json:"-"`
+	Type        string    `bson:"index_type" json:"-"`
+	TotalUnits  int64     `bson:"total_units" json:"total_units"`
+	AvgUnitSize int64     `bson:"average_unit_size" json:"average_unit_size"`
+	Format      string    `bson:"format" json:"-"`
+	CreatedOn   time.Time `bson:"created_on" json:"created_on"`
 }
 
 type FormFiles map[string]FormFile
@@ -144,6 +145,7 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 
 	err = node.Update(params, files)
 	if err != nil {
+		node.Rmdir()
 		return
 	}
 
@@ -205,18 +207,20 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFi
 			return
 		}
 		// set attributes
+		var aerr error
 		if attrFile {
-			if err = node.SetAttributes(files["attributes"]); err != nil {
-				return
-			}
+			aerr = node.SetAttributes(files["attributes"])
 		} else if attrStr {
-			if err = node.SetAttributesFromString(params["attributes_str"]); err != nil {
-				return
-			}
+			aerr = node.SetAttributesFromString(params["attributes_str"])
+		}
+		if aerr != nil {
+			node.Rmdir()
+			return
 		}
 		// set file
 		f := FormFile{Name: file.Name, Path: file.Path, Checksum: file.Checksum}
 		if err = node.SetFile(f); err != nil {
+			node.Rmdir()
 			return
 		}
 		tempNodes = append(tempNodes, node)
@@ -225,6 +229,7 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFi
 	// save nodes, only return those that were created / saved
 	for _, n := range tempNodes {
 		if err = n.Save(); err != nil {
+			n.Rmdir()
 			return
 		}
 		nodes = append(nodes, n)

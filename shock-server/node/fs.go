@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"os"
 	"syscall"
+	"time"
 )
 
 func (node *Node) SetFile(file FormFile) (err error) {
@@ -22,6 +23,7 @@ func (node *Node) SetFile(file FormFile) (err error) {
 	node.File.Name = file.Name
 	node.File.Size = fileStat.Size()
 	node.File.Checksum = file.Checksum
+	node.File.CreatedOn = fileStat.ModTime()
 
 	//fill size index info
 	totalunits := node.File.Size / conf.CHUNK_SIZE
@@ -34,6 +36,7 @@ func (node *Node) SetFile(file FormFile) (err error) {
 		TotalUnits:  totalunits,
 		AvgUnitSize: conf.CHUNK_SIZE,
 		Format:      "dynamic",
+		CreatedOn:   time.Now(),
 	}
 	err = node.Save()
 	return
@@ -87,6 +90,7 @@ func (node *Node) SetFileFromSubset(subsetIndices FormFile) (err error) {
 	node.Subset.Index.AvgUnitSize = oSize / coCount
 	node.Subset.Index.Format = "array"
 	node.File.Size = oSize
+	node.File.CreatedOn = time.Now()
 
 	// this info is for the subset index that's been created in the index folder
 	node.Indexes[node.Subset.Parent.IndexName] = IdxInfo{
@@ -94,6 +98,7 @@ func (node *Node) SetFileFromSubset(subsetIndices FormFile) (err error) {
 		TotalUnits:  oCount,
 		AvgUnitSize: oSize / oCount,
 		Format:      indexFormat,
+		CreatedOn:   time.Now(),
 	}
 
 	// fill size index info
@@ -107,6 +112,7 @@ func (node *Node) SetFileFromSubset(subsetIndices FormFile) (err error) {
 		TotalUnits:  totalunits,
 		AvgUnitSize: conf.CHUNK_SIZE,
 		Format:      "dynamic",
+		CreatedOn:   time.Now(),
 	}
 
 	err = node.Save()
@@ -120,6 +126,7 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 	}
 	node.File.Name = fileStat.Name()
 	node.File.Size = fileStat.Size()
+	node.File.CreatedOn = fileStat.ModTime()
 
 	tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
 
@@ -193,6 +200,7 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 		TotalUnits:  totalunits,
 		AvgUnitSize: conf.CHUNK_SIZE,
 		Format:      "dynamic",
+		CreatedOn:   time.Now(),
 	}
 
 	if action == "copy_file" {
@@ -295,6 +303,7 @@ func (node *Node) SetFileFromParts(allowEmpty bool) (err error) {
 	}
 	node.File.Size = fileStat.Size()
 	node.File.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
+	node.File.CreatedOn = fileStat.ModTime()
 
 	//fill size index info
 	totalunits := node.File.Size / conf.CHUNK_SIZE
@@ -307,6 +316,7 @@ func (node *Node) SetFileFromParts(allowEmpty bool) (err error) {
 		TotalUnits:  totalunits,
 		AvgUnitSize: conf.CHUNK_SIZE,
 		Format:      "dynamic",
+		CreatedOn:   time.Now(),
 	}
 
 	err = node.Save()
