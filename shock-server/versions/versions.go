@@ -213,7 +213,7 @@ func RunVersionUpdates() (err error) {
 		fmt.Print("The Node schema version in your database needs updating to version 4.  Would you like the update to run? (y/n): ")
 		utext, _ := consoleReader.ReadString('\n')
 		if utext[0] == 'y' {
-			fmt.Print("Would you like to update node file info with timestamp from disk (otherwise current time is used)? (y/n): ")
+			fmt.Print("Would you like to update node info with timestamps from disk (otherwise current time is used)? (y/n): ")
 			ftext, _ := consoleReader.ReadString('\n')
 			// query for all nodes with a file md5sum
 			var n = new(node.Node)
@@ -240,7 +240,16 @@ func RunVersionUpdates() (err error) {
 				}
 				// update index time
 				for idxtype, idxinfo := range n.Indexes {
-					idxinfo.CreatedOn = time.Now()
+					if ftext[0] == 'y' {
+						idxpath := n.IndexPath() + "/" + idxtype + ".idx"
+						if idxStat, ierr := os.Stat(idxpath); ierr == nil {
+							idxinfo.CreatedOn = idxStat.ModTime()
+						} else {
+							idxinfo.CreatedOn = time.Now()
+						}
+					} else {
+						idxinfo.CreatedOn = time.Now()
+					}
 					n.Indexes[idxtype] = idxinfo
 				}
 				n.Save()
