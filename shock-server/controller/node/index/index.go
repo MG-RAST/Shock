@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 )
 
 type getRes struct {
@@ -276,6 +277,7 @@ func IndexTypedRequest(ctx context.Context) {
 			TotalUnits:  count,
 			AvgUnitSize: n.File.Size / count,
 			Format:      indexFormat,
+			CreatedOn:   time.Now(),
 		}
 
 		//if idxType == "chunkrecord" {
