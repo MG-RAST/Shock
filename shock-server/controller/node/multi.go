@@ -70,9 +70,13 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 	// bson.M is a convenient alias for a map[string]interface{} map, useful for dealing with BSON in a native way.
 	var OptsMArray []bson.M
 
+	// default sort field and direction (can only be changed with querynode operator, not query operator)
+	order := "created_on"
+	direction := "-"
+
 	// Gather params to make db query. Do not include the following list.
 	if _, ok := query["query"]; ok {
-		paramlist := map[string]int{"query": 1, "limit": 1, "offset": 1, "order": 1, "direction": 1}
+		paramlist := map[string]int{"limit": 1, "offset": 1, "query": 1}
 		for key := range query {
 			if _, found := paramlist[key]; !found {
 				keyStr := fmt.Sprintf("attributes.%s", key)
@@ -86,7 +90,7 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 			}
 		}
 	} else if _, ok := query["querynode"]; ok {
-		paramlist := map[string]int{"querynode": 1, "limit": 1, "offset": 1, "order": 1, "direction": 1, "owner": 1, "read": 1, "write": 1, "delete": 1, "public_owner": 1, "public_read": 1, "public_write": 1, "public_delete": 1}
+		paramlist := map[string]int{"limit": 1, "offset": 1, "querynode": 1, "order": 1, "direction": 1, "owner": 1, "read": 1, "write": 1, "delete": 1, "public_owner": 1, "public_read": 1, "public_write": 1, "public_delete": 1}
 		for key := range query {
 			if _, found := paramlist[key]; !found {
 				for _, value := range query[key] {
@@ -96,6 +100,14 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 						OptsMArray = append(OptsMArray, bson.M{key: map[string]bool{"$exists": true}})
 					}
 				}
+			}
+		}
+		if _, ok := query["order"]; ok {
+			order = query.Get("order")
+		}
+		if _, ok := query["direction"]; ok {
+			if query.Get("direction") == "asc" {
+				direction = ""
 			}
 		}
 	}
@@ -145,26 +157,8 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 	q["$and"] = []bson.M{qPerm, qOpts, qAcls}
 
 	// defaults
-	order := "created_on"
-	direction := "-"
 	limit := 25
 	offset := 0
-
-	// get from query
-	if _, ok := query["query"]; ok {
-		if _, ok := query["order"]; ok {
-			order = fmt.Sprintf("attributes.%s", query.Get("order"))
-		}
-	} else {
-		if _, ok := query["order"]; ok {
-			order = query.Get("order")
-		}
-	}
-	if _, ok := query["direction"]; ok {
-		if query.Get("direction") == "asc" {
-			direction = ""
-		}
-	}
 	if _, ok := query["limit"]; ok {
 		limit = util.ToInt(query.Get("limit"))
 	}
