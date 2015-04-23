@@ -4,7 +4,6 @@ package file
 import (
 	"io"
 	"os"
-	"time"
 )
 
 // File is the Node file structure. Contains the json/bson marshalling controls.
@@ -16,7 +15,6 @@ type File struct {
 	Path         string            `bson:"path" json:"-"`
 	Virtual      bool              `bson:"virtual" json:"virtual"`
 	VirtualParts []string          `bson:"virtual_parts" json:"virtual_parts"`
-	CreatedOn    time.Time         `bson:"created_on" json:"created_on"`
 }
 
 // SectionReader interface required for MultiReaderAt

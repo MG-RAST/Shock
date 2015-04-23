@@ -3,7 +3,6 @@ package request
 import (
 	"errors"
 	"fmt"
-	"github.com/MG-RAST/Shock/shock-server/node/archive"
 	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/node/filter"
@@ -20,52 +19,55 @@ type Streamer struct {
 	Filename    string
 	Size        int64
 	Filter      filter.FilterFunc
-	Compression string
 }
 
-func (s *Streamer) Stream(streamRaw bool) (err error) {
-	// file download
-	if !streamRaw {
-		fileName := fmt.Sprintf(" attachment; filename=%s", s.Filename)
-		// add extension for compression
-		if s.Compression != "" {
-			fileName = fmt.Sprintf(" attachment; filename=%s.%s", s.Filename, s.Compression)
-		}
-		s.W.Header().Set("Content-Disposition", fileName)
+func (s *Streamer) Stream() (err error) {
+	s.W.Header().Set("Content-Type", s.ContentType)
+	s.W.Header().Set("Content-Disposition", fmt.Sprintf(" attachment; filename=%s", s.Filename))
+	s.W.Header().Set("Connection", "close")
+	s.W.Header().Set("Access-Control-Allow-Headers", "Authorization")
+	s.W.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS")
+	s.W.Header().Set("Access-Control-Allow-Origin", "*")
+
+	if s.Size > 0 && s.Filter == nil {
+		s.W.Header().Set("Content-Length", fmt.Sprint(s.Size))
 	}
-	// set headers
+	for _, sr := range s.R {
+		var rs io.Reader
+		if s.Filter != nil {
+			rs = s.Filter(sr)
+		} else {
+			rs = sr
+		}
+		_, err := io.Copy(s.W, rs)
+		if err != nil {
+			return err
+		}
+	}
+	return
+}
+
+func (s *Streamer) StreamRaw() (err error) {
 	s.W.Header().Set("Content-Type", s.ContentType)
 	s.W.Header().Set("Connection", "close")
 	s.W.Header().Set("Access-Control-Allow-Headers", "Authorization")
 	s.W.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS")
 	s.W.Header().Set("Access-Control-Allow-Origin", "*")
-	if s.Size > 0 && s.Filter == nil && !archive.IsValidCompress(s.Compression) {
+	if s.Size > 0 && s.Filter == nil {
 		s.W.Header().Set("Content-Length", fmt.Sprint(s.Size))
 	}
-
-	// pipe each SectionReader into one stream
-	// run filter pre-pipe
-	pReader, pWriter := io.Pipe()
-	go func() {
-		for _, sr := range s.R {
-			var rs io.Reader
-			if s.Filter != nil {
-				rs = s.Filter(sr)
-			} else {
-				rs = sr
-			}
-			if _, err = io.Copy(pWriter, rs); err != nil {
-				break
-			}
+	for _, sr := range s.R {
+		var rs io.Reader
+		if s.Filter != nil {
+			rs = s.Filter(sr)
+		} else {
+			rs = sr
 		}
-		pWriter.Close()
-	}()
-
-	// pass pipe to ResponseWriter, go through compression if exists
-	cReader := archive.CompressReader(s.Compression, s.Filename, pReader)
-	_, err = io.Copy(s.W, cReader)
-	cReader.Close()
-	pReader.Close()
+		_, err := io.Copy(s.W, rs)
+		if err != nil {
+			return err
+		}
+	}
 	return
 }
 

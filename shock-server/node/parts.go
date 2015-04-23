@@ -2,48 +2,76 @@ package node
 
 import (
 	"crypto/md5"
+	"encoding/json"
 	"errors"
 	"fmt"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/golib/mgo/bson"
 	"io"
+	"io/ioutil"
 	"os"
 	"strconv"
 )
 
 type partsFile []string
 
-type PartsList struct {
-	Count       int         `bson:"count" json:"count"`
-	Length      int         `bson:"length" json:"length"`
-	VarLen      bool        `bson:"varlen" json:"varlen"`
-	Parts       []partsFile `bson:"parts" json:"parts"`
-	Compression string      `bson:"compression" json:"compression"`
+type partsList struct {
+	Count  int         `json:"count"`
+	Length int         `json:"length"`
+	VarLen bool        `json:"varlen"`
+	Parts  []partsFile `json:"parts"`
 }
 
-func (node *Node) initParts(partsCount string, compressionFormat string) (err error) {
+// Parts functions
+func (node *Node) loadParts() (p *partsList, err error) {
+	pf, err := ioutil.ReadFile(node.partsListPath())
+	if err != nil {
+		return
+	}
+	p = &partsList{}
+	err = json.Unmarshal(pf, &p)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (node *Node) writeParts(p *partsList) (err error) {
+	pm, _ := json.Marshal(p)
+	err = ioutil.WriteFile(node.partsListPath(), []byte(pm), 0644)
+	return
+}
+
+func (node *Node) partsCount() int {
+	p, err := node.loadParts()
+	if err != nil {
+		return -1
+	}
+	return p.Count
+}
+
+func (node *Node) isVarLen() bool {
+	p, err := node.loadParts()
+	if err != nil {
+		return false
+	}
+	return p.VarLen
+}
+
+func (node *Node) initParts(partsCount string) (err error) {
 	// Function should only be called with a postive integer or string 'unknown'
 	count, cerr := strconv.Atoi(partsCount)
 	if partsCount != "unknown" && cerr != nil {
 		return cerr
 	}
+	p := &partsList{}
 	err = os.MkdirAll(fmt.Sprintf("%s/parts", node.Path()), 0777)
-
-	varlen := false
 	if partsCount == "unknown" {
-		count = 0
-		varlen = true
+		p = &partsList{Count: 0, Length: 0, VarLen: true, Parts: make([]partsFile, 0)}
+	} else {
+		p = &partsList{Count: count, Length: 0, VarLen: false, Parts: make([]partsFile, count)}
 	}
-
-	node.Type = "parts"
-	node.Parts = &PartsList{
-		Count:       count,
-		Length:      0,
-		VarLen:      varlen,
-		Parts:       make([]partsFile, count),
-		Compression: compressionFormat,
-	}
-	err = node.Save()
+	err = node.writeParts(p)
 	return
 }
 
@@ -80,11 +108,17 @@ func (node *Node) addVirtualParts(ids []string) (err error) {
 }
 
 func (node *Node) addPart(n int, file *FormFile) (err error) {
-	if n >= node.Parts.Count && !node.Parts.VarLen {
-		return errors.New("part number is greater than node length: " + strconv.Itoa(node.Parts.Length))
+	// load
+	p, err := node.loadParts()
+	if err != nil {
+		return err
 	}
 
-	if n < node.Parts.Count && len(node.Parts.Parts[n]) > 0 {
+	if n >= p.Count && !p.VarLen {
+		return errors.New("part number is greater than node length: " + strconv.Itoa(p.Length))
+	}
+
+	if n < p.Count && len(p.Parts[n]) > 0 {
 		return errors.New(e.FileImut)
 	}
 
@@ -92,17 +126,17 @@ func (node *Node) addPart(n int, file *FormFile) (err error) {
 	part := partsFile{file.Name, file.Checksum["md5"]}
 
 	// add part to node
-	if node.Parts.VarLen == true && n >= node.Parts.Count {
-		for i := node.Parts.Count; i < n; i = i + 1 {
-			node.Parts.Parts = append(node.Parts.Parts, partsFile{})
-			node.Parts.Count = node.Parts.Count + 1
+	if p.VarLen == true && n >= p.Count {
+		for i := p.Count; i < n; i = i + 1 {
+			p.Parts = append(p.Parts, partsFile{})
+			p.Count = p.Count + 1
 		}
-		node.Parts.Parts = append(node.Parts.Parts, part)
-		node.Parts.Count = node.Parts.Count + 1
-		node.Parts.Length = node.Parts.Length + 1
+		p.Parts = append(p.Parts, part)
+		p.Count = p.Count + 1
+		p.Length = p.Length + 1
 	} else {
-		node.Parts.Parts[n] = part
-		node.Parts.Length = node.Parts.Length + 1
+		p.Parts[n] = part
+		p.Length = p.Length + 1
 	}
 
 	// put part into data directory
@@ -110,26 +144,39 @@ func (node *Node) addPart(n int, file *FormFile) (err error) {
 		return err
 	}
 
+	// rewrite
+	if err = node.writeParts(p); err != nil {
+		return err
+	}
+
 	// create file if done with non-variable length node
-	if !node.Parts.VarLen && node.Parts.Length == node.Parts.Count {
-		if err = node.SetFileFromParts(false); err != nil {
+	if !p.VarLen && p.Length == p.Count {
+		if err = node.SetFileFromParts(p, false); err != nil {
 			return err
 		}
 		if err = os.RemoveAll(node.Path() + "/parts/"); err != nil {
 			return err
 		}
 	}
-	err = node.Save()
 	return
 }
 
 func (node *Node) closeVarLenPartial() (err error) {
+	p, err := node.loadParts()
+	if err != nil {
+		return err
+	}
+
 	// Second param says we will allow empty parts in merging of those parts
-	if err = node.SetFileFromParts(true); err != nil {
+	if err = node.SetFileFromParts(p, true); err != nil {
 		return err
 	}
 	if err = os.RemoveAll(node.Path() + "/parts/"); err != nil {
 		return err
 	}
 	return
+}
+
+func (node *Node) partsListPath() string {
+	return node.Path() + "/parts/parts.json"
 }

@@ -71,16 +71,6 @@ func (cr *NodeController) Create(ctx context.Context) error {
 		}
 	}
 
-	// special case, creates multiple nodes
-	if archiveId, hasArchiveNode := params["unpack_node"]; hasArchiveNode {
-		ns, err := node.CreateNodesFromArchive(u, params, files, archiveId)
-		if err != nil {
-			err_msg := "err@node_CreateNodesFromArchive: " + err.Error()
-			logger.Error(err_msg)
-			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
-		}
-		return responder.RespondWithData(ctx, ns)
-	}
 	// Create node
 	n, err := node.CreateNodeUpload(u, params, files)
 	if err != nil {
