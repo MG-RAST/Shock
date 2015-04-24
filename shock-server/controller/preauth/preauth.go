@@ -4,7 +4,9 @@ package preauth
 import (
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
+	"github.com/MG-RAST/Shock/shock-server/node/archive"
 	"github.com/MG-RAST/Shock/shock-server/node/file"
+	"github.com/MG-RAST/Shock/shock-server/node/filter"
 	"github.com/MG-RAST/Shock/shock-server/preauth"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
@@ -21,11 +23,7 @@ func PreAuthRequest(ctx context.Context) {
 		if n, err := node.Load(p.NodeId); err == nil {
 			switch p.Type {
 			case "download":
-				filename := n.Id
-				if fn, has := p.Options["filename"]; has {
-					filename = fn
-				}
-				streamDownload(ctx, n, filename)
+				streamDownload(ctx, n, p.Options)
 				preauth.Delete(id)
 			default:
 				responder.RespondWithError(ctx, 500, "Preauthorization type not supported: "+p.Type)
@@ -39,7 +37,8 @@ func PreAuthRequest(ctx context.Context) {
 	return
 }
 
-func streamDownload(ctx context.Context, n *node.Node, filename string) {
+// handle download and its options
+func streamDownload(ctx context.Context, n *node.Node, options map[string]string) {
 	nf, err := n.FileReader()
 	defer nf.Close()
 	if err != nil {
@@ -50,8 +49,27 @@ func streamDownload(ctx context.Context, n *node.Node, filename string) {
 		responder.RespondWithError(ctx, 500, err_msg)
 		return
 	}
-	s := &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: nil}
-	err = s.Stream()
+	// set defaults
+	filename := n.Id
+	var filterFunc filter.FilterFunc = nil
+	var compressionFormat string = ""
+	// use options if exist
+	if fn, has := options["filename"]; has {
+		filename = fn
+	}
+	if fl, has := options["filter"]; has {
+		if filter.Has(fl) {
+			filterFunc = filter.Filter(fl)
+		}
+	}
+	if cp, has := options["compression"]; has {
+		if archive.IsValidCompress(cp) {
+			compressionFormat = cp
+		}
+	}
+	// stream it
+	s := &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: filterFunc, Compression: compressionFormat}
+	err = s.Stream(false)
 	if err != nil {
 		// causes "multiple response.WriteHeader calls" error but better than no response
 		err_msg := "err:@preAuth: s.stream: " + err.Error()
