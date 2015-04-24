@@ -177,7 +177,7 @@ func Initialize() {
 
 	VERSIONS["ACL"] = 2
 	VERSIONS["Auth"] = 1
-	VERSIONS["Node"] = 2
+	VERSIONS["Node"] = 4
 }
 
 // Bool is a convenience wrapper around strconv.ParseBool

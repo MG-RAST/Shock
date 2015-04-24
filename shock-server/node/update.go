@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
+	"github.com/MG-RAST/Shock/shock-server/node/archive"
 	"github.com/MG-RAST/Shock/shock-server/util"
 	"github.com/MG-RAST/golib/mgo/bson"
 	"io/ioutil"
@@ -19,7 +20,9 @@ import (
 //Modification functions
 func (node *Node) Update(params map[string]string, files FormFiles) (err error) {
 	// Exclusive conditions
-	// 1. has files[upload] (regular upload)
+	// 1.1. has files[upload] (regular upload)
+	// 1.2. has files[gzip] (compressed upload)
+	// 1.3. has files[bzip2] (compressed upload)
 	// 2. has params[parts] (partial upload support)
 	// 3. has params[type] & params[source] (v_node)
 	// 4. has params[path] (set from local path)
@@ -51,6 +54,12 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	}
 
 	_, isPartialUpload := params["parts"]
+	hasPartsFile := false
+	for key, _ := range files {
+		if _, errf := strconv.Atoi(key); errf == nil {
+			hasPartsFile = true
+		}
+	}
 
 	isVirtualNode := false
 	if t, hasType := params["type"]; hasType && t == "virtual" {
@@ -71,10 +80,12 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		return errors.New("path parameter incompatible with copy_data and/or parent_node parameter")
 	} else if isCopyUpload && isSubsetUpload {
 		return errors.New("copy_data parameter incompatible with parent_node parameter")
+	} else if isRegularUpload && hasPartsFile {
+		return errors.New("upload file and parts file are incompatible")
 	}
 
 	// Check if immutable
-	if (isRegularUpload || isPartialUpload || isVirtualNode || isPathUpload || isCopyUpload || isSubsetUpload) && node.HasFile() {
+	if (isRegularUpload || isPartialUpload || hasPartsFile || isVirtualNode || isPathUpload || isCopyUpload || isSubsetUpload) && node.HasFile() {
 		return errors.New(e.FileImut)
 	}
 
@@ -84,27 +95,39 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 		delete(files, uploadFile)
 	} else if isPartialUpload {
-		node.Type = "parts"
-		if params["parts"] == "unknown" {
-			if err = node.initParts("unknown"); err != nil {
-				return err
+		// close variable length parts
+		if params["parts"] == "close" {
+			if (node.Type != "parts") || (node.Parts == nil) || !node.Parts.VarLen {
+				return errors.New("can only call 'close' on unknown parts node")
 			}
-		} else if params["parts"] == "close" {
 			if err = node.closeVarLenPartial(); err != nil {
 				return err
 			}
-		} else if node.isVarLen() || node.partsCount() > 0 {
+		} else if (node.Parts != nil) && (node.Parts.VarLen || node.Parts.Count > 0) {
 			return errors.New("parts already set")
 		} else {
-			n, err := strconv.Atoi(params["parts"])
-			if err != nil {
-				return errors.New("parts must be an integer or 'unknown'")
+			// set parts struct
+			var compressionFormat string = ""
+			if compress, ok := params["compression"]; ok {
+				if archive.IsValidUncompress(compress) {
+					compressionFormat = compress
+				}
 			}
-			if n < 1 {
-				return errors.New("parts cannot be less than 1")
-			}
-			if err = node.initParts(params["parts"]); err != nil {
-				return err
+			if params["parts"] == "unknown" {
+				if err = node.initParts("unknown", compressionFormat); err != nil {
+					return err
+				}
+			} else {
+				n, err := strconv.Atoi(params["parts"])
+				if err != nil {
+					return errors.New("parts must be an integer or 'unknown'")
+				}
+				if n < 1 {
+					return errors.New("parts cannot be less than 1")
+				}
+				if err = node.initParts(params["parts"], compressionFormat); err != nil {
+					return err
+				}
 			}
 		}
 	} else if isVirtualNode {
@@ -152,6 +175,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		node.File.Size = n.File.Size
 		node.File.Checksum = n.File.Checksum
 		node.File.Format = n.File.Format
+		node.File.CreatedOn = time.Now()
 
 		if n.Type == "subset" {
 			node.Subset = n.Subset
@@ -292,45 +316,31 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	}
 
 	// handle part file
-	LockMgr.LockPartOp()
-	parts_count := node.partsCount()
-	if parts_count > 0 || node.isVarLen() {
-		for key, file := range files {
-			if node.HasFile() {
-				LockMgr.UnlockPartOp()
-				return errors.New(e.FileImut)
-			}
-			keyn, errf := strconv.Atoi(key)
-			if errf == nil && (keyn <= parts_count || node.isVarLen()) {
-				err = node.addPart(keyn-1, &file)
-				if err != nil {
-					LockMgr.UnlockPartOp()
-					return err
+	if hasPartsFile {
+		if node.HasFile() {
+			return errors.New(e.FileImut)
+		}
+		if (node.Type != "parts") || (node.Parts == nil) {
+			return errors.New("This is not a parts node and thus does not support uploading in parts.")
+		}
+		LockMgr.LockPartOp()
+		if node.Parts.Count > 0 || node.Parts.VarLen {
+			for key, file := range files {
+				keyn, errf := strconv.Atoi(key)
+				if errf == nil && (keyn <= node.Parts.Count || node.Parts.VarLen) {
+					err = node.addPart(keyn-1, &file)
+					if err != nil {
+						LockMgr.UnlockPartOp()
+						return err
+					}
 				}
-			} else {
-				LockMgr.UnlockPartOp()
-				return errors.New("invalid file parameter")
 			}
+		} else {
+			LockMgr.UnlockPartOp()
+			return errors.New("Unable to retrieve parts info for node.")
 		}
-	} else if node.HasFile() {
-		// if node has a file and user is trying to perform parts upload, return error that file is immutable.
-		for key, _ := range files {
-			if _, errf := strconv.Atoi(key); errf == nil {
-				LockMgr.UnlockPartOp()
-				return errors.New(e.FileImut)
-			}
-		}
-	} else if parts_count == -1 {
-		// if node is not variable length and user is trying to perform parts upload, return error that node is not variable
-		for key, _ := range files {
-			if _, errf := strconv.Atoi(key); errf == nil {
-				LockMgr.UnlockPartOp()
-				return errors.New("This is not a variable length node and thus does not support uploading in parts.")
-			}
-		}
+		LockMgr.UnlockPartOp()
 	}
-
-	LockMgr.UnlockPartOp()
 
 	// update relatives
 	if _, hasRelation := params["linkage"]; hasRelation {
@@ -378,7 +388,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 func (node *Node) Save() (err error) {
 	node.UpdateVersion()
 	if len(node.Revisions) == 0 || node.Revisions[len(node.Revisions)-1].Version != node.Version {
-		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified, node.Type, node.Subset}
+		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified, node.Type, node.Subset, node.Parts}
 		node.Revisions = append(node.Revisions, n)
 	}
 	if node.CreatedOn.String() == "0001-01-01 00:00:00 +0000 UTC" {
