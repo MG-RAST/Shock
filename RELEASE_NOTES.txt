@@ -1,3 +1,10 @@
+# v0.9.6
+
+- Added init.d scripts for start/stop of Shock.
+- No longer requiring 'globus' string in a globus-formatted token.
+- Fixed invalid return from index creation function.
+- Added mongo index to node 'created_on' field.
+
 # v0.9.5
 
 - Sort Shock query results by date by default (newest to oldest)
