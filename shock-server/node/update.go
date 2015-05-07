@@ -222,66 +222,71 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			node.File.Path = n.File.Path
 		}
 
-		err = node.Save()
-		if err != nil {
-			return
-		}
-	} else if isSubsetUpload {
-		_, hasParentIndex := params["parent_index"]
-		if !hasParentIndex {
-			return errors.New("parent_index is a required parameter for creating a subset node.")
-		}
-
-		var n *Node
-		n, err = Load(params["parent_node"])
-		if err != nil {
+		if err = node.Save(); err != nil {
 			return err
 		}
-
-		if n.File.Virtual {
-			return errors.New("parent_node parameter points to a virtual node, invalid operation.")
+	} else if isSubsetUpload {
+		fInfo, statErr := os.Stat(files["subset_indices"].Path)
+		if statErr != nil {
+			return errors.New("Could not stat uploaded subset_indices file.")
 		}
-
-		if _, indexExists := n.Indexes[params["parent_index"]]; !indexExists {
-			return errors.New("Index '" + params["parent_index"] + "' does not exist for parent node.")
-		}
-
-		parentIndexFile := n.IndexPath() + "/" + params["parent_index"] + ".idx"
-		if _, statErr := os.Stat(parentIndexFile); statErr != nil {
-			return errors.New("Could not stat index file for parent node where parent node = '" + params["parent_node"] + "' and index = '" + params["parent_index"] + "'.")
-		}
-
-		// Copy node file information
-		node.File.Name = n.File.Name
-		node.File.Format = n.File.Format
 		node.Type = "subset"
-		node.Subset.Parent.Id = params["parent_node"]
-		node.Subset.Parent.IndexName = params["parent_index"]
 
-		if n.File.Path == "" {
-			node.File.Path = fmt.Sprintf("%s/%s.data", getPath(params["parent_node"]), params["parent_node"])
-		} else {
-			node.File.Path = n.File.Path
-		}
-
-		if _, hasSubsetList := files["subset_indices"]; hasSubsetList {
-			if err = node.SetFileFromSubset(files["subset_indices"]); err != nil {
+		if fInfo.Size() == 0 {
+			// if upload file is empty, make a basic node with empty file
+			if err = node.SetFile(files["subset_indices"]); err != nil {
 				return err
 			}
 			delete(files, "subset_indices")
 		} else {
-			err = node.Save()
+			// process subset upload
+			_, hasParentIndex := params["parent_index"]
+			if !hasParentIndex {
+				return errors.New("parent_index is a required parameter for creating a subset node.")
+			}
+
+			var n *Node
+			n, err = Load(params["parent_node"])
 			if err != nil {
-				return
+				return err
+			}
+
+			if n.File.Virtual {
+				return errors.New("parent_node parameter points to a virtual node, invalid operation.")
+			}
+
+			if _, indexExists := n.Indexes[params["parent_index"]]; !indexExists {
+				return errors.New("Index '" + params["parent_index"] + "' does not exist for parent node.")
+			}
+
+			parentIndexFile := n.IndexPath() + "/" + params["parent_index"] + ".idx"
+			if _, statErr := os.Stat(parentIndexFile); statErr != nil {
+				return errors.New("Could not stat index file for parent node where parent node = '" + params["parent_node"] + "' and index = '" + params["parent_index"] + "'.")
+			}
+
+			// Copy node file information
+			node.File.Name = n.File.Name
+			node.File.Format = n.File.Format
+			node.Subset.Parent.Id = params["parent_node"]
+			node.Subset.Parent.IndexName = params["parent_index"]
+
+			if n.File.Path == "" {
+				node.File.Path = fmt.Sprintf("%s/%s.data", getPath(params["parent_node"]), params["parent_node"])
+			} else {
+				node.File.Path = n.File.Path
+			}
+
+			if _, hasSubsetList := files["subset_indices"]; hasSubsetList {
+				if err = node.SetFileFromSubset(files["subset_indices"]); err != nil {
+					return err
+				}
+				delete(files, "subset_indices")
+			} else {
+				if err = node.Save(); err != nil {
+					return err
+				}
 			}
 		}
-	}
-
-	if _, hasSubsetList := files["subset_indices"]; hasSubsetList {
-		if err = node.SetFileFromSubset(files["subset_indices"]); err != nil {
-			return err
-		}
-		delete(files, "subset_indices")
 	}
 
 	// set attributes from file
