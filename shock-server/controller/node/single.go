@@ -96,7 +96,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 	_, download_raw := query["download_raw"]
 	if _, ok := query["download"]; ok || download_raw {
 		if !n.HasFile() {
-			return responder.RespondWithError(ctx, http.StatusBadRequest, "Node has no file")
+			return responder.RespondWithError(ctx, http.StatusBadRequest, e.NodeNoFile)
 		}
 
 		_, seek_ok := query["seek"]
@@ -207,7 +207,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 						return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 					}
 				} else {
-					return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index")
+					return responder.RespondWithError(ctx, http.StatusBadRequest, e.InvalidIndex)
 				}
 			}
 
@@ -251,7 +251,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					fullRange := "1-" + strconv.FormatInt(recordIdxInfo.TotalUnits, 10)
 					recSlice, err := recordIdx.Range(fullRange, n.IndexPath()+"/"+recordIdxName+".idx", recordIdxInfo.TotalUnits)
 					if err != nil {
-						return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index subset")
+						return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
 					}
 					for _, rec := range recSlice {
 						size += rec[1]
@@ -262,7 +262,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					for _, p := range query["part"] {
 						chunkRecSlice, err := idx.Range(p, n.IndexPath()+"/"+idxName+".idx", idxInfo.TotalUnits)
 						if err != nil {
-							return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index part")
+							return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
 						}
 						// This gets us the parts of the chunkrecord index, but we still need to convert these to record indices.
 						for _, chunkRec := range chunkRecSlice {
@@ -270,7 +270,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 							stop := (start - 1) + (chunkRec[1] / 16)
 							recSlice, err := recordIdx.Range(strconv.FormatInt(start, 10)+"-"+strconv.FormatInt(stop, 10), n.IndexPath()+"/"+recordIdxName+".idx", recordIdxInfo.TotalUnits)
 							if err != nil {
-								return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index subset")
+								return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
 							}
 							for _, rec := range recSlice {
 								size += rec[1]
@@ -288,7 +288,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					fullRange := "1-" + strconv.FormatInt(idxInfo.TotalUnits, 10)
 					recSlice, err := idx.Range(fullRange, n.IndexPath()+"/"+idxName+".idx", idxInfo.TotalUnits)
 					if err != nil {
-						return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index subset")
+						return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
 					}
 					for _, rec := range recSlice {
 						size += rec[1]
@@ -301,16 +301,20 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 						if idxInfo.Type == "subset" {
 							recSlice, err := idx.Range(p, n.IndexPath()+"/"+idxName+".idx", idxInfo.TotalUnits)
 							if err != nil {
-								return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index part")
+								return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
 							}
 							for _, rec := range recSlice {
 								size += rec[1]
 								s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
 							}
 						} else {
+							// empty node has no parts
+							if n.File.Size == 0 {
+								return responder.RespondWithError(ctx, http.StatusBadRequest, e.IndexOutBounds)
+							}
 							pos, length, err := idx.Part(p, n.IndexPath()+"/"+idxName+".idx", idxInfo.TotalUnits)
 							if err != nil {
-								return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid index part")
+								return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
 							}
 							size += length
 							s.R = append(s.R, io.NewSectionReader(r, pos, length))
@@ -340,17 +344,21 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 				}
 
-				idx := index.New()
-
 				s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, Compression: compressionFormat}
 
-				fullRange := "1-" + strconv.FormatInt(n.Subset.Index.TotalUnits, 10)
-				recSlice, err := idx.Range(fullRange, n.Path()+"/"+n.Id+".subset.idx", n.Subset.Index.TotalUnits)
-				if err != nil {
-					return responder.RespondWithError(ctx, http.StatusInternalServerError, "Invalid data index for subset node.")
-				}
-				for _, rec := range recSlice {
-					s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
+				if n.File.Size == 0 {
+					// handle empty subset file
+					s.R = append(s.R, r)
+				} else {
+					idx := index.New()
+					fullRange := "1-" + strconv.FormatInt(n.Subset.Index.TotalUnits, 10)
+					recSlice, err := idx.Range(fullRange, n.Path()+"/"+n.Id+".subset.idx", n.Subset.Index.TotalUnits)
+					if err != nil {
+						return responder.RespondWithError(ctx, http.StatusInternalServerError, err.Error())
+					}
+					for _, rec := range recSlice {
+						s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
+					}
 				}
 				if err = s.Stream(download_raw); err != nil {
 					// causes "multiple response.WriteHeader calls" error but better than no response
@@ -383,7 +391,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		}
 
 		if !n.HasFile() {
-			return responder.RespondWithError(ctx, http.StatusBadRequest, "Node has no file")
+			return responder.RespondWithError(ctx, http.StatusBadRequest, e.NodeNoFile)
 		} else {
 			// add options
 			options := map[string]string{}
