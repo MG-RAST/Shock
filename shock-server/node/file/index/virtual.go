@@ -2,6 +2,7 @@ package index
 
 import (
 	"errors"
+	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"strconv"
 	"strings"
 )
@@ -52,7 +53,7 @@ func SizePart(part string, v *vIndex) (pos int64, length int64, err error) {
 		start, startEr := strconv.ParseInt(startend[0], 10, 64)
 		end, endEr := strconv.ParseInt(startend[1], 10, 64)
 		if startEr != nil || endEr != nil || start <= 0 || (start-1)*v.ChunkSize > v.size || end <= 0 || (end-1)*v.ChunkSize > v.size {
-			err = errors.New("")
+			err = errors.New(e.InvalidIndexRange)
 			return
 		}
 		pos = (start - 1) * v.ChunkSize
@@ -65,7 +66,7 @@ func SizePart(part string, v *vIndex) (pos int64, length int64, err error) {
 	} else {
 		p, er := strconv.ParseInt(part, 10, 64)
 		if er != nil || p <= 0 || (p-1)*v.ChunkSize > v.size {
-			err = errors.New("")
+			err = errors.New(e.IndexOutBounds)
 			return
 		}
 		pos = (p - 1) * v.ChunkSize

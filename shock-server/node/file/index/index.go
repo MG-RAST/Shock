@@ -3,6 +3,7 @@ package index
 import (
 	"encoding/binary"
 	"errors"
+	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"io"
 	"os"
 	"strconv"
@@ -62,6 +63,7 @@ func (i *Idx) Part(part string, idxFilePath string, idxLength int64) (pos int64,
 	// used for non-subset indices where the records are contiguous for the data file
 	f, err := os.Open(idxFilePath)
 	if err != nil {
+		err = errors.New(e.IndexNoFile)
 		return
 	}
 	defer f.Close()
@@ -71,7 +73,7 @@ func (i *Idx) Part(part string, idxFilePath string, idxLength int64) (pos int64,
 		start, startEr := strconv.ParseInt(startend[0], 10, 64)
 		end, endEr := strconv.ParseInt(startend[1], 10, 64)
 		if startEr != nil || endEr != nil || start <= 0 || start > int64(idxLength) || end <= 0 || end > int64(idxLength) {
-			err = errors.New("Invalid part range")
+			err = errors.New(e.InvalidIndexRange)
 			return
 		}
 
@@ -92,7 +94,7 @@ func (i *Idx) Part(part string, idxFilePath string, idxLength int64) (pos int64,
 	} else {
 		p, er := strconv.ParseInt(part, 10, 64)
 		if er != nil || p <= 0 || p > int64(idxLength) {
-			err = errors.New("")
+			err = errors.New(e.IndexOutBounds)
 			return
 		}
 
@@ -113,6 +115,7 @@ func (i *Idx) Range(part string, idxFilePath string, idxLength int64) (recs [][]
 	// used for subset indices where the records are not contiguous for the data file
 	f, err := os.Open(idxFilePath)
 	if err != nil {
+		err = errors.New(e.IndexNoFile)
 		return
 	}
 	defer f.Close()
@@ -122,7 +125,7 @@ func (i *Idx) Range(part string, idxFilePath string, idxLength int64) (recs [][]
 		start, startEr := strconv.ParseInt(startend[0], 10, 64)
 		end, endEr := strconv.ParseInt(startend[1], 10, 64)
 		if startEr != nil || endEr != nil || start <= 0 || start > int64(idxLength) || end <= 0 || end > int64(idxLength) {
-			err = errors.New("Invalid subset range")
+			err = errors.New(e.InvalidIndexRange)
 			return
 		}
 
@@ -169,7 +172,7 @@ func (i *Idx) Range(part string, idxFilePath string, idxLength int64) (recs [][]
 	} else {
 		p, er := strconv.ParseInt(part, 10, 64)
 		if er != nil || p <= 0 || p > int64(idxLength) {
-			err = errors.New("")
+			err = errors.New(e.IndexOutBounds)
 			return
 		}
 
