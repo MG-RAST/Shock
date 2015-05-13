@@ -1,3 +1,21 @@
+# v0.9.7
+
+- Support for upload and decompression of gzip/bzip2 for basic and parts uploads
+- Support for unpacking of node containing zip or tar archive into multiple nodes
+- Support for download of node file in compressed format – zip/gzip
+- Add filter and compression options to download_url
+- File download defaults to filename and not node id
+- Better checking and error messages of invalid parameter combinations
+- Cleanup of files in tmp dir when upload fails or parameters invalid
+- Subset node type can support empty subsets
+- Update error messages, make more consistant
+- Update node schema to version 3
+  - Parts upload info saved in node document and not flatfile, md5 saved for each part
+  - Update nodes to v3 on startup if not up-to-date
+- Update node schema to version 4
+  - Add timestamps to file and index info in node document, time of file upload and index creation
+  - Update nodes to v4 on startup if not up-to-date
+
 # v0.9.6
 
 - Added init.d scripts for start/stop of Shock.
