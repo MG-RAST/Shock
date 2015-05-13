@@ -117,6 +117,11 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 				}
 				params[part.FormName()] = fmt.Sprintf("%s", buffer[0:n])
 			} else {
+				// determine file type
+				isSubsetFile := false
+				if part.FormName() == "subset_indices" {
+					isSubsetFile = true
+				}
 				isPartsFile := false
 				if _, er := strconv.Atoi(part.FormName()); er == nil {
 					isPartsFile = true
@@ -124,11 +129,12 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 				if !isPartsFile && !util.IsValidFileName(part.FormName()) {
 					return nil, files, errors.New("invalid file param: " + part.FormName())
 				}
+				// download it
 				tmpPath = fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
 				files[part.FormName()] = node.FormFile{Name: part.FileName(), Path: tmpPath, Checksum: make(map[string]string)}
 				if tmpFile, err := os.Create(tmpPath); err == nil {
 					defer tmpFile.Close()
-					if util.IsValidUploadFile(part.FormName()) || isPartsFile {
+					if util.IsValidUploadFile(part.FormName()) || isPartsFile || isSubsetFile {
 						// handle upload or parts files
 						var tmpform = files[part.FormName()]
 						md5h := md5.New()
@@ -146,7 +152,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 						tmpform.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
 						files[part.FormName()] = tmpform
 					} else {
-						// handle "attributes" and "subset_indices" files
+						// handle file where md5 not needed
 						if _, err = io.Copy(tmpFile, part); err != nil {
 							return nil, files, err
 						}
