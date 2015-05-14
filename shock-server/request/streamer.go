@@ -42,20 +42,20 @@ func (s *Streamer) Stream(streamRaw bool) (err error) {
 	if s.Size > 0 && s.Filter == nil && !archive.IsValidCompress(s.Compression) {
 		s.W.Header().Set("Content-Length", fmt.Sprint(s.Size))
 	}
-	
+
 	for _, sr := range s.R {
-        var rs io.Reader
-    	if s.Filter != nil {
-    	    rs = s.Filter(sr)
-    	} else {
-    		rs = sr
-    	}
-    	_, err := io.Copy(s.W, rs)
-    	if err != nil {
-    		return err
-    	}
-    }
-    return
+		var rs io.Reader
+		if s.Filter != nil {
+			rs = s.Filter(sr)
+		} else {
+			rs = sr
+		}
+		_, err := io.Copy(s.W, rs)
+		if err != nil {
+			return err
+		}
+	}
+	return
 }
 
 func (s *Streamer) StreamSamtools(filePath string, region string, args ...string) (err error) {

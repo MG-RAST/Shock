@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
+	"github.com/MG-RAST/Shock/shock-server/node/archive"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"io"
 	"math/rand"
