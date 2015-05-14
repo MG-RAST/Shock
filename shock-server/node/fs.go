@@ -244,8 +244,8 @@ func (node *Node) SetFileFromParts(allowEmpty bool) (err error) {
 	}
 	node.File.Name = node.Id
 	node.File.Size = fileStat.Size()
-	node.File.CreatedOn = fileStat.ModTime()
 	node.File.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
+	node.File.CreatedOn = fileStat.ModTime()
 
 	//fill size index info
 	totalunits := node.File.Size / conf.CHUNK_SIZE
@@ -258,6 +258,7 @@ func (node *Node) SetFileFromParts(allowEmpty bool) (err error) {
 		TotalUnits:  totalunits,
 		AvgUnitSize: conf.CHUNK_SIZE,
 		Format:      "dynamic",
+		CreatedOn:   time.Now(),
 	}
 
 	err = node.Save()
