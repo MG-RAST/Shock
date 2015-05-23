@@ -4,12 +4,15 @@ use strict;
 use warnings;
 no warnings('once');
 
+use IO::Handle; # needed due to some bug in UserAgent.pm
+
 use File::Basename;
 use Data::Dumper;
 use JSON;
 use LWP::UserAgent;
 use URI::Escape;
 use HTTP::Request::Common;
+use HTTP::Request::StreamingUpload;
 
 our $global_debug = 0;
 
@@ -225,7 +228,10 @@ sub request {
 		print STDERR "[error] ".$@."\n";
 		return undef;
 	}
-	
+	unless ($response_object->is_success) {
+		print STDERR "response->status_line: ", $response_object->status_line, "\n";
+		return undef;
+	}
 	
 	#### JSON -> hash
 	my $response_content_hash = undef;
@@ -243,6 +249,14 @@ sub request {
 		return undef;
 	}
 	
+	if (exists($response_content_hash->{error}) && $response_content_hash->{error}) {
+		print STDERR "[error] unable to send $method request to Shock: ".$response_content_hash->{error}[0]."\n";
+		return undef;
+	}
+	
+	if ($self->{'debug'} ==1) {
+		print "returning response_object...\n";
+	}
 	
 	return $response_content_hash;
 	
@@ -280,6 +294,8 @@ sub post_node {
     
 	return $self->post('node/'.$node, $query, $headers);
 }
+
+
 
 
 sub delete_node {
@@ -328,6 +344,8 @@ sub querynode { # https://github.com/MG-RAST/Shock/wiki/API
 	
 	$query{'querynode'} = undef;
 	
+	my $limit = $query{'limit'};
+	
 	my $response = $self->get('node', \%query);
 	#print Dumper ($response);
 	
@@ -338,6 +356,10 @@ sub querynode { # https://github.com/MG-RAST/Shock/wiki/API
 	
 	unless (defined $response->{'total_count'}) {
 		die;
+	}
+	
+	if (defined $limit) {
+		return $response;
 	}
 	
 	if ($response->{'total_count'} > 25) {
@@ -492,6 +514,7 @@ sub create_node {
 #example:     upload(data => 'hello world'), where data is scalar or reference to scalar
 #example:  or upload(file => 'myworld.txt')
 #example:  or upload(file => 'myworld.txt', attr => {some hash})
+#example:  or upload(fh => filehandle, attr => {some hash})
 # TODO implement PUT here or in another function
 sub upload {
     my ($self, %hash) = @_;
@@ -537,7 +560,37 @@ sub upload {
         #$content->{attributes} = $self->_get_handle($hash{attr});
 	#	$content->{'attributes'} = [undef, "n/a", Content => $hash{'attr'}]
     #}
-    
+	
+	
+	if (defined $hash{fh}) {
+		my $response = undef;
+		print STDERR "using StreamingUpload\n" if $self->debug;
+		
+		eval {
+			my $post = HTTP::Request::StreamingUpload->new(
+				POST => $self->shock_url.'/node',
+				fh => $hash{fh},
+				headers => HTTP::Headers->new(
+					'Content_Type' => 'application/octet-stream',
+					'Authorization' => 'OAuth '.$self->token
+					)
+			);
+			print Dumper($post)."\n" if $self->debug;
+			my $req = LWP::UserAgent->new->request($post);
+			$response = $self->json->decode( $req->content );
+		};
+		if ($@ || (! ref($response))) {
+			print STDERR "Unable to connect to Shock server\n";
+			return undef;
+		} elsif (exists($response->{error}) && $response->{error}) {
+			print STDERR "Unable to POST to Shock: ".$response->{error}[0]."\n";
+			return undef;
+		}
+	
+	
+		return $response;
+	}
+	
     $HTTP::Request::Common::DYNAMIC_FILE_UPLOAD = 1;
 	
 	return $self->post('node', undef, {Content_Type => 'multipart/form-data', Content => $content}); # resource, query, headers
@@ -631,6 +684,10 @@ sub upload_temporary_files {
 #make node readable to the world
 sub permisson_readable {
 	my ($self, $nodeid) = @_;
+	
+	unless (defined $nodeid) {
+		die "nodeid not defined";
+	}
 	
 	my $node_accls = $self->get("node/$nodeid/acl") || return undef;
 	unless ($node_accls->{'status'} == 200) {
@@ -795,5 +852,15 @@ sub cached_download {
 }
 
 
+# helper function
 
+sub getNodeFromURL {
+	my ($url) = @_;
+	#print "url: $url\n";
+	my ($node) = $url =~ /node\/(.*)(\?download)?/;
+	#print "node: $node\n";
+	
+	return $node;
+	
+}
 
