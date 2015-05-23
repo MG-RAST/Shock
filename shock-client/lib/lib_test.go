@@ -1,10 +1,9 @@
-package lib_test
+package lib
 
 import (
 	//"io/ioutil"
 	//"io"
 	"fmt"
-	. "github.com/MG-RAST/Shock/shock-client/lib"
 	"testing"
 )
 

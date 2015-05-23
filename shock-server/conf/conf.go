@@ -17,26 +17,73 @@ type idxOpts struct {
 }
 
 var (
-	Conf = map[string]string{}
+	// Admin
+	ADMIN_EMAIL = ""
+	ADMIN_USERS = ""
 
-	// Reload
-	RELOAD = ""
+	// Permissions for anonymous user
+	ANON_READ   = true
+	ANON_WRITE  = false
+	ANON_DELETE = false
+
+	// Address
+	API_IP   = ""
+	API_PORT = ""
+	API_URL  = "" // for external address only
+
+	// Auth
+	AUTH_BASIC              = false
+	AUTH_GLOBUS_TOKEN_URL   = ""
+	AUTH_GLOBUS_PROFILE_URL = ""
+	AUTH_MGRAST_OAUTH_URL   = ""
+
+	// Default Chunksize for size virtual index
+	CHUNK_SIZE int64 = 1048576
 
 	// Config File
 	CONFIG_FILE = ""
 
+	GOMAXPROCS = ""
+
+	// Logs
+	LOG_PERF   = false // Indicates whether performance logs should be stored
+	LOG_ROTATE = true  // Indicates whether logs should be rotated daily
+
+	// Mongo information
+	MONGODB_HOSTS             = ""
+	MONGODB_DATABASE          = ""
+	MONGODB_USER              = ""
+	MONGODB_PASSWORD          = ""
+	MONGODB_ATTRIBUTE_INDEXES = ""
+
 	// Node Indices
 	NODE_IDXS map[string]idxOpts = nil
 
-	// Default Chunksize for size virtual index
-	CHUNK_SIZE int64 = 1048576
+	// Paths
+	PATH_SITE    = ""
+	PATH_DATA    = ""
+	PATH_LOGS    = ""
+	PATH_LOCAL   = ""
+	PATH_PIDFILE = ""
+
+	// Reload
+	RELOAD = ""
+
+	// SSL
+	SSL      = false
+	SSL_KEY  = ""
+	SSL_CERT = ""
+
+	// Versions
+	VERSIONS = make(map[string]int)
 )
 
 // Initialize is an explicit init. Enables outside use
 // of shock-server packages. Parses config and populates
-// the Conf variable.
+// the conf variables.
 func Initialize() {
-	flag.StringVar(&CONFIG_FILE, "conf", "/usr/local/shock/conf/shock.cfg", "path to config file")
+	gopath := os.Getenv("GOPATH")
+	flag.StringVar(&CONFIG_FILE, "conf", gopath+"/src/github.com/MG-RAST/Shock/shock-server.conf.template", "path to config file")
 	flag.StringVar(&RELOAD, "reload", "", "path or url to shock data. WARNING this will drop all current data.")
 	flag.Parse()
 	c, err := config.ReadDefault(CONFIG_FILE)
@@ -45,54 +92,43 @@ func Initialize() {
 		os.Exit(1)
 	}
 
-	// Address
-	Conf["api-ip"], _ = c.String("Address", "api-ip")
-	Conf["api-port"], _ = c.String("Address", "api-port")
-
-	// URLs
-	Conf["api-url"], _ = c.String("External", "api-url")
-
-	// SSL
-	Conf["ssl"], _ = c.String("SSL", "enable")
-	if Bool(Conf["ssl"]) {
-		Conf["ssl-key"], _ = c.String("SSL", "key")
-		Conf["ssl-cert"], _ = c.String("SSL", "cert")
-	}
+	// Admin
+	ADMIN_EMAIL, _ = c.String("Admin", "email")
+	ADMIN_USERS, _ = c.String("Admin", "users")
 
 	// Access-Control
-	Conf["anon-write"], _ = c.String("Anonymous", "write")
-	Conf["anon-read"], _ = c.String("Anonymous", "read")
-	Conf["anon-user"], _ = c.String("Anonymous", "create-user")
+	ANON_READ, _ = c.Bool("Anonymous", "read")
+	ANON_WRITE, _ = c.Bool("Anonymous", "write")
+	ANON_DELETE, _ = c.Bool("Anonymous", "delete")
+
+	// Address
+	API_IP, _ = c.String("Address", "api-ip")
+	API_PORT, _ = c.String("Address", "api-port")
+
+	// URLs
+	API_URL, _ = c.String("External", "api-url")
 
 	// Auth
-	Conf["basic_auth"], _ = c.String("Auth", "basic")
-	Conf["globus_token_url"], _ = c.String("Auth", "globus_token_url")
-	Conf["globus_profile_url"], _ = c.String("Auth", "globus_profile_url")
-	Conf["mgrast_oauth_url"], _ = c.String("Auth", "mgrast_oauth_url")
-
-	// Admin
-	Conf["admin-email"], _ = c.String("Admin", "email")
-	Conf["admin-users"], _ = c.String("Admin", "users")
-
-	// Paths
-	Conf["site-path"], _ = c.String("Paths", "site")
-	Conf["data-path"], _ = c.String("Paths", "data")
-	Conf["logs-path"], _ = c.String("Paths", "logs")
-	Conf["local-paths"], _ = c.String("Paths", "local_paths")
-	Conf["pidfile"], _ = c.String("Paths", "pidfile")
+	AUTH_BASIC, _ = c.Bool("Auth", "basic")
+	AUTH_GLOBUS_TOKEN_URL, _ = c.String("Auth", "globus_token_url")
+	AUTH_GLOBUS_PROFILE_URL, _ = c.String("Auth", "globus_profile_url")
+	AUTH_MGRAST_OAUTH_URL, _ = c.String("Auth", "mgrast_oauth_url")
 
 	// Runtime
-	Conf["GOMAXPROCS"], _ = c.String("Runtime", "GOMAXPROCS")
+	GOMAXPROCS, _ = c.String("Runtime", "GOMAXPROCS")
+
+	LOG_PERF, _ = c.Bool("Log", "perf_log")
+	LOG_ROTATE, _ = c.Bool("Log", "rotate")
 
 	// Mongodb
-	Conf["mongodb-hosts"], _ = c.String("Mongodb", "hosts")
-	if Conf["mongodb-database"], err = c.String("Mongodb", "database"); err != nil {
+	MONGODB_ATTRIBUTE_INDEXES, _ = c.String("Mongodb", "attribute_indexes")
+	if MONGODB_DATABASE, err = c.String("Mongodb", "database"); err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: Mongodb database must be set in config file.")
 		os.Exit(1)
 	}
-	Conf["mongodb-user"], _ = c.String("Mongodb", "user")
-	Conf["mongodb-password"], _ = c.String("Mongodb", "password")
-	Conf["mongodb-attribute-indexes"], _ = c.String("Mongodb", "attribute_indexes")
+	MONGODB_HOSTS, _ = c.String("Mongodb", "hosts")
+	MONGODB_PASSWORD, _ = c.String("Mongodb", "password")
+	MONGODB_USER, _ = c.String("Mongodb", "user")
 
 	// parse Node-Indices
 	NODE_IDXS = map[string]idxOpts{}
@@ -125,7 +161,23 @@ func Initialize() {
 		NODE_IDXS[opt] = opts
 	}
 
-	Conf["perf-log"], _ = c.String("Log", "perf_log")
+	// Paths
+	PATH_SITE, _ = c.String("Paths", "site")
+	PATH_DATA, _ = c.String("Paths", "data")
+	PATH_LOGS, _ = c.String("Paths", "logs")
+	PATH_LOCAL, _ = c.String("Paths", "local_paths")
+	PATH_PIDFILE, _ = c.String("Paths", "pidfile")
+
+	// SSL
+	SSL, _ = c.Bool("SSL", "enable")
+	if SSL {
+		SSL_KEY, _ = c.String("SSL", "key")
+		SSL_CERT, _ = c.String("SSL", "cert")
+	}
+
+	VERSIONS["ACL"] = 2
+	VERSIONS["Auth"] = 1
+	VERSIONS["Node"] = 4
 }
 
 // Bool is a convenience wrapper around strconv.ParseBool
@@ -136,21 +188,32 @@ func Bool(s string) bool {
 
 // Print prints the configuration loads to stdout
 func Print() {
-	fmt.Printf("####### Anonymous ######\nread:\t%s\nwrite:\t%s\ncreate-user:\t%s\n\n", Conf["anon-read"], Conf["anon-write"], Conf["anon-user"])
-	if Conf["auth-type"] == "basic" {
-		fmt.Printf("##### Auth #####\ntype:\tbasic\n\n")
-	} else if Conf["auth-type"] == "globus" {
-		fmt.Printf("##### Auth #####\ntype:\tglobus\ntoken_url:\t%s\nprofile_url:\t%s\n\n", Conf["globus_token_url"], Conf["globus_profile_url"])
+	fmt.Printf("####### Anonymous ######\nread:\t%v\nwrite:\t%v\ndelete:\t%v\n\n", ANON_READ, ANON_WRITE, ANON_DELETE)
+	if (AUTH_GLOBUS_TOKEN_URL != "" && AUTH_GLOBUS_PROFILE_URL != "") || AUTH_MGRAST_OAUTH_URL != "" {
+		fmt.Printf("##### Auth #####\n")
+		if AUTH_GLOBUS_TOKEN_URL != "" && AUTH_GLOBUS_PROFILE_URL != "" {
+			fmt.Printf("type:\tglobus\ntoken_url:\t%s\nprofile_url:\t%s\n\n", AUTH_GLOBUS_TOKEN_URL, AUTH_GLOBUS_PROFILE_URL)
+		}
+		if AUTH_MGRAST_OAUTH_URL != "" {
+			fmt.Printf("type:\tmgrast\noauth_url:\t%s\n\n", AUTH_MGRAST_OAUTH_URL)
+		}
 	}
-	fmt.Printf("##### Paths #####\nsite:\t%s\ndata:\t%s\nlogs:\t%s\nlocal_paths:\t%s\n\n", Conf["site-path"], Conf["data-path"], Conf["logs-path"], Conf["local-paths"])
-	if Bool(Conf["ssl"]) {
-		fmt.Printf("##### SSL #####\nenabled:\t%s\nkey:\t%s\ncert:\t%s\n\n", Conf["ssl"], Conf["ssl-key"], Conf["ssl-cert"])
+	fmt.Printf("##### Admin #####\nusers:\t%s\n\n", ADMIN_USERS)
+	fmt.Printf("##### Paths #####\nsite:\t%s\ndata:\t%s\nlogs:\t%s\nlocal_paths:\t%s\n\n", PATH_SITE, PATH_DATA, PATH_LOGS, PATH_LOCAL)
+	if SSL {
+		fmt.Printf("##### SSL enabled #####\n")
+		fmt.Printf("##### SSL key:\t%s\n##### SSL cert:\t%s\n\n", SSL_KEY, SSL_CERT)
 	} else {
-		fmt.Printf("##### SSL #####\nenabled:\t%s\n\n", Conf["ssl"])
+		fmt.Printf("##### SSL disabled #####\n\n")
 	}
-	fmt.Printf("##### Mongodb #####\nhost(s):\t%s\ndatabase:\t%s\n\n", Conf["mongodb-hosts"], Conf["mongodb-database"])
-	fmt.Printf("##### Address #####\nip:\t%s\nport:\t%s\n\n", Conf["api-ip"], Conf["api-port"])
-	if Bool(Conf["perf-log"]) {
+	fmt.Printf("##### Mongodb #####\nhost(s):\t%s\ndatabase:\t%s\n\n", MONGODB_HOSTS, MONGODB_DATABASE)
+	fmt.Printf("##### Address #####\nip:\t%s\nport:\t%s\n\n", API_IP, API_PORT)
+	if LOG_PERF {
 		fmt.Printf("##### PerfLog enabled #####\n\n")
+	}
+	if LOG_ROTATE {
+		fmt.Printf("##### Log rotation enabled #####\n\n")
+	} else {
+		fmt.Printf("##### Log rotation disabled #####\n\n")
 	}
 }

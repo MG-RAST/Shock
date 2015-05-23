@@ -10,14 +10,19 @@ var (
 )
 
 const (
-	MongoDocNotFound         = "Not found"
 	InvalidAuth              = "Invalid Auth Header"
 	UnAuth                   = "User Unauthorized"
 	NoAuth                   = "No Authorization"
 	AttrImut                 = "Node attributes immutable"
 	FileImut                 = "Node file immutable"
 	ProvenanceImut           = "Provenance info immutable"
-	InvalidIndex             = "Invalid Index"
+	InvalidIndex             = "Invalid index type"
 	InvalidFileTypeForFilter = "Invalid file type for filter"
+	InvalidIndexRange        = "Invalid index record range"
+	IndexOutBounds           = "Index record out of bounds"
+	IndexNoFile              = "Index file is missing"
 	NodeReferenced           = "Node referenced by virtual node"
+	NodeDoesNotExist         = "Node does not exist"
+	NodeNotFound             = "Node not found"
+	NodeNoFile               = "Node has no file"
 )

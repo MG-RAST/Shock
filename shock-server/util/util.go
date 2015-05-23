@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -14,8 +15,9 @@ const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"
 
 // Arrays to check for valid param and file form names for node creation and updating, and also acl modification.
 // Note: indexing and querying do not use functions that use these arrays and thus we don't have to include those field names.
-var validParams = []string{"action", "all", "attributes_str", "copy_data", "copy_indexes", "delete", "file_name", "format", "ids", "index_name", "linkage", "operation", "owner", "parent_index", "parent_node", "parts", "path", "read", "source", "tags", "type", "users", "write"}
-var validFiles = []string{"attributes", "subset_indices", "upload"}
+var validParams = []string{"action", "all", "archive_format", "attributes_str", "copy_data", "copy_indexes", "compression", "delete", "file_name", "format", "ids", "index_name", "linkage", "operation", "owner", "parent_index", "parent_node", "parts", "path", "read", "source", "tags", "type", "unpack_node", "users", "write"}
+var validFiles = []string{"attributes", "subset_indices", "upload", "gzip", "bzip2"}
+var ValidUpload = []string{"upload", "gzip", "bzip2"}
 
 type UrlResponse struct {
 	Url       string `json:"url"`
@@ -64,8 +66,8 @@ func ToInt(s string) (i int) {
 }
 
 func ApiUrl(ctx context.Context) string {
-	if conf.Conf["api-url"] != "" {
-		return conf.Conf["api-url"]
+	if conf.API_URL != "" {
+		return conf.API_URL
 	}
 	return "http://" + ctx.HttpRequest().Host
 }
@@ -79,6 +81,13 @@ func StringInSlice(a string, list []string) bool {
 	return false
 }
 
+func StripSuffix(file string) string {
+	if i := strings.LastIndex(file, "."); i > -1 {
+		return file[:i]
+	}
+	return file
+}
+
 func IsValidParamName(a string) bool {
 	for _, b := range validParams {
 		if b == a {
@@ -90,6 +99,15 @@ func IsValidParamName(a string) bool {
 
 func IsValidFileName(a string) bool {
 	for _, b := range validFiles {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+func IsValidUploadFile(a string) bool {
+	for _, b := range ValidUpload {
 		if b == a {
 			return true
 		}

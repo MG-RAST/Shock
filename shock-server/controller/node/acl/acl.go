@@ -3,6 +3,7 @@ package acl
 
 import (
 	"errors"
+	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
@@ -10,19 +11,22 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/golib/go-uuid/uuid"
+	"github.com/MG-RAST/golib/mgo"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"net/http"
 	"strings"
 )
 
 var (
-	validAclTypes = map[string]bool{"all": true, "read": true, "write": true, "delete": true, "owner": true}
+	validAclTypes = map[string]bool{"all": true, "read": true, "write": true, "delete": true, "owner": true,
+		"public_all": true, "public_read": true, "public_write": true, "public_delete": true}
 )
 
 // GET, POST, PUT, DELETE: /node/{nid}/acl/
 // GET is the only action implemented here.
 func AclRequest(ctx context.Context) {
 	nid := ctx.PathValue("nid")
+	rmeth := ctx.HttpRequest().Method
 
 	u, err := request.Authenticate(ctx.HttpRequest())
 	if err != nil && err.Error() != e.NoAuth {
@@ -30,39 +34,50 @@ func AclRequest(ctx context.Context) {
 		return
 	}
 
-	// acl require auth even for public data
+	// public user (no auth) can perform a GET operation with the proper node permissions
 	if u == nil {
-		responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
-		return
+		if rmeth == "GET" && conf.ANON_READ {
+			u = &user.User{Uuid: "public"}
+		} else {
+			responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
+			return
+		}
 	}
 
-	// Load node and handle user unauthorized
-	n, err := node.LoadUnauth(nid)
+	// Load node by id
+	n, err := node.Load(nid)
 	if err != nil {
-		if err.Error() == e.MongoDocNotFound {
-			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
+		if err == mgo.ErrNotFound {
+			responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
 			return
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			err_msg := "Err@node_Read:LoadNode: " + err.Error()
+			err_msg := "Err@node_Acl:LoadNode: " + nid + err.Error()
 			logger.Error(err_msg)
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			return
 		}
 	}
 
-	// only the owner can view/edit acl's unless owner="" or owner=nil
-	// note: owner can only be empty when anonymous node creation is enabled in shock config.
-	if n.Acl.Owner != u.Uuid && n.Acl.Owner != "" {
-		err_msg := "Only the node owner can edit/view node ACL's"
-		logger.Error(err_msg)
-		responder.RespondWithError(ctx, http.StatusUnauthorized, err_msg)
+	// Only the owner, an admin, or someone with read access can view acl's.
+	//
+	// NOTE: If the node is publicly owned, then anyone can view all acl's. The owner can only
+	//       be "public" when anonymous node creation (ANON_WRITE) is enabled in Shock config.
+
+	rights := n.Acl.Check(u.Uuid)
+	if n.Acl.Owner != u.Uuid && u.Admin == false && n.Acl.Owner != "public" && rights["read"] == false {
+		responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 		return
 	}
 
-	if ctx.HttpRequest().Method == "GET" {
-		responder.RespondWithData(ctx, n.Acl)
+	if rmeth == "GET" {
+		query := ctx.HttpRequest().URL.Query()
+		verbosity := ""
+		if _, ok := query["verbosity"]; ok {
+			verbosity = query.Get("verbosity")
+		}
+		responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
 	} else {
 		responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
 	}
@@ -73,6 +88,12 @@ func AclRequest(ctx context.Context) {
 func AclTypedRequest(ctx context.Context) {
 	nid := ctx.PathValue("nid")
 	rtype := ctx.PathValue("type")
+	rmeth := ctx.HttpRequest().Method
+	query := ctx.HttpRequest().URL.Query()
+	verbosity := ""
+	if _, ok := query["verbosity"]; ok {
+		verbosity = query.Get("verbosity")
+	}
 
 	u, err := request.Authenticate(ctx.HttpRequest())
 	if err != nil && err.Error() != e.NoAuth {
@@ -85,102 +106,157 @@ func AclTypedRequest(ctx context.Context) {
 		return
 	}
 
-	// acl require auth even for public data
-	if u == nil {
-		responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
-		return
-	}
-
-	// Load node and handle user unauthorized
-	n, err := node.LoadUnauth(nid)
+	// Load node by id
+	n, err := node.Load(nid)
 	if err != nil {
-		if err.Error() == e.MongoDocNotFound {
-			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found")
+		if err == mgo.ErrNotFound {
+			responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
 			return
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			err_msg := "Err@node_Read:LoadNode: " + err.Error()
+			err_msg := "Err@node_Acl:LoadNode: " + nid + err.Error()
 			logger.Error(err_msg)
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			return
 		}
 	}
 
-	// only the owner can view/edit acl's unless owner="" or owner=nil
-	// note: owner can only be empty when anonymous node creation is enabled in shock config.
-	if n.Acl.Owner != u.Uuid && n.Acl.Owner != "" {
-		err_msg := "Only the node owner can edit/view node ACL's"
-		logger.Error(err_msg)
-		responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
-		return
+	// public user (no auth) can perform a GET operation given the proper node permissions
+	if u == nil {
+		rights := n.Acl.Check("public")
+		if rmeth == "GET" && conf.ANON_READ && (rights["read"] || n.Acl.Owner == "public") {
+			responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
+			return
+		} else {
+			responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
+			return
+		}
 	}
 
-	requestMethod := ctx.HttpRequest().Method
-	if requestMethod != "GET" {
+	// Users that are not an admin or the node owner can only delete themselves from an ACL.
+	if n.Acl.Owner != u.Uuid && u.Admin == false {
+		// Users that are not an admin or the node owner cannot remove public from ACL's.
+		if rtype == "public_read" || rtype == "public_write" || rtype == "public_delete" || rtype == "public_all" {
+			responder.RespondWithError(ctx, http.StatusBadRequest, "Users that are not node owners can only delete themselves from ACLs.")
+			return
+		}
+
+		// Parse user list
 		ids, err := parseAclRequestTyped(ctx)
 		if err != nil {
 			responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
 			return
 		}
-		if requestMethod == "POST" || requestMethod == "PUT" {
-			if rtype == "owner" {
-				if len(ids) == 1 {
-					n.Acl.SetOwner(ids[0])
-				} else {
-					responder.RespondWithError(ctx, http.StatusBadRequest, "Too many users. Nodes may have only one owner.")
-					return
-				}
-			} else if rtype == "all" {
-				for _, atype := range []string{"read", "write", "delete"} {
-					for _, i := range ids {
-						n.Acl.Set(i, map[string]bool{atype: true})
-					}
-				}
-			} else {
-				for _, i := range ids {
-					n.Acl.Set(i, map[string]bool{rtype: true})
-				}
-			}
-			n.Save()
-		} else if requestMethod == "DELETE" {
-			if rtype == "owner" {
-				responder.RespondWithError(ctx, http.StatusBadRequest, "Deleting ownership is not a supported request type.")
+		if rmeth == "DELETE" {
+			if len(ids) != 1 || (len(ids) == 1 && ids[0] != u.Uuid) {
+				responder.RespondWithError(ctx, http.StatusBadRequest, "Users that are not node owners can delete only themselves from ACLs.")
 				return
-			} else if rtype == "all" {
-				for _, atype := range []string{"read", "write", "delete"} {
-					for _, i := range ids {
-						n.Acl.UnSet(i, map[string]bool{atype: true})
-					}
-				}
+			}
+			if rtype == "owner" {
+				responder.RespondWithError(ctx, http.StatusBadRequest, "Deleting node ownership is not a supported request type.")
+				return
+			}
+			if rtype == "all" {
+				n.Acl.UnSet(ids[0], map[string]bool{"read": true, "write": true, "delete": true})
 			} else {
-				for _, i := range ids {
-					n.Acl.UnSet(i, map[string]bool{rtype: true})
-				}
+				n.Acl.UnSet(ids[0], map[string]bool{rtype: true})
 			}
 			n.Save()
-		} else {
-			responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
+			responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
 			return
 		}
+		responder.RespondWithError(ctx, http.StatusBadRequest, "Users that are not node owners can only delete themselves from ACLs.")
+		return
 	}
 
-	switch rtype {
-	default:
+	// At this point we know we're dealing with an admin or the node owner.
+	// Admins and node owners can view/edit/delete ACLs
+	if rmeth == "GET" {
+		responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
+		return
+	} else if rmeth == "POST" || rmeth == "PUT" {
+		if rtype == "public_read" || rtype == "public_write" || rtype == "public_delete" || rtype == "public_all" {
+			if rtype == "public_read" {
+				n.Acl.Set("public", map[string]bool{"read": true})
+			} else if rtype == "public_write" {
+				n.Acl.Set("public", map[string]bool{"write": true})
+			} else if rtype == "public_delete" {
+				n.Acl.Set("public", map[string]bool{"delete": true})
+			} else if rtype == "public_all" {
+				n.Acl.Set("public", map[string]bool{"read": true, "write": true, "delete": true})
+			}
+			n.Save()
+			responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
+			return
+		}
+
+		// Parse user list
+		ids, err := parseAclRequestTyped(ctx)
+		if err != nil {
+			responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+		if rtype == "owner" {
+			if len(ids) == 1 {
+				n.Acl.SetOwner(ids[0])
+			} else {
+				responder.RespondWithError(ctx, http.StatusBadRequest, "Too many users. Nodes may have only one owner.")
+				return
+			}
+		} else if rtype == "all" {
+			for _, i := range ids {
+				n.Acl.Set(i, map[string]bool{"read": true, "write": true, "delete": true})
+			}
+		} else {
+			for _, i := range ids {
+				n.Acl.Set(i, map[string]bool{rtype: true})
+			}
+		}
+		n.Save()
+		responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
+		return
+	} else if rmeth == "DELETE" {
+		if rtype == "public_read" || rtype == "public_write" || rtype == "public_delete" || rtype == "public_all" {
+			if rtype == "public_read" {
+				n.Acl.UnSet("public", map[string]bool{"read": true})
+			} else if rtype == "public_write" {
+				n.Acl.UnSet("public", map[string]bool{"write": true})
+			} else if rtype == "public_delete" {
+				n.Acl.UnSet("public", map[string]bool{"delete": true})
+			} else if rtype == "public_all" {
+				n.Acl.UnSet("public", map[string]bool{"read": true, "write": true, "delete": true})
+			}
+			n.Save()
+			responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
+			return
+		}
+
+		// Parse user list
+		ids, err := parseAclRequestTyped(ctx)
+		if err != nil {
+			responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+		if rtype == "owner" {
+			responder.RespondWithError(ctx, http.StatusBadRequest, "Deleting ownership is not a supported request type.")
+			return
+		} else if rtype == "all" {
+			for _, i := range ids {
+				n.Acl.UnSet(i, map[string]bool{"read": true, "write": true, "delete": true})
+			}
+		} else {
+			for _, i := range ids {
+				n.Acl.UnSet(i, map[string]bool{rtype: true})
+			}
+		}
+		n.Save()
+		responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
+		return
+	} else {
 		responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
-	case "read":
-		responder.RespondWithData(ctx, map[string][]string{"read": n.Acl.Read})
-	case "write":
-		responder.RespondWithData(ctx, map[string][]string{"write": n.Acl.Write})
-	case "delete":
-		responder.RespondWithData(ctx, map[string][]string{"delete": n.Acl.Delete})
-	case "owner":
-		responder.RespondWithData(ctx, map[string]string{"owner": n.Acl.Owner})
-	case "all":
-		responder.RespondWithData(ctx, n.Acl)
+		return
 	}
-
-	return
 }
 
 func parseAclRequestTyped(ctx context.Context) (ids []string, err error) {

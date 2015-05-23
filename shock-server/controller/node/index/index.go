@@ -10,10 +10,12 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
+	"github.com/MG-RAST/golib/mgo"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 )
 
 type getRes struct {
@@ -27,6 +29,7 @@ type m map[string]string
 func IndexTypedRequest(ctx context.Context) {
 	nid := ctx.PathValue("nid")
 	idxType := ctx.PathValue("idxType")
+	rmeth := ctx.HttpRequest().Method
 
 	u, err := request.Authenticate(ctx.HttpRequest())
 	if err != nil && err.Error() != e.NoAuth {
@@ -34,34 +37,36 @@ func IndexTypedRequest(ctx context.Context) {
 		return
 	}
 
-	// Fake public user
+	// public user (no auth) can be used in some cases
 	if u == nil {
-		u = &user.User{Uuid: ""}
-	}
-
-	// Load node and handle user unauthorized
-	n, err := node.Load(nid, u.Uuid)
-	if err != nil {
-		if err.Error() == e.UnAuth {
-			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
-			return
-		} else if err.Error() == e.MongoDocNotFound {
-			responder.RespondWithError(ctx, http.StatusNotFound, "Node not found.")
-			return
+		if (rmeth == "GET" && conf.ANON_READ) || (rmeth == "PUT" && conf.ANON_WRITE) || (rmeth == "DELETE" && conf.ANON_WRITE) {
+			u = &user.User{Uuid: "public"}
 		} else {
-			// In theory the db connection could be lost between
-			// checking user and load but seems unlikely.
-			err_msg := "Err@index:LoadNode: " + err.Error()
-			logger.Error(err_msg)
-			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+			responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
 			return
 		}
 	}
 
-	switch ctx.HttpRequest().Method {
+	// Load node by id
+	n, err := node.Load(nid)
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
+		} else {
+			// In theory the db connection could be lost between
+			// checking user and load but seems unlikely.
+			err_msg := "Err@node_Index:LoadNode: " + nid + ":" + err.Error()
+			logger.Error(err_msg)
+			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+		}
+		return
+	}
+
+	rights := n.Acl.Check(u.Uuid)
+
+	switch rmeth {
 	case "DELETE":
-		rights := n.Acl.Check(u.Uuid)
-		if !rights["write"] {
+		if rights["write"] == false && u.Admin == false && n.Acl.Owner != u.Uuid {
 			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 			return
 		}
@@ -71,6 +76,7 @@ func IndexTypedRequest(ctx context.Context) {
 				err_msg := err.Error()
 				logger.Error(err_msg)
 				responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+				return
 			}
 			responder.RespondOK(ctx)
 		} else {
@@ -78,6 +84,11 @@ func IndexTypedRequest(ctx context.Context) {
 		}
 
 	case "GET":
+		if rights["read"] == false && u.Admin == false && n.Acl.Owner != u.Uuid {
+			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+			return
+		}
+
 		if v, has := n.Indexes[idxType]; has {
 			responder.RespondWithData(ctx, map[string]interface{}{idxType: v})
 		} else {
@@ -85,8 +96,7 @@ func IndexTypedRequest(ctx context.Context) {
 		}
 
 	case "PUT":
-		rights := n.Acl.Check(u.Uuid)
-		if !rights["write"] {
+		if rights["write"] == false && u.Admin == false && n.Acl.Owner != u.Uuid {
 			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 			return
 		}
@@ -121,7 +131,7 @@ func IndexTypedRequest(ctx context.Context) {
 			return
 		}
 
-		if conf.Bool(conf.Conf["perf-log"]) {
+		if conf.LOG_PERF {
 			logger.Perf("START indexing: " + nid)
 		}
 
@@ -138,11 +148,10 @@ func IndexTypedRequest(ctx context.Context) {
 					return
 				}
 				responder.RespondOK(ctx)
-				return
 			} else {
 				responder.RespondWithError(ctx, http.StatusBadRequest, "Index type bai requires .bam file.")
-				return
 			}
+			return
 		}
 
 		subsetSize := int64(0)
@@ -152,6 +161,8 @@ func IndexTypedRequest(ctx context.Context) {
 		if idxType == "subset" {
 			// Utilizing the multipart form parser since we need to upload a file.
 			params, files, err := request.ParseMultipartForm(ctx.HttpRequest())
+			// clean up temp dir !!
+			defer node.RemoveAllFormFiles(files)
 			if err != nil {
 				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
 				return
@@ -266,6 +277,7 @@ func IndexTypedRequest(ctx context.Context) {
 			TotalUnits:  count,
 			AvgUnitSize: n.File.Size / count,
 			Format:      indexFormat,
+			CreatedOn:   time.Now(),
 		}
 
 		//if idxType == "chunkrecord" {
@@ -277,16 +289,30 @@ func IndexTypedRequest(ctx context.Context) {
 			idxInfo.AvgUnitSize = subsetSize / count
 		}
 
+		// reload node by id before updating mongo document (attempting to avoid race conditions)
+		n, err := node.Load(nid)
+		if err != nil {
+			if err == mgo.ErrNotFound {
+				responder.RespondWithError(ctx, http.StatusNotFound, "Node deleted during index creation.")
+			} else {
+				// In theory the db connection could be lost between
+				// checking user and load but seems unlikely.
+				err_msg := "Err@node_Index:LoadNode: " + nid + ":" + err.Error()
+				logger.Error(err_msg)
+				responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+			}
+			return
+		}
+
 		if err := n.SetIndexInfo(idxType, idxInfo); err != nil {
 			logger.Error("err@node.SetIndexInfo: " + err.Error())
 		}
 
-		if conf.Bool(conf.Conf["perf-log"]) {
+		if conf.LOG_PERF {
 			logger.Perf("END indexing: " + nid)
 		}
 
 		responder.RespondOK(ctx)
-		return
 
 	default:
 		responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/node/acl"
+	"github.com/MG-RAST/Shock/shock-server/node/archive"
 	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/user"
@@ -21,7 +22,6 @@ type Node struct {
 	Version      string            `bson:"version" json:"version"`
 	File         file.File         `bson:"file" json:"file"`
 	Attributes   interface{}       `bson:"attributes" json:"attributes"`
-	Public       bool              `bson:"public" json:"public"`
 	Indexes      Indexes           `bson:"indexes" json:"indexes"`
 	Acl          acl.Acl           `bson:"acl" json:"-"`
 	VersionParts map[string]string `bson:"version_parts" json:"-"`
@@ -32,6 +32,7 @@ type Node struct {
 	LastModified time.Time         `bson:"last_modified" json:"last_modified"`
 	Type         string            `bson:"type" json:"type"`
 	Subset       Subset            `bson:"subset" json:"-"`
+	Parts        *PartsList        `bson:"parts" json:"parts"`
 }
 
 type linkage struct {
@@ -43,10 +44,11 @@ type linkage struct {
 type Indexes map[string]IdxInfo
 
 type IdxInfo struct {
-	Type        string `bson:"index_type" json:"-"`
-	TotalUnits  int64  `bson:"total_units" json:"total_units"`
-	AvgUnitSize int64  `bson:"average_unit_size" json:"average_unit_size"`
-	Format      string `bson:"format" json:"-"`
+	Type        string    `bson:"index_type" json:"-"`
+	TotalUnits  int64     `bson:"total_units" json:"total_units"`
+	AvgUnitSize int64     `bson:"average_unit_size" json:"average_unit_size"`
+	Format      string    `bson:"format" json:"-"`
+	CreatedOn   time.Time `bson:"created_on" json:"created_on"`
 }
 
 type FormFiles map[string]FormFile
@@ -55,6 +57,20 @@ type FormFile struct {
 	Name     string
 	Path     string
 	Checksum map[string]string
+}
+
+func (formfile *FormFile) Remove() {
+	if _, err := os.Stat(formfile.Path); err == nil {
+		os.Remove(formfile.Path)
+	}
+	return
+}
+
+func RemoveAllFormFiles(formfiles FormFiles) {
+	for _, formfile := range formfiles {
+		formfile.Remove()
+	}
+	return
 }
 
 // Subset is used to store information about a subset node's parent and its index.
@@ -91,7 +107,7 @@ func LoadFromDisk(id string) (n *Node, err error) {
 	}
 	path := getPath(id)
 	if nbson, err := ioutil.ReadFile(path + "/" + id + ".bson"); err != nil {
-		return nil, errors.New("Node does not exist")
+		return nil, errors.New(e.NodeDoesNotExist)
 	} else {
 		n = new(Node)
 		if err = bson.Unmarshal(nbson, &n); err != nil {
@@ -102,32 +118,15 @@ func LoadFromDisk(id string) (n *Node, err error) {
 }
 
 func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (node *Node, err error) {
-	for param := range params {
-		if !util.IsValidParamName(param) {
-			return nil, errors.New("invalid param: " + param)
-		}
-		if param == "parts" && params[param] == "close" {
-			return nil, errors.New("Cannot set parts=close when creating a node, did you do a POST when you meant to PUT?")
-		}
-	}
-
-	for file := range files {
-		if !util.IsValidFileName(file) {
-			return nil, errors.New("invalid file param: " + file)
-		}
-	}
-
 	// if copying node or creating subset node from parent, check if user has rights to the original node
-
 	if _, hasCopyData := params["copy_data"]; hasCopyData {
-		_, err = Load(params["copy_data"], u.Uuid)
+		_, err = Load(params["copy_data"])
 		if err != nil {
 			return
 		}
 	}
-
 	if _, hasParentNode := params["parent_node"]; hasParentNode {
-		_, err = Load(params["parent_node"], u.Uuid)
+		_, err = Load(params["parent_node"])
 		if err != nil {
 			return
 		}
@@ -135,14 +134,9 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 
 	node = New()
 	node.Type = "basic"
-	if u.Uuid != "" {
-		node.Acl.SetOwner(u.Uuid)
-		node.Acl.Set(u.Uuid, acl.Rights{"read": true, "write": true, "delete": true})
-		node.Public = false
-	} else {
-		node.Acl = acl.Acl{Owner: "", Read: make([]string, 0), Write: make([]string, 0), Delete: make([]string, 0)}
-		node.Public = true
-	}
+
+	node.Acl.SetOwner(u.Uuid)
+	node.Acl.Set(u.Uuid, acl.Rights{"read": true, "write": true, "delete": true})
 
 	err = node.Mkdir()
 	if err != nil {
@@ -151,6 +145,7 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 
 	err = node.Update(params, files)
 	if err != nil {
+		node.Rmdir()
 		return
 	}
 
@@ -158,11 +153,95 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 	return
 }
 
+func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFiles, archiveId string) (nodes []*Node, err error) {
+	// get parent node
+	archiveNode, err := Load(archiveId)
+	if err != nil {
+		return
+	}
+	if archiveNode.File.Size == 0 {
+		return nil, errors.New("parent archive node has no file")
+	}
+
+	// get format
+	aFormat, hasFormat := params["archive_format"]
+	if !hasFormat {
+		return nil, errors.New("missing archive_format parameter. use one of: " + archive.ArchiveList)
+	}
+	if !archive.IsValidArchive(aFormat) {
+		return nil, errors.New("invalid archive_format parameter. use one of: " + archive.ArchiveList)
+	}
+
+	// check attributes
+	attrFile := false
+	attrStr := false
+	if _, hasAttrFile := files["attributes"]; hasAttrFile {
+		attrFile = true
+	}
+	if _, hasAttrStr := params["attributes_str"]; hasAttrStr {
+		attrStr = true
+	}
+	if attrFile && attrStr {
+		return nil, errors.New("Cannot define an attributes file and an attributes_str parameter in the same request.")
+	}
+
+	// get files / delete unpack dir when done
+	fileList, unpackDir, err := archive.FilesFromArchive(aFormat, archiveNode.FilePath())
+	defer os.RemoveAll(unpackDir)
+	if err != nil {
+		return
+	}
+
+	// build nodes
+	var tempNodes []*Node
+	for _, file := range fileList {
+		// create link
+		link := linkage{Type: "parent", Operation: aFormat, Ids: []string{archiveId}}
+		// create and populate node
+		node := New()
+		node.Type = "basic"
+		node.Linkages = append(node.Linkages, link)
+		node.Acl.SetOwner(u.Uuid)
+		node.Acl.Set(u.Uuid, acl.Rights{"read": true, "write": true, "delete": true})
+		if err = node.Mkdir(); err != nil {
+			return
+		}
+		// set attributes
+		var aerr error
+		if attrFile {
+			aerr = node.SetAttributes(files["attributes"])
+		} else if attrStr {
+			aerr = node.SetAttributesFromString(params["attributes_str"])
+		}
+		if aerr != nil {
+			node.Rmdir()
+			return
+		}
+		// set file
+		f := FormFile{Name: file.Name, Path: file.Path, Checksum: file.Checksum}
+		if err = node.SetFile(f); err != nil {
+			node.Rmdir()
+			return
+		}
+		tempNodes = append(tempNodes, node)
+	}
+
+	// save nodes, only return those that were created / saved
+	for _, n := range tempNodes {
+		if err = n.Save(); err != nil {
+			n.Rmdir()
+			return
+		}
+		nodes = append(nodes, n)
+	}
+	return
+}
+
 func (node *Node) FileReader() (reader file.ReaderAt, err error) {
 	if node.File.Virtual {
 		readers := []file.ReaderAt{}
 		nodes := Nodes{}
-		if _, err := dbFind(bson.M{"id": bson.M{"$in": node.File.VirtualParts}}, &nodes, nil); err != nil {
+		if _, err := dbFind(bson.M{"id": bson.M{"$in": node.File.VirtualParts}}, &nodes, "", nil); err != nil {
 			return nil, err
 		}
 		if len(nodes) > 0 {
@@ -196,7 +275,7 @@ func (node *Node) DynamicIndex(name string) (idx index.Index, err error) {
 func (node *Node) Delete() (err error) {
 	// check to make sure this node isn't referenced by a vnode
 	virtualNodes := Nodes{}
-	if _, err = dbFind(bson.M{"file.virtual_parts": node.Id}, &virtualNodes, nil); err != nil {
+	if _, err = dbFind(bson.M{"file.virtual_parts": node.Id}, &virtualNodes, "", nil); err != nil {
 		return err
 	}
 	if len(virtualNodes) != 0 {
@@ -212,7 +291,7 @@ func (node *Node) Delete() (err error) {
 	}
 	newDataFilePath := ""
 	copiedNodes := Nodes{}
-	if _, err = dbFind(bson.M{"file.path": dataFilePath}, &copiedNodes, nil); err != nil {
+	if _, err = dbFind(bson.M{"file.path": dataFilePath}, &copiedNodes, "", nil); err != nil {
 		return err
 	}
 	if len(copiedNodes) != 0 && dataFileExists {

@@ -64,7 +64,7 @@ func fetchToken(u string, p string) (t *token, err error) {
 	client := &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
-	req, err := http.NewRequest("GET", conf.Conf["globus_token_url"], nil)
+	req, err := http.NewRequest("GET", conf.AUTH_GLOBUS_TOKEN_URL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func fetchProfile(t string) (u *user.User, err error) {
 	client := &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
-	req, err := http.NewRequest("GET", conf.Conf["globus_profile_url"]+"/"+clientId(t), nil)
+	req, err := http.NewRequest("GET", conf.AUTH_GLOBUS_PROFILE_URL+"/"+clientId(t), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -104,6 +104,9 @@ func fetchProfile(t string) (u *user.User, err error) {
 				if err = json.Unmarshal(body, &u); err != nil {
 					return nil, err
 				} else {
+					if u.Username == "" {
+						return nil, errors.New(e.InvalidAuth)
+					}
 					if err = u.SetMongoInfo(); err != nil {
 						return nil, err
 					}

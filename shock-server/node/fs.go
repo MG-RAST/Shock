@@ -5,10 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
+	"github.com/MG-RAST/Shock/shock-server/node/archive"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
+	"io"
 	"math/rand"
 	"os"
 	"syscall"
+	"time"
 )
 
 func (node *Node) SetFile(file FormFile) (err error) {
@@ -20,6 +23,7 @@ func (node *Node) SetFile(file FormFile) (err error) {
 	node.File.Name = file.Name
 	node.File.Size = fileStat.Size()
 	node.File.Checksum = file.Checksum
+	node.File.CreatedOn = fileStat.ModTime()
 
 	//fill size index info
 	totalunits := node.File.Size / conf.CHUNK_SIZE
@@ -32,6 +36,7 @@ func (node *Node) SetFile(file FormFile) (err error) {
 		TotalUnits:  totalunits,
 		AvgUnitSize: conf.CHUNK_SIZE,
 		Format:      "dynamic",
+		CreatedOn:   time.Now(),
 	}
 	err = node.Save()
 	return
@@ -40,7 +45,7 @@ func (node *Node) SetFile(file FormFile) (err error) {
 func (node *Node) SetFileFromSubset(subsetIndices FormFile) (err error) {
 	// load parent node
 	var n *Node
-	n, err = LoadUnauth(node.Subset.Parent.Id)
+	n, err = Load(node.Subset.Parent.Id)
 	if err != nil {
 		return err
 	}
@@ -60,6 +65,14 @@ func (node *Node) SetFileFromSubset(subsetIndices FormFile) (err error) {
 		indexFormat = n.Indexes[node.Subset.Parent.IndexName].Format
 	}
 
+	if fi, statErr := os.Stat(subsetIndices.Path); statErr != nil {
+		return errors.New("Could not stat uploaded subset_indices file.")
+	} else {
+		if fi.Size() == 0 {
+			return errors.New("Uploaded subset_indices file is size zero.  This is prohibited.")
+		}
+	}
+
 	f, _ := os.Open(subsetIndices.Path)
 	defer f.Close()
 	idxer := index.NewSubsetIndexer(f)
@@ -77,6 +90,7 @@ func (node *Node) SetFileFromSubset(subsetIndices FormFile) (err error) {
 	node.Subset.Index.AvgUnitSize = oSize / coCount
 	node.Subset.Index.Format = "array"
 	node.File.Size = oSize
+	node.File.CreatedOn = time.Now()
 
 	// this info is for the subset index that's been created in the index folder
 	node.Indexes[node.Subset.Parent.IndexName] = IdxInfo{
@@ -84,6 +98,7 @@ func (node *Node) SetFileFromSubset(subsetIndices FormFile) (err error) {
 		TotalUnits:  oCount,
 		AvgUnitSize: oSize / oCount,
 		Format:      indexFormat,
+		CreatedOn:   time.Now(),
 	}
 
 	// fill size index info
@@ -97,6 +112,7 @@ func (node *Node) SetFileFromSubset(subsetIndices FormFile) (err error) {
 		TotalUnits:  totalunits,
 		AvgUnitSize: conf.CHUNK_SIZE,
 		Format:      "dynamic",
+		CreatedOn:   time.Now(),
 	}
 
 	err = node.Save()
@@ -110,8 +126,9 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 	}
 	node.File.Name = fileStat.Name()
 	node.File.Size = fileStat.Size()
+	node.File.CreatedOn = fileStat.ModTime()
 
-	tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.Conf["data-path"], rand.Int(), rand.Int())
+	tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
 
 	if action != "copy_file" && action != "move_file" && action != "keep_file" {
 		return errors.New("setting file from path requires action field equal to copy_file, move_file or keep_file")
@@ -144,32 +161,32 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 		}
 	}
 
-	var tmpFile *os.File
-	if action == "copy_file" {
-		if tmpFile, err = os.Create(tmpPath); err != nil {
-			return err
-		}
-		defer tmpFile.Close()
-	}
-
-	md5h := md5.New()
+	// Open file for reading.
 	f, err := os.Open(path)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	for {
-		buffer := make([]byte, 10240)
-		n, err := f.Read(buffer)
-		if n == 0 || err != nil {
-			break
+	// Set writer
+	var dst io.Writer
+	md5h := md5.New()
+
+	if action == "copy_file" {
+		tmpFile, err := os.Create(tmpPath)
+		if err != nil {
+			return err
 		}
-		md5h.Write(buffer[0:n])
-		if action == "copy_file" {
-			tmpFile.Write(buffer[0:n])
-		}
+		defer tmpFile.Close()
+		dst = io.MultiWriter(tmpFile, md5h)
+	} else {
+		dst = md5h
 	}
+
+	if _, err = io.Copy(dst, f); err != nil {
+		return err
+	}
+
 	node.File.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
 
 	//fill size index info
@@ -183,6 +200,7 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 		TotalUnits:  totalunits,
 		AvgUnitSize: conf.CHUNK_SIZE,
 		Format:      "dynamic",
+		CreatedOn:   time.Now(),
 	}
 
 	if action == "copy_file" {
@@ -196,43 +214,96 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 	return
 }
 
-func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
-	out, err := os.Create(fmt.Sprintf("%s/%s.data", node.Path(), node.Id))
-	if err != nil {
-		return
+func (node *Node) SetFileFromParts(allowEmpty bool) (err error) {
+	outf := fmt.Sprintf("%s/%s.data", node.Path(), node.Id)
+	outh, oerr := os.Create(outf)
+	if oerr != nil {
+		return oerr
 	}
-	defer out.Close()
-	md5h := md5.New()
-	for i := 1; i <= p.Count; i++ {
-		filename := fmt.Sprintf("%s/parts/%d", node.Path(), i)
+	defer outh.Close()
 
-		// skip this portion unless either
-		// 1. file exists, or
-		// 2. file does not exist and allowEmpty == false
-		if _, errf := os.Stat(filename); errf == nil || (errf != nil && allowEmpty == false) {
-			part, err := os.Open(filename)
-			if err != nil {
-				return err
+	pReader, pWriter := io.Pipe()
+	defer pReader.Close()
+
+	cError := make(chan error)
+	cKill := make(chan bool)
+
+	// goroutine to add file readers to pipe while gzip reads pipe
+	// allows us to only open one file at a time but stream the data to gzip as if it was one reader
+	go func() {
+		var ferr error
+		killed := false
+		for i := 1; i <= node.Parts.Count; i++ {
+			select {
+			case <-cKill:
+				killed = true
+				break
+			default:
 			}
-			for {
-				buffer := make([]byte, 10240)
-				n, err := part.Read(buffer)
-				if n == 0 || err != nil {
+			filename := fmt.Sprintf("%s/parts/%d", node.Path(), i)
+			// skip this portion unless either
+			// 1. file exists, or
+			// 2. file does not exist and allowEmpty == false
+			if _, errf := os.Stat(filename); errf == nil || (errf != nil && allowEmpty == false) {
+				part, err := os.Open(filename)
+				if err != nil {
+					ferr = err
 					break
 				}
-				out.Write(buffer[0:n])
-				md5h.Write(buffer[0:n])
+				_, err = io.Copy(pWriter, part)
+				part.Close()
+				if err != nil {
+					ferr = err
+					break
+				}
 			}
-			part.Close()
 		}
+		pWriter.Close()
+		select {
+		case <-cKill:
+			killed = true
+		default:
+		}
+		if killed {
+			return
+		}
+		cError <- ferr
+	}()
+
+	md5h := md5.New()
+	dst := io.MultiWriter(outh, md5h)
+
+	// write from pipe to outfile / md5
+	// handle optional compression
+	ucReader, ucErr := archive.UncompressReader(node.Parts.Compression, pReader)
+	if ucErr != nil {
+		close(cKill)
+		os.Remove(outf)
+		return ucErr
 	}
-	fileStat, err := os.Stat(fmt.Sprintf("%s/%s.data", node.Path(), node.Id))
-	if err != nil {
-		return
+	_, cerr := io.Copy(dst, ucReader)
+
+	// get any errors from channel / finish copy
+	if eerr := <-cError; eerr != nil {
+		os.Remove(outf)
+		return eerr
 	}
-	node.File.Name = node.Id
+	if cerr != nil {
+		os.Remove(outf)
+		return cerr
+	}
+
+	// get file info and update node
+	fileStat, ferr := os.Stat(outf)
+	if ferr != nil {
+		return ferr
+	}
+	if node.File.Name == "" {
+		node.File.Name = node.Id
+	}
 	node.File.Size = fileStat.Size()
 	node.File.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
+	node.File.CreatedOn = fileStat.ModTime()
 
 	//fill size index info
 	totalunits := node.File.Size / conf.CHUNK_SIZE
@@ -245,6 +316,7 @@ func (node *Node) SetFileFromParts(p *partsList, allowEmpty bool) (err error) {
 		TotalUnits:  totalunits,
 		AvgUnitSize: conf.CHUNK_SIZE,
 		Format:      "dynamic",
+		CreatedOn:   time.Now(),
 	}
 
 	err = node.Save()
