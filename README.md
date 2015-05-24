@@ -27,6 +27,37 @@ OPTION 2: You could alternatively install Shock by running:
 
 The upside to using OPTION 1 is that this will insert the Shock version number into your Shock server to be displayed when the server is started and this will also generate the Shock documentation locally to be hosted by the server. The built binaries will be located in the env configured $GOPATH/bin/ directory.
 
+### Dockerfile
+Alternativly your can use Docker to compile Shock. The Dockerfile in directory "docker" in this repository compiles Shock statically. 
+```bash
+docker build -t shock:latest docker/Dockerfile
+```
+If you only want the binary you can create an container from the image an copy the binary to your host. This will copy the shock-server binary to your current working directory
+```bash
+docker run --name shock shock:latest ls
+docker cp shock:/gopath/bin/shock-server .
+docker rm shock
+```
+
+### MongoDB
+
+In ubuntu you can simply install mongo with:
+```bash
+sudo apt-get install -y mongodb-server
+```
+If you do not want to use a package manager to install mongodb, use:
+```bash
+curl -s http://downloads.mongodb.org/linux/mongodb-linux-x86_64-2.4.14.tgz | tar -v -C /mongodb/ -xz
+```
+If you do not use a service manager such as systemd, you can start mongodb like this, in foreground:
+```bash
+/mongodb/bin/mongod --dbpath /data/
+```
+or in background:
+```bash
+nohup /mongodb/bin/mongod --dbpath /mnt/db/ &
+```
+
 Configuration
 -------------
 The Shock configuration file is in INI file format. There is a template of the config file located at the root level of the repository.
