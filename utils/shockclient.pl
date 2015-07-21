@@ -5,6 +5,8 @@ use warnings;
 
 use lib ".";
 use SHOCK::Client;
+use Data::Dumper;
+
 
 eval "use USAGEPOD qw(parse_options); 1"
 or die "module USAGEPOD.pm required: wget https://raw.github.com/MG-RAST/MG-RAST-Tools/master/tools/lib/USAGEPOD.pm";
@@ -17,30 +19,35 @@ my ($h, $help_text) = &parse_options (
 'name' => 'shockclient.pl',
 'version' => '1',
 'synopsis' => 'shockclient.pl --show <nodeid or filename>',
-'examples' => 'shockclient.pl --upload *.fasta',
+'examples' => 'shockclient.pl --upload *.fasta'."\n    ./shockclient.pl --delete `./shockclient.pl --querynode owner=wgerlach,file.size=0,limit=300 --ids_space`",
 'authors' => 'Wolfgang Gerlach',
 'options' => [
 	'',
 	'Actions:',
 	[ 'show'						, "show shock node and its attributes"],
 	[ 'upload'						, "upload files to Shock, file as parameter"],
+	[ 'stream'						, "use command stdout to upload to shock"],
 	[ 'delete'						, "delete Shock node"],
-	[ 'query=s'						, "querystring, e.g. key=value,key2=value2"],
-	[ 'querynode=s'					, "querystring, e.g. key=value,key2=value2, this allows querying of fields outside of attributes section"],
+	[ 'query=s'						, "querystring only for attributes, e.g. key=value,key2=value2"],
+	[ 'querynode=s'					, "querystring, e.g. owner=value,attributes.key2=value2, this allows querying of fields outside of attributes section"],
 	[ 'download'					, ""],
 	[ 'modify_attr=s'				, "modify nested attributes by json diff '{\"test\":\"hello\", \"name\":\"\"}', empty strings do delete (arrays not well suppoeted yet!)"],
 	[ 'makepublic'					, "make node public"],
+	[ 'get_value=s'					, "get value of shock node attribute, e.g. owner or attributes.mykey"],
 	[ 'clean_tmp'					, ""],
 	'',
 	'Options:',
 #	[ 'xx=s'						, "xx"],
 	[ 'public'						, "uploaded files will be public (default private)"],
+	[ 'owner=s'						, "specify owner in clean_tmp"],
 	[ 'attributes_string=s'         , "string containing attributes to be uploaded with file, must be valid JSON" ],
 	[ 'attributes_file=s'           , "file containing attributes to be uploaded with file, must be valid JSON" ],
 	[ 'preview'						, "(modify_attr only): do make changes, just show result"],
 	[ 'url=s' 						, "url to Shock server (default $shockurl)" ],
 	[ 'token=s' 					, "default from \$KB_AUTH_TOKEN" ],
-	[ 'id_list'                     , "return nodes ids and not content for query (defualt off)" ],
+	[ 'ids'     	                , "return only node ids, formatted as comma-separated values" ],
+	[ 'ids_space'     	            , "return only node ids, formatted as space-separated values" ],
+	[ 'id_list'                     , "return only node ids, one id per line" ],
 	[ 'debug' 					    , "more verbose mode for debugging (default off)" ],
 	[ 'help|h'						, "", { hidden => 1  }]
 	]
@@ -88,11 +95,17 @@ sub merge_hash {
 					delete $attr->{$key};
 				}
 			} elsif (ref($value) eq 'HASH') {
-				# recurse
-				unless (defined $attr->{$key}) {
-					$attr->{$key} = {};
+				
+				if (keys(%$value) == 0) {
+					delete $attr->{$key};
+				} else {
+				
+					# recurse
+					unless (defined $attr->{$key}) {
+						$attr->{$key} = {};
+					}
+					merge_hash($attr->{$key}, $value);
 				}
-				merge_hash($attr->{$key}, $value);
 			} elsif (ref($value) eq 'ARRAY') {
 				# recurse
 				unless (defined $attr->{$key}) {
@@ -139,8 +152,45 @@ sub merge_hash {
 	
 }
 
-
-
+# print node IDs or complete node structs
+# 1. arg is array ref of nodes
+# 2. arg is array ref of string IDs
+sub print_nodes {
+	my ($nodes, $node_ids) = shift(@_);
+	
+	
+	
+	if (defined $nodes) {
+		
+		if (defined $node_ids) {
+			die "specify only nodes or node_ids";
+		}
+		
+		my @node_array = map {$_->{'id'}} @{$nodes};
+		$node_ids = \@node_array;
+	}
+	
+	unless (defined $node_ids) {
+		die "no nodes found";
+	}
+	
+	
+	if (defined($h->{"id_list"})) {
+		print join("\n", @{$node_ids})."\n";	
+	} elsif (defined($h->{"ids"})) {
+		print join(',', @{$node_ids})."\n";
+	} elsif (defined($h->{"ids_space"})) {
+		print join(' ', @{$node_ids})."\n";
+	} else {
+		unless (defined $nodes) {
+			die "node objects not found";
+		}
+	    pprint_json($nodes);
+	}
+		
+	return;
+	
+}
 
 
 
@@ -152,19 +202,57 @@ if (defined($value = $h->{"query"})) {
 	my @queries = split(/,|\=/, $value);
 	my $response =  $shock->query(@queries);
 	
-	if (defined($h->{"id_list"})) {
-	    my @nodes = ();
-    	foreach my $node_obj (@{$response->{'data'}}) {
-    	    print $node_obj->{'id'}."\n";
-    	}
-	} else {
-	    pprint_json($response);
+	print_nodes($response->{'data'}, undef);
+		
+	exit(0);
+} elsif (defined($value=$h->{"get_value"})) {
+
+	if ($value eq "") {
+		die "no key found, string empty";
 	}
+	
+	my @key = split(/\./, $value);
+	
+	if (@key == 0) {
+		die "no key found";
+	}
+	
+	if (@ARGV > 1 ) {
+		die "operation only supported for one node";
+	}
+	
+	
+	my $response =  $shock->get_node($ARGV[0]);
+	
+	my $pointer = $response->{'data'};
+	
+	
+	if (defined $h->{'debug'}) {
+		pprint_json($pointer);
+	}
+	
+	for (my $i = 0 ; $i < @key ; $i++) {
+		my $key_piece = $key[$i];
+		
+		if (defined $h->{'debug'}) {
+			print "XXXXX key_piece: $key_piece\n";
+			
+			pprint_json($pointer);
+		}
+		
+		if (defined $pointer->{$key_piece}) {
+			$pointer = $pointer->{$key_piece};
+		} else {
+			die "key \"$key_piece\" not found";
+		}
+		
+	}
+	
+	print $pointer;
+	
 	
 	exit(0);
 } elsif (defined($value=$h->{"modify_attr"})) {
-
-	
 	
 	my @nodes = split(',', join(',', @ARGV)); # get comma and space separated nodes
 	
@@ -209,14 +297,7 @@ if (defined($value = $h->{"query"})) {
 	my @queries = split(/,|\=/, $value);
 	my $response =  $shock->querynode(@queries);
 	
-	if (defined($h->{"id_list"})) {
-	    my @nodes = ();
-    	foreach my $node_obj (@{$response->{'data'}}) {
-    	    print $node_obj->{'id'}."\n";
-    	}
-	} else {
-	    pprint_json($response);
-	}
+	print_nodes($response->{'data'}, undef);
 	
 	exit(0);
 } elsif (defined($h->{"delete"})) {
@@ -233,7 +314,7 @@ if (defined($value = $h->{"query"})) {
 	
 	
 	exit(0);
-} elsif (defined($h->{"upload"})) {
+} elsif (defined($h->{"upload"}) || defined($h->{"stream"}) ) {
 	
 	
 	my @files = @ARGV;
@@ -256,12 +337,27 @@ if (defined($value = $h->{"query"})) {
         #$attr = $shock->json->decode($json_str);
 	}
 	
+	my $uploaded_nodes=[];
+	
 	foreach my $file (@files) {
 		
 		print "uploading ".$file."...\n" if $debug;
 		
 		#my $shock_node = $attr ? $shock->upload('file' => $file, 'attr' => $attr) : $shock->upload('file' => $file);
-		my $shock_node = $shock->upload('file' => $file, $attr_type => $attr_value);
+		my $shock_node =undef;
+		if (defined($h->{"upload"})) {
+			$shock_node = $shock->upload('file' => $file, $attr_type => $attr_value);
+		} elsif (defined($h->{"stream"})) {
+			print STDERR "invoke: ".$file."\n";
+			open (my $fh, $file." |") || die "Failed: $!\n";
+			
+			$shock_node = $shock->upload('fh' => $fh, $attr_type => $attr_value);
+			print Dumper($shock_node);
+			close($fh); # do I need to close ?
+			
+		} else {
+			die;
+		}
 		unless (defined $shock_node) {
 			die "unknown error uploading $file";
 		}
@@ -277,18 +373,22 @@ if (defined($value = $h->{"query"})) {
 		}
 		print $file." saved with id $id\n";
 		
+		push (@{$uploaded_nodes}, $shock_node->{'data'});
+		
 		if (defined $h->{"public"}) {
 			print "make id $id public...\n" if $debug;
 			$shock->permisson_readable($id);
 		}
 	}
 	
+	print_nodes($uploaded_nodes, undef);
+	
 	exit(0);
 } elsif (defined($h->{"makepublic"})) {
 	my @nodes = split(',', join(',', @ARGV)); # get comma and space separated nodes
 	foreach my $node (@nodes) {
-		print "make id $value public...\n" if $debug;
-		$shock->permisson_readable($value);
+		print "make id $node public...\n" if $debug;
+		$shock->permisson_readable($node);
 	}
 	exit(0);
 } elsif (defined($h->{"show"})) {
@@ -296,10 +396,12 @@ if (defined($value = $h->{"query"})) {
 	
 	my @nodes = split(',', join(',', @ARGV)); # get comma and space separated nodes
 	
-		
+	
 	foreach my $node (@nodes) {
 		my $response =  $shock->get_node($node);
-		pprint_json($response);
+		#push (@{$view_nodes}, $shock_node->{'data'});
+		#pprint_json($response);
+		print_nodes([$response->{'data'}], undef);
 	}
 	
 	
@@ -346,12 +448,17 @@ if (defined($value = $h->{"query"})) {
 	
 } elsif (defined($h->{"clean_tmp"})) {
 	
-	my $shock = new SHOCK::Client($shockurl, $shocktoken);
-	unless (defined $shock) {
-		die;
+	#my $shock = new SHOCK::Client($shockurl, $shocktoken);
+	#unless (defined $shock) {
+	#	die;
+	#}
+	
+	my $owner = $h->{"owner"};
+	unless (defined $owner) {
+		die "please specify --owner";
 	}
 	
-	my $response =  $shock->query('temporary' => 1);
+	my $response =  $shock->querynode('owner' => $owner, 'attributes.temporary' => 1);
 	
 	#my $response =  $shock->query('statistics.length_max' => 1175);
 	pprint_json($response) if $debug;

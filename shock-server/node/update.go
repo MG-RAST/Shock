@@ -329,6 +329,16 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			return errors.New("This is not a parts node and thus does not support uploading in parts.")
 		}
 		LockMgr.LockPartOp()
+
+		// Refresh parts information after locking, before saving.
+		// Load node by id
+		n, err := Load(node.Id)
+		if err != nil {
+			LockMgr.UnlockPartOp()
+			return err
+		}
+		node.Parts = n.Parts
+
 		if node.Parts.Count > 0 || node.Parts.VarLen {
 			for key, file := range files {
 				keyn, errf := strconv.Atoi(key)
