@@ -114,6 +114,9 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				if err != nil {
 					return responder.RespondWithError(ctx, http.StatusBadRequest, "length must be an integer value")
 				}
+				if length > n.File.Size {
+					length = n.File.Size
+				}
 			} else if !length_ok {
 				seek_str := query.Get("seek")
 				seek, err = strconv.ParseInt(seek_str, 10, 0)
@@ -131,6 +134,9 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				length, err = strconv.ParseInt(length_str, 10, 0)
 				if err != nil {
 					return responder.RespondWithError(ctx, http.StatusBadRequest, "length must be an integer value")
+				}
+				if length > n.File.Size-seek {
+					length = n.File.Size - seek
 				}
 			}
 			r, err := n.FileReader()
