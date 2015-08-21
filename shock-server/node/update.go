@@ -100,7 +100,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			if (node.Type != "parts") || (node.Parts == nil) || !node.Parts.VarLen {
 				return errors.New("can only call 'close' on unknown parts node")
 			}
-			if err = node.closeVarLenPartial(); err != nil {
+			if err = node.closeParts(true); err != nil {
 				return err
 			}
 		} else if (node.Parts != nil) && (node.Parts.VarLen || node.Parts.Count > 0) {
@@ -355,6 +355,12 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			return errors.New("Unable to retrieve parts info for node.")
 		}
 		LockMgr.UnlockPartOp()
+		// all parts are in, close it after lock removed
+		if !node.Parts.VarLen && node.Parts.Length == node.Parts.Count {
+			if err = node.closeParts(false); err != nil {
+				return err
+			}
+		}
 	}
 
 	// update relatives
