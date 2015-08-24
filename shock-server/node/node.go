@@ -341,6 +341,7 @@ func (node *Node) SetFileFormat(format string) (err error) {
 }
 
 func (node *Node) SetAttributes(attr FormFile) (err error) {
+	defer attr.Remove()
 	attributes, err := ioutil.ReadFile(attr.Path)
 	if err != nil {
 		return
