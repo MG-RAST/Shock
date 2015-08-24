@@ -102,9 +102,20 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			if (node.Type != "parts") || (node.Parts == nil) || !node.Parts.VarLen {
 				return errors.New("can only call 'close' on unknown parts node")
 			}
-			if err = node.closeParts(true); err != nil {
+			// we do a node level lock here incase its processing a part
+			// Refresh parts information after locking, before saving.
+			LockMgr.LockNode(node.Id)
+			n, err := Load(node.Id)
+			if err != nil {
+				LockMgr.UnlockNode(node.Id)
 				return err
 			}
+			node.Parts = n.Parts
+			if err = node.closeParts(true); err != nil {
+				LockMgr.UnlockNode(node.Id)
+				return err
+			}
+			LockMgr.UnlockNode(node.Id)
 		} else if (node.Parts != nil) && (node.Parts.VarLen || node.Parts.Count > 0) {
 			return errors.New("parts already set")
 		} else {
@@ -322,49 +333,6 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		delete(params, "file_name")
 	}
 
-	// handle part file
-	if hasPartsFile {
-		if node.HasFile() {
-			return errors.New(e.FileImut)
-		}
-		if (node.Type != "parts") || (node.Parts == nil) {
-			return errors.New("This is not a parts node and thus does not support uploading in parts.")
-		}
-		LockMgr.LockPartOp()
-
-		// Refresh parts information after locking, before saving.
-		// Load node by id
-		n, err := Load(node.Id)
-		if err != nil {
-			LockMgr.UnlockPartOp()
-			return err
-		}
-		node.Parts = n.Parts
-
-		if node.Parts.Count > 0 || node.Parts.VarLen {
-			for key, file := range files {
-				keyn, errf := strconv.Atoi(key)
-				if errf == nil && (keyn <= node.Parts.Count || node.Parts.VarLen) {
-					err = node.addPart(keyn-1, &file)
-					if err != nil {
-						LockMgr.UnlockPartOp()
-						return err
-					}
-				}
-			}
-		} else {
-			LockMgr.UnlockPartOp()
-			return errors.New("Unable to retrieve parts info for node.")
-		}
-		LockMgr.UnlockPartOp()
-		// all parts are in, close it after lock removed
-		if !node.Parts.VarLen && node.Parts.Length == node.Parts.Count {
-			if err = node.closeParts(false); err != nil {
-				return err
-			}
-		}
-	}
-
 	// update relatives
 	if _, hasRelation := params["linkage"]; hasRelation {
 		ltype := params["linkage"]
@@ -405,6 +373,46 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			return err
 		}
 	}
+
+	// handle part file / we do a node level lock here
+	if hasPartsFile {
+		if node.HasFile() {
+			return errors.New(e.FileImut)
+		}
+		if (node.Type != "parts") || (node.Parts == nil) {
+			return errors.New("This is not a parts node and thus does not support uploading in parts.")
+		}
+		LockMgr.LockNode(node.Id)
+		defer LockMgr.UnlockNode(node.Id)
+
+		// Refresh parts information after locking, before saving.
+		// Load node by id
+		n, err := Load(node.Id)
+		if err != nil {
+			return err
+		}
+		node.Parts = n.Parts
+
+		if node.Parts.Count > 0 || node.Parts.VarLen {
+			for key, file := range files {
+				keyn, errf := strconv.Atoi(key)
+				if errf == nil && (keyn <= node.Parts.Count || node.Parts.VarLen) {
+					if err = node.addPart(keyn-1, &file); err != nil {
+						return err
+					}
+				}
+			}
+		} else {
+			return errors.New("Unable to retrieve parts info for node.")
+		}
+		// all parts are in, close it
+		if !node.Parts.VarLen && node.Parts.Length == node.Parts.Count {
+			if err = node.closeParts(false); err != nil {
+				return err
+			}
+		}
+	}
+
 	return
 }
 
