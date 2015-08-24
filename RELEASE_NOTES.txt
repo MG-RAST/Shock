@@ -6,6 +6,10 @@
 - Change locking for parts nodes to use mutex and not channel
 - Parts node lock is on a per node basis and not global
 
+# v0.9.8
+
+- Bug fix for concurrency issue on simultaneous parts node uploads.
+
 # v0.9.7
 
 - Support for upload and decompression of gzip/bzip2 for basic and parts uploads
