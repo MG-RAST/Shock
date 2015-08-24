@@ -1,3 +1,11 @@
+# v0.9.9
+
+- Fix content length when request for more than the length to the end of the file
+- Delete attribute file when done uploading it
+- Don't allow file upload if node is parts type
+- Change locking for parts nodes to use mutex and not channel
+- Parts node lock is on a per node basis and not global
+
 # v0.9.7
 
 - Support for upload and decompression of gzip/bzip2 for basic and parts uploads
