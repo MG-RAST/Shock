@@ -82,6 +82,8 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		return errors.New("copy_data parameter incompatible with parent_node parameter")
 	} else if isRegularUpload && hasPartsFile {
 		return errors.New("upload file and parts file are incompatible")
+	} else if isRegularUpload && (node.Type == "parts") {
+		return errors.New("upload file and parts node are incompatible")
 	}
 
 	// Check if immutable
