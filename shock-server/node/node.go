@@ -33,6 +33,7 @@ type Node struct {
 	Type         string            `bson:"type" json:"type"`
 	Subset       Subset            `bson:"subset" json:"-"`
 	Parts        *PartsList        `bson:"parts" json:"parts"`
+	Expiration   time.Duration     `bson:"expiration" json:"expiration"` // 0 means no expiration
 }
 
 type linkage struct {
@@ -336,6 +337,12 @@ func (node *Node) SetIndexInfo(indextype string, idxinfo IdxInfo) (err error) {
 
 func (node *Node) SetFileFormat(format string) (err error) {
 	node.File.Format = format
+	err = node.Save()
+	return
+}
+
+func (node *Node) SetExpiration(expire int) (err error) {
+	node.Expiration = time.Duration(expire) * time.Hour
 	err = node.Save()
 	return
 }
