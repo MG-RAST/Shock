@@ -57,9 +57,8 @@ func IsValidCompress(a string) bool {
 func FilesFromArchive(format string, filePath string) (fileList []FormFile, unpackDir string, err error) {
 	// set unpack dir
 	unpackDir = fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
-	if err = os.Mkdir(unpackDir, 0777); err != nil {
-		return
-	}
+	os.Mkdir(unpackDir, 0777)
+	
 	// magic to unpack archive
 	if format == "zip" {
 		fileList, err = unZip(filePath, unpackDir)
@@ -112,9 +111,7 @@ func unTar(filePath string, unpackDir string, compression string) (fileList []Fo
 		switch header.Typeflag {
 		// handle directory
 		case tar.TypeDir:
-			if err = os.MkdirAll(path, 0777); err != nil {
-				return
-			}
+			os.MkdirAll(path, 0777)
 		// handle regualar file
 		case tar.TypeReg:
 			// open output file
@@ -160,9 +157,7 @@ func unZip(filePath string, unpackDir string) (fileList []FormFile, err error) {
 
 		if zf.FileInfo().IsDir() {
 			// handle directory
-			if err = os.MkdirAll(path, 0777); err != nil {
-				return
-			}
+			os.MkdirAll(path, 0777)
 		} else {
 			// open output file
 			writer, werr := os.Create(path)
