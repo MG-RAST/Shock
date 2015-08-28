@@ -158,7 +158,7 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFi
 	// get parent node
 	archiveNode, err := Load(archiveId)
 	if err != nil {
-		return
+		return nil, err
 	}
 	if archiveNode.File.Size == 0 {
 		return nil, errors.New("parent archive node has no file")
@@ -173,24 +173,28 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFi
 		return nil, errors.New("invalid archive_format parameter. use one of: " + archive.ArchiveList)
 	}
 
-	// check attributes
-	attrFile := false
-	attrStr := false
-	if _, hasAttrFile := files["attributes"]; hasAttrFile {
-		attrFile = true
-	}
-	if _, hasAttrStr := params["attributes_str"]; hasAttrStr {
-		attrStr = true
-	}
-	if attrFile && attrStr {
-		return nil, errors.New("Cannot define an attributes file and an attributes_str parameter in the same request.")
+	// get attributes
+	var atttributes interface{}
+	if attrFile, ok := files["attributes"]; ok {
+		defer attrFile.Remove()
+		attr, err := ioutil.ReadFile(attrFile.Path)
+		if err != nil {
+			return nil, err
+		}
+		if err = json.Unmarshal(attr, &atttributes); err != nil {
+			return nil, err
+		}
+	} else if attrStr, ok := params["attributes_str"]; ok {
+		if err = json.Unmarshal([]byte(attrStr), &atttributes); err != nil {
+			return nil, err
+		}
 	}
 
 	// get files / delete unpack dir when done
 	fileList, unpackDir, err := archive.FilesFromArchive(aFormat, archiveNode.FilePath())
 	defer os.RemoveAll(unpackDir)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	// preserve acls
@@ -205,6 +209,7 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFi
 		node := New()
 		node.Type = "basic"
 		node.Linkages = append(node.Linkages, link)
+		node.Attributes = atttributes
 
 		if preserveAcls {
 			// copy over acls from parent node
@@ -215,24 +220,13 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFi
 		node.Acl.Set(u.Uuid, acl.Rights{"read": true, "write": true, "delete": true})
 
 		if err = node.Mkdir(); err != nil {
-			return
-		}
-		// set attributes
-		var aerr error
-		if attrFile {
-			aerr = node.SetAttributes(files["attributes"])
-		} else if attrStr {
-			aerr = node.SetAttributesFromString(params["attributes_str"])
-		}
-		if aerr != nil {
-			node.Rmdir()
-			return
+			return nil, err
 		}
 		// set file
 		f := FormFile{Name: file.Name, Path: file.Path, Checksum: file.Checksum}
 		if err = node.SetFile(f); err != nil {
 			node.Rmdir()
-			return
+			return nil, err
 		}
 		tempNodes = append(tempNodes, node)
 	}
@@ -241,7 +235,7 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFi
 	for _, n := range tempNodes {
 		if err = n.Save(); err != nil {
 			n.Rmdir()
-			return
+			return nil, err
 		}
 		nodes = append(nodes, n)
 	}
