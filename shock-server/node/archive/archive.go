@@ -109,9 +109,6 @@ func unTar(filePath string, unpackDir string, compression string) (fileList []Fo
 
 		// only handle real files and dirs, ignore links
 		switch header.Typeflag {
-		// handle directory
-		case tar.TypeDir:
-			os.MkdirAll(path, 0777)
 		// handle regualar file
 		case tar.TypeReg:
 			// open output file
@@ -132,6 +129,9 @@ func unTar(filePath string, unpackDir string, compression string) (fileList []Fo
 			ffile := FormFile{Name: baseName, Path: path, Checksum: make(map[string]string)}
 			ffile.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
 			fileList = append(fileList, ffile)
+		case tar.TypeDir:
+			// handle directory
+			os.MkdirAll(path, 0777)
 		default:
 		}
 	}
