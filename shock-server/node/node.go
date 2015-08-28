@@ -193,6 +193,9 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFi
 		return
 	}
 
+	// preserve acls
+	_, preserveAcls := params["preserve_acls"]
+
 	// build nodes
 	var tempNodes []*Node
 	for _, file := range fileList {
@@ -202,8 +205,15 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFi
 		node := New()
 		node.Type = "basic"
 		node.Linkages = append(node.Linkages, link)
+
+		if preserveAcls {
+			// copy over acls from parent node
+			node.Acl = archiveNode.Acl
+		}
+		// this user needs to be owner of new nodes
 		node.Acl.SetOwner(u.Uuid)
 		node.Acl.Set(u.Uuid, acl.Rights{"read": true, "write": true, "delete": true})
+
 		if err = node.Mkdir(); err != nil {
 			return
 		}

@@ -58,7 +58,7 @@ func FilesFromArchive(format string, filePath string) (fileList []FormFile, unpa
 	// set unpack dir
 	unpackDir = fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
 	os.Mkdir(unpackDir, 0777)
-	
+
 	// magic to unpack archive
 	if format == "zip" {
 		fileList, err = unZip(filePath, unpackDir)
