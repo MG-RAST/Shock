@@ -27,7 +27,7 @@ type Node struct {
 	VersionParts map[string]string `bson:"version_parts" json:"-"`
 	Tags         []string          `bson:"tags" json:"tags"`
 	Revisions    []Node            `bson:"revisions" json:"-"`
-	Linkages     []linkage         `bson:"linkage" json:"linkages"`
+	Linkages     []linkage         `bson:"linkage" json:"linkage"`
 	CreatedOn    time.Time         `bson:"created_on" json:"created_on"`
 	LastModified time.Time         `bson:"last_modified" json:"last_modified"`
 	Type         string            `bson:"type" json:"type"`
