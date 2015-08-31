@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+var Ttl *NodeReaper
+
+func InitReaper() {
+	Ttl = NewNodeReaper()
+}
+
 type NodeReaper struct{}
 
 func NewNodeReaper() *NodeReaper {
@@ -15,7 +21,7 @@ func NewNodeReaper() *NodeReaper {
 func (nr *NodeReaper) Handle() {
 	for {
 		// sleep
-		time.Sleep(10 * time.Second)
+		time.Sleep(12 * time.Hour)
 		// query to get expired nodes
 		nodes := Nodes{}
 		query := nr.getQuery()
@@ -34,7 +40,7 @@ func (nr *NodeReaper) Handle() {
 func (nr *NodeReaper) getQuery() (query bson.M) {
 	hasExpire := bson.M{"expiration": bson.M{"$exists": true}}   // has the field
 	toExpire := bson.M{"expiration": bson.M{"$ne": time.Time{}}} // value has been set, not default
-	isExpired := bson.M{"expiration": bson.M{"$gt": time.Now()}} // value is too old
+	isExpired := bson.M{"expiration": bson.M{"$lt": time.Now()}} // value is too old
 	query = bson.M{"$and": []bson.M{hasExpire, toExpire, isExpired}}
 	return
 }

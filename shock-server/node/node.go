@@ -347,7 +347,8 @@ func (node *Node) SetFileFormat(format string) (err error) {
 
 func (node *Node) SetExpiration(expire int) (err error) {
 	expireTime := time.Duration(expire) * time.Hour
-	node.Expiration = node.CreatedOn.Add(expireTime)
+	currTime := time.Now()
+	node.Expiration = currTime.Add(expireTime)
 	err = node.Save()
 	return
 }
