@@ -1,3 +1,12 @@
+# v0.9.10
+
+- fix archive unpacking bugs
+- add expiration for nodes
+  - default is no expiration
+  - option to set expiration from now with time and unit (minute, hour, day)
+  - option to remove expiration
+  - config value for how often reaper runs
+
 # v0.9.9
 
 - Fix content length when request for more than the length to the end of the file
