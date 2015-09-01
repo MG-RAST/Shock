@@ -1,6 +1,7 @@
 package node
 
 import (
+	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/golib/mgo/bson"
 	"time"
@@ -19,9 +20,10 @@ func NewNodeReaper() *NodeReaper {
 }
 
 func (nr *NodeReaper) Handle() {
+	waitDuration := time.Duration(conf.EXPIRE_WAIT) * time.Hour
 	for {
 		// sleep
-		time.Sleep(12 * time.Hour)
+		time.Sleep(waitDuration)
 		// query to get expired nodes
 		nodes := Nodes{}
 		query := nr.getQuery()

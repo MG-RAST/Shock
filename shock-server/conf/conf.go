@@ -43,7 +43,9 @@ var (
 	// Config File
 	CONFIG_FILE = ""
 
-	GOMAXPROCS = ""
+	// Runtime
+	EXPIRE_WAIT = 12 // wait time for reaper in hours
+	GOMAXPROCS  = ""
 
 	// Logs
 	LOG_PERF   = false // Indicates whether performance logs should be stored
@@ -115,6 +117,7 @@ func Initialize() {
 	AUTH_MGRAST_OAUTH_URL, _ = c.String("Auth", "mgrast_oauth_url")
 
 	// Runtime
+	EXPIRE_WAIT, _ = c.Int("Runtime", "expire_wait")
 	GOMAXPROCS, _ = c.String("Runtime", "GOMAXPROCS")
 
 	LOG_PERF, _ = c.Bool("Log", "perf_log")
