@@ -4,6 +4,7 @@
 FROM ubuntu:14.10
 
 RUN apt-get update && apt-get install -y \
+  make \
   git-core \
   curl
 
@@ -13,4 +14,7 @@ ENV GOROOT /usr/local/go
 ENV PATH /usr/local/go/bin:/gopath/bin:/usr/local/bin:$PATH 
 ENV GOPATH /gopath/
 
-RUN CGO_ENABLED=0 go get -a -installsuffix cgo -v github.com/MG-RAST/Shock/...
+RUN mkdir -p /gopath/ && \
+  cd /gopath/ && \
+  curl -s -O https://raw.githubusercontent.com/MG-RAST/Shock/master/Makefile && \
+  make install
