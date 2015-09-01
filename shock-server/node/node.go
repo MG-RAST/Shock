@@ -14,6 +14,7 @@ import (
 	"github.com/MG-RAST/golib/mgo/bson"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -345,10 +346,32 @@ func (node *Node) SetFileFormat(format string) (err error) {
 	return
 }
 
-func (node *Node) SetExpiration(expire int) (err error) {
-	expireTime := time.Duration(expire) * time.Hour
+func (node *Node) SetExpiration(expire string) (err error) {
+	parts := ExpireRegex.FindStringSubmatch(expire)
+	if len(parts) == 0 {
+		return errors.New("expiration format is invalid")
+	}
+	var expireTime time.Duration
+	expireNum, _ := strconv.Atoi(parts[1])
 	currTime := time.Now()
+
+	switch parts[2] {
+	case "M":
+		expireTime = time.Duration(expireNum) * time.Minute
+	case "H":
+		expireTime = time.Duration(expireNum) * time.Hour
+	case "D":
+		expireTime = time.Duration(expireNum*24) * time.Hour
+	}
+
 	node.Expiration = currTime.Add(expireTime)
+	err = node.Save()
+	return
+}
+
+func (node *Node) RemoveExpiration() (err error) {
+	// reset to empty time
+	node.Expiration = time.Time{}
 	err = node.Save()
 	return
 }

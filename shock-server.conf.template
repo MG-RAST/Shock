@@ -58,8 +58,8 @@ local_paths=
 pidfile=
 
 [Runtime]
-# wait time in hours before expiration reaper runs
-expire_wait=12
+# wait time in minutes before expiration reaper runs
+expire_wait=60
 # golang setting: The GOMAXPROCS variable limits the number of operating system threads that can execute user-level Go code simultaneously.
 GOMAXPROCS=
 

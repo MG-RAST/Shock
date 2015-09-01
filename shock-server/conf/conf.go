@@ -44,7 +44,7 @@ var (
 	CONFIG_FILE = ""
 
 	// Runtime
-	EXPIRE_WAIT = 12 // wait time for reaper in hours
+	EXPIRE_WAIT = 60 // wait time for reaper in minutes
 	GOMAXPROCS  = ""
 
 	// Logs

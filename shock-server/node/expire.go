@@ -4,10 +4,14 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/golib/mgo/bson"
+	"regexp"
 	"time"
 )
 
-var Ttl *NodeReaper
+var (
+	Ttl         *NodeReaper
+	ExpireRegex = regexp.MustCompile(`^(\d+)(M|H|D)$`)
+)
 
 func InitReaper() {
 	Ttl = NewNodeReaper()
@@ -20,7 +24,7 @@ func NewNodeReaper() *NodeReaper {
 }
 
 func (nr *NodeReaper) Handle() {
-	waitDuration := time.Duration(conf.EXPIRE_WAIT) * time.Hour
+	waitDuration := time.Duration(conf.EXPIRE_WAIT) * time.Minute
 	for {
 		// sleep
 		time.Sleep(waitDuration)

@@ -376,11 +376,12 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 
 	// update node expiration
 	if _, hasExpiration := params["expiration"]; hasExpiration {
-		expire, err := strconv.Atoi(params["expiration"])
-		if err != nil {
-			return errors.New("expiration must be an integer")
+		if err = node.SetExpiration(params["expiration"]); err != nil {
+			return err
 		}
-		if err = node.SetExpiration(expire); err != nil {
+	}
+	if _, hasRemove := params["remove_expiration"]; hasRemove {
+		if err = node.RemoveExpiration(); err != nil {
 			return err
 		}
 	}
