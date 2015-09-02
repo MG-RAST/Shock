@@ -31,10 +31,10 @@ type Node struct {
 	Linkages     []linkage         `bson:"linkage" json:"linkage"`
 	CreatedOn    time.Time         `bson:"created_on" json:"created_on"`
 	LastModified time.Time         `bson:"last_modified" json:"last_modified"`
+	Expiration   time.Time         `bson:"expiration" json:"expiration"` // 0 means no expiration
 	Type         string            `bson:"type" json:"type"`
 	Subset       Subset            `bson:"subset" json:"-"`
 	Parts        *PartsList        `bson:"parts" json:"parts"`
-	Expiration   time.Time         `bson:"expiration" json:"expiration"` // 0 means no expiration
 }
 
 type linkage struct {
