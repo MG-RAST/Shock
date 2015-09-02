@@ -24,7 +24,7 @@ delete=false
 # comment line above and uncomment below to use Globus Online as auth provider
 globus_token_url=https://nexus.api.globusonline.org/goauth/token?grant_type=client_credentials
 globus_profile_url=https://nexus.api.globusonline.org/users
-#mgrast_oauth_url=http://api.metagenomics.anl.gov/user/authenticate
+#mgrast_oauth_url=https://api.metagenomics.anl.gov/user/authenticate
 
 [External]
 # URL displayed at base URL
@@ -58,6 +58,8 @@ local_paths=
 pidfile=
 
 [Runtime]
+# wait time in minutes before expiration reaper runs
+expire_wait=60
 # golang setting: The GOMAXPROCS variable limits the number of operating system threads that can execute user-level Go code simultaneously.
 GOMAXPROCS=
 

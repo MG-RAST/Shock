@@ -374,6 +374,18 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 	}
 
+	// update node expiration
+	if _, hasExpiration := params["expiration"]; hasExpiration {
+		if err = node.SetExpiration(params["expiration"]); err != nil {
+			return err
+		}
+	}
+	if _, hasRemove := params["remove_expiration"]; hasRemove {
+		if err = node.RemoveExpiration(); err != nil {
+			return err
+		}
+	}
+
 	// handle part file / we do a node level lock here
 	if hasPartsFile {
 		if node.HasFile() {
@@ -419,7 +431,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 func (node *Node) Save() (err error) {
 	node.UpdateVersion()
 	if len(node.Revisions) == 0 || node.Revisions[len(node.Revisions)-1].Version != node.Version {
-		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified, node.Type, node.Subset, node.Parts}
+		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified, node.Expiration, node.Type, node.Subset, node.Parts}
 		node.Revisions = append(node.Revisions, n)
 	}
 	if node.CreatedOn.String() == "0001-01-01 00:00:00 +0000 UTC" {

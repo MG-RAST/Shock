@@ -61,6 +61,13 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 		return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 	}
 
+	// need delete rights to set expiration
+	if _, hasExpiration := params["expiration"]; hasExpiration {
+		if rights["delete"] == false && u.Admin == false && n.Acl.Owner != u.Uuid && prights["delete"] == false {
+			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+		}
+	}
+
 	if _, hasCopyData := params["copy_data"]; hasCopyData {
 		_, err = node.Load(params["copy_data"])
 		if err != nil {

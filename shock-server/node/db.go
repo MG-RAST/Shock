@@ -23,6 +23,7 @@ func Initialize() {
 	c.EnsureIndex(mgo.Index{Key: []string{"acl.write"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"acl.delete"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"created_on"}, Background: true})
+	c.EnsureIndex(mgo.Index{Key: []string{"expiration"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"file.path"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"file.virtual_parts"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"id"}, Unique: true})
