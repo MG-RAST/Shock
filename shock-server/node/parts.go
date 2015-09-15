@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
-	"github.com/go-mgo/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 	"io"
 	"os"
 	"strconv"

@@ -9,7 +9,7 @@ import (
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/node/archive"
 	"github.com/MG-RAST/Shock/shock-server/util"
-	"github.com/go-mgo/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 	"io/ioutil"
 	"os"
 	"strconv"

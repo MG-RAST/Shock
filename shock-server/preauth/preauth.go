@@ -3,8 +3,8 @@ package preauth
 
 import (
 	"github.com/MG-RAST/Shock/shock-server/db"
-	"github.com/go-mgo/mgo"
-	"github.com/go-mgo/mgo/bson"
+	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 	"time"
 )
 

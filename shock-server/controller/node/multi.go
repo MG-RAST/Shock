@@ -12,7 +12,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/util"
 	"github.com/MG-RAST/golib/go-uuid/uuid"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
-	"github.com/go-mgo/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 	"net/http"
 	"regexp"
 	"strconv"
