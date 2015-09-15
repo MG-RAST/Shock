@@ -183,6 +183,7 @@ func main() {
 	node.Initialize()
 	preauth.Initialize()
 	auth.Initialize()
+	node.InitReaper()
 	if err := versions.Initialize(); err != nil {
 		fmt.Fprintf(os.Stderr, "Err@versions.Initialize: %v\n", err)
 		logger.Error("Err@versions.Initialize: " + err.Error())
@@ -303,6 +304,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	go node.Ttl.Handle()
 	go func() {
 		for _ = range c {
 			// sig is a ^C, handle it

@@ -8,8 +8,8 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
-	"github.com/MG-RAST/golib/mgo"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
+	mgo "gopkg.in/mgo.v2"
 	"net/http"
 )
 
@@ -59,6 +59,13 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 		err_msg := "err@node_ParseMultipartForm: " + err.Error()
 		logger.Error(err_msg)
 		return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+	}
+
+	// need delete rights to set expiration
+	if _, hasExpiration := params["expiration"]; hasExpiration {
+		if rights["delete"] == false && u.Admin == false && n.Acl.Owner != u.Uuid && prights["delete"] == false {
+			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+		}
 	}
 
 	if _, hasCopyData := params["copy_data"]; hasCopyData {

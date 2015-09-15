@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
+	"github.com/MG-RAST/Shock/shock-server/logger"
 	"io"
 	"math/rand"
 	"os"
@@ -57,9 +58,10 @@ func IsValidCompress(a string) bool {
 func FilesFromArchive(format string, filePath string) (fileList []FormFile, unpackDir string, err error) {
 	// set unpack dir
 	unpackDir = fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
-	if err = os.Mkdir(unpackDir, 0777); err != nil {
-		return
+	if merr := os.Mkdir(unpackDir, 0777); merr != nil {
+		logger.Error("err:@node_unpack: " + err.Error())
 	}
+
 	// magic to unpack archive
 	if format == "zip" {
 		fileList, err = unZip(filePath, unpackDir)
@@ -110,11 +112,6 @@ func unTar(filePath string, unpackDir string, compression string) (fileList []Fo
 
 		// only handle real files and dirs, ignore links
 		switch header.Typeflag {
-		// handle directory
-		case tar.TypeDir:
-			if err = os.MkdirAll(path, 0777); err != nil {
-				return
-			}
 		// handle regualar file
 		case tar.TypeReg:
 			// open output file
@@ -135,6 +132,11 @@ func unTar(filePath string, unpackDir string, compression string) (fileList []Fo
 			ffile := FormFile{Name: baseName, Path: path, Checksum: make(map[string]string)}
 			ffile.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
 			fileList = append(fileList, ffile)
+		case tar.TypeDir:
+			// handle directory
+			if merr := os.MkdirAll(path, 0777); merr != nil {
+				logger.Error("err:@node_untar: " + err.Error())
+			}
 		default:
 		}
 	}
@@ -160,8 +162,8 @@ func unZip(filePath string, unpackDir string) (fileList []FormFile, err error) {
 
 		if zf.FileInfo().IsDir() {
 			// handle directory
-			if err = os.MkdirAll(path, 0777); err != nil {
-				return
+			if merr := os.MkdirAll(path, 0777); merr != nil {
+				logger.Error("err:@node_untar: " + err.Error())
 			}
 		} else {
 			// open output file

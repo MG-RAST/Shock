@@ -4,8 +4,8 @@ import (
 	"errors"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/db"
-	"github.com/MG-RAST/golib/mgo"
-	"github.com/MG-RAST/golib/mgo/bson"
+	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -23,6 +23,7 @@ func Initialize() {
 	c.EnsureIndex(mgo.Index{Key: []string{"acl.write"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"acl.delete"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"created_on"}, Background: true})
+	c.EnsureIndex(mgo.Index{Key: []string{"expiration"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"file.path"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"file.virtual_parts"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"id"}, Unique: true})

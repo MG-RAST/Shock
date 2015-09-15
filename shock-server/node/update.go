@@ -9,7 +9,7 @@ import (
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/node/archive"
 	"github.com/MG-RAST/Shock/shock-server/util"
-	"github.com/MG-RAST/golib/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -82,6 +82,8 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		return errors.New("copy_data parameter incompatible with parent_node parameter")
 	} else if isRegularUpload && hasPartsFile {
 		return errors.New("upload file and parts file are incompatible")
+	} else if isRegularUpload && (node.Type == "parts") {
+		return errors.New("upload file and parts node are incompatible")
 	}
 
 	// Check if immutable
@@ -100,9 +102,20 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			if (node.Type != "parts") || (node.Parts == nil) || !node.Parts.VarLen {
 				return errors.New("can only call 'close' on unknown parts node")
 			}
-			if err = node.closeVarLenPartial(); err != nil {
+			// we do a node level lock here incase its processing a part
+			// Refresh parts information after locking, before saving.
+			LockMgr.LockNode(node.Id)
+			n, err := Load(node.Id)
+			if err != nil {
+				LockMgr.UnlockNode(node.Id)
 				return err
 			}
+			node.Parts = n.Parts
+			if err = node.closeParts(true); err != nil {
+				LockMgr.UnlockNode(node.Id)
+				return err
+			}
+			LockMgr.UnlockNode(node.Id)
 		} else if (node.Parts != nil) && (node.Parts.VarLen || node.Parts.Count > 0) {
 			return errors.New("parts already set")
 		} else {
@@ -320,43 +333,6 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		delete(params, "file_name")
 	}
 
-	// handle part file
-	if hasPartsFile {
-		if node.HasFile() {
-			return errors.New(e.FileImut)
-		}
-		if (node.Type != "parts") || (node.Parts == nil) {
-			return errors.New("This is not a parts node and thus does not support uploading in parts.")
-		}
-		LockMgr.LockPartOp()
-
-		// Refresh parts information after locking, before saving.
-		// Load node by id
-		n, err := Load(node.Id)
-		if err != nil {
-			LockMgr.UnlockPartOp()
-			return err
-		}
-		node.Parts = n.Parts
-
-		if node.Parts.Count > 0 || node.Parts.VarLen {
-			for key, file := range files {
-				keyn, errf := strconv.Atoi(key)
-				if errf == nil && (keyn <= node.Parts.Count || node.Parts.VarLen) {
-					err = node.addPart(keyn-1, &file)
-					if err != nil {
-						LockMgr.UnlockPartOp()
-						return err
-					}
-				}
-			}
-		} else {
-			LockMgr.UnlockPartOp()
-			return errors.New("Unable to retrieve parts info for node.")
-		}
-		LockMgr.UnlockPartOp()
-	}
-
 	// update relatives
 	if _, hasRelation := params["linkage"]; hasRelation {
 		ltype := params["linkage"]
@@ -397,13 +373,65 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			return err
 		}
 	}
+
+	// update node expiration
+	if _, hasExpiration := params["expiration"]; hasExpiration {
+		if err = node.SetExpiration(params["expiration"]); err != nil {
+			return err
+		}
+	}
+	if _, hasRemove := params["remove_expiration"]; hasRemove {
+		if err = node.RemoveExpiration(); err != nil {
+			return err
+		}
+	}
+
+	// handle part file / we do a node level lock here
+	if hasPartsFile {
+		if node.HasFile() {
+			return errors.New(e.FileImut)
+		}
+		if (node.Type != "parts") || (node.Parts == nil) {
+			return errors.New("This is not a parts node and thus does not support uploading in parts.")
+		}
+		LockMgr.LockNode(node.Id)
+		defer LockMgr.UnlockNode(node.Id)
+
+		// Refresh parts information after locking, before saving.
+		// Load node by id
+		n, err := Load(node.Id)
+		if err != nil {
+			return err
+		}
+		node.Parts = n.Parts
+
+		if node.Parts.Count > 0 || node.Parts.VarLen {
+			for key, file := range files {
+				keyn, errf := strconv.Atoi(key)
+				if errf == nil && (keyn <= node.Parts.Count || node.Parts.VarLen) {
+					if err = node.addPart(keyn-1, &file); err != nil {
+						return err
+					}
+				}
+			}
+		} else {
+			return errors.New("Unable to retrieve parts info for node.")
+		}
+		// all parts are in, close it
+		if !node.Parts.VarLen && node.Parts.Length == node.Parts.Count {
+			if err = node.closeParts(false); err != nil {
+				return err
+			}
+		}
+	}
+
 	return
 }
 
 func (node *Node) Save() (err error) {
 	node.UpdateVersion()
 	if len(node.Revisions) == 0 || node.Revisions[len(node.Revisions)-1].Version != node.Version {
-		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified, node.Type, node.Subset, node.Parts}
+		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified, node.Expiration, node.Type, node.Subset, node.Parts}
 		node.Revisions = append(node.Revisions, n)
 	}
 	if node.CreatedOn.String() == "0001-01-01 00:00:00 +0000 UTC" {

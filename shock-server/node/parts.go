@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
-	"github.com/MG-RAST/golib/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 	"io"
 	"os"
 	"strconv"
@@ -109,23 +109,14 @@ func (node *Node) addPart(n int, file *FormFile) (err error) {
 	if err = os.Rename(file.Path, fmt.Sprintf("%s/parts/%d", node.Path(), n+1)); err != nil {
 		return err
 	}
-
-	// create file if done with non-variable length node
-	if !node.Parts.VarLen && node.Parts.Length == node.Parts.Count {
-		if err = node.SetFileFromParts(false); err != nil {
-			return err
-		}
-		if err = os.RemoveAll(node.Path() + "/parts/"); err != nil {
-			return err
-		}
-	}
 	err = node.Save()
 	return
 }
 
-func (node *Node) closeVarLenPartial() (err error) {
+func (node *Node) closeParts(allowEmpty bool) (err error) {
 	// Second param says we will allow empty parts in merging of those parts
-	if err = node.SetFileFromParts(true); err != nil {
+	// true for variable length parts
+	if err = node.SetFileFromParts(allowEmpty); err != nil {
 		return err
 	}
 	if err = os.RemoveAll(node.Path() + "/parts/"); err != nil {

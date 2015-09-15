@@ -4,8 +4,8 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/db"
 	"github.com/MG-RAST/golib/go-uuid/uuid"
-	"github.com/MG-RAST/golib/mgo"
-	"github.com/MG-RAST/golib/mgo/bson"
+	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 	"strings"
 )
 
