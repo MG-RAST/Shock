@@ -11,8 +11,8 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/golib/go-uuid/uuid"
-	"github.com/MG-RAST/golib/mgo"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
+	"github.com/go-mgo/mgo"
 	"net/http"
 	"strings"
 )
