@@ -1,7 +1,7 @@
 package node
 
 import (
-	"github.com/MG-RAST/golib/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // Node array type

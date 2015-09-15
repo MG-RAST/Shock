@@ -3,7 +3,7 @@ package node
 import (
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/logger"
-	"github.com/MG-RAST/golib/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 	"regexp"
 	"time"
 )

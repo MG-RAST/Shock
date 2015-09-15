@@ -11,7 +11,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
-	"github.com/MG-RAST/golib/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 	"io/ioutil"
 	"os"
 	"strconv"
