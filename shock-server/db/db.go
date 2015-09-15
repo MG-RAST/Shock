@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
-	mgo "gopkg.in/mgo.v2"
+	mgo "github.com/MG-RAST/Shock/vendor/gopkg.in/mgo.v2"
 	"time"
 )
 
