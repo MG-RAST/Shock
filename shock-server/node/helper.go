@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
-	"github.com/MG-RAST/golib/go-uuid/uuid"
+	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/go-uuid/uuid"
 	"os"
 	"path/filepath"
 )
