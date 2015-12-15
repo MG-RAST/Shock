@@ -56,3 +56,10 @@ func (l *Locker) AddNode(id string) {
 func (l *Locker) RemoveNode(id string) {
 	delete(l.nLock, id)
 }
+
+func (l *Locker) GetNodes() (ids []string) {
+	for id, _ := range l.nLock {
+		ids = append(ids, id)
+	}
+	return
+}
