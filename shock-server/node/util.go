@@ -34,10 +34,11 @@ func NewLocker() *Locker {
 }
 
 func (l *Locker) LockNode(id string) {
-	// skip missing id
-	if _, ok := l.nLock[id]; ok {
-		l.nLock[id].Lock()
+	// add if missing, may happen if shock restarted
+	if _, ok := l.nLock[id]; !ok {
+		l.nLock[id] = new(NodeLock)
 	}
+	l.nLock[id].Lock()
 }
 
 func (l *Locker) UnlockNode(id string) {
