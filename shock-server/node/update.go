@@ -84,6 +84,8 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		return errors.New("upload file and parts file are incompatible")
 	} else if isRegularUpload && (node.Type == "parts") {
 		return errors.New("upload file and parts node are incompatible")
+	} else if isPartialUpload && hasPartsFile {
+		return errors.New("can not upload parts file when creating parts node")
 	}
 
 	// Check if immutable
@@ -111,11 +113,10 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 				return err
 			}
 			node.Parts = n.Parts
+			// closeParts removes node id from LockMgr, no need unlock
 			if err = node.closeParts(true); err != nil {
-				LockMgr.UnlockNode(node.Id)
 				return err
 			}
-			LockMgr.UnlockNode(node.Id)
 		} else if (node.Parts != nil) && (node.Parts.VarLen || node.Parts.Count > 0) {
 			return errors.New("parts already set")
 		} else {
@@ -127,6 +128,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 				}
 			}
 			if params["parts"] == "unknown" {
+				// initParts adds node id to LockMgr
 				if err = node.initParts("unknown", compressionFormat); err != nil {
 					return err
 				}
@@ -138,6 +140,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 				if n < 1 {
 					return errors.New("parts cannot be less than 1")
 				}
+				// initParts adds node id to LockMgr
 				if err = node.initParts(params["parts"], compressionFormat); err != nil {
 					return err
 				}
@@ -418,6 +421,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			return errors.New("Unable to retrieve parts info for node.")
 		}
 		// all parts are in, close it
+		// closeParts removes node id from LockMgr
 		if !node.Parts.VarLen && node.Parts.Length == node.Parts.Count {
 			if err = node.closeParts(false); err != nil {
 				return err
