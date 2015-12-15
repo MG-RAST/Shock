@@ -27,7 +27,9 @@ func (node *Node) initParts(partsCount string, compressionFormat string) (err er
 	if partsCount != "unknown" && cerr != nil {
 		return cerr
 	}
-	err = os.MkdirAll(fmt.Sprintf("%s/parts", node.Path()), 0777)
+	if err = os.MkdirAll(fmt.Sprintf("%s/parts", node.Path()), 0777); err != nil {
+		return err
+	}
 
 	varlen := false
 	if partsCount == "unknown" {
@@ -43,7 +45,12 @@ func (node *Node) initParts(partsCount string, compressionFormat string) (err er
 		Parts:       make([]partsFile, count),
 		Compression: compressionFormat,
 	}
-	err = node.Save()
+	if err = node.Save(); err != nil {
+		return err
+	}
+
+	// add node id to LockMgr
+	LockMgr.AddNode(node.Id)
 	return
 }
 
@@ -122,5 +129,7 @@ func (node *Node) closeParts(allowEmpty bool) (err error) {
 	if err = os.RemoveAll(node.Path() + "/parts/"); err != nil {
 		return err
 	}
+	// remove node id from LockMgr
+	LockMgr.RemoveNode(node.Id)
 	return
 }
