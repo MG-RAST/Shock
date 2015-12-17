@@ -20,7 +20,6 @@ var (
 )
 
 type Locker struct {
-	sync.Mutex
 	nLock map[string]*NodeLock
 }
 
@@ -35,21 +34,33 @@ func NewLocker() *Locker {
 }
 
 func (l *Locker) LockNode(id string) {
-	// add to map if missing
-	l.Lock()
+	// add if missing, may happen if shock restarted
 	if _, ok := l.nLock[id]; !ok {
 		l.nLock[id] = new(NodeLock)
 	}
 	l.nLock[id].Lock()
-	l.Unlock()
 }
 
 func (l *Locker) UnlockNode(id string) {
+	// skip missing id
 	if _, ok := l.nLock[id]; ok {
 		l.nLock[id].Unlock()
 	}
 }
 
+func (l *Locker) AddNode(id string) {
+	if _, ok := l.nLock[id]; !ok {
+		l.nLock[id] = new(NodeLock)
+	}
+}
+
 func (l *Locker) RemoveNode(id string) {
 	delete(l.nLock, id)
+}
+
+func (l *Locker) GetNodes() (ids []string) {
+	for id, _ := range l.nLock {
+		ids = append(ids, id)
+	}
+	return
 }
