@@ -1,3 +1,6 @@
+# v0.9.12
+- Fix to occasional deadlock with parts node locking
+
 # v0.9.11
 
 - Update mgo lib to v2
