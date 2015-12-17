@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
   make \
   gcc \
   git-core \
+  libsasl2-dev \
   curl
 
 RUN curl -s https://storage.googleapis.com/golang/go1.5.2.linux-amd64.tar.gz | tar -v -C /usr/local -xz
