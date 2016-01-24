@@ -30,7 +30,7 @@ The upside to using OPTION 1 is that this will insert the Shock version number i
 ### Dockerfile
 Alternativly your can use Docker to compile Shock. The Dockerfile in directory "docker" in this repository compiles Shock statically. 
 ```bash
-docker build -t shock:latest docker/Dockerfile
+docker build -t shock:latest docker
 ```
 If you only want the binary you can create an container from the image an copy the binary to your host. This will copy the shock-server binary to your current working directory
 ```bash
