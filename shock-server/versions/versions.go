@@ -70,6 +70,18 @@ func RunVersionUpdates() (err error) {
 	confVersionACL, ok1 := conf.VERSIONS["ACL"]
 	dbVersionACL, ok2 := VersionMap["ACL"]
 
+	// skip version updates if database is empty / new shock deploy
+	session := db.Connection.Session.Copy()
+	c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
+	num, err := c.Count()
+	session.Close()
+	if err != nil {
+		return err
+	}
+	if num == 0 {
+		return nil
+	}
+
 	// Upgrading databases with ACL schema before version 2
 	if (ok1 && confVersionACL >= 2) && (!ok2 || (ok2 && dbVersionACL < 2)) {
 		consoleReader := bufio.NewReader(os.Stdin)
