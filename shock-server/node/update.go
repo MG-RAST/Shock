@@ -209,6 +209,11 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			node.Type = "copy"
 		}
 
+		// Copy node attributes
+		if _, copyAttributes := params["copy_attributes"]; copyAttributes {
+			node.Attributes = n.Attributes
+		}
+
 		// Copy node indexes
 		if _, copyIndex := params["copy_indexes"]; copyIndex && (len(n.Indexes) > 0) {
 			// loop through parent indexes
