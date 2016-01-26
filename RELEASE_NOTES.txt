@@ -1,4 +1,13 @@
+# v0.9.13
+
+- added option to copy attributes when doing node copy
+- added version_parts map to returned node
+- test mongo connection with short timeout on startup
+- add admin flag when creating new admin user
+- skip version updates on start if node collection is empty
+
 # v0.9.12
+
 - Fix to occasional deadlock with parts node locking
 
 # v0.9.11

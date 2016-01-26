@@ -20,6 +20,7 @@ var (
 	// Admin
 	ADMIN_EMAIL = ""
 	ADMIN_USERS = ""
+	AdminUsers  []string
 
 	// Permissions for anonymous user
 	ANON_READ   = true
@@ -97,6 +98,11 @@ func Initialize() {
 	// Admin
 	ADMIN_EMAIL, _ = c.String("Admin", "email")
 	ADMIN_USERS, _ = c.String("Admin", "users")
+	if ADMIN_USERS != "" {
+		for _, name := range strings.Split(ADMIN_USERS, ",") {
+			AdminUsers = append(AdminUsers, strings.TrimSpace(name))
+		}
+	}
 
 	// Access-Control
 	ANON_READ, _ = c.Bool("Anonymous", "read")
