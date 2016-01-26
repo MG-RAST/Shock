@@ -6,7 +6,6 @@ import (
 	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/go-uuid/uuid"
 	mgo "github.com/MG-RAST/Shock/vendor/gopkg.in/mgo.v2"
 	"github.com/MG-RAST/Shock/vendor/gopkg.in/mgo.v2/bson"
-	"strings"
 )
 
 // Array of User
@@ -42,17 +41,12 @@ func Initialize() (err error) {
 	}
 
 	// This config parameter contains a string that should be a comma-separated list of users that are Admins.
-	adminUsers := strings.Split(conf.ADMIN_USERS, ",")
-	for _, v := range adminUsers {
+	for _, v := range conf.AdminUsers {
 		if info, err := c.UpdateAll(bson.M{"username": v}, bson.M{"$set": bson.M{"shock_admin": true}}); err != nil {
 			if err != nil {
 				return err
 			} else if info.Updated == 0 {
-				u, err := New(v, "", true)
-				if err != nil {
-					return err
-				}
-				if err := u.Save(); err != nil {
+				if _, err := New(v, "", true); err != nil {
 					return err
 				}
 			}
@@ -63,7 +57,8 @@ func Initialize() (err error) {
 
 func New(username string, password string, isAdmin bool) (u *User, err error) {
 	u = &User{Uuid: uuid.New(), Username: username, Password: password, Admin: isAdmin}
-	if err = u.Save(); err != nil {
+	err = u.Save()
+	if err != nil {
 		u = nil
 	}
 	return
@@ -105,7 +100,15 @@ func (u *User) SetMongoInfo() (err error) {
 		u.Admin = admin
 		return nil
 	} else {
+		// this is a new user
 		u.Uuid = uuid.New()
+		// check if user is on admin list, if so set as true
+		for _, v := range conf.AdminUsers {
+			if v == u.Username {
+				u.Admin = true
+				break
+			}
+		}
 		if err := u.Save(); err != nil {
 			return err
 		}
