@@ -25,7 +25,7 @@ type Node struct {
 	Attributes   interface{}       `bson:"attributes" json:"attributes"`
 	Indexes      Indexes           `bson:"indexes" json:"indexes"`
 	Acl          acl.Acl           `bson:"acl" json:"-"`
-	VersionParts map[string]string `bson:"version_parts" json:"-"`
+	VersionParts map[string]string `bson:"version_parts" json:"version_parts"`
 	Tags         []string          `bson:"tags" json:"tags"`
 	Revisions    []Node            `bson:"revisions" json:"-"`
 	Linkages     []linkage         `bson:"linkage" json:"linkage"`
