@@ -12,7 +12,7 @@ import (
 const (
 	DbTimeout    = time.Duration(time.Second * 1200)
 	DialTimeout  = time.Duration(time.Second * 10)
-	DialAttempts = 5
+	DialAttempts = 3
 )
 
 var (
@@ -34,8 +34,8 @@ func Initialize() (err error) {
 	canDial := false
 	for i := 0; i < DialAttempts; i++ {
 		s, err := mgo.DialWithTimeout(conf.MONGODB_HOSTS, DialTimeout)
-		s.Close()
 		if err == nil {
+			s.Close()
 			canDial = true
 			break
 		}
