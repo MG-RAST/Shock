@@ -376,6 +376,13 @@ func (node *Node) RemoveExpiration() (err error) {
 	return
 }
 
+func (node *Node) ClearRevisions() (err error) {
+	// empty the revisions array
+	node.Revisions = nil
+	err = node.Save()
+	return
+}
+
 func (node *Node) SetAttributes(attr FormFile) (err error) {
 	defer attr.Remove()
 	attributes, err := ioutil.ReadFile(attr.Path)

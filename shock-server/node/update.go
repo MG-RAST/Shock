@@ -394,6 +394,13 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 	}
 
+	// clear node revisions
+	if _, hasClearRevisions := params["clear_revisions"]; hasClearRevisions {
+		if err = node.ClearRevisions(); err != nil {
+			return err
+		}
+	}
+
 	// handle part file / we do a node level lock here
 	if hasPartsFile {
 		if node.HasFile() {
@@ -470,7 +477,7 @@ func (node *Node) UpdateVersion() (err error) {
 	parts := make(map[string]string)
 	h := md5.New()
 	version := node.Id
-	for name, value := range map[string]interface{}{"file_ver": node.File, "attributes_ver": node.Attributes, "acl_ver": node.Acl} {
+	for name, value := range map[string]interface{}{"file_ver": node.File, "indexes_ver": node.Indexes, "attributes_ver": node.Attributes, "acl_ver": node.Acl} {
 		m, er := json.Marshal(value)
 		if er != nil {
 			return
