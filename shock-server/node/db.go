@@ -11,6 +11,9 @@ import (
 	"strings"
 )
 
+// mongodb has hard limit of 16 MB docuemnt size
+var DocumentMaxByte = 16777216
+
 // Initialize creates a copy of the mongodb connection and then uses that connection to
 // create the Nodes collection in mongodb. Then, it ensures that there is a unique index
 // on the id key in this collection, creating the index if necessary.
