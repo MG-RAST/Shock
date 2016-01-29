@@ -1,3 +1,10 @@
+# v0.9.14
+
+- add versioning to indexes
+- option to clear revisions array in node
+- fix duplicate additions to revision array
+- explicit check for bson document max size upon save, return meaningful error
+
 # v0.9.13
 
 - added option to copy attributes when doing node copy

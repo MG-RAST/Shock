@@ -463,7 +463,7 @@ func (node *Node) Save() (err error) {
 	if err != nil {
 		return
 	}
-	if len(nbson) > DocumentMaxByte {
+	if len(nbson) >= DocumentMaxByte {
 		return errors.New(fmt.Sprintf("bson document size is greater than limit of %d bytes", DocumentMaxByte))
 	}
 	bsonPath := fmt.Sprintf("%s/%s.bson", node.Path(), node.Id)
