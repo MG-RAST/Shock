@@ -394,6 +394,13 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 	}
 
+	// clear node revisions
+	if _, hasClearRevisions := params["clear_revisions"]; hasClearRevisions {
+		if err = node.ClearRevisions(); err != nil {
+			return err
+		}
+	}
+
 	// handle part file / we do a node level lock here
 	if hasPartsFile {
 		if node.HasFile() {
@@ -438,8 +445,11 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 }
 
 func (node *Node) Save() (err error) {
+	// update versions
+	previousVersion := node.Version
 	node.UpdateVersion()
-	if len(node.Revisions) == 0 || node.Revisions[len(node.Revisions)-1].Version != node.Version {
+	// only add to revisions if not new and has changed
+	if previousVersion != "" && previousVersion != node.Version {
 		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified, node.Expiration, node.Type, node.Subset, node.Parts}
 		node.Revisions = append(node.Revisions, n)
 	}
@@ -448,17 +458,21 @@ func (node *Node) Save() (err error) {
 	} else {
 		node.LastModified = time.Now()
 	}
-
-	bsonPath := fmt.Sprintf("%s/%s.bson", node.Path(), node.Id)
-	os.Remove(bsonPath)
+	// get bson, test size and print
 	nbson, err := bson.Marshal(node)
 	if err != nil {
 		return
 	}
+	if len(nbson) >= DocumentMaxByte {
+		return errors.New(fmt.Sprintf("bson document size is greater than limit of %d bytes", DocumentMaxByte))
+	}
+	bsonPath := fmt.Sprintf("%s/%s.bson", node.Path(), node.Id)
+	os.Remove(bsonPath)
 	err = ioutil.WriteFile(bsonPath, nbson, 0644)
 	if err != nil {
 		return
 	}
+	// save node to mongodb
 	err = dbUpsert(node)
 	if err != nil {
 		return
@@ -470,7 +484,7 @@ func (node *Node) UpdateVersion() (err error) {
 	parts := make(map[string]string)
 	h := md5.New()
 	version := node.Id
-	for name, value := range map[string]interface{}{"file_ver": node.File, "attributes_ver": node.Attributes, "acl_ver": node.Acl} {
+	for name, value := range map[string]interface{}{"file_ver": node.File, "indexes_ver": node.Indexes, "attributes_ver": node.Attributes, "acl_ver": node.Acl} {
 		m, er := json.Marshal(value)
 		if er != nil {
 			return
