@@ -274,3 +274,20 @@ func (c *Conn) RetrieveTo(fname string, dconn net.Conn, w io.Writer) (written in
 	code, message, err = c.conn.ReadResponse(2)
 	return
 }
+
+// Retrieve the named file to an io.Reader.
+func (c *Conn) RetrieveFrom(fname string) (dconn net.Conn, code int, message string, err error) {
+	addr, code, message, err := c.Passive()
+	if err != nil {
+		return nil, code, message, err
+	}
+	dconn, err = net.Dial("tcp", addr)
+	if err != nil {
+		return nil, 0, "", err
+	}
+	code, message, err = c.Cmd(1, "RETR %s", fname)
+	if err != nil {
+		return nil, code, message, err
+	}
+	return dconn, code, message, err
+}

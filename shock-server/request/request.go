@@ -210,7 +210,6 @@ func fetchFileStream(urlStr string) (f string, r io.ReadCloser, err error) {
 	pathParts := strings.Split(strings.TrimRight(u.Path, "/"), "/")
 	fileName := pathParts[len(pathParts)-1]
 	cleanPath := strings.Join(pathParts, "/")
-	//dirPath := strings.Join(pathParts[:len(pathParts)-1], "/")
 
 	if (u.Scheme == "http") || (u.Scheme == "https") {
 		res, err := httpclient.Get(u.String(), httpclient.Header{}, nil, nil)
@@ -237,18 +236,8 @@ func fetchFileStream(urlStr string) (f string, r io.ReadCloser, err error) {
 		if _, _, err = c.Login("", ""); err != nil {
 			return "", nil, errors.New("ftpclient returned: " + err.Error())
 		}
-		//if _, _, err := c.Cwd(dirPath); err != nil {
-		//	return "", nil, errors.New("ftpclient returned: " + err.Error())
-		//}
-		addr, _, _, err := c.Passive()
+		dconn, _, _, err := c.RetrieveFrom(cleanPath)
 		if err != nil {
-			return "", nil, errors.New("ftpclient returned: " + err.Error())
-		}
-		dconn, err := net.Dial("tcp", addr)
-		if err != nil {
-			return "", nil, errors.New("ftpclient returned: " + err.Error())
-		}
-		if _, _, err = c.Cmd(1, "RETR %s", cleanPath); err != nil {
 			return "", nil, errors.New("ftpclient returned: " + err.Error())
 		}
 		return fileName, dconn, err
