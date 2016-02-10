@@ -53,6 +53,11 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		return errors.New("only one upload file allowed")
 	}
 
+	isUrlUpload := false
+	if _, hasUrlUpload := files["upload_url"]; hasUrlUpload {
+		isUrlUpload = true
+	}
+
 	_, isPartialUpload := params["parts"]
 	hasPartsFile := false
 	for key, _ := range files {
@@ -70,26 +75,28 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	_, isSubsetUpload := params["parent_node"]
 
 	// Check exclusive conditions
-	if (isRegularUpload && isPartialUpload) || (isRegularUpload && isVirtualNode) || (isRegularUpload && isPathUpload) || (isRegularUpload && isCopyUpload) || (isRegularUpload && isSubsetUpload) {
-		return errors.New("upload parameter incompatible with parts, path, type, copy_data and/or parent_node parameter(s)")
-	} else if (isPartialUpload && isVirtualNode) || (isPartialUpload && isPathUpload) || (isPartialUpload && isCopyUpload) || (isPartialUpload && isSubsetUpload) {
+	if isRegularUpload && (isUrlUpload || isPartialUpload || isPathUpload || isVirtualNode || isCopyUpload || isSubsetUpload) {
+		return errors.New("upload parameter incompatible with upload_url, parts, path, type, copy_data and/or parent_node parameter(s)")
+	} else if isUrlUpload && (isRegularUpload || isPartialUpload || isPathUpload || isVirtualNode || isCopyUpload || isSubsetUpload) {
+		return errors.New("upload_url parameter incompatible with upload, parts, path, type, copy_data and/or parent_node parameter(s)")
+	} else if isPartialUpload && (isVirtualNode || isPathUpload || isCopyUpload || isSubsetUpload) {
 		return errors.New("parts parameter incompatible with type, path, copy_data and/or parent_node parameter(s)")
-	} else if (isVirtualNode && isPathUpload) || (isVirtualNode && isCopyUpload) || (isVirtualNode && isSubsetUpload) {
+	} else if isVirtualNode && (isPathUpload || isCopyUpload || isSubsetUpload) {
 		return errors.New("type parameter incompatible with path, copy_data and/or parent_node parameter")
-	} else if (isPathUpload && isCopyUpload) || (isPathUpload && isSubsetUpload) {
+	} else if isPathUpload && (isCopyUpload || isSubsetUpload) {
 		return errors.New("path parameter incompatible with copy_data and/or parent_node parameter")
 	} else if isCopyUpload && isSubsetUpload {
 		return errors.New("copy_data parameter incompatible with parent_node parameter")
-	} else if isRegularUpload && hasPartsFile {
-		return errors.New("upload file and parts file are incompatible")
-	} else if isRegularUpload && (node.Type == "parts") {
-		return errors.New("upload file and parts node are incompatible")
+	} else if hasPartsFile && (isRegularUpload || isUrlUpload) {
+		return errors.New("parts file and upload or upload_url parameters are incompatible")
+	} else if (node.Type == "parts") && (isRegularUpload || isUrlUpload) {
+		return errors.New("parts node and upload or upload_url parameters are incompatible")
 	} else if isPartialUpload && hasPartsFile {
 		return errors.New("can not upload parts file when creating parts node")
 	}
 
 	// Check if immutable
-	if (isRegularUpload || isPartialUpload || hasPartsFile || isVirtualNode || isPathUpload || isCopyUpload || isSubsetUpload) && node.HasFile() {
+	if node.HasFile() && (isRegularUpload || isUrlUpload || isPartialUpload || hasPartsFile || isVirtualNode || isPathUpload || isCopyUpload || isSubsetUpload) {
 		return errors.New(e.FileImut)
 	}
 
@@ -98,6 +105,11 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			return err
 		}
 		delete(files, uploadFile)
+	} else if isUrlUpload {
+		if err = node.SetFile(files["upload_url"]); err != nil {
+			return err
+		}
+		delete(files, "upload_url")
 	} else if isPartialUpload {
 		// close variable length parts
 		if params["parts"] == "close" {
