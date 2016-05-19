@@ -72,7 +72,7 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 
 	// Gather params to make db query. Do not include the following list.
 	if _, ok := query["query"]; ok {
-		paramlist := map[string]int{"query": 1, "limit": 1, "offset": 1, "order": 1, "direction": 1}
+		paramlist := map[string]int{"query": 1, "limit": 1, "offset": 1, "order": 1, "direction": 1, "distinct": 1}
 		for key := range query {
 			if _, found := paramlist[key]; !found {
 				keyStr := fmt.Sprintf("attributes.%s", key)
@@ -86,7 +86,7 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 			}
 		}
 	} else if _, ok := query["querynode"]; ok {
-		paramlist := map[string]int{"querynode": 1, "limit": 1, "offset": 1, "order": 1, "direction": 1, "owner": 1, "read": 1, "write": 1, "delete": 1, "public_owner": 1, "public_read": 1, "public_write": 1, "public_delete": 1}
+		paramlist := map[string]int{"querynode": 1, "limit": 1, "offset": 1, "order": 1, "direction": 1, "distinct": 1, "owner": 1, "read": 1, "write": 1, "delete": 1, "public_owner": 1, "public_read": 1, "public_write": 1, "public_delete": 1}
 		for key := range query {
 			if _, found := paramlist[key]; !found {
 				for _, value := range query[key] {
@@ -143,6 +143,23 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 
 	// Combine permissions query with query parameters and ACL query into one AND clause
 	q["$and"] = []bson.M{qPerm, qOpts, qAcls}
+
+	// process distinct query
+	if _, ok := query["distinct"]; ok {
+		dField := query.Get("distinct")
+		if !node.HasAttributeField(dField) {
+			err_msg := "err unable to run distinct query on non-indexed attributes field: " + dField
+			logger.Error(err_msg)
+			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+		}
+		results, err := node.DbFindDistinct(q, dField)
+		if err != nil {
+			err_msg := "err " + err.Error()
+			logger.Error(err_msg)
+			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+		}
+		return responder.RespondWithData(ctx, results)
+	}
 
 	// defaults
 	order := "created_on"

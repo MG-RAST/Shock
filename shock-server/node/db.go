@@ -38,6 +38,15 @@ func Initialize() {
 	}
 }
 
+func HasAttributeField(a string) bool {
+	for _, b := range strings.Split(conf.MONGODB_ATTRIBUTE_INDEXES, ",") {
+		if a == strings.TrimSpace(b) {
+			return true
+		}
+	}
+	return false
+}
+
 func dbDelete(q bson.M) (err error) {
 	session := db.Connection.Session.Copy()
 	defer session.Close()
@@ -74,6 +83,14 @@ func dbFind(q bson.M, results *Nodes, order string, options map[string]int) (cou
 		}
 	}
 	err = c.Find(q).Sort(order).All(results)
+	return
+}
+
+func DbFindDistinct(q bson.M, d string) (results interface{}, err error) {
+	session := db.Connection.Session.Copy()
+	defer session.Close()
+	c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
+	err = c.Find(q).Distinct("attributes."+d, &results)
 	return
 }
 
