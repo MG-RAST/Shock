@@ -11,6 +11,9 @@ import (
 	"strings"
 )
 
+// mongodb has hard limit of 16 MB docuemnt size
+var DocumentMaxByte = 16777216
+
 // Initialize creates a copy of the mongodb connection and then uses that connection to
 // create the Nodes collection in mongodb. Then, it ensures that there is a unique index
 // on the id key in this collection, creating the index if necessary.
@@ -33,6 +36,15 @@ func Initialize() {
 			c.EnsureIndex(mgo.Index{Key: []string{v}, Background: true})
 		}
 	}
+}
+
+func HasAttributeField(a string) bool {
+	for _, b := range strings.Split(conf.MONGODB_ATTRIBUTE_INDEXES, ",") {
+		if a == strings.TrimSpace(b) {
+			return true
+		}
+	}
+	return false
 }
 
 func dbDelete(q bson.M) (err error) {
@@ -71,6 +83,14 @@ func dbFind(q bson.M, results *Nodes, order string, options map[string]int) (cou
 		}
 	}
 	err = c.Find(q).Sort(order).All(results)
+	return
+}
+
+func DbFindDistinct(q bson.M, d string) (results interface{}, err error) {
+	session := db.Connection.Session.Copy()
+	defer session.Close()
+	c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
+	err = c.Find(q).Distinct("attributes."+d, &results)
 	return
 }
 

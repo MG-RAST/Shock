@@ -15,9 +15,7 @@ const (
 	DialAttempts = 3
 )
 
-var (
-	Connection connection
-)
+var Connection connection
 
 type connection struct {
 	dbname   string
