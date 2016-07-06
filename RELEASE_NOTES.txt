@@ -1,3 +1,8 @@
+# v0.9.15
+
+- add 'distinct' option too node query to return list of distinct values. must be an indexed field in node.attributes
+- upload file via url (http, https, or ftp) using 'upload_url' parameter
+
 # v0.9.14
 
 - add versioning to indexes
