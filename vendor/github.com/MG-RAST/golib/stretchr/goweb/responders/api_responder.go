@@ -1,8 +1,8 @@
 package responders
 
 import (
-	codecsservices "github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/services"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/goweb/context"
+	codecsservices "github.com/MG-RAST/golib/stretchr/codecs/services"
+	"github.com/MG-RAST/golib/stretchr/goweb/context"
 )
 
 const (

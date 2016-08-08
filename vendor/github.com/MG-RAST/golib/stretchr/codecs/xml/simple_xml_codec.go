@@ -2,9 +2,9 @@ package xml
 
 import (
 	"fmt"
-	xml "github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/clbanning/x2j"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/constants"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/objx"
+	xml "github.com/MG-RAST/golib/clbanning/x2j"
+	"github.com/MG-RAST/golib/stretchr/codecs/constants"
+	"github.com/MG-RAST/golib/stretchr/objx"
 	"reflect"
 	"strconv"
 	"strings"

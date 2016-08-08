@@ -1,9 +1,9 @@
 package services
 
 import (
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/json"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/testify/assert"
+	"github.com/MG-RAST/golib/stretchr/codecs"
+	"github.com/MG-RAST/golib/stretchr/codecs/json"
+	"github.com/MG-RAST/golib/stretchr/testify/assert"
 	"testing"
 )
 

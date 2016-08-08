@@ -10,7 +10,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/preauth"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/goweb/context"
+	"github.com/MG-RAST/golib/stretchr/goweb/context"
 )
 
 func PreAuthRequest(ctx context.Context) {

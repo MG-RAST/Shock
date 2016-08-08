@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"fmt"
-	codecsservices "github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/services"
-	gowebhttp "github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/goweb/http"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/goweb/webcontext"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/objx"
+	codecsservices "github.com/MG-RAST/golib/stretchr/codecs/services"
+	gowebhttp "github.com/MG-RAST/golib/stretchr/goweb/http"
+	"github.com/MG-RAST/golib/stretchr/goweb/webcontext"
+	"github.com/MG-RAST/golib/stretchr/objx"
 	"net/http"
 	"strings"
 )

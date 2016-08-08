@@ -1,8 +1,8 @@
 package paths
 
 import (
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/objx"
-	stewstrings "github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/stew/strings"
+	"github.com/MG-RAST/golib/stretchr/objx"
+	stewstrings "github.com/MG-RAST/golib/stretchr/stew/strings"
 	"regexp"
 	"strings"
 )

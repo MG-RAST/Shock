@@ -1,7 +1,7 @@
 package services
 
 import (
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs"
+	"github.com/MG-RAST/golib/stretchr/codecs"
 )
 
 // CodecService is the interface for a service responsible for providing Codecs.

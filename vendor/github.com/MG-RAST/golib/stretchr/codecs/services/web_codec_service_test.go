@@ -2,13 +2,13 @@ package services
 
 import (
 	"fmt"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/constants"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/json"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/test"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/objx"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/testify/assert"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/testify/mock"
+	"github.com/MG-RAST/golib/stretchr/codecs"
+	"github.com/MG-RAST/golib/stretchr/codecs/constants"
+	"github.com/MG-RAST/golib/stretchr/codecs/json"
+	"github.com/MG-RAST/golib/stretchr/codecs/test"
+	"github.com/MG-RAST/golib/stretchr/objx"
+	"github.com/MG-RAST/golib/stretchr/testify/assert"
+	"github.com/MG-RAST/golib/stretchr/testify/mock"
 	"strings"
 	"testing"
 )

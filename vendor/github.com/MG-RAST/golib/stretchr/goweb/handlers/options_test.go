@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	codecsservices "github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/services"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/goweb/controllers/test"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/testify/assert"
+	codecsservices "github.com/MG-RAST/golib/stretchr/codecs/services"
+	"github.com/MG-RAST/golib/stretchr/goweb/controllers/test"
+	"github.com/MG-RAST/golib/stretchr/testify/assert"
 	"strings"
 	"testing"
 )

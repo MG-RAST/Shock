@@ -4,7 +4,7 @@ package logger
 import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
-	l4g "github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/log4go"
+	l4g "github.com/MG-RAST/golib/log4go"
 	"os"
 )
 

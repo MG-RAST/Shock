@@ -2,7 +2,7 @@ package json
 
 import (
 	jsonEncoding "encoding/json"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/constants"
+	"github.com/MG-RAST/golib/stretchr/codecs/constants"
 )
 
 var validJsonContentTypes = []string{
