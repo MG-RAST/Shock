@@ -1,11 +1,11 @@
 package webcontext
 
 import (
-	codecsservices "github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/services"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/goweb/context"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/objx"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/testify/assert"
-	http_test "github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/testify/http"
+	codecsservices "github.com/MG-RAST/golib/stretchr/codecs/services"
+	"github.com/MG-RAST/golib/stretchr/goweb/context"
+	"github.com/MG-RAST/golib/stretchr/objx"
+	"github.com/MG-RAST/golib/stretchr/testify/assert"
+	http_test "github.com/MG-RAST/golib/stretchr/testify/http"
 	"net/http"
 	"strings"
 	"testing"

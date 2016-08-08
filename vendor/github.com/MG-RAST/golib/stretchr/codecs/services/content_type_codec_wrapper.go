@@ -1,7 +1,7 @@
 package services
 
 import (
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs"
+	"github.com/MG-RAST/golib/stretchr/codecs"
 )
 
 // contentTypeCodecWrapper is a wrapper for a Codec.  It is used to

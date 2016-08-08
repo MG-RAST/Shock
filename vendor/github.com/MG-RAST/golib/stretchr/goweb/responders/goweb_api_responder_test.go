@@ -1,11 +1,11 @@
 package responders
 
 import (
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/json"
-	codecsservices "github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/services"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/goweb/context"
-	context_test "github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/goweb/webcontext/test"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/testify/assert"
+	"github.com/MG-RAST/golib/stretchr/codecs/json"
+	codecsservices "github.com/MG-RAST/golib/stretchr/codecs/services"
+	"github.com/MG-RAST/golib/stretchr/goweb/context"
+	context_test "github.com/MG-RAST/golib/stretchr/goweb/webcontext/test"
+	"github.com/MG-RAST/golib/stretchr/testify/assert"
 	"net/url"
 	"testing"
 )

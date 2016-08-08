@@ -1,7 +1,7 @@
 package paths
 
 import (
-	stewstrings "github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/stew/strings"
+	stewstrings "github.com/MG-RAST/golib/stretchr/stew/strings"
 	"reflect"
 	"strings"
 )

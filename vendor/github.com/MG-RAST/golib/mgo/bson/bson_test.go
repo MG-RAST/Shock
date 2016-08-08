@@ -31,7 +31,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/mgo/bson"
+	"github.com/MG-RAST/golib/mgo/bson"
 	. "launchpad.net/gocheck"
 	"net/url"
 	"reflect"

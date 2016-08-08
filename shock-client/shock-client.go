@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-client/conf"
 	"github.com/MG-RAST/Shock/shock-client/lib"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/gopass"
+	"github.com/MG-RAST/golib/gopass"
 	"io"
 	"os"
 	"strconv"
