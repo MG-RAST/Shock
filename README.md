@@ -36,7 +36,7 @@ docker build --force-rm --no-cache --rm -t shock:${TAG} .
 If you only want the binary you can create an container from the image an copy the binary to your host. This will copy the shock-server binary to your current working directory
 ```bash
 docker run --name shock shock:${TAG} ls
-docker cp shock:/gopath/bin/shock-server .
+docker cp shock:/go/bin/shock-server .
 docker rm shock
 ```
 
