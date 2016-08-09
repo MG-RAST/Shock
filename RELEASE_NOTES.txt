@@ -1,3 +1,9 @@
+# v0.9.17
+
+- docker file update
+  - use minimal alpine golang base
+- update vendor dir to support new 1.6 vendor format
+
 # v0.9.16
 
 - docker file updates

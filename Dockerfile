@@ -1,20 +1,13 @@
 
 # creates statically compiled shock-server binary: /gopath/bin/shock-server
 
-FROM ubuntu:16.04
+FROM golang:1.6.3-alpine
 
-RUN apt-get update && apt-get install -y \
-  make \
-  gcc \
-  git-core \
-  libsasl2-dev \
-  curl
-
-RUN curl -s https://storage.googleapis.com/golang/go1.6.2.linux-amd64.tar.gz | tar -v -C /usr/local -xz
+RUN apk update && apk add git make gcc
 
 ENV GOROOT /usr/local/go 
 ENV PATH /usr/local/go/bin:/gopath/bin:/usr/local/bin:$PATH 
-ENV GOPATH /gopath/
+ENV GOPATH /go/
 
 RUN mkdir -p /gopath/ && \
   cd /gopath/ && \
