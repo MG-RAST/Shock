@@ -126,10 +126,41 @@ func fetchProfile(t string) (u *user.User, err error) {
 }
 
 func clientId(t string) string {
-	for _, part := range strings.Split(t, "|") {
-		if kv := strings.Split(part, "="); kv[0] == "client_id" {
-			return kv[1]
-		}
+	//for _, part := range strings.Split(t, "|") {
+	//	if kv := strings.Split(part, "="); kv[0] == "client_id" {
+	//		return kv[1]
+	//	}
+	//}
+	//if we get here then we have a new style token and need to make a call to look up the
+	//ID instead of parsing the string
+	client := &http.Client{
+		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
+	req, err := http.NewRequest("GET", conf.AUTH_GLOBUS_TOKEN_URL, nil)
+	if err != nil {
+		return ""
+	}
+	req.Header.Add("X-Globus-Goauthtoken", t)
+	if resp, err := client.Do(req); err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusCreated {
+			if body, err := ioutil.ReadAll(resp.Body); err == nil {
+				var dat map[string]interface{}
+				if err = json.Unmarshal(body, &dat); err != nil {
+					return ""
+				} else {
+					return dat["client_id"].(string)
+				}
+			}
+		} else if resp.StatusCode == http.StatusForbidden {
+			return ""
+		} else {
+			//err_str := "Authentication failed: Unexpected response status: " + resp.Status
+			return ""
+		}
+	} else {
+		return ""
+	}
+
 	return ""
 }
