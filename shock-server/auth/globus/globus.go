@@ -91,9 +91,9 @@ func fetchProfile(t string) (u *user.User, err error) {
 	client := &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
-	logger.Error("got here")
+	//logger.Error("got here")
 	req, err := http.NewRequest("GET", conf.AUTH_GLOBUS_PROFILE_URL+"/"+clientId(t), nil)
-	logger.Error("URL: " + conf.AUTH_GLOBUS_PROFILE_URL+"/"+clientId(t))
+	//logger.Error("URL: " + conf.AUTH_GLOBUS_PROFILE_URL+"/"+clientId(t))
 	if err != nil {
 		return nil, err
 	}
@@ -129,18 +129,21 @@ func fetchProfile(t string) (u *user.User, err error) {
 }
 
 func clientId(t string) string {
-	//for _, part := range strings.Split(t, "|") {
-	//	if kv := strings.Split(part, "="); kv[0] == "client_id" {
-	//		return kv[1]
-	//	}
-	//}
+	for _, part := range strings.Split(t, "|") {
+		if kv := strings.Split(part, "="); kv[0] == "client_id" {
+			return kv[1]
+		}
+	}
 	//if we get here then we have a new style token and need to make a call to look up the
 	//ID instead of parsing the string
 	client := &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
 	req, err := http.NewRequest("GET", conf.AUTH_GLOBUS_TOKEN_URL, nil)
+        //logger.Error("URL: " + conf.AUTH_GLOBUS_TOKEN_URL)
+
 	if err != nil {
+		logger.Error("Failed contact with auth server")
 		return ""
 	}
 	req.Header.Add("X-Globus-Goauthtoken", t)
@@ -151,20 +154,24 @@ func clientId(t string) string {
 			if body, err := ioutil.ReadAll(resp.Body); err == nil {
 				var dat map[string]interface{}
 				if err = json.Unmarshal(body, &dat); err != nil {
+					logger.Error("Unable to parse response from auth server")
 					return ""
 				} else {
 					return dat["client_id"].(string)
 				}
 			}
 		} else if resp.StatusCode == http.StatusForbidden {
+			logger.Error("Auth request rejected as Forbidden")
 			return ""
 		} else {
-			//err_str := "Authentication failed: Unexpected response status: " + resp.Status
+			err_str := "Authentication failed in clientID: Unexpected response status: " + resp.Status
+			logger.Error(err_str)
 			return ""
 		}
 	} else {
+		logger.Error("Undefined auth error 1")
 		return ""
 	}
-
+	logger.Error("Undefined auth error 2")
 	return ""
 }

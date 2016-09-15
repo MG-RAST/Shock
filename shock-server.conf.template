@@ -24,6 +24,7 @@ delete=false
 # comment line above and uncomment below to use Globus Online as auth provider
 globus_token_url=https://nexus.api.globusonline.org/goauth/token?grant_type=client_credentials
 globus_profile_url=https://nexus.api.globusonline.org/users
+cache_timeout = 60
 #mgrast_oauth_url=https://api.metagenomics.anl.gov/user/authenticate
 
 [External]
