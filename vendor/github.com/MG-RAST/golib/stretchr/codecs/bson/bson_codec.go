@@ -1,8 +1,8 @@
 package bson
 
 import (
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/mgo/bson"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/constants"
+	"github.com/MG-RAST/golib/mgo/bson"
+	"github.com/MG-RAST/golib/stretchr/codecs/constants"
 )
 
 // BsonCodec converts objects to and from BSON.

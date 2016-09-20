@@ -3,8 +3,8 @@ package jsonp
 import (
 	jsonEncoding "encoding/json"
 	"errors"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/constants"
-	stewstrings "github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/stew/strings"
+	"github.com/MG-RAST/golib/stretchr/codecs/constants"
+	stewstrings "github.com/MG-RAST/golib/stretchr/stew/strings"
 )
 
 var validJsonpContentTypes = []string{

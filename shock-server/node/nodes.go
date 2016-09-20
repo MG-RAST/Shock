@@ -1,7 +1,7 @@
 package node
 
 import (
-	"github.com/MG-RAST/Shock/vendor/gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // Node array type

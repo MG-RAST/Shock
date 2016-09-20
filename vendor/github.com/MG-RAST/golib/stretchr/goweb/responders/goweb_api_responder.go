@@ -1,10 +1,10 @@
 package responders
 
 import (
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/constants"
-	codecsservices "github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/services"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/goweb/context"
+	"github.com/MG-RAST/golib/stretchr/codecs"
+	"github.com/MG-RAST/golib/stretchr/codecs/constants"
+	codecsservices "github.com/MG-RAST/golib/stretchr/codecs/services"
+	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"net/http"
 )
 

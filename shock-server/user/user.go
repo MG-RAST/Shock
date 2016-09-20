@@ -3,9 +3,9 @@ package user
 import (
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/db"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/go-uuid/uuid"
-	mgo "github.com/MG-RAST/Shock/vendor/gopkg.in/mgo.v2"
-	"github.com/MG-RAST/Shock/vendor/gopkg.in/mgo.v2/bson"
+	"github.com/MG-RAST/golib/go-uuid/uuid"
+	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // Array of User

@@ -1,3 +1,20 @@
+# v0.9.17
+
+- docker file update
+  - use minimal alpine golang base
+- update vendor dir to support new 1.6 vendor format
+
+# v0.9.16
+
+- docker file updates
+  - ubuntu 16.04
+  - golang 1.6.2
+
+# v0.9.15
+
+- add 'distinct' option too node query to return list of distinct values. must be an indexed field in node.attributes
+- upload file via url (http, https, or ftp) using 'upload_url' parameter
+
 # v0.9.14
 
 - add versioning to indexes

@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"errors"
-	codecsservices "github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/services"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/goweb/context"
-	handlers_test "github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/goweb/handlers/test"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/testify/assert"
-	http_test "github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/testify/http"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/testify/mock"
+	codecsservices "github.com/MG-RAST/golib/stretchr/codecs/services"
+	"github.com/MG-RAST/golib/stretchr/goweb/context"
+	handlers_test "github.com/MG-RAST/golib/stretchr/goweb/handlers/test"
+	"github.com/MG-RAST/golib/stretchr/testify/assert"
+	http_test "github.com/MG-RAST/golib/stretchr/testify/http"
+	"github.com/MG-RAST/golib/stretchr/testify/mock"
 	"net/http"
 	"testing"
 )

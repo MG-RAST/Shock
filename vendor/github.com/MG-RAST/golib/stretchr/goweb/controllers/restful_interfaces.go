@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/goweb/context"
+	"github.com/MG-RAST/golib/stretchr/goweb/context"
 )
 
 // RestfulController represents an object that satisfies key aspects of a

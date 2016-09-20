@@ -1,11 +1,11 @@
 package goweb
 
 import (
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/services"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/goweb/context"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/goweb/handlers"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/testify/assert"
-	testifyhttp "github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/testify/http"
+	"github.com/MG-RAST/golib/stretchr/codecs/services"
+	"github.com/MG-RAST/golib/stretchr/goweb/context"
+	"github.com/MG-RAST/golib/stretchr/goweb/handlers"
+	"github.com/MG-RAST/golib/stretchr/testify/assert"
+	testifyhttp "github.com/MG-RAST/golib/stretchr/testify/http"
 	"testing"
 )
 

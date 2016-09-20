@@ -1,14 +1,14 @@
 package services
 
 import (
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/bson"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/constants"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/csv"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/json"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/jsonp"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/msgpack"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/codecs/xml"
+	"github.com/MG-RAST/golib/stretchr/codecs"
+	"github.com/MG-RAST/golib/stretchr/codecs/bson"
+	"github.com/MG-RAST/golib/stretchr/codecs/constants"
+	"github.com/MG-RAST/golib/stretchr/codecs/csv"
+	"github.com/MG-RAST/golib/stretchr/codecs/json"
+	"github.com/MG-RAST/golib/stretchr/codecs/jsonp"
+	"github.com/MG-RAST/golib/stretchr/codecs/msgpack"
+	"github.com/MG-RAST/golib/stretchr/codecs/xml"
 	"strings"
 )
 

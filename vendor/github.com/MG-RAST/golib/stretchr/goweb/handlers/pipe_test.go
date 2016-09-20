@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	handlers_test "github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/goweb/handlers/test"
-	context_test "github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/goweb/webcontext/test"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/testify/assert"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/testify/mock"
+	handlers_test "github.com/MG-RAST/golib/stretchr/goweb/handlers/test"
+	context_test "github.com/MG-RAST/golib/stretchr/goweb/webcontext/test"
+	"github.com/MG-RAST/golib/stretchr/testify/assert"
+	"github.com/MG-RAST/golib/stretchr/testify/mock"
 	"testing"
 )
 

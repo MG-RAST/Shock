@@ -4,7 +4,7 @@ package conf
 import (
 	"flag"
 	"fmt"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/goconfig/config"
+	"github.com/MG-RAST/golib/goconfig/config"
 	"os"
 	"strconv"
 	"strings"

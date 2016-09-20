@@ -3,7 +3,7 @@ package codecs
 import (
 	"errors"
 	"fmt"
-	"github.com/MG-RAST/Shock/vendor/github.com/MG-RAST/golib/stretchr/objx"
+	"github.com/MG-RAST/golib/stretchr/objx"
 	"reflect"
 )
 
