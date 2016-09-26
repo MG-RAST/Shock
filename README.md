@@ -31,11 +31,13 @@ The upside to using OPTION 1 is that this will insert the Shock version number i
 Alternativly your can use Docker to compile Shock. The Dockerfile in directory "docker" in this repository compiles Shock statically. 
 ```bash
 export TAG=`date +"%Y%m%d.%H%M"`
-docker build --force-rm --no-cache --rm -t shock:${TAG} .
+git clone --recursive https://github.com/MG-RAST/Shock.git
+cd Shock
+docker build --force-rm --no-cache --rm -t mgrast/shock:${TAG} .
 ```
 If you only want the binary you can create an container from the image an copy the binary to your host. This will copy the shock-server binary to your current working directory
 ```bash
-docker run --name shock shock:${TAG} ls
+docker create --name shock mgrast/shock:${TAG}
 docker cp shock:/go/bin/shock-server .
 docker rm shock
 ```
