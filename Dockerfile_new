@@ -1,0 +1,28 @@
+
+# docker build -t mgrast/shock -f Dockerfile_new .
+# docker run --rm --name test -ti mgrast/shock /bin/ash
+
+FROM golang:1.7.1-alpine
+
+
+ENV DIR=/go/src/github.com/MG-RAST/Shock
+
+WORKDIR /go/bin
+
+COPY . /go/src/github.com/MG-RAST/Shock
+
+#gcc libc-dev cyrus-sasl-dev
+#RUN apk update && apk add git make
+
+
+RUN mkdir /var/log/shock/
+
+# set version
+RUN cd ${DIR} && \
+  VERSION=$(cat VERSION) && \
+  sed -i "s/\[% VERSION %\]/${VERSION}/" ${DIR}/shock-server/main.go 
+
+
+RUN CGO_ENABLED=0 go install -a -installsuffix cgo -v ...
+
+CMD ["/go/bin/shock-server"]
