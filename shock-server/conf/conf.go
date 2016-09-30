@@ -2,7 +2,8 @@
 package conf
 
 import (
-	"flag"
+	//"flag"
+	"errors"
 	"fmt"
 	"github.com/MG-RAST/golib/goconfig/config"
 	"os"
@@ -18,175 +19,134 @@ type idxOpts struct {
 
 var (
 	// Admin
-	ADMIN_EMAIL = ""
-	ADMIN_USERS = ""
+	ADMIN_EMAIL string
+	ADMIN_USERS string
 	AdminUsers  []string
 
 	// Permissions for anonymous user
-	ANON_READ   = true
-	ANON_WRITE  = false
-	ANON_DELETE = false
+	ANON_READ   bool
+	ANON_WRITE  bool
+	ANON_DELETE bool
 
 	// Address
-	API_IP   = ""
-	API_PORT = ""
-	API_URL  = "" // for external address only
+	API_IP   string
+	API_PORT int
+	API_URL  string // for external address only
 
 	// Auth
-	AUTH_BASIC              = false
-	AUTH_GLOBUS_TOKEN_URL   = ""
-	AUTH_GLOBUS_PROFILE_URL = ""
-	AUTH_MGRAST_OAUTH_URL   = ""
+	AUTH_BASIC              bool
+	AUTH_GLOBUS_TOKEN_URL   string
+	AUTH_GLOBUS_PROFILE_URL string
+	AUTH_MGRAST_OAUTH_URL   string
 
 	// Default Chunksize for size virtual index
 	CHUNK_SIZE int64 = 1048576
 
 	// Config File
-	CONFIG_FILE = ""
+	CONFIG_FILE string
+	LOG_OUTPUT  string
 
 	// Runtime
-	EXPIRE_WAIT = 60 // wait time for reaper in minutes
-	GOMAXPROCS  = ""
+	EXPIRE_WAIT int // wait time for reaper in minutes
+	GOMAXPROCS  string
 
 	// Logs
-	LOG_PERF   = false // Indicates whether performance logs should be stored
-	LOG_ROTATE = true  // Indicates whether logs should be rotated daily
+	LOG_PERF   bool // Indicates whether performance logs should be stored
+	LOG_ROTATE bool // Indicates whether logs should be rotated daily
 
 	// Mongo information
-	MONGODB_HOSTS             = ""
-	MONGODB_DATABASE          = ""
-	MONGODB_USER              = ""
-	MONGODB_PASSWORD          = ""
-	MONGODB_ATTRIBUTE_INDEXES = ""
+	MONGODB_HOSTS             string
+	MONGODB_DATABASE          string
+	MONGODB_USER              string
+	MONGODB_PASSWORD          string
+	MONGODB_ATTRIBUTE_INDEXES string
 
 	// Node Indices
 	NODE_IDXS map[string]idxOpts = nil
 
 	// Paths
-	PATH_SITE    = ""
-	PATH_DATA    = ""
-	PATH_LOGS    = ""
-	PATH_LOCAL   = ""
-	PATH_PIDFILE = ""
+	PATH_SITE    string
+	PATH_DATA    string
+	PATH_LOGS    string
+	PATH_LOCAL   string
+	PATH_PIDFILE string
 
 	// Reload
-	RELOAD = ""
+	RELOAD string
 
 	// SSL
-	SSL      = false
-	SSL_KEY  = ""
-	SSL_CERT = ""
+	SSL      bool
+	SSL_KEY  string
+	SSL_CERT string
 
 	// Versions
 	VERSIONS = make(map[string]int)
+
+	PRINT_HELP   bool // full usage
+	SHOW_HELP    bool // simple usage
+	SHOW_VERSION bool
+
+	// internal config control
+	FAKE_VAR = false
 )
 
 // Initialize is an explicit init. Enables outside use
 // of shock-server packages. Parses config and populates
 // the conf variables.
-func Initialize() {
-	gopath := os.Getenv("GOPATH")
-	flag.StringVar(&CONFIG_FILE, "conf", gopath+"/src/github.com/MG-RAST/Shock/shock-server.conf.template", "path to config file")
-	flag.StringVar(&RELOAD, "reload", "", "path or url to shock data. WARNING this will drop all current data.")
-	flag.Parse()
-	c, err := config.ReadDefault(CONFIG_FILE)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: error reading conf file: %v\n", err)
-		os.Exit(1)
-	}
+func Initialize() (err error) {
 
-	// Admin
-	ADMIN_EMAIL, _ = c.String("Admin", "email")
-	ADMIN_USERS, _ = c.String("Admin", "users")
-	if ADMIN_USERS != "" {
-		for _, name := range strings.Split(ADMIN_USERS, ",") {
-			AdminUsers = append(AdminUsers, strings.TrimSpace(name))
-		}
-	}
-
-	// Access-Control
-	ANON_READ, _ = c.Bool("Anonymous", "read")
-	ANON_WRITE, _ = c.Bool("Anonymous", "write")
-	ANON_DELETE, _ = c.Bool("Anonymous", "delete")
-
-	// Address
-	API_IP, _ = c.String("Address", "api-ip")
-	API_PORT, _ = c.String("Address", "api-port")
-
-	// URLs
-	API_URL, _ = c.String("External", "api-url")
-
-	// Auth
-	AUTH_BASIC, _ = c.Bool("Auth", "basic")
-	AUTH_GLOBUS_TOKEN_URL, _ = c.String("Auth", "globus_token_url")
-	AUTH_GLOBUS_PROFILE_URL, _ = c.String("Auth", "globus_profile_url")
-	AUTH_MGRAST_OAUTH_URL, _ = c.String("Auth", "mgrast_oauth_url")
-
-	// Runtime
-	EXPIRE_WAIT, _ = c.Int("Runtime", "expire_wait")
-	GOMAXPROCS, _ = c.String("Runtime", "GOMAXPROCS")
-
-	LOG_PERF, _ = c.Bool("Log", "perf_log")
-	LOG_ROTATE, _ = c.Bool("Log", "rotate")
-
-	// Mongodb
-	MONGODB_ATTRIBUTE_INDEXES, _ = c.String("Mongodb", "attribute_indexes")
-	if MONGODB_DATABASE, err = c.String("Mongodb", "database"); err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Mongodb database must be set in config file.")
-		os.Exit(1)
-	}
-	MONGODB_HOSTS, _ = c.String("Mongodb", "hosts")
-	MONGODB_PASSWORD, _ = c.String("Mongodb", "password")
-	MONGODB_USER, _ = c.String("Mongodb", "user")
-
-	// parse Node-Indices
-	NODE_IDXS = map[string]idxOpts{}
-	nodeIdx, _ := c.Options("Node-Indices")
-	for _, opt := range nodeIdx {
-		val, _ := c.String("Node-Indices", opt)
-		opts := idxOpts{}
-		for _, parts := range strings.Split(val, ",") {
-			p := strings.Split(parts, ":")
-			if p[0] == "unique" {
-				if p[1] == "true" {
-					opts.unique = true
-				} else {
-					opts.unique = false
-				}
-			} else if p[0] == "dropDups" {
-				if p[1] == "true" {
-					opts.dropDups = true
-				} else {
-					opts.dropDups = false
-				}
-			} else if p[0] == "sparse" {
-				if p[1] == "true" {
-					opts.sparse = true
-				} else {
-					opts.sparse = false
-				}
+	for i, elem := range os.Args {
+		if strings.HasPrefix(elem, "-conf") || strings.HasPrefix(elem, "--conf") {
+			parts := strings.SplitN(elem, "=", 2)
+			if len(parts) == 2 {
+				CONFIG_FILE = parts[1]
+			} else if i+1 < len(os.Args) {
+				CONFIG_FILE = os.Args[i+1]
+			} else {
+				err = errors.New("ERROR: parsing command options, missing conf file")
+				return
 			}
 		}
-		NODE_IDXS[opt] = opts
 	}
 
-	// Paths
-	PATH_SITE, _ = c.String("Paths", "site")
-	PATH_DATA, _ = c.String("Paths", "data")
-	PATH_LOGS, _ = c.String("Paths", "logs")
-	PATH_LOCAL, _ = c.String("Paths", "local_paths")
-	PATH_PIDFILE, _ = c.String("Paths", "pidfile")
-
-	// SSL
-	SSL, _ = c.Bool("SSL", "enable")
-	if SSL {
-		SSL_KEY, _ = c.String("SSL", "key")
-		SSL_CERT, _ = c.String("SSL", "cert")
+	var c *config.Config = nil
+	if CONFIG_FILE != "" {
+		c, err = config.ReadDefault(CONFIG_FILE)
+		if err != nil {
+			err = errors.New("ERROR: error reading conf file: " + err.Error())
+			return
+		}
+		fmt.Printf("read %s\n", CONFIG_FILE)
 	}
 
-	VERSIONS["ACL"] = 2
-	VERSIONS["Auth"] = 1
-	VERSIONS["Node"] = 4
+	c_store, err := getConfiguration(c) // from config file and command line arguments
+	if err != nil {
+		err = fmt.Errorf("ERROR: error reading conf file: %v\n", err)
+		return
+	}
+
+	// ####### at this point configuration variables are set ########
+
+	if FAKE_VAR == false {
+		err = fmt.Errorf("ERROR: config was not parsed\n")
+		return
+	}
+	if PRINT_HELP || SHOW_HELP {
+		c_store.PrintHelp()
+		os.Exit(0)
+	}
+
+	//flag.StringVar(&CONFIG_FILE, "conf", gopath+"/src/github.com/MG-RAST/Shock/shock-server.conf.template", "path to config file")
+	// flag.StringVar(&RELOAD, "reload", "", "path or url to shock data. WARNING this will drop all current data.")  TODO
+	//flag.Parse()
+
+	//fmt.Printf("Reading config file: %s\n", CONFIG_FILE)
+	//c, err := config.ReadDefault(CONFIG_FILE)
+	///if err != nil {
+	//	fmt.Fprintf(os.Stderr, "ERROR: error reading conf file: %v\n", err)
+	//	os.Exit(1)
+	//}
+	return
 }
 
 // Bool is a convenience wrapper around strconv.ParseBool
@@ -225,4 +185,147 @@ func Print() {
 	} else {
 		fmt.Printf("##### Log rotation disabled #####\n\n")
 	}
+}
+
+func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
+	c_store = NewCS(c)
+
+	// Admin
+	//ADMIN_EMAIL, _ = c.String("Admin", "email")
+	c_store.AddString(&ADMIN_EMAIL, "", "Admin", "email", "", "")
+	//ADMIN_USERS, _ = c.String("Admin", "users")
+	c_store.AddString(&ADMIN_USERS, "", "Admin", "users", "", "")
+	if ADMIN_USERS != "" {
+		for _, name := range strings.Split(ADMIN_USERS, ",") {
+			AdminUsers = append(AdminUsers, strings.TrimSpace(name))
+		}
+	}
+
+	// Access-Control
+	//ANON_READ, _ = c.Bool("Anonymous", "read")
+	//ANON_WRITE, _ = c.Bool("Anonymous", "write")
+	//ANON_DELETE, _ = c.Bool("Anonymous", "delete")
+	c_store.AddBool(&ANON_READ, true, "Anonymous", "read", "", "")
+	c_store.AddBool(&ANON_WRITE, false, "Anonymous", "write", "", "")
+	c_store.AddBool(&ANON_DELETE, false, "Anonymous", "delete", "", "")
+
+	// Address
+	//API_IP, _ = c.String("Address", "api-ip")
+	//API_PORT, _ = c.String("Address", "api-port")
+	c_store.AddString(&API_IP, "", "Address", "api-ip", "", "")
+	c_store.AddInt(&API_PORT, 7445, "Address", "api-port", "", "")
+
+	// URLs
+	//API_URL, _ = c.String("External", "api-url")
+	c_store.AddString(&API_URL, "", "External", "api-url", "", "")
+
+	// Auth
+	//AUTH_BASIC, _ = c.Bool("Auth", "basic")
+	//AUTH_GLOBUS_TOKEN_URL, _ = c.String("Auth", "globus_token_url")
+	//AUTH_GLOBUS_PROFILE_URL, _ = c.String("Auth", "globus_profile_url")
+	//AUTH_MGRAST_OAUTH_URL, _ = c.String("Auth", "mgrast_oauth_url")
+
+	c_store.AddBool(&AUTH_BASIC, false, "Auth", "basic", "", "")
+	c_store.AddString(&AUTH_GLOBUS_TOKEN_URL, "", "Auth", "globus_token_url", "", "")
+	c_store.AddString(&AUTH_GLOBUS_PROFILE_URL, "", "Auth", "globus_profile_url", "", "")
+	c_store.AddString(&AUTH_MGRAST_OAUTH_URL, "", "Auth", "mgrast_oauth_url", "", "")
+
+	// Runtime
+	//EXPIRE_WAIT, _ = c.Int("Runtime", "expire_wait")
+	//GOMAXPROCS, _ = c.String("Runtime", "GOMAXPROCS")
+	c_store.AddInt(&EXPIRE_WAIT, 60, "Runtime", "expire_wait", "", "")
+	c_store.AddString(&GOMAXPROCS, "", "Runtime", "GOMAXPROCS", "", "")
+
+	//LOG_PERF, _ = c.Bool("Log", "perf_log")
+	//LOG_ROTATE, _ = c.Bool("Log", "rotate")
+	c_store.AddBool(&LOG_PERF, false, "Log", "perf_log", "", "")
+	c_store.AddBool(&LOG_ROTATE, true, "Log", "rotate", "", "")
+
+	// Mongodb
+	//MONGODB_ATTRIBUTE_INDEXES, _ = c.String("Mongodb", "attribute_indexes")
+	c_store.AddString(&MONGODB_ATTRIBUTE_INDEXES, "", "Mongodb", "attribute_indexes", "", "")
+	if MONGODB_DATABASE, err = c.String("Mongodb", "database"); err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: Mongodb database must be set in config file.")
+		os.Exit(1)
+	}
+
+	//MONGODB_HOSTS, _ = c.String("Mongodb", "hosts")
+	//MONGODB_PASSWORD, _ = c.String("Mongodb", "password")
+	//MONGODB_USER, _ = c.String("Mongodb", "user")
+	c_store.AddString(&MONGODB_HOSTS, "", "Mongodb", "hosts", "", "")
+	c_store.AddString(&MONGODB_PASSWORD, "", "Mongodb", "password", "", "")
+	c_store.AddString(&MONGODB_USER, "", "Mongodb", "user", "", "")
+
+	// parse Node-Indices
+	NODE_IDXS = map[string]idxOpts{}
+	nodeIdx, _ := c.Options("Node-Indices")
+	for _, opt := range nodeIdx {
+		val, _ := c.String("Node-Indices", opt)
+		opts := idxOpts{}
+		for _, parts := range strings.Split(val, ",") {
+			p := strings.Split(parts, ":")
+			if p[0] == "unique" {
+				if p[1] == "true" {
+					opts.unique = true
+				} else {
+					opts.unique = false
+				}
+			} else if p[0] == "dropDups" {
+				if p[1] == "true" {
+					opts.dropDups = true
+				} else {
+					opts.dropDups = false
+				}
+			} else if p[0] == "sparse" {
+				if p[1] == "true" {
+					opts.sparse = true
+				} else {
+					opts.sparse = false
+				}
+			}
+		}
+		NODE_IDXS[opt] = opts
+	}
+
+	// Paths
+	//PATH_SITE, _ = c.String("Paths", "site")
+	//PATH_DATA, _ = c.String("Paths", "data")
+	//PATH_LOGS, _ = c.String("Paths", "logs")
+	//PATH_LOCAL, _ = c.String("Paths", "local_paths")
+	//PATH_PIDFILE, _ = c.String("Paths", "pidfile")
+
+	c_store.AddString(&PATH_SITE, "", "Paths", "site", "", "")
+	c_store.AddString(&PATH_DATA, "", "Paths", "data", "", "")
+	c_store.AddString(&PATH_LOGS, "", "Paths", "logs", "", "")
+	c_store.AddString(&PATH_LOCAL, "", "Paths", "local_paths", "", "")
+	c_store.AddString(&PATH_PIDFILE, "", "Paths", "pidfile", "", "")
+
+	// SSL
+	//SSL, _ = c.Bool("SSL", "enable")
+	c_store.AddBool(&SSL, false, "SSL", "enable", "", "")
+	if SSL {
+		//SSL_KEY, _ = c.String("SSL", "key")
+		//SSL_CERT, _ = c.String("SSL", "cert")
+		c_store.AddString(&SSL_KEY, "", "SSL", "key", "", "")
+		c_store.AddString(&SSL_CERT, "", "SSL", "cert", "", "")
+	}
+
+	//Other
+	c_store.AddString(&RELOAD, "", "Other", "reload", "path or url to shock data. WARNING this will drop all current data.", "")
+	c_store.AddString(&LOG_OUTPUT, "both", "Other", "logoutput", "", "")
+	gopath := os.Getenv("GOPATH")
+	c_store.AddString(&CONFIG_FILE, gopath+"/src/github.com/MG-RAST/Shock/shock-server.conf.template", "Other", "conf", "path to config file", "")
+	c_store.AddBool(&SHOW_VERSION, false, "Other", "version", "show version", "")
+	c_store.AddBool(&PRINT_HELP, false, "Other", "fullhelp", "show detailed usage without \"--\"-prefixes", "")
+	c_store.AddBool(&SHOW_HELP, false, "Other", "help", "show usage", "")
+
+	VERSIONS["ACL"] = 2
+	VERSIONS["Auth"] = 1
+	VERSIONS["Node"] = 4
+
+	c_store.Parse()
+
+	fmt.Printf("API_PORT: %d\n", API_PORT)
+
+	return
 }

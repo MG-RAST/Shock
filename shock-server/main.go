@@ -176,32 +176,47 @@ func mapRoutes() {
 }
 
 func main() {
-	// init(s)
-	conf.Initialize()
+	var err error
+
+	// init config
+	err = conf.Initialize()
+	if err != nil {
+		fmt.Errorf("Err@db.Initialize: %v\n", err)
+	}
+
+	// init logging system
 	logger.Initialize()
-	if err := db.Initialize(); err != nil {
+	logger.Info("access", "Starting...")
+
+	// init database
+	err = db.Initialize()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Err@db.Initialize: %v\n", err)
 		logger.Error("Err@db.Initialize: " + err.Error())
 		os.Exit(1)
 	}
+
 	user.Initialize()
 	node.Initialize()
 	preauth.Initialize()
 	auth.Initialize()
 	node.InitReaper()
-	if err := versions.Initialize(); err != nil {
+	err = versions.Initialize()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Err@versions.Initialize: %v\n", err)
 		logger.Error("Err@versions.Initialize: " + err.Error())
 		os.Exit(1)
 	}
-	if err := versions.RunVersionUpdates(); err != nil {
+	err = versions.RunVersionUpdates()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Err@versions.RunVersionUpdates: %v\n", err)
 		logger.Error("Err@versions.RunVersionUpdates: " + err.Error())
 		os.Exit(1)
 	}
 	// After version updates have succeeded without error, we can push the configured version numbers into the mongo db
 	// Note: configured version numbers are configured in conf.go but are NOT user configurable by design
-	if err := versions.PushVersionsToDatabase(); err != nil {
+	err = versions.PushVersionsToDatabase()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Err@versions.PushVersionsToDatabase: %v\n", err)
 		logger.Error("Err@versions.PushVersionsToDatabase: " + err.Error())
 		os.Exit(1)
@@ -287,7 +302,7 @@ func main() {
 		fmt.Printf("pid: %d saved to file: %s\n\n", pid, conf.PATH_PIDFILE)
 	}
 
-	Address := conf.API_IP + ":" + conf.API_PORT
+	Address := fmt.Sprintf("%s:%d", conf.API_IP, conf.API_PORT)
 	mapRoutes()
 
 	s := &http.Server{
