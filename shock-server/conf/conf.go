@@ -117,6 +117,9 @@ func Initialize() (err error) {
 			return
 		}
 		fmt.Printf("read %s\n", CONFIG_FILE)
+	} else {
+		fmt.Printf("No config file specified.\n")
+		c = config.NewDefault()
 	}
 
 	c_store, err := getConfiguration(c) // from config file and command line arguments
@@ -176,7 +179,7 @@ func Print() {
 		fmt.Printf("##### SSL disabled #####\n\n")
 	}
 	fmt.Printf("##### Mongodb #####\nhost(s):\t%s\ndatabase:\t%s\n\n", MONGODB_HOSTS, MONGODB_DATABASE)
-	fmt.Printf("##### Address #####\nip:\t%s\nport:\t%s\n\n", API_IP, API_PORT)
+	fmt.Printf("##### Address #####\nip:\t%s\nport:\t%d\n\n", API_IP, API_PORT)
 	if LOG_PERF {
 		fmt.Printf("##### PerfLog enabled #####\n\n")
 	}
@@ -206,8 +209,8 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	//ANON_WRITE, _ = c.Bool("Anonymous", "write")
 	//ANON_DELETE, _ = c.Bool("Anonymous", "delete")
 	c_store.AddBool(&ANON_READ, true, "Anonymous", "read", "", "")
-	c_store.AddBool(&ANON_WRITE, false, "Anonymous", "write", "", "")
-	c_store.AddBool(&ANON_DELETE, false, "Anonymous", "delete", "", "")
+	c_store.AddBool(&ANON_WRITE, true, "Anonymous", "write", "", "")
+	c_store.AddBool(&ANON_DELETE, true, "Anonymous", "delete", "", "")
 
 	// Address
 	//API_IP, _ = c.String("Address", "api-ip")
@@ -249,7 +252,7 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	//MONGODB_HOSTS, _ = c.String("Mongodb", "hosts")
 	//MONGODB_PASSWORD, _ = c.String("Mongodb", "password")
 	//MONGODB_USER, _ = c.String("Mongodb", "user")
-	c_store.AddString(&MONGODB_HOSTS, "localhost", "Mongodb", "hosts", "", "")
+	c_store.AddString(&MONGODB_HOSTS, "mongo", "Mongodb", "hosts", "", "")
 	c_store.AddString(&MONGODB_PASSWORD, "", "Mongodb", "password", "", "")
 	c_store.AddString(&MONGODB_USER, "", "Mongodb", "user", "", "")
 
