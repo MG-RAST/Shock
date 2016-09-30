@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	l4g "github.com/MG-RAST/golib/log4go"
+
 	"os"
 )
 
@@ -33,10 +34,19 @@ func Info(log string, message string) {
 	Log.Info(log, message)
 	return
 }
+func Infof(log string, format string, a ...interface{}) {
+	Log.Info(log, fmt.Sprintf(format, a...))
+	return
+}
 
 // Error is a short cut function that uses package initialized logger and error log
 func Error(message string) {
 	Log.Error(message)
+	return
+}
+
+func Errorf(format string, a ...interface{}) {
+	Log.Error(fmt.Sprintf(format, a...))
 	return
 }
 
@@ -50,40 +60,60 @@ func Perf(message string) {
 // performs the log writing as messages queue.
 func New() *Logger {
 	l := &Logger{queue: make(chan m, 1024), logs: map[string]l4g.Logger{}}
+
+	fmt.Printf("conf.LOG_OUTPUT: %s\n", conf.LOG_OUTPUT)
+
 	l.logs["access"] = make(l4g.Logger)
-	accessf := l4g.NewFileLogWriter(conf.PATH_LOGS+"/access.log", false)
-	if accessf == nil {
-		fmt.Fprintln(os.Stderr, "ERROR: error creating access log file")
-		os.Exit(1)
+	if (conf.LOG_OUTPUT == "file") || (conf.LOG_OUTPUT == "both") {
+		fmt.Printf("conf.PATH_LOGS: %s\n", conf.PATH_LOGS)
+		accessf := l4g.NewFileLogWriter(conf.PATH_LOGS+"/access.log", false)
+		if accessf == nil {
+			fmt.Fprintln(os.Stderr, "ERROR: error creating access log file")
+			os.Exit(1)
+		}
+		if conf.LOG_ROTATE {
+			l.logs["access"].AddFilter("access", l4g.FINEST, accessf.SetFormat("[%D %T] %M").SetRotate(true).SetRotateDaily(true))
+		} else {
+			l.logs["access"].AddFilter("access", l4g.FINEST, accessf.SetFormat("[%D %T] %M"))
+		}
 	}
-	if conf.LOG_ROTATE {
-		l.logs["access"].AddFilter("access", l4g.FINEST, accessf.SetFormat("[%D %T] %M").SetRotate(true).SetRotateDaily(true))
-	} else {
-		l.logs["access"].AddFilter("access", l4g.FINEST, accessf.SetFormat("[%D %T] %M"))
+	if (conf.LOG_OUTPUT == "console") || (conf.LOG_OUTPUT == "both") {
+		l.logs["access"].AddFilter("stdout", l4g.FINEST, l4g.NewConsoleLogWriter())
 	}
 
 	l.logs["error"] = make(l4g.Logger)
-	errorf := l4g.NewFileLogWriter(conf.PATH_LOGS+"/error.log", false)
-	if errorf == nil {
-		fmt.Fprintln(os.Stderr, "ERROR: error creating error log file")
-		os.Exit(1)
+	if (conf.LOG_OUTPUT == "file") || (conf.LOG_OUTPUT == "both") {
+
+		errorf := l4g.NewFileLogWriter(conf.PATH_LOGS+"/error.log", false)
+		if errorf == nil {
+			fmt.Fprintln(os.Stderr, "ERROR: error creating error log file")
+			os.Exit(1)
+		}
+		if conf.LOG_ROTATE {
+			l.logs["error"].AddFilter("error", l4g.FINEST, errorf.SetFormat("[%D %T] [%L] %M").SetRotate(true).SetRotateDaily(true))
+		} else {
+			l.logs["error"].AddFilter("error", l4g.FINEST, errorf.SetFormat("[%D %T] [%L] %M"))
+		}
 	}
-	if conf.LOG_ROTATE {
-		l.logs["error"].AddFilter("error", l4g.FINEST, errorf.SetFormat("[%D %T] [%L] %M").SetRotate(true).SetRotateDaily(true))
-	} else {
-		l.logs["error"].AddFilter("error", l4g.FINEST, errorf.SetFormat("[%D %T] [%L] %M"))
+	if (conf.LOG_OUTPUT == "console") || (conf.LOG_OUTPUT == "both") {
+		l.logs["error"].AddFilter("stderr", l4g.FINEST, l4g.NewConsoleLogWriter())
 	}
 
 	l.logs["perf"] = make(l4g.Logger)
-	perff := l4g.NewFileLogWriter(conf.PATH_LOGS+"/perf.log", false)
-	if perff == nil {
-		fmt.Fprintln(os.Stderr, "ERROR: error creating perf log file")
-		os.Exit(1)
+	if (conf.LOG_OUTPUT == "file") || (conf.LOG_OUTPUT == "both") {
+		perff := l4g.NewFileLogWriter(conf.PATH_LOGS+"/perf.log", false)
+		if perff == nil {
+			fmt.Fprintln(os.Stderr, "ERROR: error creating perf log file")
+			os.Exit(1)
+		}
+		if conf.LOG_ROTATE {
+			l.logs["perf"].AddFilter("perf", l4g.FINEST, perff.SetFormat("[%D %T] [%L] %M").SetRotate(true).SetRotateDaily(true))
+		} else {
+			l.logs["perf"].AddFilter("perf", l4g.FINEST, perff.SetFormat("[%D %T] [%L] %M"))
+		}
 	}
-	if conf.LOG_ROTATE {
-		l.logs["perf"].AddFilter("perf", l4g.FINEST, perff.SetFormat("[%D %T] [%L] %M").SetRotate(true).SetRotateDaily(true))
-	} else {
-		l.logs["perf"].AddFilter("perf", l4g.FINEST, perff.SetFormat("[%D %T] [%L] %M"))
+	if (conf.LOG_OUTPUT == "console") || (conf.LOG_OUTPUT == "both") {
+		l.logs["perf"].AddFilter("stdout", l4g.FINEST, l4g.NewConsoleLogWriter())
 	}
 
 	go func() {
