@@ -34,7 +34,7 @@ func (nr *NodeReaper) Handle() {
 		nodes.GetAll(query)
 		// delete expired nodes
 		for _, n := range nodes {
-			logger.Info("access", "Deleting expired node: "+n.Id)
+			logger.Infof("Deleting expired node: %s", n.Id)
 			if err := n.Delete(); err != nil {
 				err_msg := "err:@node_delete: " + err.Error()
 				logger.Error(err_msg)

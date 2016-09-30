@@ -66,7 +66,7 @@ func mapRoutes() {
 		if l, has := req.Header["Content-Length"]; has {
 			suffix += " Content-Length: " + l[0]
 		}
-		logger.Info("access", fmt.Sprintf("%s REQ RECEIVED \"%s %s%s\"", host, ctx.MethodString(), req.RequestURI, suffix))
+		logger.Infof("%s REQ RECEIVED \"%s %s%s\"", host, ctx.MethodString(), req.RequestURI, suffix)
 		return nil
 	})
 
@@ -83,7 +83,7 @@ func mapRoutes() {
 		if l, has := req.Header["Content-Length"]; has {
 			suffix += " Content-Length: " + l[0]
 		}
-		logger.Info("access", fmt.Sprintf("RESPONDED TO %s \"%s %s%s\"", host, ctx.MethodString(), req.RequestURI, suffix))
+		logger.Infof("RESPONDED TO %s \"%s %s%s\"", host, ctx.MethodString(), req.RequestURI, suffix)
 		return nil
 	})
 
@@ -186,7 +186,19 @@ func main() {
 
 	// init logging system
 	logger.Initialize()
-	logger.Info("access", "Starting...")
+	logger.Info("Starting...")
+
+	if conf.ANON_WRITE {
+		warnstr := "Warning: ananoymous write is activated, only use for development !!!!"
+		logger.Info(warnstr)
+		fmt.Errorf("%s\n", warnstr)
+	}
+
+	if conf.ANON_DELETE {
+		warnstr := "Warning: ananoymous delete is activated, only use for development !!!!"
+		logger.Info(warnstr)
+		fmt.Errorf("%s\n", warnstr)
+	}
 
 	// init database
 	err = db.Initialize()
@@ -231,13 +243,14 @@ func main() {
 
 	// check if necessary directories exist or created
 	for _, path := range []string{conf.PATH_SITE, conf.PATH_DATA, conf.PATH_LOGS, conf.PATH_DATA + "/temp"} {
-		if _, err := os.Stat(path); err != nil && os.IsNotExist(err) {
-			if err := os.Mkdir(path, 0777); err != nil {
-				fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
-				logger.Error("ERROR: " + err.Error())
-				os.Exit(1)
-			}
+
+		err = os.MkdirAll(path, 0777)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
+			logger.Errorf("error createing directory %s: %v", err)
+			os.Exit(1)
 		}
+
 	}
 
 	// reload
