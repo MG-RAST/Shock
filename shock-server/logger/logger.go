@@ -30,12 +30,12 @@ func Initialize() {
 }
 
 // Info is a short cut function that uses package initialized logger
-func Info(log string, message string) {
-	Log.Info(log, message)
+func Info(message string) {
+	Log.Info(message)
 	return
 }
-func Infof(log string, format string, a ...interface{}) {
-	Log.Info(log, fmt.Sprintf(format, a...))
+func Infof(format string, a ...interface{}) {
+	Log.Info(fmt.Sprintf(format, a...))
 	return
 }
 
@@ -148,8 +148,8 @@ func (l *Logger) Warning(log string, message string) {
 	return
 }
 
-func (l *Logger) Info(log string, message string) {
-	l.Log(log, l4g.INFO, message)
+func (l *Logger) Info(message string) {
+	l.Log("access", l4g.INFO, message)
 	return
 }
 
