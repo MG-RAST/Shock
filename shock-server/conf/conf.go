@@ -212,12 +212,12 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	// Address
 	//API_IP, _ = c.String("Address", "api-ip")
 	//API_PORT, _ = c.String("Address", "api-port")
-	c_store.AddString(&API_IP, "", "Address", "api-ip", "", "")
+	c_store.AddString(&API_IP, "0.0.0.0", "Address", "api-ip", "", "")
 	c_store.AddInt(&API_PORT, 7445, "Address", "api-port", "", "")
 
 	// URLs
 	//API_URL, _ = c.String("External", "api-url")
-	c_store.AddString(&API_URL, "", "External", "api-url", "", "")
+	c_store.AddString(&API_URL, "http://localhost", "External", "api-url", "", "")
 
 	// Auth
 	//AUTH_BASIC, _ = c.Bool("Auth", "basic")
@@ -244,15 +244,12 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	// Mongodb
 	//MONGODB_ATTRIBUTE_INDEXES, _ = c.String("Mongodb", "attribute_indexes")
 	c_store.AddString(&MONGODB_ATTRIBUTE_INDEXES, "", "Mongodb", "attribute_indexes", "", "")
-	if MONGODB_DATABASE, err = c.String("Mongodb", "database"); err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: Mongodb database must be set in config file.")
-		os.Exit(1)
-	}
+	c_store.AddString(&MONGODB_DATABASE, "ShockDB", "Mongodb", "database", "", "")
 
 	//MONGODB_HOSTS, _ = c.String("Mongodb", "hosts")
 	//MONGODB_PASSWORD, _ = c.String("Mongodb", "password")
 	//MONGODB_USER, _ = c.String("Mongodb", "user")
-	c_store.AddString(&MONGODB_HOSTS, "", "Mongodb", "hosts", "", "")
+	c_store.AddString(&MONGODB_HOSTS, "localhost", "Mongodb", "hosts", "", "")
 	c_store.AddString(&MONGODB_PASSWORD, "", "Mongodb", "password", "", "")
 	c_store.AddString(&MONGODB_USER, "", "Mongodb", "user", "", "")
 
@@ -294,9 +291,9 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	//PATH_LOCAL, _ = c.String("Paths", "local_paths")
 	//PATH_PIDFILE, _ = c.String("Paths", "pidfile")
 
-	c_store.AddString(&PATH_SITE, "", "Paths", "site", "", "")
-	c_store.AddString(&PATH_DATA, "", "Paths", "data", "", "")
-	c_store.AddString(&PATH_LOGS, "", "Paths", "logs", "", "")
+	c_store.AddString(&PATH_SITE, "/usr/local/shock/site", "Paths", "site", "", "")
+	c_store.AddString(&PATH_DATA, "/usr/local/shock", "Paths", "data", "", "")
+	c_store.AddString(&PATH_LOGS, "/var/log/shock", "Paths", "logs", "", "")
 	c_store.AddString(&PATH_LOCAL, "", "Paths", "local_paths", "", "")
 	c_store.AddString(&PATH_PIDFILE, "", "Paths", "pidfile", "", "")
 
