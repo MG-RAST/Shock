@@ -139,16 +139,6 @@ func Initialize() (err error) {
 		os.Exit(0)
 	}
 
-	//flag.StringVar(&CONFIG_FILE, "conf", gopath+"/src/github.com/MG-RAST/Shock/shock-server.conf.template", "path to config file")
-	// flag.StringVar(&RELOAD, "reload", "", "path or url to shock data. WARNING this will drop all current data.")  TODO
-	//flag.Parse()
-
-	//fmt.Printf("Reading config file: %s\n", CONFIG_FILE)
-	//c, err := config.ReadDefault(CONFIG_FILE)
-	///if err != nil {
-	//	fmt.Fprintf(os.Stderr, "ERROR: error reading conf file: %v\n", err)
-	//	os.Exit(1)
-	//}
 	return
 }
 
@@ -205,47 +195,31 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	}
 
 	// Access-Control
-	//ANON_READ, _ = c.Bool("Anonymous", "read")
-	//ANON_WRITE, _ = c.Bool("Anonymous", "write")
-	//ANON_DELETE, _ = c.Bool("Anonymous", "delete")
 	c_store.AddBool(&ANON_READ, true, "Anonymous", "read", "", "")
 	c_store.AddBool(&ANON_WRITE, true, "Anonymous", "write", "", "")
 	c_store.AddBool(&ANON_DELETE, true, "Anonymous", "delete", "", "")
 
 	// Address
-	//API_IP, _ = c.String("Address", "api-ip")
-	//API_PORT, _ = c.String("Address", "api-port")
 	c_store.AddString(&API_IP, "0.0.0.0", "Address", "api-ip", "", "")
 	c_store.AddInt(&API_PORT, 7445, "Address", "api-port", "", "")
 
 	// URLs
-	//API_URL, _ = c.String("External", "api-url")
 	c_store.AddString(&API_URL, "http://localhost", "External", "api-url", "", "")
 
 	// Auth
-	//AUTH_BASIC, _ = c.Bool("Auth", "basic")
-	//AUTH_GLOBUS_TOKEN_URL, _ = c.String("Auth", "globus_token_url")
-	//AUTH_GLOBUS_PROFILE_URL, _ = c.String("Auth", "globus_profile_url")
-	//AUTH_MGRAST_OAUTH_URL, _ = c.String("Auth", "mgrast_oauth_url")
-
 	c_store.AddBool(&AUTH_BASIC, false, "Auth", "basic", "", "")
 	c_store.AddString(&AUTH_GLOBUS_TOKEN_URL, "", "Auth", "globus_token_url", "", "")
 	c_store.AddString(&AUTH_GLOBUS_PROFILE_URL, "", "Auth", "globus_profile_url", "", "")
 	c_store.AddString(&AUTH_MGRAST_OAUTH_URL, "", "Auth", "mgrast_oauth_url", "", "")
 
 	// Runtime
-	//EXPIRE_WAIT, _ = c.Int("Runtime", "expire_wait")
-	//GOMAXPROCS, _ = c.String("Runtime", "GOMAXPROCS")
 	c_store.AddInt(&EXPIRE_WAIT, 60, "Runtime", "expire_wait", "", "")
 	c_store.AddString(&GOMAXPROCS, "", "Runtime", "GOMAXPROCS", "", "")
 
-	//LOG_PERF, _ = c.Bool("Log", "perf_log")
-	//LOG_ROTATE, _ = c.Bool("Log", "rotate")
 	c_store.AddBool(&LOG_PERF, false, "Log", "perf_log", "", "")
 	c_store.AddBool(&LOG_ROTATE, true, "Log", "rotate", "", "")
 
 	// Mongodb
-	//MONGODB_ATTRIBUTE_INDEXES, _ = c.String("Mongodb", "attribute_indexes")
 	c_store.AddString(&MONGODB_ATTRIBUTE_INDEXES, "", "Mongodb", "attribute_indexes", "", "")
 	c_store.AddString(&MONGODB_DATABASE, "ShockDB", "Mongodb", "database", "", "")
 
