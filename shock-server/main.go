@@ -189,13 +189,13 @@ func main() {
 	logger.Info("Starting...")
 
 	if conf.ANON_WRITE {
-		warnstr := "Warning: ananoymous write is activated, only use for development !!!!"
+		warnstr := "Warning: anonymous write is activated, only use for development !!!!"
 		logger.Info(warnstr)
 		fmt.Errorf("%s\n", warnstr)
 	}
 
 	if conf.ANON_DELETE {
-		warnstr := "Warning: ananoymous delete is activated, only use for development !!!!"
+		warnstr := "Warning: anonymous delete is activated, only use for development !!!!"
 		logger.Info(warnstr)
 		fmt.Errorf("%s\n", warnstr)
 	}
