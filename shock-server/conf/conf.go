@@ -37,6 +37,7 @@ var (
 	AUTH_GLOBUS_TOKEN_URL   = ""
 	AUTH_GLOBUS_PROFILE_URL = ""
 	AUTH_MGRAST_OAUTH_URL   = ""
+	AUTH_CACHE_TIMEOUT	= 60 
 
 	// Default Chunksize for size virtual index
 	CHUNK_SIZE int64 = 1048576
@@ -121,6 +122,10 @@ func Initialize() {
 	AUTH_GLOBUS_TOKEN_URL, _ = c.String("Auth", "globus_token_url")
 	AUTH_GLOBUS_PROFILE_URL, _ = c.String("Auth", "globus_profile_url")
 	AUTH_MGRAST_OAUTH_URL, _ = c.String("Auth", "mgrast_oauth_url")
+	AUTH_CACHE_TIMEOUT, _ = c.Int("Auth", "cache_timeout")
+	if AUTH_CACHE_TIMEOUT == 0 {
+		AUTH_CACHE_TIMEOUT = 60
+	}
 
 	// Runtime
 	EXPIRE_WAIT, _ = c.Int("Runtime", "expire_wait")
