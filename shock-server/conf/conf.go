@@ -284,9 +284,11 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 		c_store.AddString(&SSL_CERT, "", "SSL", "cert", "", "")
 	}
 
+	// Log
+	c_store.AddString(&LOG_OUTPUT, "console", "Log", "logoutput", "console, file or both", "")
+
 	//Other
 	c_store.AddString(&RELOAD, "", "Other", "reload", "path or url to shock data. WARNING this will drop all current data.", "")
-	c_store.AddString(&LOG_OUTPUT, "both", "Other", "logoutput", "", "")
 	gopath := os.Getenv("GOPATH")
 	c_store.AddString(&CONFIG_FILE, gopath+"/src/github.com/MG-RAST/Shock/shock-server.conf.template", "Other", "conf", "path to config file", "")
 	c_store.AddBool(&SHOW_VERSION, false, "Other", "version", "show version", "")
