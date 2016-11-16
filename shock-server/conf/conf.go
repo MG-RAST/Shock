@@ -212,11 +212,7 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddString(&AUTH_GLOBUS_TOKEN_URL, "", "Auth", "globus_token_url", "", "")
 	c_store.AddString(&AUTH_GLOBUS_PROFILE_URL, "", "Auth", "globus_profile_url", "", "")
 	c_store.AddString(&AUTH_MGRAST_OAUTH_URL, "", "Auth", "mgrast_oauth_url", "", "")
-	c_store.AddInt(&AUTH_CACHE_TIMEOUT, "", "Auth", "cache_timeout", "", "")
-
-	if AUTH_CACHE_TIMEOUT == 0 {
-		AUTH_CACHE_TIMEOUT = 60
-	}
+	c_store.AddInt(&AUTH_CACHE_TIMEOUT, 60, "Auth", "cache_timeout", "", "")
 
 	// Runtime
 	c_store.AddInt(&EXPIRE_WAIT, 60, "Runtime", "expire_wait", "", "")
