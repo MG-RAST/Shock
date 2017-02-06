@@ -85,9 +85,9 @@ mkdir -p /mnt/shock-server/data
 export DATADIR="/mnt/shock-server"
 docker run --rm --name shock-server -p 7445:7445 -v ${DATADIR}/shock-server.cfg:/shock-config/shock-server.cfg -v ${DATADIR}/log:/var/log/shock -v ${DATADIR}/data:/usr/local/shock --link=shock-server-mongodb:mongodb mgrast/shock /go/bin/shock-server --conf /shock-config/shock-server.cfg
 ```
-Comments:
-port 7445: Shock server API (default in config)
-"-v" mounts host to container directories
+Comments:<br>
+port 7445: Shock server API (default in config)<br>
+"-v" mounts host to container directories<br>
 "--link" connects Shock server and mongodb
 
 Documentation
