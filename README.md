@@ -60,6 +60,13 @@ or in background:
 ```bash
 nohup /mongodb/bin/mongod --dbpath /mnt/db/ &
 ```
+You can also run MongoDB in a docker container:
+```bash
+mkdir -p /mnt/shock-server/mongodb
+export DATADIR="/mnt/shock-server"
+docker run --rm --name shock-server-mongodb -v ${DATADIR}/mongodb:/data/db --expose=27017 mongo mongod --dbpath /data/db
+```
+
 
 Configuration
 -------------
@@ -68,8 +75,20 @@ The Shock configuration file is in INI file format. There is a template of the c
 Running
 -------
 To run:
-  
-    shock-server -conf <path_to_config_file>
+```bash
+shock-server -conf <path_to_config_file>
+```
+With docker:
+```bash
+mkdir -p /mnt/shock-server/log
+mkdir -p /mnt/shock-server/data
+export DATADIR="/mnt/shock-server"
+docker run --rm --name shock-server -p 7445:7445 -v ${DATADIR}/shock-server.cfg:/shock-config/shock-server.cfg -v ${DATADIR}/log:/var/log/shock -v ${DATADIR}/data:/usr/local/shock --link=shock-server-mongodb:mongodb mgrast/shock /go/bin/shock-server --conf /shock-config/shock-server.cfg
+```
+Comments:
+port 7445: Shock server API (default in config)
+"-v" mounts host to container directories
+"--link" connects Shock server and mongodb
 
 Documentation
 -------------
