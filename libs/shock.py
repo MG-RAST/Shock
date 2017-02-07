@@ -20,38 +20,41 @@ from requests_toolbelt import MultipartEncoder
 # Classes
 #-----------------------------------------------------------------------------
 
-class Client:
+class ShockClient:
     
     shock_url = ''
     auth_header = {}
     token = ''
+    bearer = ''
     template = "An exception of type {0} occured. Arguments:\n{1!r}"
     methods = { 'get': requests.get,
                 'put': requests.put,
                 'post': requests.post,
                 'delete': requests.delete }
     
-    def __init__(self, shock_url, token=''):
+    def __init__(self, shock_url='http://shock.metagenomics.anl.gov', bearer='OAuth', token=None):
         self.shock_url = shock_url
-        if token != '':
-            self.set_auth(token)
+        if token:
+            self.set_auth(bearer, token)
         
-    def set_auth(self, token):
-        self.auth_header = {'Authorization': 'OAuth %s'%token}
+    def set_auth(self, bearer, token):
+        self.auth_header = {'Authorization': bearer+' '+token}
     
     def get_acl(self, node):
         return self._manage_acl(node, 'get')
     
-    def add_acl(self, node, acl, user):
-        return self._manage_acl(node, 'put', acl, user)
+    def add_acl(self, node, acl, user=None, public=False):
+        return self._manage_acl(node, 'put', acl, user, public)
     
-    def delete_acl(self, node, acl, user):
-        return self._manage_acl(node, 'delete', acl, user)
+    def delete_acl(self, node, acl, user=None, public=False):
+        return self._manage_acl(node, 'delete', acl, user, public)
     
-    def _manage_acl(self, node, method, acl=None, user=None):
+    def _manage_acl(self, node, method, acl=None, user=None, public=False):
         url = self.shock_url+'/node/'+node+'/acl'
         if acl and user:
             url += '/'+acl+'?users='+urllib.quote(user)
+        elif acl and public:
+            url += '/public_'+acl
         try:
             req = self.methods[method](url, headers=self.auth_header)
         except Exception as ex:
@@ -66,6 +69,25 @@ class Client:
             raise Exception('Shock error %s: %s'%(rj['status'], rj['error'][0]))
         return rj['data']
     
+    def update_expiration(self, node, expiration=None):
+        url = self.shock_url+'/node/'+node
+        if expiration:
+            edata = {'expiration': expiration}
+        else:
+            edata = {'remove_expiration': "true"}
+        mdata = MultipartEncoder(fields=edata)
+        headers = self.auth_header.copy()
+        headers['Content-Type'] = mdata.content_type
+        try:
+            req = self.methods['put'](url, headers=headers, data=mdata, allow_redirects=True)
+            rj  = req.json()
+        except Exception as ex:
+            message = self.template.format(type(ex).__name__, ex.args)
+            raise Exception(u'Unable to connect to Shock server %s\n%s' %(url, message))
+        if rj['error']:
+            raise Exception(u'Shock error %s: %s'%(rj['status'], rj['error'][0]))
+        return rj['data']
+        
     def get_node(self, node):
         return self._get_node_data('/'+node)
     
@@ -247,7 +269,7 @@ class Client:
                 return (name, cStringIO.StringIO(d))
         except TypeError:
             try:
-                name = n if n else d.name
+                name = n if n else "unknown"
                 return (name, d)
             except:
                 raise Exception(u'Error opening file handle for upload')
