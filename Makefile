@@ -31,7 +31,7 @@ print_info:
 	@echo "Please run 'make install' first to retrieve and build the code. 'make all' only rebuilds the binaries once you have the code downloaded."
 
 build: version docs
-	go install -v $(SRCDIR)/...
+	CGO_ENABLED=0 go install -a -installsuffix cgo -v $(SRCDIR)/...
 	# Note the setcap Linux command will only succeed if run as root.
 	# This allows the shock-server to bind to port 80 if desired.
 	#setcap 'cap_net_bind_service=+ep' bin/shock-server

@@ -4,16 +4,22 @@ use strict;
 use warnings;
 no warnings('once');
 
+use IO::Handle; # needed due to some bug in UserAgent.pm
+
 use File::Basename;
 use Data::Dumper;
 use JSON;
 use LWP::UserAgent;
 use URI::Escape;
+use HTTP::Request::Common;
+use HTTP::Request::StreamingUpload;
+
+our $global_debug = 0;
 
 1;
 
 sub new {
-    my ($class, $shock_url, $token) = @_;
+    my ($class, $shock_url, $token, $debug) = @_;
     
     my $agent = LWP::UserAgent->new;
     my $json = JSON->new;
@@ -26,7 +32,8 @@ sub new {
         agent => $agent,
         shock_url => $shock_url || '',
         token => $token || '',
-        transport_method => 'requests'
+        transport_method => 'requests',
+        debug => $debug || $global_debug
     };
     if (system("type shock-client > /dev/null 2>&1") == 0) {
         $self->{transport_method} = 'shock-client';
@@ -55,6 +62,10 @@ sub token {
 sub transport_method {
     my ($self) = @_;
     return $self->{transport_method};
+}
+sub debug {
+    my ($self) = @_;
+    return $self->{debug};
 }
 
 sub _set_shockclient_auth {
@@ -88,6 +99,8 @@ sub create_url {
 	}
 	
 	my $my_url = $self->shock_url . "/$resource";
+	
+	
 	
 	#if (defined $self->token) {
 	#	$query{'auth'}=$self->token;
@@ -143,11 +156,20 @@ sub request {
 	
 	my $my_url = $self->create_url($resource, (defined($query)?%$query:()));
 	
-	print "request: $method \"$my_url\"\n";
+	print "request: $method \"$my_url\"\n" if $self->debug;
 	
 	
 	
 	my @method_args = ($my_url, ($self->token)?('Authorization' , "OAuth ".$self->token):());
+	if ($self->{'debug'} ==1) {
+		if (defined $self->token) {
+			print "found token: ".substr($self->token, 0, 20)."... \n";
+		} else {
+			print "found no token\n";
+		}
+
+	}
+	
 	
 	my $is_download = 0;
 	if (defined $headers) {
@@ -156,51 +178,91 @@ sub request {
 		}
 		
 		push(@method_args, %$headers);
+		
+	}
+	if ($self->{'debug'} ==1) {
+		#print 'method_args: '.join(',', @method_args)."\n";
+		print 'method_args: '.Dumper(@method_args)."\n";
 	}
 	
-	#print 'method_args: '.join(',', @method_args)."\n";
+    #### http request
+	my $response_object = undef;
 	
-	my $response_content = undef;
-    
     eval {
 		
-        my $response_object = undef;
+       
+		if ($self->{'debug'} ==1) {
+			print "invoking $method-request...\n";
+		}
 		
         if ($method eq 'GET') {
-			$response_object = $self->agent->get(@method_args );
+			$response_object = $self->agent->get(@method_args);
 		} elsif ($method eq 'DELETE') {
-			$response_object = $self->agent->delete(@method_args );
+			$response_object = $self->agent->delete(@method_args);
 		} elsif ($method eq 'POST') {
 			$self->agent->show_progress(1);
-			$response_object = $self->agent->post(@method_args );
+			$response_object = $self->agent->post(@method_args);
+		} elsif ($method eq 'PUT') {
+			my $request = HTTP::Request::Common::POST(@method_args); # use POST, then change to PUT in next line !
+			$request->method('PUT');
+	
+			#if ($self->{'debug'} ==1) {
+			#	print "request: ".Dumper($request)."\n";
+			#}
+			$response_object = $self->agent->request($request);
+			#$response_object = $self->agent->put(@method_args); #does not work with multiform
 		} else {
-			die "not implemented yet";
+			die "method \"$method\" not implemented yet";
 		}
-		#print "content: ".$response_object->content."\n";
 		
-		$response_content = $self->json->decode( $response_object->content );
-        
-		
+		if ($self->{'debug'} ==1) {
+			print "content: ".$response_object->content."\n";
+		}
+		if ($self->{'debug'} ==1) {
+			print "response_object: ".Dumper($response_object)."\n";
+		}
 		
 		
     };
-    
 	if ($@) {
-		if (! ref($response_content) && ($is_download==0 )) {
-			print STDERR "[error] unable to connect to Shock ".$self->shock_url."\n";
-			return undef;
-		} elsif (exists($response_content->{error}) && $response_content->{error}) {
-			print STDERR "[error] unable to send $method request to Shock: ".$response_content->{error}[0]."\n";
-			return undef;
-		}
-		
+		print STDERR "[error] ".$@."\n";
+		return undef;
+	}
+	unless ($response_object->is_success) {
+		print STDERR "response->status_line: ", $response_object->status_line, "\n";
+		return undef;
 	}
 	
-	return $response_content;
+	#### JSON -> hash
+	my $response_content_hash = undef;
+	eval {
+		$response_content_hash = $self->json->decode( $response_object->content );
+	};
+	
+	if ($@) {
+		print STDERR "[error] ".$@."\n";
+		if (! ref($response_content_hash) && ($is_download==0 )) {
+			print STDERR "[error] unable to connect to Shock ".$self->shock_url." response_content is not a reference\n";
+		} elsif (exists($response_content_hash->{error}) && $response_content_hash->{error}) {
+			print STDERR "[error] unable to send $method request to Shock: ".$response_content_hash->{error}[0]."\n";
+		}
+		return undef;
+	}
+	
+	if (exists($response_content_hash->{error}) && $response_content_hash->{error}) {
+		print STDERR "[error] unable to send $method request to Shock: ".$response_content_hash->{error}[0]."\n";
+		return undef;
+	}
+	
+	if ($self->{'debug'} ==1) {
+		print "returning response_object...\n";
+	}
+	
+	return $response_content_hash;
 	
 }
 
-
+# basic requests
 sub get {
 	#print 'get: '.join(',',@_)."\n";
 	my ($self, $resource, $query, $headers) = @_;
@@ -221,6 +283,21 @@ sub post {
 	return $self->request('POST', $resource, $query, $headers);
 }
 
+sub put {
+	my ($self, $resource, $query, $headers) = @_;
+	
+	return $self->request('PUT', $resource, $query, $headers);
+}
+
+sub post_node {
+    my ($self, $node, $query, $headers ) = @_;
+    
+	return $self->post('node/'.$node, $query, $headers);
+}
+
+
+
+
 sub delete_node {
     my ($self, $node) = @_;
     
@@ -238,42 +315,51 @@ sub query { # https://github.com/MG-RAST/Shock/wiki/API
 	#print Dumper ($response);
 	
 	if (defined $response->{'error'}) {
-		print Dumper ($response);
+		print STDERR Dumper ($response);
 		return undef;
 	}
 	
-	unless (defined $response->{'total_count'}) {
-		die;
+	unless (defined $query{'limit'}) {
+
+		unless (defined $response->{'total_count'}) {
+			die;
+		}
+		
+		if ($response->{'total_count'} > 25) {
+			# get all nodes
+			$query{'limit'} = $response->{'total_count'};
+			$response = $self->get('node', \%query);
+		}
 	}
-	
-	if ($response->{'total_count'} > 25) {
-		# get all nodes
-		$query{'limit'} = $response->{'total_count'};
-		$response = $self->get('node', \%query);
-	}
-	
 	
 	return $response;
 	
 }
 
 #query node (!= attributes)
+#this allows querying of fields outside of attributes section
 sub querynode { # https://github.com/MG-RAST/Shock/wiki/API
 	
 	my ($self, %query) = @_;
 	
 	$query{'querynode'} = undef;
 	
+	my $limit = $query{'limit'};
+	
 	my $response = $self->get('node', \%query);
 	#print Dumper ($response);
 	
 	if (defined $response->{'error'}) {
-		print Dumper ($response);
+		print STDERR Dumper ($response);
 		return undef;
 	}
 	
 	unless (defined $response->{'total_count'}) {
 		die;
+	}
+	
+	if (defined $limit) {
+		return $response;
 	}
 	
 	if ($response->{'total_count'} > 25) {
@@ -294,11 +380,38 @@ sub get_node {
     my ($self, $node) = @_;
     
     unless ($node) {
-        print STDERR "[error] missing node\n";
+        print STDERR "[error, get_node] missing node\n";
         return undef;
     }
     
 	return $self->get('/node/'.$node);
+	
+}
+
+
+sub put_node {
+    my ($self, $node, $query, $headers) = @_;
+    
+    unless ($node) {
+        print STDERR "[error, put_node] missing node\n";
+        return undef;
+    }
+    
+	return $self->put('/node/'.$node, $query, $headers);
+	
+}
+
+
+sub set_node_attributes {
+	my ($self, $node, $attributes_json_string) = @_;
+	
+	
+	
+	
+	return $self->put_node($node, undef, {Content_Type => 'multipart/form-data', Content => {"attributes_str" => $attributes_json_string}});
+	#return $self->put_node($node, undef, {Content => {}, Content_Type => 'multipart/form-data'});
+	#return $self->put_node($node, undef, {Content_Type => 'multipart/form-data', Content => {"attributes_str" => [undef, "n/a", Content => $attributes_json_string]}});
+	
 	
 }
 
@@ -401,6 +514,7 @@ sub create_node {
 #example:     upload(data => 'hello world'), where data is scalar or reference to scalar
 #example:  or upload(file => 'myworld.txt')
 #example:  or upload(file => 'myworld.txt', attr => {some hash})
+#example:  or upload(fh => filehandle, attr => {some hash})
 # TODO implement PUT here or in another function
 sub upload {
     my ($self, %hash) = @_;
@@ -428,13 +542,55 @@ sub upload {
 		}
 	}
 	
-   
+	if (defined $hash{'attributes'}) { # file
+		#$content->{'attributes'} = [undef, "n/a", Content => $hash{'attributes'}]
+		$content->{'attributes'} = [$hash{'attributes'}];
+	}
+	
 	if (defined $hash{'attr'}) {
+		$hash{'attributes_str'} = $hash{'attr'};
+	}
+	if (defined $hash{'attributes_str'}) { # string
+		#$content->{'attributes_str'} = [undef, "n/a", Content => $hash{'attributes_str'}]
+		$content->{'attributes_str'} = $hash{'attributes_str'};
+	}
+	
+	#if (defined $hash{'attr'}) {
 		# get_handle is not good
         #$content->{attributes} = $self->_get_handle($hash{attr});
-		$content->{'attributes'} = [undef, "n/a", Content => $hash{'attr'}]
-    }
-    
+	#	$content->{'attributes'} = [undef, "n/a", Content => $hash{'attr'}]
+    #}
+	
+	
+	if (defined $hash{fh}) {
+		my $response = undef;
+		print STDERR "using StreamingUpload\n" if $self->debug;
+		
+		eval {
+			my $post = HTTP::Request::StreamingUpload->new(
+				POST => $self->shock_url.'/node',
+				fh => $hash{fh},
+				headers => HTTP::Headers->new(
+					'Content_Type' => 'application/octet-stream',
+					'Authorization' => 'OAuth '.$self->token
+					)
+			);
+			print Dumper($post)."\n" if $self->debug;
+			my $req = LWP::UserAgent->new->request($post);
+			$response = $self->json->decode( $req->content );
+		};
+		if ($@ || (! ref($response))) {
+			print STDERR "Unable to connect to Shock server\n";
+			return undef;
+		} elsif (exists($response->{error}) && $response->{error}) {
+			print STDERR "Unable to POST to Shock: ".$response->{error}[0]."\n";
+			return undef;
+		}
+	
+	
+		return $response;
+	}
+	
     $HTTP::Request::Common::DYNAMIC_FILE_UPLOAD = 1;
 	
 	return $self->post('node', undef, {Content_Type => 'multipart/form-data', Content => $content}); # resource, query, headers
@@ -467,7 +623,7 @@ sub upload_temporary_files {
 	
 	#and upload job input to shock
 	foreach my $input (keys(%$job_input)) {
-		print "upload input object $input\n";
+		print "upload input object $input\n" if $self->debug;
 		my $input_h = $job_input->{$input};
 		
 		
@@ -475,10 +631,10 @@ sub upload_temporary_files {
 		
 		my $node_obj=undef;
 		if (defined($input_h->{'file'})) {
-			print "uploading temporary ".$input_h->{'file'}." to shock...\n";
+			print "uploading temporary ".$input_h->{'file'}." to shock...\n" if $self->debug;
 			$node_obj = $self->upload('file' => $input_h->{'file'}, 'attr' => $attr);
 		} elsif (defined($input_h->{'data'})) {
-			print "uploading temporary data to shock...\n";
+			print "uploading temporary data to shock...\n" if $self->debug;
 			$node_obj = $self->upload('data' => $input_h->{'data'}, 'attr' => $attr);
 		} else {
 			die "not data or file found for input \"$input\"";
@@ -490,36 +646,36 @@ sub upload_temporary_files {
 		
 		if (ref($node_obj) ne 'HASH') {
 			if (ref($node_obj) eq '' ) {
-				print "node_obj: ".$node_obj."\n";
+				print "node_obj: ".$node_obj."\n" if $self->debug;
 				if ($node_obj eq '' ) {
-					print "node_obj is empty string\n";
+					print "node_obj is empty string\n" if $self->debug;
 				}
 			}
 			die "could not upload to shock server, node_obj not a hash reference, ref=".ref($node_obj);
 		}
 		
 		unless (defined($node_obj->{'data'})) {
-			print Dumper($node_obj);
+			print STDERR Dumper($node_obj);
 			die "no data field found";
 		}
 		
 		
 		my $node = $node_obj->{'data'}->{'id'};
 		unless (defined($node)) {
-			print Dumper($node_obj);
+			print STDERR Dumper($node_obj);
 			die "no node id found";
 		}
 		
 		#print Dumper($node_obj)."\n";
 		#exit(0);
-		print "new node id is $node\n";
+		print "new node id is $node\n" if $self->debug;
 		$input_h->{'node'} = $node;
 		unless (defined $input_h->{'shockhost'}) {
 			$input_h->{'shockhost'} = $self->shock_url(); # might have been set earlier if shock server url are different
 		}
 		
 	}
-	print "upload_temporary_files: all temporary files uploaded.\n";
+	print "upload_temporary_files: all temporary files uploaded.\n" if $self->debug;
 	
 	
 	return;
@@ -528,6 +684,10 @@ sub upload_temporary_files {
 #make node readable to the world
 sub permisson_readable {
 	my ($self, $nodeid) = @_;
+	
+	unless (defined $nodeid) {
+		die "nodeid not defined";
+	}
 	
 	my $node_accls = $self->get("node/$nodeid/acl") || return undef;
 	unless ($node_accls->{'status'} == 200) {
@@ -615,7 +775,7 @@ sub cache_upload {
 	' "targetname":"'.$targetname.'"'.
 	'}';
 	
-	print "caching file in SHOCK\n";
+	print "caching file in SHOCK\n" if $self->debug;
 	my $up_result = $self->upload('file' => $file, 'attr' => $shock_json) || die;
 	
 	unless ($up_result->{'status'} == 200) {
@@ -664,7 +824,7 @@ sub cached_download {
 		my $shock_node_id = $shock_node_obj->{'data'}->{'id'};
 		
 		unless (defined $shock_node_id) {
-			print Dumper($shock_node_obj);
+			print STDERR Dumper($shock_node_obj);
 			die;
 		}
 		
@@ -692,5 +852,15 @@ sub cached_download {
 }
 
 
+# helper function
 
+sub getNodeFromURL {
+	my ($url) = @_;
+	#print "url: $url\n";
+	my ($node) = $url =~ /node\/(.*)(\?download)?/;
+	#print "node: $node\n";
+	
+	return $node;
+	
+}
 

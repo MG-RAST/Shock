@@ -1,9 +1,9 @@
-package httpclient_test
+package httpclient
 
 import (
 	"fmt"
-	. "github.com/MG-RAST/Shock/shock-client/lib/httpclient"
 	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -11,8 +11,10 @@ func TestForm(t *testing.T) {
 	f := NewForm()
 	f.AddParam("upload_type", "true")
 	f.AddParam("parts", "25")
-	f.AddFile("upload", "/Users/jared/go/kbno.cfg")
-	f.AddFile("upload", "/Users/jared/go/shock.cfg")
+
+	gopath := os.Getenv("GOPATH")
+	f.AddFile("upload", gopath+"/src/github.com/MG-RAST/Shock/shock-server/testdata/nr_subset1.fa")
+	f.AddFile("upload", gopath+"/src/github.com/MG-RAST/Shock/shock-server/testdata/nr_subset2.fa")
 	if err := f.Create(); err != nil {
 		println(err.Error())
 	}
@@ -24,5 +26,4 @@ func TestForm(t *testing.T) {
 		fmt.Printf("%s", form)
 		fmt.Printf("len: %d\n", len(form))
 	}
-	f.Close()
 }

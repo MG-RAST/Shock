@@ -1,6 +1,8 @@
 package node
 
-import ()
+import (
+	"sync"
+)
 
 type mappy map[string]bool
 
@@ -18,19 +20,47 @@ var (
 )
 
 type Locker struct {
-	partLock chan bool //semaphore for checkout (mutual exclusion between different clients)
+	nLock map[string]*NodeLock
+}
+
+type NodeLock struct {
+	sync.Mutex
 }
 
 func NewLocker() *Locker {
 	return &Locker{
-		partLock: make(chan bool, 1), //non-blocking buffered channel
+		nLock: map[string]*NodeLock{},
 	}
 }
 
-func (l *Locker) LockPartOp() {
-	l.partLock <- true
+func (l *Locker) LockNode(id string) {
+	// add if missing, may happen if shock restarted
+	if _, ok := l.nLock[id]; !ok {
+		l.nLock[id] = new(NodeLock)
+	}
+	l.nLock[id].Lock()
 }
 
-func (l *Locker) UnlockPartOp() {
-	<-l.partLock
+func (l *Locker) UnlockNode(id string) {
+	// skip missing id
+	if _, ok := l.nLock[id]; ok {
+		l.nLock[id].Unlock()
+	}
+}
+
+func (l *Locker) AddNode(id string) {
+	if _, ok := l.nLock[id]; !ok {
+		l.nLock[id] = new(NodeLock)
+	}
+}
+
+func (l *Locker) RemoveNode(id string) {
+	delete(l.nLock, id)
+}
+
+func (l *Locker) GetNodes() (ids []string) {
+	for id, _ := range l.nLock {
+		ids = append(ids, id)
+	}
+	return
 }

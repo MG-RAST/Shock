@@ -7,6 +7,8 @@ import (
 	"errors"
 	"github.com/MG-RAST/Shock/shock-server/auth/basic"
 	"github.com/MG-RAST/Shock/shock-server/conf"
+	e "github.com/MG-RAST/Shock/shock-server/errors"
+	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"io/ioutil"
 	"net/http"
@@ -62,7 +64,7 @@ func fetchToken(u string, p string) (t *token, err error) {
 	client := &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
-	req, err := http.NewRequest("GET", conf.Conf["globus_token_url"], nil)
+	req, err := http.NewRequest("GET", conf.AUTH_GLOBUS_TOKEN_URL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +91,7 @@ func fetchProfile(t string) (u *user.User, err error) {
 	client := &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
-	req, err := http.NewRequest("GET", conf.Conf["globus_profile_url"]+"/"+clientId(t), nil)
+	req, err := http.NewRequest("GET", conf.AUTH_GLOBUS_PROFILE_URL+"/"+clientId(t), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -102,13 +104,20 @@ func fetchProfile(t string) (u *user.User, err error) {
 				if err = json.Unmarshal(body, &u); err != nil {
 					return nil, err
 				} else {
+					if u.Username == "" {
+						return nil, errors.New(e.InvalidAuth)
+					}
 					if err = u.SetMongoInfo(); err != nil {
 						return nil, err
 					}
 				}
 			}
+		} else if resp.StatusCode == http.StatusForbidden {
+			return nil, errors.New(e.InvalidAuth)
 		} else {
-			return nil, errors.New("Authentication failed: Unexpected response status: " + resp.Status)
+			err_str := "Authentication failed: Unexpected response status: " + resp.Status
+			logger.Error(err_str)
+			return nil, errors.New(err_str)
 		}
 	} else {
 		return nil, err

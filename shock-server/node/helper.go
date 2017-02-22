@@ -11,7 +11,7 @@ import (
 
 // has
 func (node *Node) HasFile() bool {
-	if node.File.Name == "" && node.File.Size == 0 && len(node.File.Checksum) == 0 && node.File.Path == "" {
+	if node.File.Size == 0 && len(node.File.Checksum) == 0 {
 		return false
 	}
 	return true
@@ -84,7 +84,7 @@ func contains(list []string, elem string) bool {
 }
 
 func getPath(id string) string {
-	return fmt.Sprintf("%s/%s/%s/%s/%s", conf.Conf["data-path"], id[0:2], id[2:4], id[4:6], id)
+	return fmt.Sprintf("%s/%s/%s/%s/%s", conf.PATH_DATA, id[0:2], id[2:4], id[4:6], id)
 }
 
 func getIndexPath(id string) string {

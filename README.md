@@ -27,6 +27,47 @@ OPTION 2: You could alternatively install Shock by running:
 
 The upside to using OPTION 1 is that this will insert the Shock version number into your Shock server to be displayed when the server is started and this will also generate the Shock documentation locally to be hosted by the server. The built binaries will be located in the env configured $GOPATH/bin/ directory.
 
+### Dockerfile
+Alternativly your can use Docker to compile Shock. The Dockerfile in directory "docker" in this repository compiles Shock statically. 
+```bash
+export TAG=`date +"%Y%m%d.%H%M"`
+git clone --recursive https://github.com/MG-RAST/Shock.git
+cd Shock
+docker build --force-rm --no-cache --rm -t mgrast/shock:${TAG} .
+```
+If you only want the binary you can create an container from the image an copy the binary to your host. This will copy the shock-server binary to your current working directory
+```bash
+docker create --name shock mgrast/shock:${TAG}
+docker cp shock:/go/bin/shock-server .
+docker rm shock
+```
+
+### MongoDB
+
+In ubuntu you can simply install mongo with:
+```bash
+sudo apt-get install -y mongodb-server
+```
+If you do not want to use a package manager to install mongodb, use:
+```bash
+curl -s http://downloads.mongodb.org/linux/mongodb-linux-x86_64-2.4.14.tgz | tar -v -C /mongodb/ -xz
+```
+If you do not use a service manager such as systemd, you can start mongodb like this, in foreground:
+```bash
+/mongodb/bin/mongod --dbpath /data/
+```
+or in background:
+```bash
+nohup /mongodb/bin/mongod --dbpath /mnt/db/ &
+```
+You can also run MongoDB in a docker container:
+```bash
+mkdir -p /mnt/shock-server/mongodb
+export DATADIR="/mnt/shock-server"
+docker run --rm --name shock-server-mongodb -v ${DATADIR}/mongodb:/data/db --expose=27017 mongo mongod --dbpath /data/db
+```
+
+
 Configuration
 -------------
 The Shock configuration file is in INI file format. There is a template of the config file located at the root level of the repository.
@@ -34,8 +75,20 @@ The Shock configuration file is in INI file format. There is a template of the c
 Running
 -------
 To run:
-  
-    shock-server -conf <path_to_config_file>
+```bash
+shock-server -conf <path_to_config_file>
+```
+With docker:
+```bash
+mkdir -p /mnt/shock-server/log
+mkdir -p /mnt/shock-server/data
+export DATADIR="/mnt/shock-server"
+docker run --rm --name shock-server -p 7445:7445 -v ${DATADIR}/shock-server.cfg:/shock-config/shock-server.cfg -v ${DATADIR}/log:/var/log/shock -v ${DATADIR}/data:/usr/local/shock --link=shock-server-mongodb:mongodb mgrast/shock /go/bin/shock-server --conf /shock-config/shock-server.cfg
+```
+Comments:<br>
+port 7445: Shock server API (default in config)<br>
+"-v" mounts host to container directories<br>
+"--link" connects Shock server and mongodb
 
 Documentation
 -------------

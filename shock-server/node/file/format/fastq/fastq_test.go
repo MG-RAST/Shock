@@ -1,7 +1,6 @@
-package fastq_test
+package fastq
 
 import (
-	. "github.com/MG-RAST/Shock/shock-server/node/file/format/astq"
 	"testing"
 )
 
