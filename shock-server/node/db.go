@@ -29,6 +29,7 @@ func Initialize() {
 	c.EnsureIndex(mgo.Index{Key: []string{"expiration"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"file.path"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"file.virtual_parts"}, Background: true})
+	c.EnsureIndex(mgo.Index{Key: []string{"file.checksum.md5"}, Background: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"id"}, Unique: true})
 	if conf.MONGODB_ATTRIBUTE_INDEXES != "" {
 		for _, v := range strings.Split(conf.MONGODB_ATTRIBUTE_INDEXES, ",") {
