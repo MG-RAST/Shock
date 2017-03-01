@@ -53,7 +53,7 @@ func Log(req *http.Request) {
 	} else {
 		url = fmt.Sprintf("%s %s", req.Method, req.URL.Path)
 	}
-	logger.Info("access", host+" \""+url+suffix+"\"")
+	logger.Infof("%s \"%s%s\"", host, url, suffix)
 }
 
 func Authenticate(req *http.Request) (u *user.User, err error) {
