@@ -1,7 +1,7 @@
 About
 -----
 
-Shock is a platform to support computation, storage, and distribution. Designed from the ground up to be fast, scalable, fault tolerant, federated.  (see [Shock: Active Storage for Multicloud Streaming Data Analysis](http://ieeexplore.ieee.org/abstract/document/7406331/)
+Shock is a platform to support computation, storage, and distribution. Designed from the ground up to be fast, scalable, fault tolerant, federated.  (see [Shock: Active Storage for Multicloud Streaming Data Analysis](http://ieeexplore.ieee.org/abstract/document/7406331/))
 
 Shock is RESTful. Accessible from desktops, HPC systems, exotic hardware, the cloud and your smartphone.
 
