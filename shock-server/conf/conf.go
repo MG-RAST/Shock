@@ -45,8 +45,9 @@ var (
 	CONFIG_FILE = ""
 
 	// Runtime
-	EXPIRE_WAIT = 60 // wait time for reaper in minutes
-	GOMAXPROCS  = ""
+	MAX_REVISIONS = 3  // max number of node revisions to keep; values < 0 mean keep all
+	EXPIRE_WAIT   = 60 // wait time for reaper in minutes
+	GOMAXPROCS    = ""
 
 	// Logs
 	LOG_PERF   = false // Indicates whether performance logs should be stored
@@ -123,6 +124,7 @@ func Initialize() {
 	AUTH_MGRAST_OAUTH_URL, _ = c.String("Auth", "mgrast_oauth_url")
 
 	// Runtime
+	MAX_REVISIONS, _ = c.Int("Runtime", "max_revisions")
 	EXPIRE_WAIT, _ = c.Int("Runtime", "expire_wait")
 	GOMAXPROCS, _ = c.String("Runtime", "GOMAXPROCS")
 
@@ -225,4 +227,6 @@ func Print() {
 	} else {
 		fmt.Printf("##### Log rotation disabled #####\n\n")
 	}
+	fmt.Printf("##### Expiration #####\nexpire_wait:\t%d minutes\n\n", EXPIRE_WAIT)
+	fmt.Printf("##### Max Revisions #####\nmax_revisions:\t%d\n\n", MAX_REVISIONS)
 }
