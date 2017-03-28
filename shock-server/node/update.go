@@ -471,16 +471,14 @@ func (node *Node) Save() (err error) {
 	// update versions
 	previousVersion := node.Version
 	node.UpdateVersion()
-	// only add to revisions if not new and has changed
-	if previousVersion != "" && previousVersion != node.Version {
+	// only add to revisions if not new and has changed and allow revisions
+	if (previousVersion != "") && (previousVersion != node.Version) && (conf.MAX_REVISIONS != 0) {
 		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.Priority, node.CreatedOn, node.LastModified, node.Expiration, node.Type, node.Subset, node.Parts}
 		newRevisions := append(node.Revisions, n)
 		// adjust revisions based on config
-		// <0 keep all, =0 keep none, >0 keep #
+		// <0 keep all ; >0 keep max
 		if (conf.MAX_REVISIONS < 0) || (len(newRevisions) <= conf.MAX_REVISIONS) {
 			node.Revisions = newRevisions
-		} else if conf.MAX_REVISIONS == 0 {
-			node.Revisions = []Node{}
 		} else {
 			node.Revisions = newRevisions[:conf.MAX_REVISIONS]
 		}
