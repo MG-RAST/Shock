@@ -1,7 +1,7 @@
 About
 -----
 
-Shock is a platform to support computation, storage, and distribution. Designed from the ground up to be fast, scalable, fault tolerant, federated. 
+Shock is a platform to support computation, storage, and distribution. Designed from the ground up to be fast, scalable, fault tolerant, federated.  (see [Shock: Active Storage for Multicloud Streaming Data Analysis](http://ieeexplore.ieee.org/abstract/document/7406331/), Big Data Computing (BDC), 2015 IEEE/ACM 2nd International Symposium on, 2015)
 
 Shock is RESTful. Accessible from desktops, HPC systems, exotic hardware, the cloud and your smartphone.
 
@@ -9,7 +9,6 @@ Shock is for scientific data. One of the challenges of large volume scientific d
 
 Shock is a data management system. The long term goals of Shock include the ability to annotate, anonymize, convert, filter, perform quality control, and statically subsample at line speed bioinformatics sequence data. Extensible plug-in architecture is in development.
 
-**Most importantly Shock is still very much in development. Be patient and contribute.**
 
 Shock is actively being developed at [github.com/MG-RAST/Shock](https://github.com/MG-RAST/Shock).
 
