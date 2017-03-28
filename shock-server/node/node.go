@@ -385,7 +385,7 @@ func (node *Node) RemoveExpiration() (err error) {
 
 func (node *Node) ClearRevisions() (err error) {
 	// empty the revisions array
-	node.Revisions = nil
+	node.Revisions = []Node{}
 	err = node.Save()
 	return
 }
