@@ -29,6 +29,7 @@ type Node struct {
 	Tags         []string          `bson:"tags" json:"tags"`
 	Revisions    []Node            `bson:"revisions" json:"-"`
 	Linkages     []linkage         `bson:"linkage" json:"linkage"`
+	Priority     int               `bson:"priority" json:"priority"`
 	CreatedOn    time.Time         `bson:"created_on" json:"created_on"`
 	LastModified time.Time         `bson:"last_modified" json:"last_modified"`
 	Expiration   time.Time         `bson:"expiration" json:"expiration"` // 0 means no expiration
@@ -346,6 +347,12 @@ func (node *Node) SetFileFormat(format string) (err error) {
 	return
 }
 
+func (node *Node) SetPriority(priority int) (err error) {
+	node.Priority = priority
+	err = node.Save()
+	return
+}
+
 func (node *Node) SetExpiration(expire string) (err error) {
 	parts := ExpireRegex.FindStringSubmatch(expire)
 	if len(parts) == 0 {
@@ -378,7 +385,7 @@ func (node *Node) RemoveExpiration() (err error) {
 
 func (node *Node) ClearRevisions() (err error) {
 	// empty the revisions array
-	node.Revisions = nil
+	node.Revisions = []Node{}
 	err = node.Save()
 	return
 }

@@ -58,6 +58,8 @@ local_paths=
 pidfile=
 
 [Runtime]
+# maximum number of most recent revisions to keep. 0 means keep none, -1 means keep all
+max_revisions=3
 # wait time in minutes before expiration reaper runs
 expire_wait=60
 # golang setting: The GOMAXPROCS variable limits the number of operating system threads that can execute user-level Go code simultaneously.

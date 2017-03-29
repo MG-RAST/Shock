@@ -15,7 +15,7 @@ const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"
 
 // Arrays to check for valid param and file form names for node creation and updating, and also acl modification.
 // Note: indexing and querying do not use functions that use these arrays and thus we don't have to include those field names.
-var validParams = []string{"action", "all", "archive_format", "attributes_str", "clear_revisions", "copy_attributes", "copy_data", "copy_indexes", "compression", "delete", "expiration", "file_name", "format", "ids", "index_name", "linkage", "operation", "owner", "parent_index", "parent_node", "parts", "path", "preserve_acls", "read", "remove_expiration", "source", "tags", "type", "unpack_node", "upload_url", "users", "write"}
+var validParams = []string{"action", "all", "archive_format", "attributes_str", "clear_revisions", "copy_attributes", "copy_data", "copy_indexes", "compression", "delete", "expiration", "file_name", "format", "ids", "index_name", "linkage", "operation", "owner", "parent_index", "parent_node", "parts", "path", "preserve_acls", "priority", "read", "remove_expiration", "source", "tags", "type", "unpack_node", "upload_url", "users", "write"}
 var validFiles = []string{"attributes", "subset_indices", "upload", "gzip", "bzip2"}
 var ValidUpload = []string{"upload", "gzip", "bzip2"}
 

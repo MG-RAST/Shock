@@ -11,6 +11,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
+	"net/http"
 )
 
 func PreAuthRequest(ctx context.Context) {
@@ -18,7 +19,7 @@ func PreAuthRequest(ctx context.Context) {
 	if p, err := preauth.Load(id); err != nil {
 		err_msg := "err:@preAuth load: " + err.Error()
 		logger.Error(err_msg)
-		responder.RespondWithError(ctx, 500, err_msg)
+		responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 	} else {
 		if n, err := node.Load(p.NodeId); err == nil {
 			switch p.Type {
@@ -26,12 +27,12 @@ func PreAuthRequest(ctx context.Context) {
 				streamDownload(ctx, n, p.Options)
 				preauth.Delete(id)
 			default:
-				responder.RespondWithError(ctx, 500, "Preauthorization type not supported: "+p.Type)
+				responder.RespondWithError(ctx, http.StatusNotFound, "Preauthorization type not supported: "+p.Type)
 			}
 		} else {
 			err_msg := "err:@preAuth loadnode: " + err.Error()
 			logger.Error(err_msg)
-			responder.RespondWithError(ctx, 500, err_msg)
+			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 		}
 	}
 	return
@@ -42,11 +43,9 @@ func streamDownload(ctx context.Context, n *node.Node, options map[string]string
 	nf, err := n.FileReader()
 	defer nf.Close()
 	if err != nil {
-		// File not found or some sort of file read error.
-		// Probably deserves more checking
 		err_msg := "err:@preAuth node.FileReader: " + err.Error()
 		logger.Error(err_msg)
-		responder.RespondWithError(ctx, 500, err_msg)
+		responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 		return
 	}
 	// set defaults
@@ -68,13 +67,31 @@ func streamDownload(ctx context.Context, n *node.Node, options map[string]string
 		}
 	}
 	// stream it
-	s := &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: filterFunc, Compression: compressionFormat}
-	err = s.Stream(false)
-	if err != nil {
+	var s request.Streamer
+	if n.Type == "subset" {
+		s = &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: filterFunc, Compression: compressionFormat}
+		if n.File.Size == 0 {
+			// handle empty subset file
+			s.R = append(s.R, nf)
+		} else {
+			idx := index.New()
+			fullRange := "1-" + strconv.FormatInt(n.Subset.Index.TotalUnits, 10)
+			recSlice, err := idx.Range(fullRange, n.Path()+"/"+n.Id+".subset.idx", n.Subset.Index.TotalUnits)
+			if err != nil {
+				return responder.RespondWithError(ctx, http.StatusInternalServerError, err.Error())
+			}
+			for _, rec := range recSlice {
+				s.R = append(s.R, io.NewSectionReader(nf, rec[0], rec[1]))
+			}
+		}
+	} else {
+		s = &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: filterFunc, Compression: compressionFormat}
+	}
+	if err = s.Stream(false); err != nil {
 		// causes "multiple response.WriteHeader calls" error but better than no response
 		err_msg := "err:@preAuth: s.stream: " + err.Error()
 		logger.Error(err_msg)
-		responder.RespondWithError(ctx, 500, err_msg)
+		responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 	}
 	return
 }

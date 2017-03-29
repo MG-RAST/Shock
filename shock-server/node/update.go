@@ -377,19 +377,30 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 	}
 
-	//update node tags
+	// update node tags
 	if _, hasDataType := params["tags"]; hasDataType {
 		if err = node.UpdateDataTags(params["tags"]); err != nil {
 			return err
 		}
 	}
 
-	//update file format
+	// update file format
 	if _, hasFormat := params["format"]; hasFormat {
 		if node.File.Format != "" {
 			return errors.New(fmt.Sprintf("file format already set:%s", node.File.Format))
 		}
 		if err = node.SetFileFormat(params["format"]); err != nil {
+			return err
+		}
+	}
+
+	// update priority
+	if _, hasPriority := params["priority"]; hasPriority {
+		priority, err := strconv.Atoi(params["priority"])
+		if err != nil {
+			return errors.New("priority must be an integer")
+		}
+		if err = node.SetPriority(priority); err != nil {
 			return err
 		}
 	}
@@ -460,10 +471,17 @@ func (node *Node) Save() (err error) {
 	// update versions
 	previousVersion := node.Version
 	node.UpdateVersion()
-	// only add to revisions if not new and has changed
-	if previousVersion != "" && previousVersion != node.Version {
-		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.CreatedOn, node.LastModified, node.Expiration, node.Type, node.Subset, node.Parts}
-		node.Revisions = append(node.Revisions, n)
+	// only add to revisions if not new and has changed and allow revisions
+	if (previousVersion != "") && (previousVersion != node.Version) && (conf.MAX_REVISIONS != 0) {
+		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.Priority, node.CreatedOn, node.LastModified, node.Expiration, node.Type, node.Subset, node.Parts}
+		newRevisions := append(node.Revisions, n)
+		// adjust revisions based on config
+		// <0 keep all ; >0 keep max
+		if (conf.MAX_REVISIONS < 0) || (len(newRevisions) <= conf.MAX_REVISIONS) {
+			node.Revisions = newRevisions
+		} else {
+			node.Revisions = newRevisions[:conf.MAX_REVISIONS]
+		}
 	}
 	if node.CreatedOn.String() == "0001-01-01 00:00:00 +0000 UTC" {
 		node.CreatedOn = time.Now()
