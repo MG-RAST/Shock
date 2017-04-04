@@ -1,6 +1,5 @@
 # v0.9.20
 
-- update to golang 1.8
 - add priority field to node along with index and set option
 - add configurable max limit to revisions array
 - enable preauth download (download_url) for subset nodes
