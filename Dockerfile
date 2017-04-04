@@ -2,7 +2,7 @@
 # docker build -t mgrast/shock .
 # docker run --rm --name test -ti mgrast/shock /bin/ash
 
-FROM golang:1.8-alpine
+FROM golang:1.7.5-alpine
 
 ENV DIR=/go/src/github.com/MG-RAST/Shock
 WORKDIR /go/bin
