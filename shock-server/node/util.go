@@ -1,7 +1,8 @@
 package node
 
 import (
-	"sync"
+    "sort"
+    "sync"
 )
 
 type mappy map[string]bool
@@ -63,4 +64,25 @@ func (l *Locker) GetNodes() (ids []string) {
 		ids = append(ids, id)
 	}
 	return
+}
+
+type sortBytes []byte
+
+func (b sortBytes) Less(i, j int) bool {
+    return b[i] < b[j]
+}
+
+func (b sortBytes) Swap(i, j int) {
+    b[i], b[j] = b[j], b[i]
+}
+
+func (b sortBytes) Len() int {
+    return len(b)
+}
+
+func SortByteArray(b []byte) []byte {
+    sb := make([]byte, len(b))
+    copy(sb, b)
+    sort.Sort(sortBytes(sb))
+    return sb
 }

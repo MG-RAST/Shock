@@ -12,6 +12,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	"io/ioutil"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -474,13 +475,13 @@ func (node *Node) Save() (err error) {
 	// only add to revisions if not new and has changed and allow revisions
 	if (previousVersion != "") && (previousVersion != node.Version) && (conf.MAX_REVISIONS != 0) {
 		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.Priority, node.CreatedOn, node.LastModified, node.Expiration, node.Type, node.Subset, node.Parts}
-		newRevisions := append(node.Revisions, n)
+		newRevisions := append([]Node{n}, node.Revisions) // prepend, latest revisions in front
 		// adjust revisions based on config
 		// <0 keep all ; >0 keep max
 		if (conf.MAX_REVISIONS < 0) || (len(newRevisions) <= conf.MAX_REVISIONS) {
 			node.Revisions = newRevisions
 		} else {
-			node.Revisions = newRevisions[:conf.MAX_REVISIONS]
+			node.Revisions = newRevisions[:conf.MAX_REVISIONS] // keep most recent MAX_REVISIONS
 		}
 	}
 	if node.CreatedOn.String() == "0001-01-01 00:00:00 +0000 UTC" {
@@ -511,23 +512,34 @@ func (node *Node) Save() (err error) {
 }
 
 func (node *Node) UpdateVersion() (err error) {
-	parts := make(map[string]string)
 	h := md5.New()
 	version := node.Id
-	for name, value := range map[string]interface{}{"file_ver": node.File, "indexes_ver": node.Indexes, "attributes_ver": node.Attributes, "acl_ver": node.Acl} {
-		m, er := json.Marshal(value)
+	versionParts := make(map[string]string)
+	partMap := map[string]interface{}{"file_ver": node.File, "indexes_ver": node.Indexes, "attributes_ver": node.Attributes, "acl_ver": node.Acl}
+	
+	// need to keep map ordered
+	partKeys := []string{}
+	for k, _ := range partMap {
+	    partKeys = append(partKeys, k)
+	}
+	sort.Strings(partKeys)
+	
+	for _, k := range partKeys {
+		j, er := json.Marshal(partMap[k])
 		if er != nil {
 			return
 		}
-		h.Write(m)
+		// need to sort bytes to deal with unordered json
+		sj := SortByteArray(j)
+		h.Write(sj)
 		sum := fmt.Sprintf("%x", h.Sum(nil))
-		parts[name] = sum
-		version = version + ":" + sum
+		versionParts[k] = sum
+		version = version + sum
 		h.Reset()
 	}
 	h.Write([]byte(version))
 	node.Version = fmt.Sprintf("%x", h.Sum(nil))
-	node.VersionParts = parts
+	node.VersionParts = versionParts
 	return
 }
 
