@@ -6,12 +6,15 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/node/archive"
 	"github.com/MG-RAST/Shock/shock-server/node/file"
+	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/node/filter"
 	"github.com/MG-RAST/Shock/shock-server/preauth"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
+	"io"
 	"net/http"
+	"strconv"
 )
 
 func PreAuthRequest(ctx context.Context) {
@@ -67,7 +70,7 @@ func streamDownload(ctx context.Context, n *node.Node, options map[string]string
 		}
 	}
 	// stream it
-	var s request.Streamer
+	var s *request.Streamer
 	if n.Type == "subset" {
 		s = &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: filterFunc, Compression: compressionFormat}
 		if n.File.Size == 0 {
@@ -78,7 +81,8 @@ func streamDownload(ctx context.Context, n *node.Node, options map[string]string
 			fullRange := "1-" + strconv.FormatInt(n.Subset.Index.TotalUnits, 10)
 			recSlice, err := idx.Range(fullRange, n.Path()+"/"+n.Id+".subset.idx", n.Subset.Index.TotalUnits)
 			if err != nil {
-				return responder.RespondWithError(ctx, http.StatusInternalServerError, err.Error())
+				responder.RespondWithError(ctx, http.StatusInternalServerError, err.Error())
+				return
 			}
 			for _, rec := range recSlice {
 				s.R = append(s.R, io.NewSectionReader(nf, rec[0], rec[1]))
