@@ -4,7 +4,6 @@ package preauth
 import (
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
-	"github.com/MG-RAST/Shock/shock-server/node/archive"
 	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/node/filter"
@@ -24,37 +23,25 @@ func PreAuthRequest(ctx context.Context) {
 		logger.Error(err_msg)
 		responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 	} else {
-		if n, err := node.Load(p.NodeId); err == nil {
-			switch p.Type {
-			case "download":
-				streamDownload(ctx, n, p.Options)
-				preauth.Delete(id)
-			default:
-				responder.RespondWithError(ctx, http.StatusNotFound, "Preauthorization type not supported: "+p.Type)
-			}
-		} else {
-			err_msg := "err:@preAuth loadnode: " + err.Error()
-			logger.Error(err_msg)
-			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+		switch p.Type {
+		case "download":
+			streamDownload(ctx, id, p.Nodes, p.Options)
+			preauth.Delete(id)
+		default:
+			responder.RespondWithError(ctx, http.StatusNotFound, "Preauthorization type not supported: "+p.Type)
 		}
 	}
 	return
 }
 
 // handle download and its options
-func streamDownload(ctx context.Context, n *node.Node, options map[string]string) {
-	nf, err := n.FileReader()
-	defer nf.Close()
-	if err != nil {
-		err_msg := "err:@preAuth node.FileReader: " + err.Error()
-		logger.Error(err_msg)
-		responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
-		return
-	}
-	// set defaults
-	filename := n.Id
+func streamDownload(ctx context.Context, pid string, nodes []string, options map[string]string) {
+	// get defaults
+	filename := pid
 	var filterFunc filter.FilterFunc = nil
 	var compressionFormat string = ""
+	var archiveFormat string = ""
+
 	// use options if exist
 	if fn, has := options["filename"]; has {
 		filename = fn
@@ -65,35 +52,92 @@ func streamDownload(ctx context.Context, n *node.Node, options map[string]string
 		}
 	}
 	if cp, has := options["compression"]; has {
-		if archive.IsValidCompress(cp) {
-			compressionFormat = cp
-		}
+		compressionFormat = cp
 	}
-	// stream it
-	var s *request.Streamer
-	if n.Type == "subset" {
-		s = &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: filterFunc, Compression: compressionFormat}
-		if n.File.Size == 0 {
-			// handle empty subset file
-			s.R = append(s.R, nf)
+	if ar, has := options["archive"]; has {
+		archiveFormat = ar
+	}
+	var files []file.FileInfo
+
+	// process nodes
+	for _, nid := range nodes {
+		// get node
+		n, err := node.Load(nid)
+		if (err != nil) || !n.HasFile() {
+			continue
+		}
+		// get filereader
+		nf, err := n.FileReader()
+		if err != nil {
+			nf.Close()
+			continue
+		}
+		// add to file array
+		var fileInfo file.FileInfo
+		if n.Type == "subset" {
+			if n.File.Size == 0 {
+				// handle empty subset file
+				fileInfo.R = append(fileInfo.R, nf)
+			} else {
+				idx := index.New()
+				fullRange := "1-" + strconv.FormatInt(n.Subset.Index.TotalUnits, 10)
+				recSlice, err := idx.Range(fullRange, n.Path()+"/"+n.Id+".subset.idx", n.Subset.Index.TotalUnits)
+				if err != nil {
+					nf.Close()
+					continue
+				}
+				for _, rec := range recSlice {
+					fileInfo.R = append(fileInfo.R, io.NewSectionReader(nf, rec[0], rec[1]))
+				}
+			}
 		} else {
-			idx := index.New()
-			fullRange := "1-" + strconv.FormatInt(n.Subset.Index.TotalUnits, 10)
-			recSlice, err := idx.Range(fullRange, n.Path()+"/"+n.Id+".subset.idx", n.Subset.Index.TotalUnits)
-			if err != nil {
-				responder.RespondWithError(ctx, http.StatusInternalServerError, err.Error())
-				return
-			}
-			for _, rec := range recSlice {
-				s.R = append(s.R, io.NewSectionReader(nf, rec[0], rec[1]))
-			}
+			fileInfo.R = append(fileInfo.R, nf)
+		}
+		defer nf.Close()
+		// add to file info
+		fileInfo.Name = n.File.Name
+		fileInfo.Size = n.File.Size
+		if _, ok := n.File.Checksum["md5"]; ok {
+			fileInfo.Checksum = n.File.Checksum["md5"]
+		}
+		files = append(files, fileInfo)
+	}
+
+	if (len(nodes) == 1) && (len(files) == 1) {
+		// create single node / file streamer
+		s := &request.Streamer{
+			R:           files[0].R,
+			W:           ctx.HttpResponseWriter(),
+			ContentType: "application/octet-stream",
+			Filename:    filename,
+			Size:        files[0].Size,
+			Filter:      filterFunc,
+			Compression: compressionFormat,
+		}
+		if err := s.Stream(false); err != nil {
+			// causes "multiple response.WriteHeader calls" error but better than no response
+			err_msg := "err:@preAuth: s.stream: " + err.Error()
+			logger.Error(err_msg)
+			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+		}
+	} else if (len(files) > 1) && (archiveFormat != "") {
+		// create multi node / file streamer, must have archive format
+		m := &request.MultiStreamer{
+			Files:       files,
+			W:           ctx.HttpResponseWriter(),
+			ContentType: "application/octet-stream",
+			Filename:    filename,
+			Archive:     archiveFormat,
+		}
+		if err := m.MultiStream(); err != nil {
+			// causes "multiple response.WriteHeader calls" error but better than no response
+			err_msg := "err:@preAuth: m.multistream: " + err.Error()
+			logger.Error(err_msg)
+			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 		}
 	} else {
-		s = &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: filterFunc, Compression: compressionFormat}
-	}
-	if err = s.Stream(false); err != nil {
-		// causes "multiple response.WriteHeader calls" error but better than no response
-		err_msg := "err:@preAuth: s.stream: " + err.Error()
+		// something broke
+		err_msg := "err:@preAuth: no files available to download for given combination of options"
 		logger.Error(err_msg)
 		responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 	}

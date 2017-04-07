@@ -19,11 +19,6 @@ var validParams = []string{"action", "all", "archive_format", "attributes_str", 
 var validFiles = []string{"attributes", "subset_indices", "upload", "gzip", "bzip2"}
 var ValidUpload = []string{"upload", "gzip", "bzip2"}
 
-type UrlResponse struct {
-	Url       string `json:"url"`
-	ValidTill string `json:"validtill"`
-}
-
 type Query struct {
 	list map[string][]string
 }

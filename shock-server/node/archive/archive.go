@@ -3,6 +3,7 @@ package archive
 import (
 	"archive/tar"
 	"archive/zip"
+	"bytes"
 	"compress/bzip2"
 	"compress/gzip"
 	"crypto/md5"
@@ -10,6 +11,7 @@ import (
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/logger"
+	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"io"
 	"math/rand"
 	"os"
@@ -19,6 +21,7 @@ import (
 
 var validUncompress = []string{"gzip", "bzip2"}
 var validCompress = []string{"gzip", "zip"}
+var validToArchive = []string{"zip", "tar"}
 var validArchive = []string{"zip", "tar", "tar.gz", "tar.bz2"}
 var ArchiveList = strings.Join(validArchive, ", ")
 
@@ -26,6 +29,15 @@ type FormFile struct {
 	Name     string
 	Path     string
 	Checksum map[string]string
+}
+
+func IsValidToArchive(a string) bool {
+	for _, b := range validToArchive {
+		if b == a {
+			return true
+		}
+	}
+	return false
 }
 
 func IsValidArchive(a string) bool {
@@ -194,6 +206,46 @@ func unZip(filePath string, unpackDir string) (fileList []FormFile, err error) {
 		}
 	}
 	return
+}
+
+func ArchiveReader(format string, files []file.FileInfo) (outReader io.ReadCloser) {
+	pReader, pWriter := io.Pipe()
+	if format == "tar" {
+		tWriter := tar.NewWriter(pWriter)
+		go func() {
+			for _, f := range files {
+				fHdr := &tar.Header{Name: f.Name, Mode: 0660, Size: f.Size}
+				tWriter.WriteHeader(fHdr)
+				io.Copy(tWriter, f.Body)
+				cHdr := &tar.Header{Name: f.Name + ".md5", Mode: 0660, Size: int64(len(f.Checksum))}
+				tWriter.WriteHeader(cHdr)
+				io.Copy(tWriter, bytes.NewBufferString(f.Checksum))
+			}
+			tWriter.Close()
+			pWriter.Close()
+		}()
+	} else if format == "zip" {
+		zWriter := zip.NewWriter(pWriter)
+		go func() {
+			for _, f := range files {
+				zFile, _ := zWriter.Create(f.Name)
+				io.Copy(zFile, f.Body)
+				zSum, _ := zWriter.Create(f.Name + ".md5")
+				io.Copy(zSum, bytes.NewBufferString(f.Checksum))
+			}
+			zWriter.Close()
+			pWriter.Close()
+		}()
+	} else {
+		// no valid archive, pipe each inReader into one stream
+		go func() {
+			for _, f := range files {
+				io.Copy(pWriter, f.Body)
+			}
+			pWriter.Close()
+		}()
+	}
+	return pReader
 }
 
 func CompressReader(format string, filename string, inReader io.ReadCloser) (outReader io.ReadCloser) {

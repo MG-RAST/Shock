@@ -11,12 +11,21 @@ import (
 // Database collection handle
 var DB *mgo.Collection
 
+type PreAuthResponse struct {
+	Url       string
+	ValidTill string
+	Format    string
+	Filename  string
+	Files     int
+	Size      int64
+}
+
 type PreAuth struct {
-	Id        string
-	Type      string
-	NodeId    string
-	Options   map[string]string
-	ValidTill time.Time
+	Id        string            `bson:"id" json:"id"`
+	Type      string            `bson:"type" json:"type"`
+	Nodes     []string          `bson:"nodes" json:"nodes"`
+	Options   map[string]string `bson:"options" json:"options"`
+	ValidTill time.Time         `bson:"validtill" json:"validtill"`
 }
 
 // Initialize is an explicit init. Requires db.Initialize
@@ -26,9 +35,9 @@ func Initialize() {
 	DB.EnsureIndex(mgo.Index{Key: []string{"id"}, Unique: true})
 }
 
-// New preauth takes the id, type, node id, and a map of options
-func New(id, t, nid string, options map[string]string) (p *PreAuth, err error) {
-	p = &PreAuth{Id: id, Type: t, NodeId: nid, Options: options, ValidTill: time.Now().AddDate(0, 0, 1)}
+// New preauth takes the id, type, node ids, and a map of options
+func New(id string, t string, nids []string, options map[string]string) (p *PreAuth, err error) {
+	p = &PreAuth{Id: id, Type: t, Nodes: nids, Options: options, ValidTill: time.Now().AddDate(0, 1, 0)}
 	if _, err = DB.Upsert(bson.M{"id": p.Id}, &p); err != nil {
 		return nil, err
 	}

@@ -19,6 +19,15 @@ type File struct {
 	CreatedOn    time.Time         `bson:"created_on" json:"created_on"`
 }
 
+// FileInfo for streaming file content
+type FileInfo struct {
+	R        []SectionReader
+	Body     io.ReadCloser
+	Name     string
+	Size     int64
+	Checksum string
+}
+
 // SectionReader interface required for MultiReaderAt
 type SectionReader interface {
 	io.Reader

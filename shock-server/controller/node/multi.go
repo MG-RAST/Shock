@@ -6,6 +6,8 @@ import (
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
+	"github.com/MG-RAST/Shock/shock-server/node/archive"
+	"github.com/MG-RAST/Shock/shock-server/preauth"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
@@ -72,7 +74,7 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 
 	// Gather params to make db query. Do not include the following list.
 	if _, ok := query["query"]; ok {
-		paramlist := map[string]int{"query": 1, "limit": 1, "offset": 1, "order": 1, "direction": 1, "distinct": 1}
+		paramlist := map[string]int{"query": 1, "limit": 1, "offset": 1, "order": 1, "direction": 1, "distinct": 1, "download_url": 1, "file_name": 1, "archive": 1}
 		for key := range query {
 			if _, found := paramlist[key]; !found {
 				keyStr := fmt.Sprintf("attributes.%s", key)
@@ -86,7 +88,7 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 			}
 		}
 	} else if _, ok := query["querynode"]; ok {
-		paramlist := map[string]int{"querynode": 1, "limit": 1, "offset": 1, "order": 1, "direction": 1, "distinct": 1, "owner": 1, "read": 1, "write": 1, "delete": 1, "public_owner": 1, "public_read": 1, "public_write": 1, "public_delete": 1}
+		paramlist := map[string]int{"querynode": 1, "limit": 1, "offset": 1, "order": 1, "direction": 1, "distinct": 1, "download_url": 1, "file_name": 1, "archive": 1, "owner": 1, "read": 1, "write": 1, "delete": 1, "public_owner": 1, "public_read": 1, "public_write": 1, "public_delete": 1}
 		for key := range query {
 			if _, found := paramlist[key]; !found {
 				for _, value := range query[key] {
@@ -197,6 +199,56 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 		logger.Error(err_msg)
 		return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 	}
+
+	// process preauth url request, requires archive option
+	if _, ok := query["download_url"]; ok {
+		// add options - set defaults first
+		options := map[string]string{}
+		options["archive"] = "zip" // default is zip
+		if _, ok := query["archive"]; ok {
+			if archive.IsValidToArchive(query.Get("archive")) {
+				options["archive"] = query.Get("archive")
+			}
+		}
+		preauthId := util.RandString(20)
+		if _, ok := query["file_name"]; ok {
+			options["filename"] = query.Get("file_name")
+		} else {
+			options["filename"] = preauthId
+		}
+		if !strings.HasSuffix(options["filename"], options["archive"]) {
+			options["filename"] = options["filename"] + "." + options["archive"]
+		}
+		// get valid nodes
+		var nodeIds []string
+		var totalBytes int64
+		for _, n := range nodes {
+			if n.HasFile() {
+				nodeIds = append(nodeIds, n.Id)
+				totalBytes += n.File.Size
+			}
+		}
+		if len(nodeIds) == 0 {
+			return responder.RespondWithError(ctx, http.StatusBadRequest, "err:@node_ReadMany download url: no available files found")
+		}
+		// set preauth
+		if p, err := preauth.New(preauthId, "download", nodeIds, options); err != nil {
+			err_msg := "err:@node_ReadMany download_url: " + err.Error()
+			logger.Error(err_msg)
+			return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+		} else {
+			data := preauth.PreAuthResponse{
+				Url:       util.ApiUrl(ctx) + "/preauth/" + p.Id,
+				ValidTill: p.ValidTill.Format(time.ANSIC),
+				Format:    options["archive"],
+				Filename:  options["filename"],
+				Files:     len(nodeIds),
+				Size:      totalBytes,
+			}
+			return responder.RespondWithPaginatedData(ctx, data, limit, offset, count)
+		}
+	}
+
 	return responder.RespondWithPaginatedData(ctx, nodes, limit, offset, count)
 }
 
