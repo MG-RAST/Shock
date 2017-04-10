@@ -495,21 +495,25 @@ func (node *Node) Save() (err error) {
 	// get bson, test size and print
 	nbson, err := bson.Marshal(node)
 	if err != nil {
-		return
+		return err
 	}
 	if len(nbson) >= DocumentMaxByte {
 		return errors.New(fmt.Sprintf("bson document size is greater than limit of %d bytes", DocumentMaxByte))
 	}
 	bsonPath := fmt.Sprintf("%s/%s.bson", node.Path(), node.Id)
 	os.Remove(bsonPath)
-	err = ioutil.WriteFile(bsonPath, nbson, 0644)
-	if err != nil {
-		return
+	if err := ioutil.WriteFile(bsonPath, nbson, 0644); err != nil {
+	    // dir path may be missing, recreate and try again
+	    if err := node.Mkdir(); err != nil {
+		    return err
+	    }
+	    if err := ioutil.WriteFile(bsonPath, nbson, 0644); err != nil {
+	        return err
+        }
 	}
 	// save node to mongodb
-	err = dbUpsert(node)
-	if err != nil {
-		return
+	if err := dbUpsert(node); err != nil {
+		return err
 	}
 	return
 }
