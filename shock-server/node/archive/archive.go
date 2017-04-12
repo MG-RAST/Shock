@@ -217,9 +217,11 @@ func ArchiveReader(format string, files []*file.FileInfo) (outReader io.ReadClos
 				fHdr := &tar.Header{Name: f.Name, Mode: 0660, ModTime: f.ModTime, Size: f.Size}
 				tWriter.WriteHeader(fHdr)
 				io.Copy(tWriter, f.Body)
-				cHdr := &tar.Header{Name: f.Name + ".md5", Mode: 0660, ModTime: f.ModTime, Size: int64(len(f.Checksum))}
-				tWriter.WriteHeader(cHdr)
-				io.Copy(tWriter, bytes.NewBufferString(f.Checksum))
+				if f.Checksum != "" {
+				    cHdr := &tar.Header{Name: f.Name + ".md5", Mode: 0660, ModTime: f.ModTime, Size: int64(len(f.Checksum))}
+				    tWriter.WriteHeader(cHdr)
+				    io.Copy(tWriter, bytes.NewBufferString(f.Checksum))
+			    }
 			}
 			tWriter.Close()
 			pWriter.Close()
@@ -232,10 +234,12 @@ func ArchiveReader(format string, files []*file.FileInfo) (outReader io.ReadClos
 				zHdr.SetModTime(f.ModTime)
 				zFile, _ := zWriter.CreateHeader(zHdr)
 				io.Copy(zFile, f.Body)
-				cHdr := &zip.FileHeader{Name: f.Name + ".md5", UncompressedSize64: uint64(len(f.Checksum))}
-				cHdr.SetModTime(f.ModTime)
-				zSum, _ := zWriter.CreateHeader(cHdr)
-				io.Copy(zSum, bytes.NewBufferString(f.Checksum))
+				if f.Checksum != "" {
+				    cHdr := &zip.FileHeader{Name: f.Name + ".md5", UncompressedSize64: uint64(len(f.Checksum))}
+				    cHdr.SetModTime(f.ModTime)
+				    zSum, _ := zWriter.CreateHeader(cHdr)
+				    io.Copy(zSum, bytes.NewBufferString(f.Checksum))
+			    }
 			}
 			zWriter.Close()
 			pWriter.Close()
