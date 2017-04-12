@@ -25,6 +25,7 @@ type FileInfo struct {
 	Body     io.ReadCloser
 	Name     string
 	Size     int64
+	ModTime  time.Time
 	Checksum string
 }
 

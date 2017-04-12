@@ -16,7 +16,7 @@ import (
 // MultiStreamer if for taking multiple files and creating one stream through an archive format: zip, tar, etc.
 
 type MultiStreamer struct {
-	Files       []file.FileInfo
+	Files       []*file.FileInfo
 	W           http.ResponseWriter
 	ContentType string
 	Filename    string
@@ -90,13 +90,13 @@ func (m *MultiStreamer) MultiStream() (err error) {
 	// pipe each SectionReader into one stream
 	for _, f := range m.Files {
 		pReader, pWriter := io.Pipe()
-		go func() {
-			for _, sr := range f.R {
+		f.Body = pReader
+		go func(lf *file.FileInfo) {
+			for _, sr := range lf.R {
 				io.Copy(pWriter, sr)
 			}
 			pWriter.Close()
-		}()
-		f.Body = pReader
+		}(f)
 	}
 
 	// pass pipes through archiver to ResponseWriter

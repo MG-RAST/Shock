@@ -208,16 +208,16 @@ func unZip(filePath string, unpackDir string) (fileList []FormFile, err error) {
 	return
 }
 
-func ArchiveReader(format string, files []file.FileInfo) (outReader io.ReadCloser) {
+func ArchiveReader(format string, files []*file.FileInfo) (outReader io.ReadCloser) {
 	pReader, pWriter := io.Pipe()
 	if format == "tar" {
 		tWriter := tar.NewWriter(pWriter)
 		go func() {
 			for _, f := range files {
-				fHdr := &tar.Header{Name: f.Name, Mode: 0660, Size: f.Size}
+				fHdr := &tar.Header{Name: f.Name, Mode: 0660, ModTime: f.ModTime, Size: f.Size}
 				tWriter.WriteHeader(fHdr)
 				io.Copy(tWriter, f.Body)
-				cHdr := &tar.Header{Name: f.Name + ".md5", Mode: 0660, Size: int64(len(f.Checksum))}
+				cHdr := &tar.Header{Name: f.Name + ".md5", Mode: 0660, ModTime: f.ModTime, Size: int64(len(f.Checksum))}
 				tWriter.WriteHeader(cHdr)
 				io.Copy(tWriter, bytes.NewBufferString(f.Checksum))
 			}
@@ -228,9 +228,13 @@ func ArchiveReader(format string, files []file.FileInfo) (outReader io.ReadClose
 		zWriter := zip.NewWriter(pWriter)
 		go func() {
 			for _, f := range files {
-				zFile, _ := zWriter.Create(f.Name)
+				zHdr := &zip.FileHeader{Name: f.Name, UncompressedSize64: uint64(f.Size)}
+				zHdr.SetModTime(f.ModTime)
+				zFile, _ := zWriter.CreateHeader(zHdr)
 				io.Copy(zFile, f.Body)
-				zSum, _ := zWriter.Create(f.Name + ".md5")
+				cHdr := &zip.FileHeader{Name: f.Name + ".md5", UncompressedSize64: uint64(len(f.Checksum))}
+				cHdr.SetModTime(f.ModTime)
+				zSum, _ := zWriter.CreateHeader(cHdr)
 				io.Copy(zSum, bytes.NewBufferString(f.Checksum))
 			}
 			zWriter.Close()

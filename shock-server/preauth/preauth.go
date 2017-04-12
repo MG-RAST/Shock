@@ -12,12 +12,12 @@ import (
 var DB *mgo.Collection
 
 type PreAuthResponse struct {
-	Url       string
-	ValidTill string
-	Format    string
-	Filename  string
-	Files     int
-	Size      int64
+	Url       string `json:"url"`
+	ValidTill string `json:"validtill"`
+	Format    string `json:"format"`
+	Filename  string `json:"filename"`
+	Files     int    `json:"files"`
+	Size      int64  `json:"size"`
 }
 
 type PreAuth struct {

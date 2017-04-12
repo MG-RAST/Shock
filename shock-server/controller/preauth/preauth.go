@@ -57,7 +57,7 @@ func streamDownload(ctx context.Context, pid string, nodes []string, options map
 	if ar, has := options["archive"]; has {
 		archiveFormat = ar
 	}
-	var files []file.FileInfo
+	var files []*file.FileInfo
 
 	// process nodes
 	for _, nid := range nodes {
@@ -97,10 +97,11 @@ func streamDownload(ctx context.Context, pid string, nodes []string, options map
 		// add to file info
 		fileInfo.Name = n.File.Name
 		fileInfo.Size = n.File.Size
+		fileInfo.ModTime = n.File.CreatedOn
 		if _, ok := n.File.Checksum["md5"]; ok {
 			fileInfo.Checksum = n.File.Checksum["md5"]
 		}
-		files = append(files, fileInfo)
+		files = append(files, &fileInfo)
 	}
 
 	if (len(nodes) == 1) && (len(files) == 1) {
