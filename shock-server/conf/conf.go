@@ -48,8 +48,12 @@ var (
 	LOG_OUTPUT  string
 
 	// Runtime
+
 	EXPIRE_WAIT int // wait time for reaper in minutes
 	GOMAXPROCS  string
+	MAX_REVISIONS int  // max number of node revisions to keep; values < 0 mean keep all
+	
+	
 
 	// Logs
 	LOG_PERF   bool // Indicates whether performance logs should be stored
@@ -179,6 +183,9 @@ func Print() {
 	} else {
 		fmt.Printf("##### Log rotation disabled #####\n\n")
 	}
+       fmt.Printf("##### Expiration #####\nexpire_wait:\t%d minutes\n\n", EXPIRE_WAIT)
+	fmt.Printf("##### Max Revisions #####\nmax_revisions:\t%d\n\n", MAX_REVISIONS)
+	fmt.Printf("API_PORT: %d\n", API_PORT)
 }
 
 func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
@@ -217,6 +224,8 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	// Runtime
 	c_store.AddInt(&EXPIRE_WAIT, 60, "Runtime", "expire_wait", "", "")
 	c_store.AddString(&GOMAXPROCS, "", "Runtime", "GOMAXPROCS", "", "")
+	c_store.AddInt(&MAX_REVISIONS, 3, "Runtime", "max_revisions", "", "")
+
 
 	c_store.AddBool(&LOG_PERF, false, "Log", "perf_log", "", "")
 	c_store.AddBool(&LOG_ROTATE, true, "Log", "rotate", "", "")
@@ -303,7 +312,9 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 
 	c_store.Parse()
 
-	fmt.Printf("API_PORT: %d\n", API_PORT)
+	
 
 	return
+
 }
+

@@ -340,21 +340,19 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			}
 			// download full file
 		} else {
+			nf, err := n.FileReader()
+			defer nf.Close()
+			if err != nil {
+				err_msg := "err:@node_Read node.FileReader: " + err.Error()
+				logger.Error(err_msg)
+				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+			}
+			var s *request.Streamer
 			if n.Type == "subset" {
-				// open file
-				r, err := n.FileReader()
-				defer r.Close()
-				if err != nil {
-					err_msg := "Err@node_Read:Open: " + err.Error()
-					logger.Error(err_msg)
-					return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
-				}
-
-				s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, Compression: compressionFormat}
-
+				s = &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, Compression: compressionFormat}
 				if n.File.Size == 0 {
 					// handle empty subset file
-					s.R = append(s.R, r)
+					s.R = append(s.R, nf)
 				} else {
 					idx := index.New()
 					fullRange := "1-" + strconv.FormatInt(n.Subset.Index.TotalUnits, 10)
@@ -363,39 +361,20 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 						return responder.RespondWithError(ctx, http.StatusInternalServerError, err.Error())
 					}
 					for _, rec := range recSlice {
-						s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
+						s.R = append(s.R, io.NewSectionReader(nf, rec[0], rec[1]))
 					}
 				}
-				if err = s.Stream(download_raw); err != nil {
-					// causes "multiple response.WriteHeader calls" error but better than no response
-					err_msg := "err:@node_Read s.Stream: " + err.Error()
-					logger.Error(err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
-				}
 			} else {
-				nf, err := n.FileReader()
-				defer nf.Close()
-				if err != nil {
-					// File not found or some sort of file read error.
-					// Probably deserves more checking
-					err_msg := "err:@node_Read node.FileReader: " + err.Error()
-					logger.Error(err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
-				}
-				s := &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, Compression: compressionFormat}
-				if err = s.Stream(download_raw); err != nil {
-					// causes "multiple response.WriteHeader calls" error but better than no response
-					err_msg := "err:@node_Read s.Stream: " + err.Error()
-					logger.Error(err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
-				}
+				s = &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, Compression: compressionFormat}
+			}
+			if err = s.Stream(download_raw); err != nil {
+				// causes "multiple response.WriteHeader calls" error but better than no response
+				err_msg := "err:@node_Read s.Stream: " + err.Error()
+				logger.Error(err_msg)
+				return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 			}
 		}
 	} else if _, ok := query["download_url"]; ok {
-		if n.Type == "subset" {
-			return responder.RespondWithError(ctx, http.StatusBadRequest, "subset nodes do not currently support download_url operation")
-		}
-
 		if !n.HasFile() {
 			return responder.RespondWithError(ctx, http.StatusBadRequest, e.NodeNoFile)
 		} else {

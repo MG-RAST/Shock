@@ -1,3 +1,17 @@
+# v0.9.20
+
+- add priority field to node along with index and set option
+- add configurable max limit to revisions array
+- enable preauth download (download_url) for subset nodes
+- dockerfile update
+
+# v0.9.19
+
+- add 'md5' mongod index
+- update to golang 1.7.5
+- readme update
+- dockerfile update
+
 # v0.9.18
 
 - update to golang 1.7.1
