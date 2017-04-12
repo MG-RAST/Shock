@@ -51,9 +51,9 @@ var (
 
 	EXPIRE_WAIT int // wait time for reaper in minutes
 	GOMAXPROCS  string
-	MAX_REVISIONS = 3  // max number of node revisions to keep; values < 0 mean keep all
-	EXPIRE_WAIT   = 60 // wait time for reaper in minutes
-	GOMAXPROCS    = ""
+	MAX_REVISIONS int  // max number of node revisions to keep; values < 0 mean keep all
+	
+	
 
 	// Logs
 	LOG_PERF   bool // Indicates whether performance logs should be stored
