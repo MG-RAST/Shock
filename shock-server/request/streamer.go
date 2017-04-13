@@ -13,6 +13,16 @@ import (
 	"os/exec"
 )
 
+// MultiStreamer if for taking multiple files and creating one stream through an archive format: zip, tar, etc.
+
+type MultiStreamer struct {
+	Files       []*file.FileInfo
+	W           http.ResponseWriter
+	ContentType string
+	Filename    string
+	Archive     string
+}
+
 type Streamer struct {
 	R           []file.SectionReader
 	W           http.ResponseWriter
@@ -27,7 +37,7 @@ func (s *Streamer) Stream(streamRaw bool) (err error) {
 	// file download
 	if !streamRaw {
 		fileName := fmt.Sprintf(" attachment; filename=%s", s.Filename)
-		// add extension for compression
+		// add extension for compression or archive
 		if s.Compression != "" {
 			fileName = fmt.Sprintf(" attachment; filename=%s.%s", s.Filename, s.Compression)
 		}
@@ -39,7 +49,7 @@ func (s *Streamer) Stream(streamRaw bool) (err error) {
 	s.W.Header().Set("Access-Control-Allow-Headers", "Authorization")
 	s.W.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS")
 	s.W.Header().Set("Access-Control-Allow-Origin", "*")
-	if s.Size > 0 && s.Filter == nil && !archive.IsValidCompress(s.Compression) {
+	if (s.Size > 0) && (s.Filter == nil) && (s.Compression == "") {
 		s.W.Header().Set("Content-Length", fmt.Sprint(s.Size))
 	}
 
@@ -54,9 +64,7 @@ func (s *Streamer) Stream(streamRaw bool) (err error) {
 			} else {
 				rs = sr
 			}
-			if _, err = io.Copy(pWriter, rs); err != nil {
-				break
-			}
+			io.Copy(pWriter, rs)
 		}
 		pWriter.Close()
 	}()
@@ -66,6 +74,38 @@ func (s *Streamer) Stream(streamRaw bool) (err error) {
 	_, err = io.Copy(s.W, cReader)
 	cReader.Close()
 	pReader.Close()
+	return
+}
+
+func (m *MultiStreamer) MultiStream() (err error) {
+	// set headers
+	fileName := fmt.Sprintf(" attachment; filename=%s", m.Filename)
+	m.W.Header().Set("Content-Type", m.ContentType)
+	m.W.Header().Set("Connection", "close")
+	m.W.Header().Set("Access-Control-Allow-Headers", "Authorization")
+	m.W.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS")
+	m.W.Header().Set("Access-Control-Allow-Origin", "*")
+	m.W.Header().Set("Content-Disposition", fileName)
+
+	// pipe each SectionReader into one stream
+	for _, f := range m.Files {
+		pReader, pWriter := io.Pipe()
+		f.Body = pReader
+		go func(lf *file.FileInfo) {
+			for _, sr := range lf.R {
+				io.Copy(pWriter, sr)
+			}
+			pWriter.Close()
+		}(f)
+	}
+
+	// pass pipes through archiver to ResponseWriter
+	aReader := archive.ArchiveReader(m.Archive, m.Files)
+	_, err = io.Copy(m.W, aReader)
+	aReader.Close()
+	for _, f := range m.Files {
+		f.Body.Close()
+	}
 	return
 }
 

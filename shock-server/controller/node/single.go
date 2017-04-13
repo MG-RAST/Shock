@@ -77,8 +77,8 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 	var fFunc filter.FilterFunc = nil
 	var compressionFormat string = ""
 	// use query params if exist
-	if _, ok := query["filename"]; ok {
-		filename = query.Get("filename")
+	if _, ok := query["file_name"]; ok {
+		filename = query.Get("file_name")
 	}
 	if _, ok := query["filter"]; ok {
 		if filter.Has(query.Get("filter")) {
@@ -378,6 +378,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		if !n.HasFile() {
 			return responder.RespondWithError(ctx, http.StatusBadRequest, e.NodeNoFile)
 		} else {
+			preauthFilename := filename
 			// add options
 			options := map[string]string{}
 			options["filename"] = filename
@@ -386,14 +387,23 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			}
 			if compressionFormat != "" {
 				options["compression"] = compressionFormat
+				preauthFilename = preauthFilename + "." + compressionFormat
 			}
 			// set preauth
-			if p, err := preauth.New(util.RandString(20), "download", n.Id, options); err != nil {
+			if p, err := preauth.New(util.RandString(20), "download", []string{n.Id}, options); err != nil {
 				err_msg := "err:@node_Read download_url: " + err.Error()
 				logger.Error(err_msg)
 				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			} else {
-				return responder.RespondWithData(ctx, util.UrlResponse{Url: util.ApiUrl(ctx) + "/preauth/" + p.Id, ValidTill: p.ValidTill.Format(time.ANSIC)})
+				data := preauth.PreAuthResponse{
+					Url:       util.ApiUrl(ctx) + "/preauth/" + p.Id,
+					ValidTill: p.ValidTill.Format(time.ANSIC),
+					Format:    options["compression"],
+					Filename:  preauthFilename,
+					Files:     1,
+					Size:      n.File.Size,
+				}
+				return responder.RespondWithData(ctx, data)
 			}
 		}
 	} else if _, ok := query["download_post"]; ok {
