@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 var validUncompress = []string{"gzip", "bzip2"}
@@ -218,10 +219,10 @@ func ArchiveReader(format string, files []*file.FileInfo) (outReader io.ReadClos
 				tWriter.WriteHeader(fHdr)
 				io.Copy(tWriter, f.Body)
 				if f.Checksum != "" {
-				    cHdr := &tar.Header{Name: f.Name + ".md5", Mode: 0660, ModTime: f.ModTime, Size: int64(len(f.Checksum))}
-				    tWriter.WriteHeader(cHdr)
-				    io.Copy(tWriter, bytes.NewBufferString(f.Checksum))
-			    }
+					cHdr := &tar.Header{Name: f.Name + ".md5", Mode: 0660, ModTime: f.ModTime, Size: int64(len(f.Checksum))}
+					tWriter.WriteHeader(cHdr)
+					io.Copy(tWriter, bytes.NewBufferString(f.Checksum))
+				}
 			}
 			tWriter.Close()
 			pWriter.Close()
@@ -235,11 +236,11 @@ func ArchiveReader(format string, files []*file.FileInfo) (outReader io.ReadClos
 				zFile, _ := zWriter.CreateHeader(zHdr)
 				io.Copy(zFile, f.Body)
 				if f.Checksum != "" {
-				    cHdr := &zip.FileHeader{Name: f.Name + ".md5", UncompressedSize64: uint64(len(f.Checksum))}
-				    cHdr.SetModTime(f.ModTime)
-				    zSum, _ := zWriter.CreateHeader(cHdr)
-				    io.Copy(zSum, bytes.NewBufferString(f.Checksum))
-			    }
+					cHdr := &zip.FileHeader{Name: f.Name + ".md5", UncompressedSize64: uint64(len(f.Checksum))}
+					cHdr.SetModTime(f.ModTime)
+					zSum, _ := zWriter.CreateHeader(cHdr)
+					io.Copy(zSum, bytes.NewBufferString(f.Checksum))
+				}
 			}
 			zWriter.Close()
 			pWriter.Close()
@@ -261,16 +262,19 @@ func CompressReader(format string, filename string, inReader io.ReadCloser) (out
 		pReader, pWriter := io.Pipe()
 		if format == "gzip" {
 			gWriter := gzip.NewWriter(pWriter)
-			gWriter.Header.Name = filename
 			go func() {
+				gWriter.Header.Name = filename
+				gWriter.Header.ModTime = time.Now()
 				io.Copy(gWriter, inReader)
 				gWriter.Close()
 				pWriter.Close()
 			}()
 		} else if format == "zip" {
 			zWriter := zip.NewWriter(pWriter)
-			zFile, _ := zWriter.Create(filename)
 			go func() {
+				zHdr := &zip.FileHeader{Name: filename}
+				zHdr.SetModTime(time.Now())
+				zFile, _ := zWriter.CreateHeader(zHdr)
 				io.Copy(zFile, inReader)
 				zWriter.Close()
 				pWriter.Close()
