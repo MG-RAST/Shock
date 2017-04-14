@@ -104,22 +104,6 @@ func New() (node *Node) {
 	return
 }
 
-func LoadFromDisk(id string) (n *Node, err error) {
-	if len(id) < 6 {
-		return nil, errors.New("Node ID must be at least 6 characters in length")
-	}
-	path := getPath(id)
-	if nbson, err := ioutil.ReadFile(path + "/" + id + ".bson"); err != nil {
-		return nil, errors.New(e.NodeDoesNotExist)
-	} else {
-		n = new(Node)
-		if err = bson.Unmarshal(nbson, &n); err != nil {
-			return nil, err
-		}
-	}
-	return
-}
-
 func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (node *Node, err error) {
 	// if copying node or creating subset node from parent, check if user has rights to the original node
 	if _, hasCopyData := params["copy_data"]; hasCopyData {
