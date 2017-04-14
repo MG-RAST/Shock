@@ -477,7 +477,7 @@ func (node *Node) Save() (err error) {
 		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.Priority, node.CreatedOn, node.LastModified, node.Expiration, node.Type, node.Subset, node.Parts}
 		newRevisions := []Node{n}
 		if len(node.Revisions) > 0 {
-		    newRevisions = append(newRevisions, node.Revisions...) // prepend, latest revisions in front
+			newRevisions = append(newRevisions, node.Revisions...) // prepend, latest revisions in front
 		}
 		// adjust revisions based on config
 		// <0 keep all ; >0 keep max
@@ -495,21 +495,25 @@ func (node *Node) Save() (err error) {
 	// get bson, test size and print
 	nbson, err := bson.Marshal(node)
 	if err != nil {
-		return
+		return err
 	}
 	if len(nbson) >= DocumentMaxByte {
 		return errors.New(fmt.Sprintf("bson document size is greater than limit of %d bytes", DocumentMaxByte))
 	}
 	bsonPath := fmt.Sprintf("%s/%s.bson", node.Path(), node.Id)
 	os.Remove(bsonPath)
-	err = ioutil.WriteFile(bsonPath, nbson, 0644)
-	if err != nil {
-		return
+	if err := ioutil.WriteFile(bsonPath, nbson, 0644); err != nil {
+		// dir path may be missing, recreate and try again
+		if err := node.Mkdir(); err != nil {
+			return err
+		}
+		if err := ioutil.WriteFile(bsonPath, nbson, 0644); err != nil {
+			return err
+		}
 	}
 	// save node to mongodb
-	err = dbUpsert(node)
-	if err != nil {
-		return
+	if err := dbUpsert(node); err != nil {
+		return err
 	}
 	return
 }
@@ -519,14 +523,14 @@ func (node *Node) UpdateVersion() (err error) {
 	version := node.Id
 	versionParts := make(map[string]string)
 	partMap := map[string]interface{}{"file_ver": node.File, "indexes_ver": node.Indexes, "attributes_ver": node.Attributes, "acl_ver": node.Acl}
-	
+
 	// need to keep map ordered
 	partKeys := []string{}
 	for k, _ := range partMap {
-	    partKeys = append(partKeys, k)
+		partKeys = append(partKeys, k)
 	}
 	sort.Strings(partKeys)
-	
+
 	for _, k := range partKeys {
 		j, er := json.Marshal(partMap[k])
 		if er != nil {
