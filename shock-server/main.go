@@ -66,7 +66,7 @@ func mapRoutes() {
 		if l, has := req.Header["Content-Length"]; has {
 			suffix += " Content-Length: " + l[0]
 		}
-		logger.Info("access", fmt.Sprintf("%s REQ RECEIVED \"%s %s%s\"", host, ctx.MethodString(), req.RequestURI, suffix))
+		logger.Infof("%s REQ RECEIVED \"%s %s%s\"", host, ctx.MethodString(), req.RequestURI, suffix)
 		return nil
 	})
 
@@ -83,7 +83,7 @@ func mapRoutes() {
 		if l, has := req.Header["Content-Length"]; has {
 			suffix += " Content-Length: " + l[0]
 		}
-		logger.Info("access", fmt.Sprintf("RESPONDED TO %s \"%s %s%s\"", host, ctx.MethodString(), req.RequestURI, suffix))
+		logger.Infof("RESPONDED TO %s \"%s %s%s\"", host, ctx.MethodString(), req.RequestURI, suffix)
 		return nil
 	})
 
@@ -176,32 +176,59 @@ func mapRoutes() {
 }
 
 func main() {
-	// init(s)
-	conf.Initialize()
+	var err error
+
+	// init config
+	err = conf.Initialize()
+	if err != nil {
+		fmt.Errorf("Err@db.Initialize: %v\n", err)
+	}
+
+	// init logging system
 	logger.Initialize()
-	if err := db.Initialize(); err != nil {
+	logger.Info("Starting...")
+
+	if conf.ANON_WRITE {
+		warnstr := "Warning: anonymous write is activated, only use for development !!!!"
+		logger.Info(warnstr)
+		fmt.Errorf("%s\n", warnstr)
+	}
+
+	if conf.ANON_DELETE {
+		warnstr := "Warning: anonymous delete is activated, only use for development !!!!"
+		logger.Info(warnstr)
+		fmt.Errorf("%s\n", warnstr)
+	}
+
+	// init database
+	err = db.Initialize()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Err@db.Initialize: %v\n", err)
 		logger.Error("Err@db.Initialize: " + err.Error())
 		os.Exit(1)
 	}
+
 	user.Initialize()
 	node.Initialize()
 	preauth.Initialize()
 	auth.Initialize()
 	node.InitReaper()
-	if err := versions.Initialize(); err != nil {
+	err = versions.Initialize()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Err@versions.Initialize: %v\n", err)
 		logger.Error("Err@versions.Initialize: " + err.Error())
 		os.Exit(1)
 	}
-	if err := versions.RunVersionUpdates(); err != nil {
+	err = versions.RunVersionUpdates()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Err@versions.RunVersionUpdates: %v\n", err)
 		logger.Error("Err@versions.RunVersionUpdates: " + err.Error())
 		os.Exit(1)
 	}
 	// After version updates have succeeded without error, we can push the configured version numbers into the mongo db
 	// Note: configured version numbers are configured in conf.go but are NOT user configurable by design
-	if err := versions.PushVersionsToDatabase(); err != nil {
+	err = versions.PushVersionsToDatabase()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Err@versions.PushVersionsToDatabase: %v\n", err)
 		logger.Error("Err@versions.PushVersionsToDatabase: " + err.Error())
 		os.Exit(1)
@@ -216,13 +243,14 @@ func main() {
 
 	// check if necessary directories exist or created
 	for _, path := range []string{conf.PATH_SITE, conf.PATH_DATA, conf.PATH_LOGS, conf.PATH_DATA + "/temp"} {
-		if _, err := os.Stat(path); err != nil && os.IsNotExist(err) {
-			if err := os.Mkdir(path, 0777); err != nil {
-				fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
-				logger.Error("ERROR: " + err.Error())
-				os.Exit(1)
-			}
+
+		err = os.MkdirAll(path, 0777)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
+			logger.Errorf("error createing directory %s: %v", err)
+			os.Exit(1)
 		}
+
 	}
 
 	// reload
@@ -287,7 +315,7 @@ func main() {
 		fmt.Printf("pid: %d saved to file: %s\n\n", pid, conf.PATH_PIDFILE)
 	}
 
-	Address := conf.API_IP + ":" + conf.API_PORT
+	Address := fmt.Sprintf("%s:%d", conf.API_IP, conf.API_PORT)
 	mapRoutes()
 
 	s := &http.Server{
