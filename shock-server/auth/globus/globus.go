@@ -140,7 +140,7 @@ func clientId(t string) string {
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
 	req, err := http.NewRequest("GET", conf.AUTH_GLOBUS_TOKEN_URL, nil)
-        //logger.Error("URL: " + conf.AUTH_GLOBUS_TOKEN_URL)
+	//logger.Error("URL: " + conf.AUTH_GLOBUS_TOKEN_URL)
 
 	if err != nil {
 		logger.Error("Failed contact with auth server")
