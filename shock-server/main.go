@@ -141,8 +141,10 @@ func mapRoutes() {
 		if conf.AUTH_GLOBUS_TOKEN_URL != "" && conf.AUTH_GLOBUS_PROFILE_URL != "" {
 			auth = append(auth, "globus")
 		}
-		if conf.AUTH_MGRAST_OAUTH_URL != "" {
-			auth = append(auth, "mgrast")
+		if len(conf.AUTH_OAUTH) > 0 {
+			for b := range conf.AUTH_OAUTH {
+				auth = append(auth, b)
+			}
 		}
 
 		r := resource{

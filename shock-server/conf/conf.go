@@ -37,8 +37,11 @@ var (
 	AUTH_BASIC              bool
 	AUTH_GLOBUS_TOKEN_URL   string
 	AUTH_GLOBUS_PROFILE_URL string
-	AUTH_MGRAST_OAUTH_URL   string
+	AUTH_OAUTH_URL_STR      string
+	AUTH_OAUTH_BEARER_STR   string
 	AUTH_CACHE_TIMEOUT      int
+	AUTH_OAUTH              = make(map[string]string)
+	OAUTH_DEFAULT           string // first value in AUTH_OAUTH_URL_STR
 
 	// Default Chunksize for size virtual index
 	CHUNK_SIZE int64 = 1048576
@@ -48,7 +51,6 @@ var (
 	LOG_OUTPUT  string
 
 	// Runtime
-
 	EXPIRE_WAIT   int // wait time for reaper in minutes
 	GOMAXPROCS    string
 	MAX_REVISIONS int // max number of node revisions to keep; values < 0 mean keep all
@@ -127,14 +129,14 @@ func Initialize() (err error) {
 
 	c_store, err := getConfiguration(c) // from config file and command line arguments
 	if err != nil {
-		err = fmt.Errorf("ERROR: error reading conf file: %v\n", err)
+		err = errors.New("ERROR: error reading conf file: " + err.Error())
 		return
 	}
 
 	// ####### at this point configuration variables are set ########
 
 	if FAKE_VAR == false {
-		err = fmt.Errorf("ERROR: config was not parsed\n")
+		err = errors.New("ERROR: config was not parsed")
 		return
 	}
 	if PRINT_HELP || SHOW_HELP {
@@ -154,13 +156,16 @@ func Bool(s string) bool {
 // Print prints the configuration loads to stdout
 func Print() {
 	fmt.Printf("####### Anonymous ######\nread:\t%v\nwrite:\t%v\ndelete:\t%v\n\n", ANON_READ, ANON_WRITE, ANON_DELETE)
-	if (AUTH_GLOBUS_TOKEN_URL != "" && AUTH_GLOBUS_PROFILE_URL != "") || AUTH_MGRAST_OAUTH_URL != "" {
+	if (AUTH_GLOBUS_TOKEN_URL != "" && AUTH_GLOBUS_PROFILE_URL != "") || len(AUTH_OAUTH) > 0 {
 		fmt.Printf("##### Auth #####\n")
 		if AUTH_GLOBUS_TOKEN_URL != "" && AUTH_GLOBUS_PROFILE_URL != "" {
 			fmt.Printf("type:\tglobus\ntoken_url:\t%s\nprofile_url:\t%s\n\n", AUTH_GLOBUS_TOKEN_URL, AUTH_GLOBUS_PROFILE_URL)
 		}
-		if AUTH_MGRAST_OAUTH_URL != "" {
-			fmt.Printf("type:\tmgrast\noauth_url:\t%s\n\n", AUTH_MGRAST_OAUTH_URL)
+		if len(AUTH_OAUTH) > 0 {
+			for b, u := range AUTH_OAUTH {
+				fmt.Printf("bearer: %s\turl: %s\n", b, u)
+			}
+			fmt.Printf("\n")
 		}
 	}
 	fmt.Printf("##### Admin #####\nusers:\t%s\n\n", ADMIN_USERS)
@@ -216,8 +221,23 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddBool(&AUTH_BASIC, false, "Auth", "basic", "", "")
 	c_store.AddString(&AUTH_GLOBUS_TOKEN_URL, "", "Auth", "globus_token_url", "", "")
 	c_store.AddString(&AUTH_GLOBUS_PROFILE_URL, "", "Auth", "globus_profile_url", "", "")
-	c_store.AddString(&AUTH_MGRAST_OAUTH_URL, "", "Auth", "mgrast_oauth_url", "", "")
+	c_store.AddString(&AUTH_OAUTH_URL_STR, "", "Auth", "oauth_urls", "", "")
+	c_store.AddString(&AUTH_OAUTH_BEARER_STR, "", "Auth", "oauth_bearers", "", "")
 	c_store.AddInt(&AUTH_CACHE_TIMEOUT, 60, "Auth", "cache_timeout", "", "")
+
+	// parse OAuth settings if used
+	if AUTH_OAUTH_URL_STR != "" && AUTH_OAUTH_BEARER_STR != "" {
+		ou := strings.Split(AUTH_OAUTH_URL_STR, ",")
+		ob := strings.Split(AUTH_OAUTH_BEARER_STR, ",")
+		if len(ou) != len(ob) {
+			err = errors.New("ERROR: number of items in oauth_urls and oauth_bearers are not the same")
+			return
+		}
+		for i := range ob {
+			AUTH_OAUTH[ob[i]] = ou[i]
+		}
+		OAUTH_DEFAULT = ou[0] // first url is default for "oauth" bearer token
+	}
 
 	// Runtime
 	c_store.AddInt(&EXPIRE_WAIT, 60, "Runtime", "expire_wait", "", "")
@@ -230,10 +250,6 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	// Mongodb
 	c_store.AddString(&MONGODB_ATTRIBUTE_INDEXES, "", "Mongodb", "attribute_indexes", "", "")
 	c_store.AddString(&MONGODB_DATABASE, "ShockDB", "Mongodb", "database", "", "")
-
-	//MONGODB_HOSTS, _ = c.String("Mongodb", "hosts")
-	//MONGODB_PASSWORD, _ = c.String("Mongodb", "password")
-	//MONGODB_USER, _ = c.String("Mongodb", "user")
 	c_store.AddString(&MONGODB_HOSTS, "mongo", "Mongodb", "hosts", "", "")
 	c_store.AddString(&MONGODB_PASSWORD, "", "Mongodb", "password", "", "")
 	c_store.AddString(&MONGODB_USER, "", "Mongodb", "user", "", "")
@@ -270,12 +286,6 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	}
 
 	// Paths
-	//PATH_SITE, _ = c.String("Paths", "site")
-	//PATH_DATA, _ = c.String("Paths", "data")
-	//PATH_LOGS, _ = c.String("Paths", "logs")
-	//PATH_LOCAL, _ = c.String("Paths", "local_paths")
-	//PATH_PIDFILE, _ = c.String("Paths", "pidfile")
-
 	c_store.AddString(&PATH_SITE, "/usr/local/shock/site", "Paths", "site", "", "")
 	c_store.AddString(&PATH_DATA, "/usr/local/shock", "Paths", "data", "", "")
 	c_store.AddString(&PATH_LOGS, "/var/log/shock", "Paths", "logs", "", "")
@@ -283,11 +293,8 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddString(&PATH_PIDFILE, "", "Paths", "pidfile", "", "")
 
 	// SSL
-	//SSL, _ = c.Bool("SSL", "enable")
 	c_store.AddBool(&SSL, false, "SSL", "enable", "", "")
 	if SSL {
-		//SSL_KEY, _ = c.String("SSL", "key")
-		//SSL_CERT, _ = c.String("SSL", "cert")
 		c_store.AddString(&SSL_KEY, "", "SSL", "key", "", "")
 		c_store.AddString(&SSL_CERT, "", "SSL", "cert", "", "")
 	}

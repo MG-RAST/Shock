@@ -42,7 +42,7 @@ func authHeaderType(header string) string {
 // user
 func Auth(header string) (usr *user.User, err error) {
 	switch authHeaderType(header) {
-	case "globus-goauthtoken", "oauth":
+	case "globus-goauthtoken", "globus", "goauth":
 		return fetchProfile(strings.Split(header, " ")[1])
 	case "basic":
 		if username, password, err := basic.DecodeHeader(header); err == nil {
