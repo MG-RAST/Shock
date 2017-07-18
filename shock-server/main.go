@@ -183,7 +183,8 @@ func main() {
 	// init config
 	err = conf.Initialize()
 	if err != nil {
-		fmt.Errorf("Err@db.Initialize: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Err@conf.Initialize: %s\n", err.Error())
+		os.Exit(1)
 	}
 
 	// init logging system
@@ -193,19 +194,16 @@ func main() {
 	if conf.ANON_WRITE {
 		warnstr := "Warning: anonymous write is activated, only use for development !!!!"
 		logger.Info(warnstr)
-		fmt.Errorf("%s\n", warnstr)
 	}
-
 	if conf.ANON_DELETE {
 		warnstr := "Warning: anonymous delete is activated, only use for development !!!!"
 		logger.Info(warnstr)
-		fmt.Errorf("%s\n", warnstr)
 	}
 
 	// init database
 	err = db.Initialize()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Err@db.Initialize: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Err@db.Initialize: %s\n", err.Error())
 		logger.Error("Err@db.Initialize: " + err.Error())
 		os.Exit(1)
 	}
@@ -217,13 +215,13 @@ func main() {
 	node.InitReaper()
 	err = versions.Initialize()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Err@versions.Initialize: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Err@versions.Initialize: %s\n", err.Error())
 		logger.Error("Err@versions.Initialize: " + err.Error())
 		os.Exit(1)
 	}
 	err = versions.RunVersionUpdates()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Err@versions.RunVersionUpdates: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Err@versions.RunVersionUpdates: %s\n", err.Error())
 		logger.Error("Err@versions.RunVersionUpdates: " + err.Error())
 		os.Exit(1)
 	}
@@ -231,25 +229,24 @@ func main() {
 	// Note: configured version numbers are configured in conf.go but are NOT user configurable by design
 	err = versions.PushVersionsToDatabase()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Err@versions.PushVersionsToDatabase: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Err@versions.PushVersionsToDatabase: %s\n", err.Error())
 		logger.Error("Err@versions.PushVersionsToDatabase: " + err.Error())
 		os.Exit(1)
 	}
 	printLogo()
 	conf.Print()
 	if err := versions.Print(); err != nil {
-		fmt.Fprintf(os.Stderr, "Err@versions.Print: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Err@versions.Print: %s\n", err.Error())
 		logger.Error("Err@versions.Print: " + err.Error())
 		os.Exit(1)
 	}
 
 	// check if necessary directories exist or created
 	for _, path := range []string{conf.PATH_SITE, conf.PATH_DATA, conf.PATH_LOGS, conf.PATH_DATA + "/temp"} {
-
 		err = os.MkdirAll(path, 0777)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
-			logger.Errorf("error createing directory %s: %v", err)
+			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err.Error())
+			logger.Errorf("error createing directory %s: %s", path, err.Error())
 			os.Exit(1)
 		}
 
@@ -260,7 +257,7 @@ func main() {
 		fmt.Println("####### Reloading #######")
 		err := reload(conf.RELOAD)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
+			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err.Error())
 			logger.Error("ERROR: " + err.Error())
 			os.Exit(1)
 		}
@@ -343,7 +340,6 @@ func main() {
 	go func() {
 		for _ = range c {
 			// sig is a ^C, handle it
-
 			// stop the HTTP server
 			fmt.Fprintln(os.Stderr, "Stopping the server...")
 			listener.Close()

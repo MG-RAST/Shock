@@ -108,8 +108,7 @@ func Initialize() (err error) {
 			} else if i+1 < len(os.Args) {
 				CONFIG_FILE = os.Args[i+1]
 			} else {
-				err = errors.New("ERROR: parsing command options, missing conf file")
-				return
+				return errors.New("parsing command options, missing conf file")
 			}
 		}
 	}
@@ -118,8 +117,7 @@ func Initialize() (err error) {
 	if CONFIG_FILE != "" {
 		c, err = config.ReadDefault(CONFIG_FILE)
 		if err != nil {
-			err = errors.New("ERROR: error reading conf file: " + err.Error())
-			return
+			return errors.New("error reading conf file: " + err.Error())
 		}
 		fmt.Printf("read %s\n", CONFIG_FILE)
 	} else {
@@ -129,15 +127,18 @@ func Initialize() (err error) {
 
 	c_store, err := getConfiguration(c) // from config file and command line arguments
 	if err != nil {
-		err = errors.New("ERROR: error reading conf file: " + err.Error())
-		return
+		return errors.New("error reading conf file: " + err.Error())
 	}
 
 	// ####### at this point configuration variables are set ########
 
+	err = parseConfiguration()
+	if err != nil {
+		return errors.New("error parsing conf file: " + err.Error())
+	}
+
 	if FAKE_VAR == false {
-		err = errors.New("ERROR: config was not parsed")
-		return
+		return errors.New("config was not parsed")
 	}
 	if PRINT_HELP || SHOW_HELP {
 		c_store.PrintHelp()
@@ -162,6 +163,7 @@ func Print() {
 			fmt.Printf("type:\tglobus\ntoken_url:\t%s\nprofile_url:\t%s\n\n", AUTH_GLOBUS_TOKEN_URL, AUTH_GLOBUS_PROFILE_URL)
 		}
 		if len(AUTH_OAUTH) > 0 {
+			fmt.Printf("type:\toauth\n")
 			for b, u := range AUTH_OAUTH {
 				fmt.Printf("bearer: %s\turl: %s\n", b, u)
 			}
@@ -176,7 +178,7 @@ func Print() {
 	} else {
 		fmt.Printf("##### SSL disabled #####\n\n")
 	}
-	fmt.Printf("##### Mongodb #####\nhost(s):\t%s\ndatabase:\t%s\n\n", MONGODB_HOSTS, MONGODB_DATABASE)
+	fmt.Printf("##### Mongodb #####\nhost(s):\t%s\ndatabase:\t%s\nattribute_indexes:\t%s\n\n", MONGODB_HOSTS, MONGODB_DATABASE, MONGODB_ATTRIBUTE_INDEXES)
 	fmt.Printf("##### Address #####\nip:\t%s\nport:\t%d\n\n", API_IP, API_PORT)
 	if LOG_PERF {
 		fmt.Printf("##### PerfLog enabled #####\n\n")
@@ -195,9 +197,7 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store = NewCS(c)
 
 	// Admin
-	//ADMIN_EMAIL, _ = c.String("Admin", "email")
 	c_store.AddString(&ADMIN_EMAIL, "", "Admin", "email", "", "")
-	//ADMIN_USERS, _ = c.String("Admin", "users")
 	c_store.AddString(&ADMIN_USERS, "", "Admin", "users", "", "")
 	if ADMIN_USERS != "" {
 		for _, name := range strings.Split(ADMIN_USERS, ",") {
@@ -224,20 +224,6 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddString(&AUTH_OAUTH_URL_STR, "", "Auth", "oauth_urls", "", "")
 	c_store.AddString(&AUTH_OAUTH_BEARER_STR, "", "Auth", "oauth_bearers", "", "")
 	c_store.AddInt(&AUTH_CACHE_TIMEOUT, 60, "Auth", "cache_timeout", "", "")
-
-	// parse OAuth settings if used
-	if AUTH_OAUTH_URL_STR != "" && AUTH_OAUTH_BEARER_STR != "" {
-		ou := strings.Split(AUTH_OAUTH_URL_STR, ",")
-		ob := strings.Split(AUTH_OAUTH_BEARER_STR, ",")
-		if len(ou) != len(ob) {
-			err = errors.New("ERROR: number of items in oauth_urls and oauth_bearers are not the same")
-			return
-		}
-		for i := range ob {
-			AUTH_OAUTH[ob[i]] = ou[i]
-		}
-		OAUTH_DEFAULT = ou[0] // first url is default for "oauth" bearer token
-	}
 
 	// Runtime
 	c_store.AddInt(&EXPIRE_WAIT, 60, "Runtime", "expire_wait", "", "")
@@ -317,5 +303,20 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.Parse()
 
 	return
+}
 
+func parseConfiguration() (err error) {
+	// parse OAuth settings if used
+	if AUTH_OAUTH_URL_STR != "" && AUTH_OAUTH_BEARER_STR != "" {
+		ou := strings.Split(AUTH_OAUTH_URL_STR, ",")
+		ob := strings.Split(AUTH_OAUTH_BEARER_STR, ",")
+		if len(ou) != len(ob) {
+			return errors.New("number of items in oauth_urls and oauth_bearers are not the same")
+		}
+		for i := range ob {
+			AUTH_OAUTH[ob[i]] = ou[i]
+		}
+		OAUTH_DEFAULT = ou[0] // first url is default for "oauth" bearer token
+	}
+	return
 }
