@@ -214,12 +214,20 @@ func ArchiveReader(format string, files []*file.FileInfo) (outReader io.ReadClos
 	if format == "tar" {
 		tWriter := tar.NewWriter(pWriter)
 		go func() {
+			fileNames := map[string]int{}
 			for _, f := range files {
-				fHdr := &tar.Header{Name: f.Name, Mode: 0660, ModTime: f.ModTime, Size: f.Size}
+				fileName := f.Name
+				if num, ok := fileNames[f.Name]; ok {
+					fileName = fmt.Sprintf("%s.%d", fileName, num+1)
+					fileNames[f.Name] = num + 1
+				} else {
+					fileNames[f.Name] = 1
+				}
+				fHdr := &tar.Header{Name: fileName, Mode: 0660, ModTime: f.ModTime, Size: f.Size}
 				tWriter.WriteHeader(fHdr)
 				io.Copy(tWriter, f.Body)
 				if f.Checksum != "" {
-					cHdr := &tar.Header{Name: f.Name + ".md5", Mode: 0660, ModTime: f.ModTime, Size: int64(len(f.Checksum))}
+					cHdr := &tar.Header{Name: fileName + ".md5", Mode: 0660, ModTime: f.ModTime, Size: int64(len(f.Checksum))}
 					tWriter.WriteHeader(cHdr)
 					io.Copy(tWriter, bytes.NewBufferString(f.Checksum))
 				}
@@ -230,13 +238,21 @@ func ArchiveReader(format string, files []*file.FileInfo) (outReader io.ReadClos
 	} else if format == "zip" {
 		zWriter := zip.NewWriter(pWriter)
 		go func() {
+			fileNames := map[string]int{}
 			for _, f := range files {
-				zHdr := &zip.FileHeader{Name: f.Name, UncompressedSize64: uint64(f.Size)}
+				fileName := f.Name
+				if num, ok := fileNames[f.Name]; ok {
+					fileName = fmt.Sprintf("%s.%d", fileName, num+1)
+					fileNames[f.Name] = num + 1
+				} else {
+					fileNames[f.Name] = 1
+				}
+				zHdr := &zip.FileHeader{Name: fileName, UncompressedSize64: uint64(f.Size)}
 				zHdr.SetModTime(f.ModTime)
 				zFile, _ := zWriter.CreateHeader(zHdr)
 				io.Copy(zFile, f.Body)
 				if f.Checksum != "" {
-					cHdr := &zip.FileHeader{Name: f.Name + ".md5", UncompressedSize64: uint64(len(f.Checksum))}
+					cHdr := &zip.FileHeader{Name: fileName + ".md5", UncompressedSize64: uint64(len(f.Checksum))}
 					cHdr.SetModTime(f.ModTime)
 					zSum, _ := zWriter.CreateHeader(cHdr)
 					io.Copy(zSum, bytes.NewBufferString(f.Checksum))
