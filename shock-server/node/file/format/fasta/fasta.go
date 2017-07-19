@@ -123,11 +123,11 @@ func (self *Reader) SeekChunk(offSet int64) (n int64, err error) {
 	if n, err := r.Read(buf); err != nil {
 		return int64(n), err
 	}
-	if pos := bytes.LastIndex(buf, []byte(">")); pos == -1 {
+	if pos := bytes.LastIndex(buf, []byte("\n>")); pos == -1 {
 		indexPos, err := self.SeekChunk(offSet + winSize)
 		return (winSize + indexPos), err
 	} else {
-		return conf.CHUNK_SIZE - winSize + int64(pos), nil
+		return conf.CHUNK_SIZE - winSize + int64(pos+1), nil
 	}
 	return
 }
