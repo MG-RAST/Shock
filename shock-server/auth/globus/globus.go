@@ -42,7 +42,7 @@ func authHeaderType(header string) string {
 // user
 func Auth(header string) (usr *user.User, err error) {
 	switch authHeaderType(header) {
-	case "globus-goauthtoken", "oauth":
+	case "globus-goauthtoken", "globus", "goauth":
 		return fetchProfile(strings.Split(header, " ")[1])
 	case "basic":
 		if username, password, err := basic.DecodeHeader(header); err == nil {
@@ -140,7 +140,7 @@ func clientId(t string) string {
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
 	req, err := http.NewRequest("GET", conf.AUTH_GLOBUS_TOKEN_URL, nil)
-        //logger.Error("URL: " + conf.AUTH_GLOBUS_TOKEN_URL)
+	//logger.Error("URL: " + conf.AUTH_GLOBUS_TOKEN_URL)
 
 	if err != nil {
 		logger.Error("Failed contact with auth server")

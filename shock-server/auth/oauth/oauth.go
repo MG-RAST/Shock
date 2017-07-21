@@ -1,5 +1,5 @@
 // Package globus implements MG-RAST OAuth authentication
-package mgrast
+package oauth
 
 import (
 	"crypto/tls"
@@ -20,6 +20,7 @@ type resErr struct {
 
 type credentials struct {
 	Uname string `json:"login"`
+	Name  string `json:"name"`
 	Fname string `json:"firstname"`
 	Lname string `json:"lastname"`
 	Email string `json:"email"`
@@ -33,29 +34,35 @@ func authHeaderType(header string) string {
 	return ""
 }
 
-// Auth takes the request authorization header and returns
-// user
+// Auth takes the request authorization header and returns user
+// bearer token "oauth" returns default url (first item in auth_oauth_url conf value)
 func Auth(header string) (*user.User, error) {
-	switch authHeaderType(header) {
-	case "mgrast", "oauth":
-		return authToken(strings.Split(header, " ")[1])
-	case "basic":
-		return nil, errors.New("This authentication method does not support username/password authentication. Please use your MG-RAST token.")
-	default:
-		return nil, errors.New("Invalid authentication header.")
+	bearer := authHeaderType(header)
+	if bearer == "" {
+		return nil, errors.New("Invalid authentication header, missing bearer token.")
+	}
+	oauth_url, found_url := conf.AUTH_OAUTH[bearer]
+	if bearer == "basic" {
+		return nil, errors.New("This authentication method does not support username/password authentication. Please use your OAuth token.")
+	} else if bearer == "oauth" {
+		return authToken(strings.Split(header, " ")[1], conf.OAUTH_DEFAULT)
+	} else if found_url {
+		return authToken(strings.Split(header, " ")[1], oauth_url)
+	} else {
+		return nil, errors.New("Invalid authentication header, unknown bearer token: " + bearer)
 	}
 }
 
 // authToken validiates token by fetching user information.
-func authToken(t string) (u *user.User, err error) {
+func authToken(token string, url string) (u *user.User, err error) {
 	client := &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
-	req, err := http.NewRequest("GET", conf.AUTH_MGRAST_OAUTH_URL, nil)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Add("Auth", t)
+	req.Header.Add("Auth", token)
 	if resp, err := client.Do(req); err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode == http.StatusOK {
@@ -69,7 +76,11 @@ func authToken(t string) (u *user.User, err error) {
 						return nil, errors.New(e.InvalidAuth)
 					}
 					u.Username = c.Uname
-					u.Fullname = c.Fname + " " + c.Lname
+					if c.Name != "" {
+						u.Fullname = c.Name
+					} else {
+						u.Fullname = c.Fname + " " + c.Lname
+					}
 					u.Email = c.Email
 					if err = u.SetMongoInfo(); err != nil {
 						return nil, err

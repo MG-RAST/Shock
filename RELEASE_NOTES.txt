@@ -1,8 +1,15 @@
+# v0.9.22
+- update to golang 1.7.6
+- added ability to download multiple files (.tar or .zip format) from a list (POST)
+- auth update. now support multiple oauth services at once. requires config file update
+- update error handling in config init / parse
+- bug fix: chunkrecord regex
+
 # v0.9.21
 
 - graceful error handling of missing .bson file
 - add more to preauth return: file size, options used
-- added ability to download multiple files (.tar or .zip format) from a query
+- added ability to download multiple files (.tar or .zip format) from a query (GET)
 
 # v0.9.20
 
