@@ -105,9 +105,9 @@ func IndexTypedRequest(ctx context.Context) {
 		query := ctx.HttpRequest().URL.Query()
 		_, forceRebuild := query["force_rebuild"]
 
-		if _, has := n.Indexes[idxType]; has {
+		if v, has := n.Indexes[idxType]; has {
 			if idxType == "size" {
-				responder.RespondOK(ctx)
+				responder.RespondWithData(ctx, map[string]interface{}{idxType: v})
 				return
 			} else if !forceRebuild {
 				responder.RespondWithError(ctx, http.StatusBadRequest, "This index already exists, please add the parameter 'force_rebuild=1' to force a rebuild of the existing index.")
@@ -308,7 +308,7 @@ func IndexTypedRequest(ctx context.Context) {
 			logger.Perf("END indexing: " + nid)
 		}
 
-		responder.RespondOK(ctx)
+		responder.RespondWithData(ctx, map[string]interface{}{idxType: idxInfo})
 
 	default:
 		responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
