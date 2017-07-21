@@ -17,6 +17,8 @@ type idxOpts struct {
 	sparse   bool
 }
 
+var LOG_OUTPUTS = [3]string{"file", "console", "both"}
+
 var (
 	// Admin
 	ADMIN_EMAIL string
@@ -48,7 +50,6 @@ var (
 
 	// Config File
 	CONFIG_FILE string
-	LOG_OUTPUT  string
 
 	// Runtime
 	EXPIRE_WAIT   int // wait time for reaper in minutes
@@ -58,6 +59,7 @@ var (
 	// Logs
 	LOG_PERF   bool // Indicates whether performance logs should be stored
 	LOG_ROTATE bool // Indicates whether logs should be rotated daily
+	LOG_OUTPUT string
 
 	// Mongo information
 	MONGODB_HOSTS             string
@@ -230,8 +232,10 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddString(&GOMAXPROCS, "", "Runtime", "GOMAXPROCS", "", "")
 	c_store.AddInt(&MAX_REVISIONS, 3, "Runtime", "max_revisions", "", "")
 
+	// Log
 	c_store.AddBool(&LOG_PERF, false, "Log", "perf_log", "", "")
 	c_store.AddBool(&LOG_ROTATE, true, "Log", "rotate", "", "")
+	c_store.AddString(&LOG_OUTPUT, "both", "Log", "logoutput", "console, file or both", "")
 
 	// Mongodb
 	c_store.AddString(&MONGODB_ATTRIBUTE_INDEXES, "", "Mongodb", "attribute_indexes", "", "")
@@ -285,10 +289,7 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 		c_store.AddString(&SSL_CERT, "", "SSL", "cert", "", "")
 	}
 
-	// Log
-	c_store.AddString(&LOG_OUTPUT, "console", "Log", "logoutput", "console, file or both", "")
-
-	//Other
+	// Other - thses option are CLI only
 	c_store.AddString(&RELOAD, "", "Other", "reload", "path or url to shock data. WARNING this will drop all current data.", "")
 	gopath := os.Getenv("GOPATH")
 	c_store.AddString(&CONFIG_FILE, gopath+"/src/github.com/MG-RAST/Shock/shock-server.conf.template", "Other", "conf", "path to config file", "")
@@ -317,6 +318,16 @@ func parseConfiguration() (err error) {
 			AUTH_OAUTH[ob[i]] = ou[i]
 		}
 		OAUTH_DEFAULT = ou[0] // first url is default for "oauth" bearer token
+	}
+	// validate LOG_OUTPUT
+	vaildLogout := false
+	for _, logout := range LOG_OUTPUTS {
+		if LOG_OUTPUT == logout {
+			vaildLogout = true
+		}
+	}
+	if !vaildLogout {
+		return errors.New("invalid option for logoutput, use one of: file, console, both")
 	}
 	return
 }
