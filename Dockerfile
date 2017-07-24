@@ -15,7 +15,7 @@ RUN mkdir -p /var/log/shock /usr/local/shock ${DIR}
 # set version
 RUN cd ${DIR} && \
   VERSION=$(cat VERSION) && \
-  sed -i "s/\[% VERSION %\]/${VERSION}/" shock-server/main.go 
+  sed -i "s/\[% VERSION %\]/${VERSION}/" shock-server/conf/conf.go
 
 # compile
 RUN cd ${DIR} && \
