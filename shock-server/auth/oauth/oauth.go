@@ -59,7 +59,7 @@ func authToken(token string, url string) (u *user.User, err error) {
 	}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("HTTP GET: " + err.Error())
 	}
 	req.Header.Add("Auth", token)
 	if resp, err := client.Do(req); err == nil {
@@ -69,7 +69,7 @@ func authToken(token string, url string) (u *user.User, err error) {
 				u = &user.User{}
 				c := &credentials{}
 				if err = json.Unmarshal(body, &c); err != nil {
-					return nil, err
+					return nil, errors.New("JSON Unmarshal: " + err.Error())
 				} else {
 					if c.Uname == "" {
 						return nil, errors.New(e.InvalidAuth)
@@ -82,7 +82,7 @@ func authToken(token string, url string) (u *user.User, err error) {
 					}
 					u.Email = c.Email
 					if err = u.SetMongoInfo(); err != nil {
-						return nil, err
+						return nil, errors.New("MongoDB: " + err.Error())
 					}
 				}
 			}
