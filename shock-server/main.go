@@ -158,7 +158,7 @@ func mapRoutes() {
 			S: time.Now().Format(longDateForm),
 			T: "Shock",
 			U: host + "/",
-			V: "[% VERSION %]",
+			V: conf.VERSION,
 		}
 		return responder.WriteResponseObject(ctx, http.StatusOK, r)
 	})
