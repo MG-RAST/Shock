@@ -69,7 +69,7 @@ func fetchToken(u string, p string) (t *token, err error) {
 	}
 	req, err := http.NewRequest("GET", conf.AUTH_GLOBUS_TOKEN_URL, nil)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("HTTP GET: " + err.Error())
 	}
 	req.SetBasicAuth(u, p)
 	if resp, err := client.Do(req); err == nil {
@@ -77,7 +77,7 @@ func fetchToken(u string, p string) (t *token, err error) {
 		if resp.StatusCode == http.StatusCreated {
 			if body, err := ioutil.ReadAll(resp.Body); err == nil {
 				if err = json.Unmarshal(body, &t); err != nil {
-					return nil, err
+					return nil, errors.New("JSON Unmarshal: " + err.Error())
 				}
 			}
 		} else {
@@ -98,7 +98,7 @@ func fetchProfile(t string) (u *user.User, err error) {
 	req, err := http.NewRequest("GET", conf.AUTH_GLOBUS_PROFILE_URL+"/"+clientId(t), nil)
 	//logger.Error("URL: " + conf.AUTH_GLOBUS_PROFILE_URL+"/"+clientId(t))
 	if err != nil {
-		return nil, err
+		return nil, errors.New("HTTP GET: " + err.Error())
 	}
 	//req.Header.Add("Authorization", t)
 	req.Header.Add("Authorization", "Globus-Goauthtoken "+t)
@@ -108,13 +108,13 @@ func fetchProfile(t string) (u *user.User, err error) {
 			if body, err := ioutil.ReadAll(resp.Body); err == nil {
 				u = &user.User{}
 				if err = json.Unmarshal(body, &u); err != nil {
-					return nil, err
+					return nil, errors.New("JSON Unmarshal: " + err.Error())
 				} else {
 					if u.Username == "" {
 						return nil, errors.New(e.InvalidAuth)
 					}
 					if err = u.SetMongoInfo(); err != nil {
-						return nil, err
+						return nil, errors.New("MongoDB: " + err.Error())
 					}
 				}
 			}
