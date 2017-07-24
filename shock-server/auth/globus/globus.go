@@ -41,10 +41,11 @@ func authHeaderType(header string) string {
 // Auth takes the request authorization header and returns
 // user
 func Auth(header string) (usr *user.User, err error) {
-	switch authHeaderType(header) {
-	case "globus-goauthtoken", "globus", "goauth":
-		return fetchProfile(strings.Split(header, " ")[1])
-	case "basic":
+	bearer := authHeaderType(header)
+	if bearer == "" {
+		return nil, errors.New("Invalid authentication header, missing bearer token.")
+	}
+	if bearer == "basic" {
 		if username, password, err := basic.DecodeHeader(header); err == nil {
 			if t, err := fetchToken(username, password); err == nil {
 				return fetchProfile(t.AccessToken)
@@ -54,8 +55,10 @@ func Auth(header string) (usr *user.User, err error) {
 		} else {
 			return nil, err
 		}
-	default:
-		return nil, errors.New("Invalid authentication header.")
+	} else if (bearer == "globus-goauthtoken") || (bearer == "globus") || (bearer == "goauth") {
+		return fetchProfile(strings.Split(header, " ")[1])
+	} else {
+		return nil, errors.New("Invalid authentication header, unknown bearer token: " + bearer)
 	}
 }
 
@@ -118,9 +121,7 @@ func fetchProfile(t string) (u *user.User, err error) {
 		} else if resp.StatusCode == http.StatusForbidden {
 			return nil, errors.New(e.InvalidAuth)
 		} else {
-			err_str := "Authentication failed: Unexpected response status: " + resp.Status
-			logger.Error(err_str)
-			return nil, errors.New(err_str)
+			return nil, errors.New("Authentication failed: Unexpected response status: " + resp.Status)
 		}
 	} else {
 		return nil, err
