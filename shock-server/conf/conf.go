@@ -17,6 +17,8 @@ type idxOpts struct {
 	sparse   bool
 }
 
+const VERSION string = "[% VERSION %]"
+
 var LOG_OUTPUTS = [3]string{"file", "console", "both"}
 
 var (
@@ -144,6 +146,10 @@ func Initialize() (err error) {
 	}
 	if PRINT_HELP || SHOW_HELP {
 		c_store.PrintHelp()
+		os.Exit(0)
+	}
+	if SHOW_VERSION {
+		fmt.Printf("Shock version: %s\n", VERSION)
 		os.Exit(0)
 	}
 
