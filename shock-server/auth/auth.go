@@ -27,7 +27,6 @@ func Initialize() {
 }
 
 func Authenticate(header string) (u *user.User, err error) {
-	var lastErr error
 	if u = authCache.lookup(header); u != nil {
 		return u, nil
 	} else {
@@ -38,13 +37,10 @@ func Authenticate(header string) (u *user.User, err error) {
 				return u, nil
 			}
 			if err != nil {
-				lastErr = err
+				// log actual error, return consistant invalid auth to user
+				logger.Error("Err@auth.Authenticate: " + err.Error())
 			}
 		}
-	}
-	// log actual error, return consistant invalid auth to user
-	if lastErr != nil {
-		logger.Error("Err@auth.Authenticate: " + lastErr.Error())
 	}
 	return nil, errors.New(e.InvalidAuth)
 }
