@@ -3,7 +3,6 @@ package auth
 
 import (
 	"errors"
-	//"github.com/MG-RAST/Shock/shock-server/auth/basic"
 	"github.com/MG-RAST/Shock/shock-server/auth/globus"
 	"github.com/MG-RAST/Shock/shock-server/auth/oauth"
 	"github.com/MG-RAST/Shock/shock-server/conf"

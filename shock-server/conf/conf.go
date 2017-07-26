@@ -2,11 +2,11 @@
 package conf
 
 import (
-	//"flag"
 	"errors"
 	"fmt"
 	"github.com/MG-RAST/golib/goconfig/config"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -18,6 +18,12 @@ type idxOpts struct {
 }
 
 const VERSION string = "[% VERSION %]"
+
+var VERSIONS = map[string]int{
+	"ACL":  2,
+	"Auth": 1,
+	"Node": 4,
+}
 
 var LOG_OUTPUTS = [3]string{"file", "console", "both"}
 
@@ -87,9 +93,6 @@ var (
 	SSL      bool
 	SSL_KEY  string
 	SSL_CERT string
-
-	// Versions
-	VERSIONS = make(map[string]int)
 
 	PRINT_HELP   bool // full usage
 	SHOW_HELP    bool // simple usage
@@ -207,11 +210,6 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	// Admin
 	c_store.AddString(&ADMIN_EMAIL, "", "Admin", "email", "", "")
 	c_store.AddString(&ADMIN_USERS, "", "Admin", "users", "", "")
-	if ADMIN_USERS != "" {
-		for _, name := range strings.Split(ADMIN_USERS, ",") {
-			AdminUsers = append(AdminUsers, strings.TrimSpace(name))
-		}
-	}
 
 	// Access-Control
 	c_store.AddBool(&ANON_READ, true, "Anonymous", "read", "", "")
@@ -290,10 +288,8 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 
 	// SSL
 	c_store.AddBool(&SSL, false, "SSL", "enable", "", "")
-	if SSL {
-		c_store.AddString(&SSL_KEY, "", "SSL", "key", "", "")
-		c_store.AddString(&SSL_CERT, "", "SSL", "cert", "", "")
-	}
+	c_store.AddString(&SSL_KEY, "", "SSL", "key", "", "")
+	c_store.AddString(&SSL_CERT, "", "SSL", "cert", "", "")
 
 	// Other - thses option are CLI only
 	c_store.AddString(&RELOAD, "", "Other", "reload", "path or url to shock data. WARNING this will drop all current data.", "")
@@ -303,16 +299,18 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddBool(&PRINT_HELP, false, "Other", "fullhelp", "show detailed usage without \"--\"-prefixes", "")
 	c_store.AddBool(&SHOW_HELP, false, "Other", "help", "show usage", "")
 
-	VERSIONS["ACL"] = 2
-	VERSIONS["Auth"] = 1
-	VERSIONS["Node"] = 4
-
 	c_store.Parse()
-
 	return
 }
 
 func parseConfiguration() (err error) {
+	// get admin users
+	if ADMIN_USERS != "" {
+		for _, name := range strings.Split(ADMIN_USERS, ",") {
+			AdminUsers = append(AdminUsers, strings.TrimSpace(name))
+		}
+	}
+
 	// parse OAuth settings if used
 	if AUTH_OAUTH_URL_STR != "" && AUTH_OAUTH_BEARER_STR != "" {
 		ou := strings.Split(AUTH_OAUTH_URL_STR, ",")
@@ -325,6 +323,7 @@ func parseConfiguration() (err error) {
 		}
 		OAUTH_DEFAULT = ou[0] // first url is default for "oauth" bearer token
 	}
+
 	// validate LOG_OUTPUT
 	vaildLogout := false
 	for _, logout := range LOG_OUTPUTS {
@@ -335,5 +334,20 @@ func parseConfiguration() (err error) {
 	if !vaildLogout {
 		return errors.New("invalid option for logoutput, use one of: file, console, both")
 	}
+
+	// clean paths
+	PATH_SITE = cleanPath(PATH_SITE)
+	PATH_DATA = cleanPath(PATH_DATA)
+	PATH_LOGS = cleanPath(PATH_LOGS)
+	PATH_LOCAL = cleanPath(PATH_LOCAL)
+	PATH_PIDFILE = cleanPath(PATH_PIDFILE)
+
 	return
+}
+
+func cleanPath(p string) string {
+	if p != "" {
+		p, _ = filepath.Abs(p)
+	}
+	return p
 }
