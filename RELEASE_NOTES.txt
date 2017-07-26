@@ -1,4 +1,11 @@
+# v0.9.23
+
+- fix bug in admin users
+- updated auth pkg error handling
+- path cleanup
+
 # v0.9.22
+
 - update to golang 1.7.6
 - added ability to download multiple files (.tar or .zip format) from a list (POST)
 - auth update. now support multiple oauth services at once. requires config file update
