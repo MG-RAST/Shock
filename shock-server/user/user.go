@@ -40,15 +40,15 @@ func Initialize() (err error) {
 		return err
 	}
 
-	// This config parameter contains a string that should be a comma-separated list of users that are Admins.
+	// process list of amin users from config, create those that are missing
 	for _, v := range conf.AdminUsers {
-		if info, err := c.UpdateAll(bson.M{"username": v}, bson.M{"$set": bson.M{"shock_admin": true}}); err != nil {
-			if err != nil {
+		info, err := c.UpdateAll(bson.M{"username": v}, bson.M{"$set": bson.M{"shock_admin": true}})
+		if err != nil {
+			return err
+		}
+		if info.Updated == 0 {
+			if _, err := New(v, "", true); err != nil {
 				return err
-			} else if info.Updated == 0 {
-				if _, err := New(v, "", true); err != nil {
-					return err
-				}
 			}
 		}
 	}
