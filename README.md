@@ -88,7 +88,7 @@ docker run --rm --name shock-server -p 7445:7445 -v ${DATADIR}/shock-server.cfg:
 Comments:<br>
 port 7445: Shock server API (default in config)<br>
 "-v" mounts host to container directories<br>
-"--link" connects Shock server and mongodb
+"--link" connects Shock server and mongodb (--link=$imagename:$alias) so you need to put the alias (in the example "mongodb") as the value of the hosts variable in the shock-server.cfg
 
 Documentation
 -------------
