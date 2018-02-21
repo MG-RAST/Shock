@@ -192,15 +192,22 @@ func (self *Reader) SeekChunk(offSet int64) (n int64, err error) {
 	r := io.NewSectionReader(self.f, offSet+conf.CHUNK_SIZE-winSize, winSize)
 	buf := make([]byte, winSize)
 	if n, err := r.Read(buf); err != nil {
+		// EOF reached
 		return int64(n), err
 	}
-	if pos := bytes.LastIndex(buf, []byte("@")); pos == -1 {
+	// recursivly extend by window size until start of new record found
+	// try both /n and /r
+	var pos int
+	pos = bytes.LastIndex(buf, []byte("\n@"))
+	if pos == -1 {
+		pos = bytes.LastIndex(buf, []byte("\r@"))
+	}
+	if pos == -1 {
 		indexPos, err := self.SeekChunk(offSet + winSize)
 		return (winSize + indexPos), err
-	} else {
-		return conf.CHUNK_SIZE - winSize + int64(pos), nil
 	}
-	return
+	// done, start new record found
+	return conf.CHUNK_SIZE - winSize + int64(pos+1), nil
 }
 
 // Rewind the reader.

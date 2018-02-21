@@ -46,8 +46,8 @@ get:
 	cp $(GOPATH)/src/$(SRCDIR)/shock-server/site/wiki/* $(GOPATH)/src/$(SRCDIR)/shock-server/site/
 
 version:
-	for i in `cat src/$(SRCDIR)/VERSION`; do sed "s/\[% VERSION %\]/$$i/" < src/$(SRCDIR)/shock-server/main.go > src/$(SRCDIR)/shock-server/main.version.go ; done
-	mv src/$(SRCDIR)/shock-server/main.version.go src/$(SRCDIR)/shock-server/main.go
+	VER=`cat src/$(SRCDIR)/VERSION`
+	sed -i "s/\[% VERSION %\]/$$VER/" src/$(SRCDIR)/shock-server/conf/conf.go
 
 docs:
 	@echo '#Shock wiki\n\n[Home](index.md)' > $(GOPATH)/src/$(SRCDIR)/shock-server/site/navigation.md

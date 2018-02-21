@@ -1,8 +1,8 @@
 package auth
 
 import (
+	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/user"
-        "github.com/MG-RAST/Shock/shock-server/conf"
 	"sync"
 	"time"
 )
@@ -36,7 +36,7 @@ func (c *cache) add(header string, u *user.User) {
 	c.m[header] = cacheValue{
 		expires: time.Now().Add(time.Duration(conf.AUTH_CACHE_TIMEOUT) * time.Minute),
 		//expires: time.Now().Add(1 * time.Minute),
-		user:    u,
+		user: u,
 	}
 	return
 }
