@@ -5,11 +5,17 @@ import (
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
+	"github.com/MG-RAST/Shock/shock-server/node/archive"
+	"github.com/MG-RAST/Shock/shock-server/preauth"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
+	"github.com/MG-RAST/Shock/shock-server/util"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
+	mgo "gopkg.in/mgo.v2"
 	"net/http"
+	"strings"
+	"time"
 )
 
 // POST: /node
@@ -29,6 +35,7 @@ func (cr *NodeController) Create(ctx context.Context) error {
 	}
 
 	// Parse uploaded form
+	// all POSTed files writen to temp dir
 	params, files, err := request.ParseMultipartForm(ctx.HttpRequest())
 	// clean up temp dir !!
 	defer node.RemoveAllFormFiles(files)
@@ -71,6 +78,76 @@ func (cr *NodeController) Create(ctx context.Context) error {
 		}
 	}
 
+	// special case, create preauth download url from list of ids
+	if _, hasDownloadUrl := params["download_url"]; hasDownloadUrl {
+		if idStr, hasIds := params["ids"]; hasIds {
+			idList := strings.Split(idStr, ",")
+			// validate id list
+			var nodeIds []string
+			var totalBytes int64
+			for _, id := range idList {
+				// check if node exists
+				n, err := node.Load(id)
+				if err != nil {
+					if err == mgo.ErrNotFound {
+						return responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
+					} else {
+						// In theory the db connection could be lost between
+						// checking user and load but seems unlikely.
+						err_msg := "Err@node_Read:LoadNode: " + id + ":" + err.Error()
+						logger.Error(err_msg)
+						return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+					}
+				}
+				// check ACLs
+				rights := n.Acl.Check(u.Uuid)
+				prights := n.Acl.Check("public")
+				if rights["read"] == false && u.Admin == false && n.Acl.Owner != u.Uuid && prights["read"] == false {
+					return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+				}
+				if n.HasFile() {
+					nodeIds = append(nodeIds, n.Id)
+					totalBytes += n.File.Size
+				}
+			}
+			if len(nodeIds) == 0 {
+				return responder.RespondWithError(ctx, http.StatusBadRequest, "err:@node_Create download url: no available files found")
+			}
+			// add options - set defaults first
+			options := map[string]string{}
+			options["archive"] = "zip" // default is zip
+			if af, ok := params["archive_format"]; ok {
+				if archive.IsValidToArchive(af) {
+					options["archive"] = af
+				}
+			}
+			preauthId := util.RandString(20)
+			if fn, ok := params["file_name"]; ok {
+				options["filename"] = fn
+			} else {
+				options["filename"] = preauthId
+			}
+			if !strings.HasSuffix(options["filename"], options["archive"]) {
+				options["filename"] = options["filename"] + "." + options["archive"]
+			}
+			// set preauth
+			if p, err := preauth.New(preauthId, "download", nodeIds, options); err != nil {
+				err_msg := "err:@node_Create download_url: " + err.Error()
+				logger.Error(err_msg)
+				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+			} else {
+				data := preauth.PreAuthResponse{
+					Url:       util.ApiUrl(ctx) + "/preauth/" + p.Id,
+					ValidTill: p.ValidTill.Format(time.ANSIC),
+					Format:    options["archive"],
+					Filename:  options["filename"],
+					Files:     len(nodeIds),
+					Size:      totalBytes,
+				}
+				return responder.RespondWithData(ctx, data)
+			}
+		}
+	}
 	// special case, creates multiple nodes
 	if archiveId, hasArchiveNode := params["unpack_node"]; hasArchiveNode {
 		ns, err := node.CreateNodesFromArchive(u, params, files, archiveId)

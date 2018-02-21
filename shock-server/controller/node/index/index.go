@@ -280,10 +280,6 @@ func IndexTypedRequest(ctx context.Context) {
 			CreatedOn:   time.Now(),
 		}
 
-		//if idxType == "chunkrecord" {
-		//	idxInfo.AvgUnitSize = conf.CHUNK_SIZE
-		//}
-
 		if idxType == "subset" {
 			idxType = subsetName
 			idxInfo.AvgUnitSize = subsetSize / count

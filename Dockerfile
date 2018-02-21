@@ -3,7 +3,7 @@
 # docker build -t mgrast/shock .
 # docker run --rm --name test -ti mgrast/shock /bin/ash
 
-FROM golang:1.7.5-alpine
+FROM golang:1.7.6-alpine
 
 ENV DIR=/go/src/github.com/MG-RAST/Shock
 WORKDIR /go/bin
@@ -15,7 +15,7 @@ RUN mkdir -p /var/log/shock /usr/local/shock ${DIR}
 # set version
 RUN cd ${DIR} && \
   VERSION=$(cat VERSION) && \
-  sed -i "s/\[% VERSION %\]/${VERSION}/" shock-server/main.go 
+  sed -i "s/\[% VERSION %\]/${VERSION}/" shock-server/conf/conf.go
 
 # compile
 RUN cd ${DIR} && \
