@@ -22,6 +22,7 @@ type File struct {
 // FileInfo for streaming file content
 type FileInfo struct {
 	R        []SectionReader
+	E        error
 	Body     io.ReadCloser
 	Name     string
 	Size     int64
