@@ -28,6 +28,7 @@ type MultiStreamer struct {
 //type FileInfo struct {
 //	R        []SectionReader
 //  E        error
+//  ESection int
 //	Body     io.ReadCloser
 //	Name     string
 //	Size     int64
@@ -39,12 +40,12 @@ type Streamer struct {
 	R           []file.SectionReader
 	W           http.ResponseWriter
 	E           error
+	ESection    int
 	ContentType string
 	Filename    string
 	Size        int64
 	Filter      filter.FilterFunc
 	Compression string
-	Error       error
 }
 
 // file.SectionReader interface required for MultiReaderAt
@@ -80,7 +81,7 @@ func (s *Streamer) Stream(streamRaw bool) (err error) {
 	pReader, pWriter := io.Pipe()
 	go func() {
 		defer pWriter.Close()
-		for _, sr := range s.R {
+		for i, sr := range s.R {
 			var rs io.Reader
 			if s.Filter != nil {
 				rs = s.Filter(sr)
@@ -90,6 +91,7 @@ func (s *Streamer) Stream(streamRaw bool) (err error) {
 			_, ioerr := io.Copy(pWriter, rs)
 			if ioerr != nil {
 				s.E = ioerr
+				s.ESection = i
 				return
 			}
 		}
@@ -97,7 +99,7 @@ func (s *Streamer) Stream(streamRaw bool) (err error) {
 
 	if s.E != nil {
 		pReader.Close()
-		err = fmt.Errorf("(request.Stream) failed: size=%s; file=%s; error=%s", s.Size, s.Filename, s.E.Error())
+		err = fmt.Errorf("(request.Stream: section %d) failed: raw=%t; size=%d; file=%s; error=%s", s.ESection, streamRaw, s.Size, s.Filename, s.E.Error())
 		return
 	}
 
@@ -109,7 +111,7 @@ func (s *Streamer) Stream(streamRaw bool) (err error) {
 	pReader.Close()
 
 	if ioerr != nil {
-		err = fmt.Errorf("(request.Stream) failed: size=%s; file=%s; error=%s", s.Size, s.Filename, ioerr.Error())
+		err = fmt.Errorf("(request.Stream: full stream) failed: raw=%t; size=%d; file=%s; error=%s", streamRaw, s.Size, s.Filename, ioerr.Error())
 	}
 	return
 }
@@ -129,10 +131,11 @@ func (m *MultiStreamer) MultiStream() (err error) {
 		pReader, pWriter := io.Pipe()
 		f.Body = pReader
 		go func(lf *file.FileInfo) {
-			for _, sr := range lf.R {
+			for i, sr := range lf.R {
 				_, ioerr := io.Copy(pWriter, sr)
 				if ioerr != nil {
 					lf.E = ioerr
+					lf.ESection = i
 				}
 			}
 			pWriter.Close()
@@ -142,7 +145,7 @@ func (m *MultiStreamer) MultiStream() (err error) {
 	// identify any error files
 	for _, f := range m.Files {
 		if f.E != nil {
-			err = fmt.Errorf("(request.MultiStream) failed: size=%s; file=%s; error=%s", f.Size, f.Name, f.E.Error())
+			err = fmt.Errorf("(request.MultiStream: section %d) failed: size=%d; file=%s; error=%s", f.ESection, f.Size, f.Name, f.E.Error())
 			return
 		}
 	}
@@ -157,7 +160,7 @@ func (m *MultiStreamer) MultiStream() (err error) {
 	}
 
 	if ioerr != nil {
-		err = fmt.Errorf("(request.MultiStream) failed: file=%s; error=%s", m.Filename, ioerr.Error())
+		err = fmt.Errorf("(request.MultiStream: full stream) failed: file=%s; error=%s", m.Filename, ioerr.Error())
 	}
 	return
 }
