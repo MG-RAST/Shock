@@ -2,6 +2,7 @@ package node
 
 import (
 	"encoding/json"
+	"errors"
 	client "github.com/MG-RAST/Shock/shock-client/lib/httpclient"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
@@ -149,10 +150,9 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: length, Filter: fFunc, Compression: compressionFormat}
 			s.R = append(s.R, io.NewSectionReader(r, seek, length))
 			if err = s.Stream(download_raw); err != nil {
-				// causes "multiple response.WriteHeader calls" error but better than no response
-				err_msg := "err:@node_Read s.Stream: " + err.Error()
+				err_msg := "err:@node_Read: " + err.Error()
 				logger.Error(err_msg)
-				return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				return errors.New(err_msg)
 			}
 		} else if _, ok := query["index"]; ok {
 			//handling bam file
@@ -168,7 +168,8 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					//retrieve alingments overlapped with specified region
 					region = query.Get("region")
 				}
-				argv, err := request.ParseSamtoolsArgs(ctx)
+				queries := ctx.HttpRequest().URL.Query()
+				argv, err := request.ParseSamtoolsArgs(queries)
 				if err != nil {
 					return responder.RespondWithError(ctx, http.StatusBadRequest, "Invaid args in query url")
 				}
@@ -333,10 +334,9 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			}
 			s.Size = size
 			if err = s.Stream(download_raw); err != nil {
-				// causes "multiple response.WriteHeader calls" error but better than no response
-				err_msg := "err:@node_Read s.Stream: " + err.Error()
+				err_msg := "err:@node_Read: " + err.Error()
 				logger.Error(err_msg)
-				return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				return errors.New(err_msg)
 			}
 			// download full file
 		} else {
@@ -368,10 +368,9 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				s = &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, Compression: compressionFormat}
 			}
 			if err = s.Stream(download_raw); err != nil {
-				// causes "multiple response.WriteHeader calls" error but better than no response
-				err_msg := "err:@node_Read s.Stream: " + err.Error()
+				err_msg := "err:@node_Read: " + err.Error()
 				logger.Error(err_msg)
-				return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				return errors.New(err_msg)
 			}
 		}
 	} else if _, ok := query["download_url"]; ok {
