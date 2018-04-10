@@ -175,7 +175,9 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				}
 				err = s.StreamSamtools(n.FilePath(), region, argv...)
 				if err != nil {
-					return responder.RespondWithError(ctx, http.StatusBadRequest, "error while invoking samtools")
+					err_msg := "err:@node_Read: " + err.Error()
+					logger.Error(err_msg)
+					return errors.New(err_msg)
 				}
 				return nil
 			}
