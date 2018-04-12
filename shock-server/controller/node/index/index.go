@@ -300,8 +300,9 @@ func IndexTypedRequest(ctx context.Context) {
 			return
 		}
 
-		if err := n.SetIndexInfo(idxType, idxInfo); err != nil {
-			logger.Error("err@node.SetIndexInfo: " + err.Error())
+		n.SetIndexInfo(idxType, idxInfo)
+		if err := n.Save(); err != nil {
+			logger.Error("err@node.Save: " + err.Error())
 		}
 
 		if conf.LOG_PERF {

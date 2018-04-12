@@ -32,7 +32,22 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 	//
 	// All condition allow setting of attributes
 	//
-	// Note that all paths for node operations in this function must end with "err = node.Save()" to save node state.
+	// state is saved to mongodb at end of update function
+
+	// global lock on a node that is being updated
+	err = LockMgr.LockNode(node.Id)
+	if err != nil {
+		return
+	}
+	defer LockMgr.UnlockNode(node.Id)
+
+	// refresh node state
+	var n *Node
+	n, err = Load(node.Id)
+	if err != nil {
+		return
+	}
+	node = n
 
 	for _, u := range util.ValidUpload {
 		if _, uploadMisplaced := params[u]; uploadMisplaced {
@@ -117,16 +132,6 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			if (node.Type != "parts") || (node.Parts == nil) || !node.Parts.VarLen {
 				return errors.New("can only call 'close' on unknown parts node")
 			}
-			// we do a node level lock here incase its processing a part
-			// Refresh parts information after locking, before saving.
-			LockMgr.LockNode(node.Id)
-			n, err := Load(node.Id)
-			if err != nil {
-				LockMgr.UnlockNode(node.Id)
-				return err
-			}
-			node.Parts = n.Parts
-			// closeParts removes node id from LockMgr, no need unlock
 			if err = node.closeParts(true); err != nil {
 				return err
 			}
@@ -141,7 +146,6 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 				}
 			}
 			if params["parts"] == "unknown" {
-				// initParts adds node id to LockMgr
 				if err = node.initParts("unknown", compressionFormat); err != nil {
 					return err
 				}
@@ -153,7 +157,6 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 				if n < 1 {
 					return errors.New("parts cannot be less than 1")
 				}
-				// initParts adds node id to LockMgr
 				if err = node.initParts(params["parts"], compressionFormat); err != nil {
 					return err
 				}
@@ -239,25 +242,17 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 					}
 				}
 				// copy index struct
-				if err := node.SetIndexInfo(idxType, idxInfo); err != nil {
-					return err
-				}
+				node.SetIndexInfo(idxType, idxInfo)
 			}
 		} else if sizeIndex, exists := n.Indexes["size"]; exists {
 			// just copy size index
-			if err := node.SetIndexInfo("size", sizeIndex); err != nil {
-				return err
-			}
+			node.SetIndexInfo("size", sizeIndex)
 		}
 
 		if n.File.Path == "" {
 			node.File.Path = fmt.Sprintf("%s/%s.data", getPath(params["copy_data"]), params["copy_data"])
 		} else {
 			node.File.Path = n.File.Path
-		}
-
-		if err = node.Save(); err != nil {
-			return err
 		}
 	} else if isSubsetUpload {
 		fInfo, statErr := os.Stat(files["subset_indices"].Path)
@@ -315,10 +310,6 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 					return err
 				}
 				delete(files, "subset_indices")
-			} else {
-				if err = node.Save(); err != nil {
-					return err
-				}
 			}
 		}
 	}
@@ -342,16 +333,11 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		if err = node.SetAttributesFromString(params["attributes_str"]); err != nil {
 			return err
 		}
-		delete(params, "attributes_str")
 	}
 
 	// set filename string
 	if _, hasFileNameStr := params["file_name"]; hasFileNameStr {
 		node.File.Name = params["file_name"]
-		if err = node.Save(); err != nil {
-			return err
-		}
-		delete(params, "file_name")
 	}
 
 	// update relatives
@@ -373,16 +359,12 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		if _, hasOp := params["operation"]; hasOp {
 			operation = params["operation"]
 		}
-		if err = node.UpdateLinkages(ltype, ids, operation); err != nil {
-			return err
-		}
+		node.UpdateLinkages(ltype, ids, operation)
 	}
 
 	// update node tags
 	if _, hasDataType := params["tags"]; hasDataType {
-		if err = node.UpdateDataTags(params["tags"]); err != nil {
-			return err
-		}
+		node.UpdateDataTags(params["tags"])
 	}
 
 	// update file format
@@ -390,9 +372,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		if node.File.Format != "" {
 			return errors.New(fmt.Sprintf("file format already set:%s", node.File.Format))
 		}
-		if err = node.SetFileFormat(params["format"]); err != nil {
-			return err
-		}
+		node.File.Format = params["format"]
 	}
 
 	// update priority
@@ -401,9 +381,7 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		if err != nil {
 			return errors.New("priority must be an integer")
 		}
-		if err = node.SetPriority(priority); err != nil {
-			return err
-		}
+		node.Priority = priority
 	}
 
 	// update node expiration
@@ -413,19 +391,17 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 	}
 	if _, hasRemove := params["remove_expiration"]; hasRemove {
-		if err = node.RemoveExpiration(); err != nil {
-			return err
-		}
+		// reset to empty time
+		node.Expiration = time.Time{}
 	}
 
 	// clear node revisions
 	if _, hasClearRevisions := params["clear_revisions"]; hasClearRevisions {
-		if err = node.ClearRevisions(); err != nil {
-			return err
-		}
+		// empty the revisions array
+		node.Revisions = []Node{}
 	}
 
-	// handle part file / we do a node level lock here
+	// handle part file
 	if hasPartsFile {
 		if node.HasFile() {
 			return errors.New(e.FileImut)
@@ -433,16 +409,6 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		if (node.Type != "parts") || (node.Parts == nil) {
 			return errors.New("This is not a parts node and thus does not support uploading in parts.")
 		}
-		LockMgr.LockNode(node.Id)
-		defer LockMgr.UnlockNode(node.Id)
-
-		// Refresh parts information after locking, before saving.
-		// Load node by id
-		n, err := Load(node.Id)
-		if err != nil {
-			return err
-		}
-		node.Parts = n.Parts
 
 		if node.Parts.Count > 0 || node.Parts.VarLen {
 			for key, file := range files {
@@ -457,7 +423,6 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 			return errors.New("Unable to retrieve parts info for node.")
 		}
 		// all parts are in, close it
-		// closeParts removes node id from LockMgr
 		if !node.Parts.VarLen && node.Parts.Length == node.Parts.Count {
 			if err = node.closeParts(false); err != nil {
 				return err
@@ -465,6 +430,8 @@ func (node *Node) Update(params map[string]string, files FormFiles) (err error) 
 		}
 	}
 
+	// save only after all updates applied
+	err = node.Save()
 	return
 }
 
@@ -547,30 +514,5 @@ func (node *Node) UpdateVersion() (err error) {
 	h.Write([]byte(version))
 	node.Version = fmt.Sprintf("%x", h.Sum(nil))
 	node.VersionParts = versionParts
-	return
-}
-
-func (node *Node) UpdateLinkages(ltype string, ids string, operation string) (err error) {
-	var link linkage
-	link.Type = ltype
-	idList := strings.Split(ids, ",")
-	for _, id := range idList {
-		link.Ids = append(link.Ids, id)
-	}
-	link.Operation = operation
-	node.Linkages = append(node.Linkages, link)
-	err = node.Save()
-	return
-}
-
-func (node *Node) UpdateDataTags(types string) (err error) {
-	tagslist := strings.Split(types, ",")
-	for _, newtag := range tagslist {
-		if contains(node.Tags, newtag) {
-			continue
-		}
-		node.Tags = append(node.Tags, newtag)
-	}
-	err = node.Save()
 	return
 }
