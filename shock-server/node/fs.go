@@ -19,6 +19,7 @@ func (node *Node) SetFile(file FormFile) (err error) {
 	if err != nil {
 		return
 	}
+
 	os.Rename(file.Path, node.FilePath())
 	node.File.Name = file.Name
 	node.File.Size = fileStat.Size()
@@ -38,7 +39,7 @@ func (node *Node) SetFile(file FormFile) (err error) {
 		Format:      "dynamic",
 		CreatedOn:   time.Now(),
 	}
-	err = node.Save()
+
 	return
 }
 
@@ -115,7 +116,6 @@ func (node *Node) SetFileFromSubset(subsetIndices FormFile) (err error) {
 		CreatedOn:   time.Now(),
 	}
 
-	err = node.Save()
 	return
 }
 
@@ -210,7 +210,7 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 	} else {
 		node.File.Path = path
 	}
-	err = node.Save()
+
 	return
 }
 

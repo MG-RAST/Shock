@@ -45,12 +45,7 @@ func (node *Node) initParts(partsCount string, compressionFormat string) (err er
 		Parts:       make([]partsFile, count),
 		Compression: compressionFormat,
 	}
-	if err = node.Save(); err != nil {
-		return err
-	}
 
-	// add node id to LockMgr
-	LockMgr.AddNode(node.Id)
 	return
 }
 
@@ -82,7 +77,6 @@ func (node *Node) addVirtualParts(ids []string) (err error) {
 	} else {
 		return err
 	}
-	err = node.Save()
 	return
 }
 
@@ -116,7 +110,6 @@ func (node *Node) addPart(n int, file *FormFile) (err error) {
 	if err = os.Rename(file.Path, fmt.Sprintf("%s/parts/%d", node.Path(), n+1)); err != nil {
 		return err
 	}
-	err = node.Save()
 	return
 }
 
@@ -126,10 +119,6 @@ func (node *Node) closeParts(allowEmpty bool) (err error) {
 	if err = node.SetFileFromParts(allowEmpty); err != nil {
 		return err
 	}
-	if err = os.RemoveAll(node.Path() + "/parts/"); err != nil {
-		return err
-	}
-	// remove node id from LockMgr
-	LockMgr.RemoveNode(node.Id)
+	err = os.RemoveAll(node.Path() + "/parts/")
 	return
 }

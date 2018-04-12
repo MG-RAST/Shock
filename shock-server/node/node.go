@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -130,13 +131,12 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 		return
 	}
 
+	// update saves node
 	err = node.Update(params, files)
 	if err != nil {
 		node.Rmdir()
-		return
 	}
 
-	err = node.Save()
 	return
 }
 
@@ -219,9 +219,9 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFi
 
 	// save nodes, only return those that were created / saved
 	for _, n := range tempNodes {
-		if err = n.Save(); err != nil {
+		if serr := n.Save(); serr != nil {
 			n.Rmdir()
-			return nil, err
+			continue
 		}
 		nodes = append(nodes, n)
 	}
@@ -264,6 +264,13 @@ func (node *Node) DynamicIndex(name string) (idx index.Index, err error) {
 }
 
 func (node *Node) Delete() (err error) {
+	// lock node
+	err = LockMgr.LockNode(node.Id)
+	if err != nil {
+		return
+	}
+	defer LockMgr.RemoveNode(node.Id)
+
 	// check to make sure this node isn't referenced by a vnode
 	virtualNodes := Nodes{}
 	if _, err = dbFind(bson.M{"file.virtual_parts": node.Id}, &virtualNodes, "", nil); err != nil {
@@ -306,7 +313,8 @@ func (node *Node) Delete() (err error) {
 	if err = dbDelete(bson.M{"id": node.Id}); err != nil {
 		return err
 	}
-	return node.Rmdir()
+	err = node.Rmdir()
+	return
 }
 
 func (node *Node) DeleteIndex(indextype string) (err error) {
@@ -319,22 +327,8 @@ func (node *Node) DeleteIndex(indextype string) (err error) {
 	return
 }
 
-func (node *Node) SetIndexInfo(indextype string, idxinfo IdxInfo) (err error) {
+func (node *Node) SetIndexInfo(indextype string, idxinfo IdxInfo) {
 	node.Indexes[indextype] = idxinfo
-	err = node.Save()
-	return
-}
-
-func (node *Node) SetFileFormat(format string) (err error) {
-	node.File.Format = format
-	err = node.Save()
-	return
-}
-
-func (node *Node) SetPriority(priority int) (err error) {
-	node.Priority = priority
-	err = node.Save()
-	return
 }
 
 func (node *Node) SetExpiration(expire string) (err error) {
@@ -356,21 +350,6 @@ func (node *Node) SetExpiration(expire string) (err error) {
 	}
 
 	node.Expiration = currTime.Add(expireTime)
-	err = node.Save()
-	return
-}
-
-func (node *Node) RemoveExpiration() (err error) {
-	// reset to empty time
-	node.Expiration = time.Time{}
-	err = node.Save()
-	return
-}
-
-func (node *Node) ClearRevisions() (err error) {
-	// empty the revisions array
-	node.Revisions = []Node{}
-	err = node.Save()
 	return
 }
 
@@ -384,7 +363,6 @@ func (node *Node) SetAttributes(attr FormFile) (err error) {
 	if err != nil {
 		return
 	}
-	err = node.Save()
 	return
 }
 
@@ -393,6 +371,26 @@ func (node *Node) SetAttributesFromString(attributes string) (err error) {
 	if err != nil {
 		return
 	}
-	err = node.Save()
 	return
+}
+
+func (node *Node) UpdateDataTags(types string) {
+	tagslist := strings.Split(types, ",")
+	for _, newtag := range tagslist {
+		if contains(node.Tags, newtag) {
+			continue
+		}
+		node.Tags = append(node.Tags, newtag)
+	}
+}
+
+func (node *Node) UpdateLinkages(ltype string, ids string, operation string) {
+	var link linkage
+	link.Type = ltype
+	idList := strings.Split(ids, ",")
+	for _, id := range idList {
+		link.Ids = append(link.Ids, id)
+	}
+	link.Operation = operation
+	node.Linkages = append(node.Linkages, link)
 }
