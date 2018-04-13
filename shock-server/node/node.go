@@ -132,8 +132,9 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 	}
 
 	// update saves node
-	err = node.Update(params, files)
+	err = node.Update(params, files, true)
 	if err != nil {
+		err = fmt.Errorf("(node.Update) %s", err.Error())
 		node.Rmdir()
 	}
 
