@@ -82,7 +82,7 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 		}
 	}
 
-	err = n.Update(params, files)
+	err = n.Update(params, files, false)
 	if err != nil {
 		err_msg := "err@node_Update: " + id + ": " + err.Error()
 		logger.Error(err_msg)

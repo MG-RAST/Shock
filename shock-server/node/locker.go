@@ -30,6 +30,7 @@ type NodeLock struct {
 func (n *NodeLock) init() {
 	n.isLocked = false
 	n.updated = time.Now()
+	n.writeLock = make(chan int, 1)
 	n.writeLock <- 1 // Put the initial value into the channel
 }
 
