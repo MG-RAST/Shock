@@ -40,6 +40,8 @@ func (nr *NodeReaper) Handle() {
 				logger.Error(err_msg)
 			}
 		}
+		// remove old nodes from Locker, value is hours old
+		LockMgr.RemoveOldNodes(1)
 	}
 }
 
