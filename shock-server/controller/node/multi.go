@@ -121,8 +121,8 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 						AclsMArray = append(AclsMArray, bson.M{"acl." + atype: v})
 					} else {
 						u := user.User{Username: v}
-						if err := u.SetMongoInfo(); err != nil {
-							err_msg := "err " + err.Error()
+						if err = u.SetMongoInfo(); err != nil {
+							err_msg := "err@node_ReadMany: (SetMongoInfo) " + err.Error()
 							logger.Error(err_msg)
 							return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 						}
@@ -150,13 +150,13 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 	if _, ok := query["distinct"]; ok {
 		dField := query.Get("distinct")
 		if !node.HasAttributeField(dField) {
-			err_msg := "err unable to run distinct query on non-indexed attributes field: " + dField
-			logger.Error(err_msg)
+			err_msg := "unable to run distinct query on non-indexed attributes field: " + dField
+			logger.Error("err@node_ReadMany: (HasAttributeField) " + err_msg)
 			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 		}
 		results, err := node.DbFindDistinct(q, dField)
 		if err != nil {
-			err_msg := "err " + err.Error()
+			err_msg := "err@node_ReadMany: (DbFindDistinct) " + err.Error()
 			logger.Error(err_msg)
 			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 		}
@@ -195,7 +195,7 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 	order = direction + order
 	count, err := nodes.GetPaginated(q, limit, offset, order)
 	if err != nil {
-		err_msg := "err " + err.Error()
+		err_msg := "err@node_ReadMany: (GetPaginated) " + err.Error()
 		logger.Error(err_msg)
 		return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 	}
@@ -229,11 +229,13 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 			}
 		}
 		if len(nodeIds) == 0 {
-			return responder.RespondWithError(ctx, http.StatusBadRequest, "err:@node_ReadMany download url: no available files found")
+			err_msg := "err@node_ReadMany: (download_url) no available files found"
+			logger.Error(err_msg)
+			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 		}
 		// set preauth
 		if p, err := preauth.New(preauthId, "download", nodeIds, options); err != nil {
-			err_msg := "err:@node_ReadMany download_url: " + err.Error()
+			err_msg := "err@node_ReadMany: (download_url) " + err.Error()
 			logger.Error(err_msg)
 			return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 		} else {
