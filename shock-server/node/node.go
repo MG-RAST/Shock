@@ -319,6 +319,13 @@ func (node *Node) Delete() (err error) {
 }
 
 func (node *Node) DeleteIndex(indextype string) (err error) {
+	// lock node
+	err = LockMgr.LockNode(node.Id)
+	if err != nil {
+		return
+	}
+	defer LockMgr.UnlockNode(node.Id)
+
 	delete(node.Indexes, indextype)
 	IndexFilePath := fmt.Sprintf("%s/%s.idx", node.IndexPath(), indextype)
 	if err = os.Remove(IndexFilePath); err != nil {
