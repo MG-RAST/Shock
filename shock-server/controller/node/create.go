@@ -48,7 +48,7 @@ func (cr *NodeController) Create(ctx context.Context) error {
 			if ctx.HttpRequest().ContentLength != 0 {
 				params, files, err = request.DataUpload(ctx.HttpRequest())
 				if err != nil {
-					err_msg := "Error uploading data from request body:" + err.Error()
+					err_msg := "err@node_Create: (request.DataUpload) " + err.Error()
 					logger.Error(err_msg)
 					return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 				}
@@ -57,14 +57,16 @@ func (cr *NodeController) Create(ctx context.Context) error {
 			n, cn_err := node.CreateNodeUpload(u, params, files)
 
 			if cn_err != nil {
-				err_msg := "Error at create empty node: " + cn_err.Error()
+				err_msg := "err@node_Create: (node.CreateNodeUpload) " + cn_err.Error()
 				logger.Error(err_msg)
 				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			}
 			if n == nil {
 				// Not sure how you could get an empty node with no error
 				// Assume it's the user's fault
-				return responder.RespondWithError(ctx, http.StatusBadRequest, "Error, could not create node.")
+				err_msg := "err@node_Create: could not create node"
+				logger.Error(err_msg)
+				return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 			} else {
 				return responder.RespondWithData(ctx, n)
 			}
@@ -72,7 +74,7 @@ func (cr *NodeController) Create(ctx context.Context) error {
 			// Some error other than request encoding. Theoretically
 			// could be a lost db connection between user lookup and parsing.
 			// Blame the user, Its probaby their fault anyway.
-			err_msg := "Error parsing form: " + err.Error()
+			err_msg := "err@node_Create: unable to parse form: " + err.Error()
 			logger.Error(err_msg)
 			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 		}
@@ -90,11 +92,12 @@ func (cr *NodeController) Create(ctx context.Context) error {
 				n, err := node.Load(id)
 				if err != nil {
 					if err == mgo.ErrNotFound {
+						logger.Error("err@node_Create: (download_url) (node.Load) id=" + id + ": " + e.NodeNotFound)
 						return responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
 					} else {
 						// In theory the db connection could be lost between
 						// checking user and load but seems unlikely.
-						err_msg := "Err@node_Read:LoadNode: " + id + ":" + err.Error()
+						err_msg := "err@node_Create (download_url) (node.Load) id=" + id + ": " + err.Error()
 						logger.Error(err_msg)
 						return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 					}
@@ -103,6 +106,7 @@ func (cr *NodeController) Create(ctx context.Context) error {
 				rights := n.Acl.Check(u.Uuid)
 				prights := n.Acl.Check("public")
 				if rights["read"] == false && u.Admin == false && n.Acl.Owner != u.Uuid && prights["read"] == false {
+					logger.Error("err@node_Create: (download_url) (Authenticate) id=" + id + ": " + e.UnAuth)
 					return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 				}
 				if n.HasFile() {
@@ -111,7 +115,9 @@ func (cr *NodeController) Create(ctx context.Context) error {
 				}
 			}
 			if len(nodeIds) == 0 {
-				return responder.RespondWithError(ctx, http.StatusBadRequest, "err:@node_Create download url: no available files found")
+				err_msg := "err:@node_Create: (download_url) no available files found"
+				logger.Error(err_msg)
+				return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 			}
 			// add options - set defaults first
 			options := map[string]string{}
@@ -132,7 +138,7 @@ func (cr *NodeController) Create(ctx context.Context) error {
 			}
 			// set preauth
 			if p, err := preauth.New(preauthId, "download", nodeIds, options); err != nil {
-				err_msg := "err:@node_Create download_url: " + err.Error()
+				err_msg := "err:@node_Create: (download_url) " + err.Error()
 				logger.Error(err_msg)
 				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 			} else {
@@ -152,7 +158,7 @@ func (cr *NodeController) Create(ctx context.Context) error {
 	if archiveId, hasArchiveNode := params["unpack_node"]; hasArchiveNode {
 		ns, err := node.CreateNodesFromArchive(u, params, files, archiveId)
 		if err != nil {
-			err_msg := "err@node_CreateNodesFromArchive: " + err.Error()
+			err_msg := "err@node_Create: (node.CreateNodesFromArchive) " + err.Error()
 			logger.Error(err_msg)
 			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 		}
@@ -161,7 +167,7 @@ func (cr *NodeController) Create(ctx context.Context) error {
 	// Create node
 	n, err := node.CreateNodeUpload(u, params, files)
 	if err != nil {
-		err_msg := "err@node_CreateNodeUpload: " + err.Error()
+		err_msg := "err@node_Create: (node.CreateNodeUpload) " + err.Error()
 		logger.Error(err_msg)
 		return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 	}

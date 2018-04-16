@@ -33,11 +33,12 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 	n, err := node.Load(id)
 	if err != nil {
 		if err == mgo.ErrNotFound {
+			logger.Error("err@node_Update: (node.Load) id=" + id + ": " + e.NodeNotFound)
 			return responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			err_msg := "Err@node_Update:LoadNode: " + id + ":" + err.Error()
+			err_msg := "err@node_Update: (node.Load) " + id + ": " + err.Error()
 			logger.Error(err_msg)
 			return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 		}
@@ -46,6 +47,7 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 	rights := n.Acl.Check(u.Uuid)
 	prights := n.Acl.Check("public")
 	if rights["write"] == false && u.Admin == false && n.Acl.Owner != u.Uuid && prights["write"] == false {
+		logger.Error("err@node_Update: (Authenticate) id=" + id + ": " + e.UnAuth)
 		return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 	}
 
@@ -56,7 +58,7 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 	// clean up temp dir !!
 	defer node.RemoveAllFormFiles(files)
 	if err != nil {
-		err_msg := "err@node_ParseMultipartForm: " + err.Error()
+		err_msg := "err@node_Update: (ParseMultipartForm) id=" + id + ": " + err.Error()
 		logger.Error(err_msg)
 		return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 	}
@@ -64,6 +66,7 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 	// need delete rights to set expiration
 	if _, hasExpiration := params["expiration"]; hasExpiration {
 		if rights["delete"] == false && u.Admin == false && n.Acl.Owner != u.Uuid && prights["delete"] == false {
+			logger.Error("err@node_Update: (Authenticate) id=" + id + ": " + e.UnAuth)
 			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 		}
 	}
@@ -84,7 +87,7 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 
 	err = n.Update(params, files, false)
 	if err != nil {
-		err_msg := "err@node_Update: " + id + ": " + err.Error()
+		err_msg := "err@node_Update: (node.Update) id=" + id + ": " + err.Error()
 		logger.Error(err_msg)
 		return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 	}
