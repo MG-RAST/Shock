@@ -264,14 +264,12 @@ func (node *Node) Update(params map[string]string, files FormFiles, isNew bool) 
 			// loop through parent indexes
 			for idxType, idxInfo := range n.Indexes {
 				parentFile := n.IndexPath() + "/" + idxType + ".idx"
-				if _, statErr := os.Stat(parentFile); statErr != nil {
-					err = fmt.Errorf("(os.Stat) %s", statErr.Error())
-					return
-				}
-				// copy file if exists
-				if _, copyErr := util.CopyFile(parentFile, node.IndexPath()+"/"+idxType+".idx"); copyErr != nil {
-					err = fmt.Errorf("(util.CopyFile) %s", copyErr.Error())
-					return
+				if _, statErr := os.Stat(parentFile); statErr == nil {
+					// copy file if exists
+					if _, copyErr := util.CopyFile(parentFile, node.IndexPath()+"/"+idxType+".idx"); copyErr != nil {
+						err = fmt.Errorf("(util.CopyFile) %s", copyErr.Error())
+						return
+					}
 				}
 				// copy index struct
 				node.SetIndexInfo(idxType, idxInfo)
