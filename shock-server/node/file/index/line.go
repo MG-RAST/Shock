@@ -40,6 +40,7 @@ func (l *lineRecord) Create(file string) (count int64, format string, err error)
 	defer f.Close()
 
 	format = "array"
+	eof := false
 	curr := int64(0)
 	count = 0
 	buffer_pos := 0 // used to track the location in our byte array
@@ -54,8 +55,9 @@ func (l *lineRecord) Create(file string) (count int64, format string, err error)
 				err = er
 				return
 			}
-			break
+			eof = true
 		}
+
 		x := (buffer_pos * 16)
 		if x == 16777216 {
 			f.Write(b[:])
@@ -70,6 +72,10 @@ func (l *lineRecord) Create(file string) (count int64, format string, err error)
 		curr += int64(n)
 		count += 1
 		buffer_pos += 1
+
+		if eof {
+			break
+		}
 	}
 	if buffer_pos != 0 {
 		f.Write(b[:buffer_pos*16])
