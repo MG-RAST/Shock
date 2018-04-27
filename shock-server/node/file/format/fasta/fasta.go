@@ -61,27 +61,6 @@ func (self *Reader) Read() (sequence *seq.Seq, err error) {
 	return
 }
 
-// Read a single sequence and return it or an error.
-func (self *Reader) ReadRaw(p []byte) (n int, err error) {
-	if self.r == nil {
-		self.r = bufio.NewReader(self.f)
-	}
-	p[n] = byte('>')
-	n = 1
-	for {
-		read, er := self.r.ReadBytes('>')
-		if len(read) > 1 {
-			copy(p[n:n+len(read)-1], read[0:len(read)-1])
-			n += len(read) - 1
-			break
-		} else if er != nil {
-			err = er
-			break
-		}
-	}
-	return
-}
-
 // Read a single sequence and return read offset for indexing.
 func (self *Reader) GetReadOffset() (n int, err error) {
 	if self.r == nil {
