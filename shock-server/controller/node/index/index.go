@@ -313,7 +313,7 @@ func IndexTypedRequest(ctx context.Context) {
 			}
 			count, indexFormat, err = idxer.Create(n.IndexPath() + "/" + idxType + ".idx")
 			if err != nil {
-				err_msg := "err@node_Index: (idxer.Create) id=" + nid + ":" + err.Error()
+				err_msg := "err@node_Index: (idxer.Create) id=" + nid + ": " + err.Error()
 				logger.Error(err_msg)
 				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				return
