@@ -38,15 +38,8 @@ func (self *Reader) GetReadOffset() (n int, err error) {
 	if self.r == nil {
 		self.r = bufio.NewReader(self.f)
 	}
-	p, er := self.r.ReadBytes('\n')
-	for {
-		if len(p) > 1 {
-			n = len(p)
-			break
-		} else if er != nil {
-			err = er
-			break
-		}
-	}
+	var p []byte
+	p, err = self.r.ReadBytes('\n')
+	n = len(p)
 	return
 }
