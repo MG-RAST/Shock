@@ -41,6 +41,7 @@ func (i *record) Create(file string) (count int64, format string, err error) {
 	defer f.Close()
 
 	format = "array"
+	eof := false
 	curr := int64(0)
 	count = 0
 	buffer_pos := 0 // used to track the location in our byte array
@@ -48,18 +49,19 @@ func (i *record) Create(file string) (count int64, format string, err error) {
 	// Writing index file in 16MB chunks
 	var b [16777216]byte
 	for {
-		// io.EOF error does not get returned from GetReadOffset() until all sequences
-		// have been read.  Thus, io.EOF for last fasta read is not returned as it is by bufio.ReadBytes().
-		// This was primarily implemented as such for agreement in the behavior between the fasta and
-		// the fastq readers.
 		n, er := i.r.GetReadOffset()
 		if er != nil {
 			if er != io.EOF {
 				err = er
 				return
 			}
+			eof = true
+		}
+
+		if eof && (n == 0) {
 			break
 		}
+
 		x := (buffer_pos * 16)
 		if x == 16777216 {
 			f.Write(b[:])
@@ -74,6 +76,10 @@ func (i *record) Create(file string) (count int64, format string, err error) {
 		curr += int64(n)
 		count += 1
 		buffer_pos += 1
+
+		if eof {
+			break
+		}
 	}
 	if buffer_pos != 0 {
 		f.Write(b[:buffer_pos*16])
