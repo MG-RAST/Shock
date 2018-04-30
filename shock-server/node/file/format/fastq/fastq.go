@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/node/file/format/seq"
@@ -63,13 +64,15 @@ func (self *Reader) Read() (sequence *seq.Seq, err error) {
 		empty = true
 	}
 
-	if empty {
-		err = errors.New("Invalid format: empty line(s) between records")
-		return
-	} else if (err == io.EOF) && (len(seqId) > 1) {
-		err = errors.New("Invalid format: truncated fastq record")
+	if err == io.EOF {
+		if len(seqId) > 0 {
+			err = errors.New("Invalid format: truncated fastq record")
+		}
 		return
 	} else if err != nil {
+		return
+	} else if empty {
+		err = errors.New("Invalid format: empty line(s) between records")
 		return
 	} else if !bytes.HasPrefix(seqId, []byte{'@'}) {
 		err = errors.New("Invalid format: id line does not start with @")
@@ -111,16 +114,14 @@ func (self *Reader) Read() (sequence *seq.Seq, err error) {
 	}
 
 	qualBody, err = self.r.ReadBytes('\n')
-	if (err == io.EOF) && (len(seqBody) != len(qualBody)) {
-		err = errors.New("Invalid format: length of sequence and quality lines do not match")
-		return
-	} else if err != nil {
-		return
-	} else if len(seqBody) != len(qualBody)-1 {
-		err = errors.New("Invalid format: length of sequence and quality lines do not match")
+	if (err != nil) && (err != io.EOF) {
 		return
 	}
 	qualBody = bytes.TrimSpace(qualBody)
+	if len(seqBody) != len(qualBody) {
+		err = errors.New("Invalid format: length of sequence and quality lines do not match")
+		return
+	}
 
 	sequence = seq.New(seqId, seqBody, qualBody)
 	return
@@ -147,13 +148,15 @@ func (self *Reader) GetReadOffset() (n int, err error) {
 		empty = true
 	}
 
-	if empty {
-		err = errors.New("Invalid format: empty line(s) between records")
-		return
-	} else if (err == io.EOF) && (len(seqId) > 1) {
-		err = errors.New("Invalid format: truncated fastq record")
+	if err == io.EOF {
+		if len(seqId) > 0 {
+			err = errors.New("Invalid format: truncated fastq record")
+		}
 		return
 	} else if err != nil {
+		return
+	} else if empty {
+		err = errors.New("Invalid format: empty line(s) between records")
 		return
 	} else if !bytes.HasPrefix(seqId, []byte{'@'}) {
 		err = errors.New("Invalid format: id line does not start with @")
@@ -194,12 +197,10 @@ func (self *Reader) GetReadOffset() (n int, err error) {
 	curr += len(qualId)
 
 	qualBody, err = self.r.ReadBytes('\n')
-	if (err == io.EOF) && (len(seqBody)-1 != len(qualBody)) {
-		err = errors.New("Invalid format: length of sequence and quality lines do not match")
+	if (err != nil) && (err != io.EOF) {
 		return
-	} else if err != nil {
-		return
-	} else if len(seqBody) != len(qualBody) {
+	}
+	if len(bytes.TrimSpace(seqBody)) != len(bytes.TrimSpace(qualBody)) {
 		err = errors.New("Invalid format: length of sequence and quality lines do not match")
 		return
 	}
