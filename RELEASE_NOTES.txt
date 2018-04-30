@@ -1,3 +1,11 @@
+# v0.9.25
+
+- add node lock to index and acl actions
+- fix missing last record index if no ending newline
+- made record index parser more robust
+- improved error handling and messages
+- remove unused index.ReadRaw functions
+
 # v0.9.24
 
 - only save node state at end of update
