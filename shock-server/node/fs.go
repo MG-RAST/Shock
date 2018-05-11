@@ -318,8 +318,6 @@ func (node *Node) SetFileFromParts(allowEmpty bool) (err error) {
 		Format:      "dynamic",
 		CreatedOn:   time.Now(),
 	}
-
-	err = node.Save()
 	return
 }
 
