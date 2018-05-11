@@ -214,6 +214,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 
 			if !ok {
 				if idxName == "size" {
+					// auto-generate size index if missing
 					totalunits := n.File.Size / conf.CHUNK_SIZE
 					m := n.File.Size % conf.CHUNK_SIZE
 					if m != 0 {
@@ -226,7 +227,15 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 						Format:      "dynamic",
 						CreatedOn:   time.Now(),
 					}
+					// lock during save
+					err = node.LockMgr.LockNode(n.Id)
+					if err != nil {
+						err_msg := "err@node_Read: (LockNode) id=" + n.Id + ": " + err.Error()
+						logger.Error(err_msg)
+						return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+					}
 					err = n.Save()
+					node.LockMgr.UnlockNode(n.Id)
 					if err != nil {
 						err_msg := "Size index could not be auto-generated for node that did not have one."
 						logger.Error("err@node_Read: (index/size) id=" + id + ": " + err_msg)
