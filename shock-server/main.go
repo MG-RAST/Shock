@@ -124,6 +124,11 @@ func mapRoutes() {
 		return responder.RespondWithData(ctx, ids)
 	})
 
+	goweb.Map("/locker", func(ctx context.Context) error {
+		ids := node.LockMgr.GetAll()
+		return responder.RespondWithData(ctx, ids)
+	})
+
 	goweb.Map("/", func(ctx context.Context) error {
 		host := util.ApiUrl(ctx)
 
