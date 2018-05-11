@@ -25,4 +25,5 @@ const (
 	NodeDoesNotExist         = "Node does not exist"
 	NodeNotFound             = "Node not found"
 	NodeNoFile               = "Node has no file"
+	NodeDownloadLock         = "Node file is locked from download or indexing"
 )

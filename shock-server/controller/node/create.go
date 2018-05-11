@@ -109,7 +109,7 @@ func (cr *NodeController) Create(ctx context.Context) error {
 					logger.Error("err@node_Create: (download_url) (Authenticate) id=" + id + ": " + e.UnAuth)
 					return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 				}
-				if n.HasFile() {
+				if n.HasFile() && !n.File.LockDownload {
 					nodeIds = append(nodeIds, n.Id)
 					totalBytes += n.File.Size
 				}

@@ -135,21 +135,22 @@ func IndexTypedRequest(ctx context.Context) {
 			}
 		}
 
-		if !n.HasFile() {
-			err_msg := "Node has no file."
-			logger.Error("err@node_Index: (node.Indexes) id=" + nid + ": " + err_msg)
-			responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+		if n.File.LockDownload {
+			logger.Error("err@node_Index: (node.Indexes) id=" + nid + ": " + e.NodeDownloadLock)
+			responder.RespondWithError(ctx, http.StatusBadRequest, e.NodeDownloadLock)
+			return
+		} else if !n.HasFile() {
+			logger.Error("err@node_Index: (node.Indexes) id=" + nid + ": " + e.NodeNoFile)
+			responder.RespondWithError(ctx, http.StatusBadRequest, e.NodeNoFile)
 			return
 		} else if idxType == "" {
-			err_msg := "Index create requires type."
-			logger.Error("err@node_Index: (node.Indexes) id=" + nid + ": " + err_msg)
-			responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+			logger.Error("err@node_Index: (node.Indexes) id=" + nid + ": " + e.InvalidIndex)
+			responder.RespondWithError(ctx, http.StatusBadRequest, e.InvalidIndex)
 			return
 		}
 		if _, ok := index.Indexers[idxType]; !ok && idxType != "bai" && idxType != "subset" && idxType != "column" {
-			err_msg := fmt.Sprintf("Index type %s unavailable.", idxType)
-			logger.Error("err@node_Index: (node.Indexes) id=" + nid + ": " + err_msg)
-			responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+			logger.Error("err@node_Index: (node.Indexes) id=" + nid + ": " + e.InvalidIndex)
+			responder.RespondWithError(ctx, http.StatusBadRequest, e.InvalidIndex)
 			return
 		}
 		if idxType == "size" {
