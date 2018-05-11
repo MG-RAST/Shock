@@ -79,6 +79,15 @@ func (l *Locker) GetLocked() (ids []string) {
 	return
 }
 
+func (l *Locker) GetAll() (ids []string) {
+	l.Lock()
+	for id, _ := range l.nodes {
+		ids = append(ids, id)
+	}
+	l.Unlock()
+	return
+}
+
 func (l *Locker) AddNode(id string) {
 	l.Lock()
 	l.nodes[id] = new(NodeLock)
