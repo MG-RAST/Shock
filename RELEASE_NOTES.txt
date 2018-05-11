@@ -1,3 +1,20 @@
+# v0.9.25
+
+- add node lock to index and acl actions
+- fix missing last record index if no ending newline
+- made record index parser more robust
+- improved error handling and messages
+- remove unused index.ReadRaw functions
+
+# v0.9.24
+
+- only save node state at end of update
+- add node lock for life of update
+- use global lock object with timeout and cleanup
+- add function trace to error messages
+- kill broken download steams more cleanly
+- better auth logging
+
 # v0.9.23
 
 - fix bug in admin users

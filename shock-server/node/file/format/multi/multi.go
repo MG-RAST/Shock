@@ -71,16 +71,6 @@ func (r *Reader) Read() (*seq.Seq, error) {
 	return r.r.Read()
 }
 
-func (r *Reader) ReadRaw(p []byte) (n int, err error) {
-	if r.r == nil {
-		err := r.DetermineFormat()
-		if err != nil {
-			return 0, err
-		}
-	}
-	return r.r.ReadRaw(p)
-}
-
 func (r *Reader) GetReadOffset() (n int, err error) {
 	if r.r == nil {
 		err := r.DetermineFormat()
