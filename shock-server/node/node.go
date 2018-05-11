@@ -295,11 +295,20 @@ func (node *Node) Delete() (err error) {
 	}
 	if len(copiedNodes) != 0 && dataFileExists {
 		for index, copiedNode := range copiedNodes {
+			// lock copynode for save
+			err = LockMgr.LockNode(copiedNode.Id)
+			if err != nil {
+				err = errors.New("This node has a data file linked to another node which could not be locked during data file copy: " + err.Error())
+				return
+			}
+			defer LockMgr.UnlockNode(copiedNode.Id)
+
 			if index == 0 {
 				newDataFilePath = fmt.Sprintf("%s/%s.data", getPath(copiedNode.Id), copiedNode.Id)
 				if rerr := os.Rename(dataFilePath, newDataFilePath); rerr != nil {
 					if _, cerr := util.CopyFile(dataFilePath, newDataFilePath); cerr != nil {
-						return errors.New("This node has a data file linked to another node and the data file could not be copied elsewhere to allow for node deletion.")
+						err = errors.New("This node has a data file linked to another node and the data file could not be copied elsewhere to allow for node deletion.")
+						return
 					}
 				}
 				copiedNode.File.Path = ""
@@ -311,8 +320,9 @@ func (node *Node) Delete() (err error) {
 		}
 	}
 
-	if err = dbDelete(bson.M{"id": node.Id}); err != nil {
-		return err
+	err = dbDelete(bson.M{"id": node.Id})
+	if err != nil {
+		return
 	}
 	err = node.Rmdir()
 	return
