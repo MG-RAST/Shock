@@ -98,6 +98,10 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 	// ?download=1 or ?download_raw=1
 	_, download_raw := query["download_raw"]
 	if _, ok := query["download"]; ok || download_raw {
+		if n.File.LockDownload {
+			logger.Error("err@node_Read: id=" + id + ": " + e.NodeDownloadLock)
+			return responder.RespondWithError(ctx, http.StatusBadRequest, e.NodeDownloadLock)
+		}
 		if !n.HasFile() {
 			logger.Error("err@node_Read: id=" + id + ": " + e.NodeNoFile)
 			return responder.RespondWithError(ctx, http.StatusBadRequest, e.NodeNoFile)
@@ -432,7 +436,10 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			}
 		}
 	} else if _, ok := query["download_url"]; ok {
-		if !n.HasFile() {
+		if n.File.LockDownload {
+			logger.Error("err@node_Read: id=" + id + ": " + e.NodeDownloadLock)
+			return responder.RespondWithError(ctx, http.StatusBadRequest, e.NodeDownloadLock)
+		} else if !n.HasFile() {
 			logger.Error("err:@node_Read: (download_url) " + e.NodeNoFile)
 			return responder.RespondWithError(ctx, http.StatusBadRequest, e.NodeNoFile)
 		} else {
@@ -505,7 +512,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		form := client.NewForm()
 		form.AddParam("file_name", n.File.Name)
 
-		if post_opts["post_data"] == 1 {
+		if (post_opts["post_data"] == 1) && n.HasFile() && !n.File.LockDownload {
 			form.AddFile("upload", n.FilePath())
 		}
 

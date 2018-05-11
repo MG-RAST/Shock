@@ -9,14 +9,16 @@ import (
 
 // File is the Node file structure. Contains the json/bson marshalling controls.
 type File struct {
-	Name         string            `bson:"name" json:"name"`
-	Size         int64             `bson:"size" json:"size"`
-	Checksum     map[string]string `bson:"checksum" json:"checksum"`
-	Format       string            `bson:"format" json:"format"`
-	Path         string            `bson:"path" json:"-"`
-	Virtual      bool              `bson:"virtual" json:"virtual"`
-	VirtualParts []string          `bson:"virtual_parts" json:"virtual_parts"`
-	CreatedOn    time.Time         `bson:"created_on" json:"created_on"`
+	Name          string            `bson:"name" json:"name"`
+	Size          int64             `bson:"size" json:"size"`
+	Checksum      map[string]string `bson:"checksum" json:"checksum"`
+	Format        string            `bson:"format" json:"format"`
+	Path          string            `bson:"path" json:"-"`
+	Virtual       bool              `bson:"virtual" json:"virtual"`
+	VirtualParts  []string          `bson:"virtual_parts" json:"virtual_parts"`
+	CreatedOn     time.Time         `bson:"created_on" json:"created_on"`
+	LockDownload  bool              `bson:"lock_download" json:"lock_download"`
+	LockCreatedOn time.Time         `bson:"lock_created_on" json:"lock_created_on"`
 }
 
 // FileInfo for streaming file content

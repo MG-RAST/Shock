@@ -63,7 +63,7 @@ func streamDownload(ctx context.Context, pid string, nodes []string, options map
 	for _, nid := range nodes {
 		// get node
 		n, err := node.Load(nid)
-		if (err != nil) || !n.HasFile() {
+		if (err != nil) || !n.HasFile() || n.File.LockDownload {
 			continue
 		}
 		// get filereader

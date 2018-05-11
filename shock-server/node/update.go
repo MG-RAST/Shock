@@ -118,7 +118,7 @@ func (node *Node) Update(params map[string]string, files FormFiles, isNew bool) 
 	}
 
 	// Check if immutable
-	if node.HasFile() && (isRegularUpload || isUrlUpload || isPartialUpload || hasPartsFile || isVirtualNode || isPathUpload || isCopyUpload || isSubsetUpload) {
+	if (node.HasFile() || node.File.LockDownload) && (isRegularUpload || isUrlUpload || isPartialUpload || hasPartsFile || isVirtualNode || isPathUpload || isCopyUpload || isSubsetUpload) {
 		err = errors.New(e.FileImut)
 	}
 
@@ -450,7 +450,7 @@ func (node *Node) Update(params map[string]string, files FormFiles, isNew bool) 
 
 	// handle part file
 	if hasPartsFile {
-		if node.HasFile() {
+		if node.HasFile() || node.File.LockDownload {
 			err = errors.New(e.FileImut)
 			return
 		}

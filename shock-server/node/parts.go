@@ -59,10 +59,10 @@ func (node *Node) addVirtualParts(ids []string) (err error) {
 	}
 	node.File.Virtual = true
 	for _, n := range nodes {
-		if n.HasFile() {
+		if n.HasFile() && !n.File.LockDownload {
 			node.File.VirtualParts = append(node.File.VirtualParts, n.Id)
 		} else {
-			return errors.New("node %s: has no file. All nodes in source must have files.")
+			return errors.New("node %s: has no file or file is locked. All nodes in source must have available files.")
 		}
 	}
 	if reader, err := node.FileReader(); err == nil {
