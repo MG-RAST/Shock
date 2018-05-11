@@ -21,24 +21,29 @@ type Locker struct {
 	sync.Mutex
 }
 
+func NewNodeLock(id string) (n *NodeLock) {
+	n = &NodeLock{
+		id:        id,
+		isLocked:  false,
+		updated:   time.Now(),
+		writeLock: make(chan int, 1),
+	}
+	n.writeLock <- 1 // Put the initial value into the channel
+	return
+}
+
 type NodeLock struct {
+	id        string
 	isLocked  bool
 	updated   time.Time
 	writeLock chan int
 }
 
-func (n *NodeLock) init() {
-	n.isLocked = false
-	n.updated = time.Now()
-	n.writeLock = make(chan int, 1)
-	n.writeLock <- 1 // Put the initial value into the channel
-}
-
-func (n *NodeLock) lock(id string) (err error) {
+func (n *NodeLock) lock() (err error) {
 	select {
 	case <-n.writeLock: // Grab the ticket - here is where we wait
 	case <-time.After(time.Minute * 30):
-		err = fmt.Errorf("Timeout!! Waited 30 mins on lock for node %s", id)
+		err = fmt.Errorf("Timeout!! Waited 30 mins on lock for node %s", n.id)
 		return
 	}
 	n.isLocked = true
@@ -54,15 +59,18 @@ func (n *NodeLock) unlock() {
 
 func (l *Locker) LockNode(id string) (err error) {
 	// add if missing, may happen if shock restarted
+	l.Lock()
+	defer l.Unlock()
 	if _, ok := l.nodes[id]; !ok {
-		l.AddNode(id)
+		l.nodes[id] = NewNodeLock(id)
 	}
-	err = l.nodes[id].lock(id)
+	err = l.nodes[id].lock()
 	return
 }
 
 func (l *Locker) UnlockNode(id string) {
-	// skip missing id
+	l.Lock()
+	defer l.Unlock()
 	if _, ok := l.nodes[id]; ok {
 		l.nodes[id].unlock()
 	}
@@ -70,38 +78,33 @@ func (l *Locker) UnlockNode(id string) {
 
 func (l *Locker) GetLocked() (ids []string) {
 	l.Lock()
+	defer l.Unlock()
 	for id, n := range l.nodes {
 		if n.isLocked {
 			ids = append(ids, id)
 		}
 	}
-	l.Unlock()
 	return
 }
 
 func (l *Locker) GetAll() (ids []string) {
 	l.Lock()
+	defer l.Unlock()
 	for id, _ := range l.nodes {
 		ids = append(ids, id)
 	}
-	l.Unlock()
 	return
-}
-
-func (l *Locker) AddNode(id string) {
-	l.Lock()
-	l.nodes[id] = new(NodeLock)
-	l.nodes[id].init()
-	l.Unlock()
 }
 
 func (l *Locker) RemoveNode(id string) {
 	l.Lock()
+	defer l.Unlock()
 	delete(l.nodes, id)
-	l.Unlock()
 }
 
 func (l *Locker) RemoveOldNodes(hours int) {
+	l.Lock()
+	defer l.Unlock()
 	currTime := time.Now()
 	expireTime := currTime.Add(time.Duration(hours*-1) * time.Hour)
 	l.Lock()
@@ -110,5 +113,4 @@ func (l *Locker) RemoveOldNodes(hours int) {
 			delete(l.nodes, id)
 		}
 	}
-	l.Unlock()
 }
