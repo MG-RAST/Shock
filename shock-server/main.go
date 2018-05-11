@@ -119,8 +119,8 @@ func mapRoutes() {
 		return nil
 	})
 
-	goweb.Map("/openparts", func(ctx context.Context) error {
-		ids := node.LockMgr.GetNodes()
+	goweb.Map("/locked", func(ctx context.Context) error {
+		ids := node.LockMgr.GetLocked()
 		return responder.RespondWithData(ctx, ids)
 	})
 

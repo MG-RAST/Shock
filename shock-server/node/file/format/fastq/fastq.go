@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	Regex = regexp.MustCompile(`^[\n\r]*@[\S\t ]+[\n\r]+[A-Za-z\-]+[\n\r]+\+[\S\t ]*[\n\r]+\S*[\n\r]+`)
+	Regex = regexp.MustCompile(`^[\n\r]*@\S+[\S\t ]+[\n\r]+[A-Za-z\-]+[\n\r]+\+[\S\t ]*[\n\r]+\S*[\n\r]+`)
 )
 
 // Fastq sequence format reader type.
@@ -44,97 +44,85 @@ func NewReaderName(name string) (r seq.ReadRewinder, err error) {
 }
 
 // Read a single sequence and return it or an error.
-// TODO: Does not read interleaved fastq.
 func (self *Reader) Read() (sequence *seq.Seq, err error) {
 	if self.r == nil {
 		self.r = bufio.NewReader(self.f)
 	}
-	var line, label, seqBody, qualBody []byte
-	sequence = &seq.Seq{}
+	var seqId, seqBody, qualId, qualBody []byte
 
-	inQual := false
-READ:
+	// skip empty lines only at eof
+	empty := false
 	for {
-		if line, err = self.r.ReadBytes('\n'); err == nil {
-			if len(line) > 0 && line[len(line)-1] == '\r' {
-				line = line[:len(line)-1]
-			}
-			line = bytes.TrimSpace(line)
-			if len(line) == 0 {
-				continue
-			}
-			switch {
-			case !inQual && line[0] == '@':
-				label = line[1:]
-			case !inQual && line[0] == '+':
-				if len(label) == 0 {
-					return nil, errors.New("No ID line parsed at +line in fastq format")
-				}
-				if len(line) > 1 && bytes.Compare(label, line[1:]) != 0 {
-					return nil, errors.New("Quality ID does not match sequence ID")
-				}
-				inQual = true
-			case !inQual:
-				line = bytes.Join(bytes.Fields(line), nil)
-				seqBody = append(seqBody, line...)
-			case inQual:
-				line = bytes.Join(bytes.Fields(line), nil)
-				qualBody = append(qualBody, line...)
-				if len(qualBody) >= len(seqBody) {
-					break READ
-				}
-			}
-		} else {
-			return
+		seqId, err = self.r.ReadBytes('\n')
+		if err != nil {
+			break
 		}
+		if len(seqId) > 1 {
+			break
+		}
+		empty = true
 	}
 
+	if err == io.EOF {
+		if len(seqId) > 0 {
+			err = errors.New("Invalid format: truncated fastq record")
+		}
+		return
+	} else if err != nil {
+		return
+	} else if empty {
+		err = errors.New("Invalid format: empty line(s) between records")
+		return
+	} else if !bytes.HasPrefix(seqId, []byte{'@'}) {
+		err = errors.New("Invalid format: id line does not start with @")
+		return
+	}
+	seqId = bytes.TrimSpace(seqId[1:])
+	if len(seqId) == 0 {
+		err = errors.New("Invalid format: missing sequence ID")
+		return
+	}
+
+	seqBody, err = self.r.ReadBytes('\n')
+	if err == io.EOF {
+		err = errors.New("Invalid format: truncated fastq record")
+		return
+	} else if err != nil {
+		return
+	}
+	seqBody = bytes.TrimSpace(seqBody)
+	if len(seqBody) == 0 {
+		err = errors.New("Invalid format: empty sequence")
+		return
+	}
+
+	qualId, err = self.r.ReadBytes('\n')
+	if err == io.EOF {
+		err = errors.New("Invalid format: truncated fastq record")
+		return
+	} else if err != nil {
+		return
+	} else if !bytes.HasPrefix(qualId, []byte{'+'}) {
+		err = errors.New("Invalid format: plus line does not start with +")
+		return
+	}
+	qualId = bytes.TrimSpace(qualId)
+	if (len(qualId) > 1) && (bytes.Compare(seqId, qualId[1:]) != 0) {
+		err = errors.New("Invalid format: quality ID does not match sequence ID")
+		return
+	}
+
+	qualBody, err = self.r.ReadBytes('\n')
+	if (err != nil) && (err != io.EOF) {
+		return
+	}
+	qualBody = bytes.TrimSpace(qualBody)
 	if len(seqBody) != len(qualBody) {
-		return nil, errors.New("Quality length does not match sequence length")
+		err = errors.New("Invalid format: length of sequence and quality lines do not match")
+		return
 	}
-	sequence = seq.New(label, seqBody, qualBody)
 
-	return
-}
-
-func (self *Reader) ReadRaw(p []byte) (n int, err error) {
-	if self.r == nil {
-		self.r = bufio.NewReader(self.f)
-	}
-	curr := 0
-	id, err := self.r.ReadBytes('\n')
-	if err != nil {
-		return 0, err
-	} else if !bytes.HasPrefix(id, []byte{'@'}) {
-		return 0, errors.New("Invalid format: id line does not start with @")
-	}
-	copy(p[curr:len(id)+curr], id)
-	curr += len(id)
-
-	seq, err := self.r.ReadBytes('\n')
-	if err != nil {
-		return 0, err
-	}
-	copy(p[curr:len(seq)+curr], seq)
-	curr += len(seq)
-
-	plus, err := self.r.ReadBytes('\n')
-	if err != nil {
-		return 0, err
-	} else if !bytes.HasPrefix(plus, []byte{'+'}) {
-		return 0, errors.New("Invalid format: plus line does not start with +")
-	}
-	copy(p[curr:len(plus)+curr], plus)
-	curr += len(plus)
-
-	qual, err := self.r.ReadBytes('\n')
-	if err != nil {
-		return 0, err
-	} else if len(seq) != len(qual) {
-		return 0, errors.New("Invalid format: length of sequence and quality lines do not match")
-	}
-	copy(p[curr:len(qual)+curr], qual)
-	n = curr + len(qual)
+	sequence = seq.New(seqId, seqBody, qualBody)
 	return
 }
 
@@ -143,47 +131,81 @@ func (self *Reader) GetReadOffset() (n int, err error) {
 	if self.r == nil {
 		self.r = bufio.NewReader(self.f)
 	}
+	var seqId, seqBody, qualId, qualBody []byte
 	curr := 0
-	id, err := self.r.ReadBytes('\n')
-	if err != nil {
-		return 0, err
-	} else if !bytes.HasPrefix(id, []byte{'@'}) {
-		return 0, errors.New("Invalid format: id line does not start with @")
-	}
-	curr += len(id)
 
-	seq, err := self.r.ReadBytes('\n')
-	if err != nil {
-		return 0, err
-	}
-	curr += len(seq)
-
-	plus, err := self.r.ReadBytes('\n')
-	if err != nil {
-		return 0, err
-	} else if !bytes.HasPrefix(plus, []byte{'+'}) {
-		return 0, errors.New("Invalid format: plus line does not start with +")
-	}
-	curr += len(plus)
-
-	qual, err := self.r.ReadBytes('\n')
-	if len(qual) > 1 {
-		if err == io.EOF {
-			if len(seq)-1 != len(qual) {
-				return 0, errors.New("Invalid format: length of sequence and quality lines do not match")
-			}
-			n = curr + len(qual)
-			return n, nil
-		} else if err != nil {
-			return 0, err
-		} else if len(seq) != len(qual) {
-			return 0, errors.New("Invalid format: length of sequence and quality lines do not match")
-		} else {
-			n = curr + len(qual)
-			return
+	// skip empty lines only at eof
+	empty := false
+	for {
+		seqId, err = self.r.ReadBytes('\n')
+		if err != nil {
+			break
 		}
+		if len(seqId) > 1 {
+			break
+		}
+		empty = true
 	}
-	return 0, err
+
+	if err == io.EOF {
+		if len(seqId) > 0 {
+			err = errors.New("Invalid format: truncated fastq record")
+		}
+		return
+	} else if err != nil {
+		return
+	} else if empty {
+		err = errors.New("Invalid format: empty line(s) between records")
+		return
+	} else if !bytes.HasPrefix(seqId, []byte{'@'}) {
+		err = errors.New("Invalid format: id line does not start with @")
+		return
+	} else if len(seqId) == 2 {
+		err = errors.New("Invalid format: missing sequence ID")
+		return
+	}
+	curr += len(seqId)
+
+	seqBody, err = self.r.ReadBytes('\n')
+	if err == io.EOF {
+		err = errors.New("Invalid format: truncated fastq record")
+		return
+	} else if err != nil {
+		return
+	} else if len(seqBody) == 1 {
+		err = errors.New("Invalid format: empty sequence")
+		return
+	}
+	curr += len(seqBody)
+
+	qualId, err = self.r.ReadBytes('\n')
+	if err == io.EOF {
+		err = errors.New("Invalid format: truncated fastq record")
+		return
+	} else if err != nil {
+		return
+	} else if !bytes.HasPrefix(qualId, []byte{'+'}) {
+		err = errors.New("Invalid format: plus line does not start with +")
+		return
+	}
+	qualIdTrim := bytes.TrimSpace(qualId)
+	if (len(qualIdTrim) > 1) && (bytes.Compare(bytes.TrimSpace(seqId[1:]), qualIdTrim[1:]) != 0) {
+		err = errors.New("Invalid format: quality ID does not match sequence ID")
+		return
+	}
+	curr += len(qualId)
+
+	qualBody, err = self.r.ReadBytes('\n')
+	if (err != nil) && (err != io.EOF) {
+		return
+	}
+	if len(bytes.TrimSpace(seqBody)) != len(bytes.TrimSpace(qualBody)) {
+		err = errors.New("Invalid format: length of sequence and quality lines do not match")
+		return
+	}
+
+	n = curr + len(qualBody)
+	return
 }
 
 // seek sequences which add up to a size close to the configured chunk size (conf.CHUNK_SIZE, e.g. 1M)

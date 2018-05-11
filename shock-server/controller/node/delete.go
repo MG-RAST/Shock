@@ -33,11 +33,12 @@ func (cr *NodeController) Delete(id string, ctx context.Context) error {
 	n, err := node.Load(id)
 	if err != nil {
 		if err == mgo.ErrNotFound {
+			logger.Error("err@node_Delete: (node.Load) id=" + id + ": " + e.NodeNotFound)
 			return responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			err_msg := "Err@node_Delete:LoadNode: " + id + ":" + err.Error()
+			err_msg := "err@node_Delete: (node.Load) id=" + id + ": " + err.Error()
 			logger.Error(err_msg)
 			return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 		}
@@ -46,13 +47,14 @@ func (cr *NodeController) Delete(id string, ctx context.Context) error {
 	rights := n.Acl.Check(u.Uuid)
 	prights := n.Acl.Check("public")
 	if rights["delete"] == false && u.Admin == false && n.Acl.Owner != u.Uuid && prights["delete"] == false {
+		logger.Error("err@node_Delete: (Authenticate) id=" + id + ": " + e.UnAuth)
 		return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 	}
 
 	if err := n.Delete(); err == nil {
 		return responder.RespondOK(ctx)
 	} else {
-		err_msg := "Err@node_Delete:Delete: " + err.Error()
+		err_msg := "err@node_Delete: (node.Delete) " + err.Error()
 		logger.Error(err_msg)
 		return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 	}

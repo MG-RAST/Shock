@@ -7,9 +7,9 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/node/filter"
-	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"io"
 	"net/http"
+	"net/url"
 	"os/exec"
 )
 
@@ -23,15 +23,37 @@ type MultiStreamer struct {
 	Archive     string
 }
 
+// file.FileInfo for streaming file content
+// this is here for refrence
+//type FileInfo struct {
+//	R        []SectionReader
+//  E        error
+//  ESection int
+//	Body     io.ReadCloser
+//	Name     string
+//	Size     int64
+//	ModTime  time.Time
+//	Checksum string
+//}
+
 type Streamer struct {
 	R           []file.SectionReader
 	W           http.ResponseWriter
+	E           error
+	ESection    int
 	ContentType string
 	Filename    string
 	Size        int64
 	Filter      filter.FilterFunc
 	Compression string
 }
+
+// file.SectionReader interface required for MultiReaderAt
+// this is here for refrence
+//type SectionReader interface {
+//	io.Reader
+//	io.ReaderAt
+//}
 
 func (s *Streamer) Stream(streamRaw bool) (err error) {
 	// file download
@@ -55,25 +77,42 @@ func (s *Streamer) Stream(streamRaw bool) (err error) {
 
 	// pipe each SectionReader into one stream
 	// run filter pre-pipe
+	// return on error
 	pReader, pWriter := io.Pipe()
 	go func() {
-		for _, sr := range s.R {
+		defer pWriter.Close()
+		for i, sr := range s.R {
 			var rs io.Reader
 			if s.Filter != nil {
 				rs = s.Filter(sr)
 			} else {
 				rs = sr
 			}
-			io.Copy(pWriter, rs)
+			_, ioerr := io.Copy(pWriter, rs)
+			if ioerr != nil {
+				s.E = ioerr
+				s.ESection = i
+				return
+			}
 		}
-		pWriter.Close()
 	}()
+
+	if s.E != nil {
+		pReader.Close()
+		err = fmt.Errorf("(request.Stream: section %d) failed: raw=%t; size=%d; file=%s; error=%s", s.ESection, streamRaw, s.Size, s.Filename, s.E.Error())
+		return
+	}
 
 	// pass pipe to ResponseWriter, go through compression if exists
 	cReader := archive.CompressReader(s.Compression, s.Filename, pReader)
-	_, err = io.Copy(s.W, cReader)
+	_, ioerr := io.Copy(s.W, cReader)
+
 	cReader.Close()
 	pReader.Close()
+
+	if ioerr != nil {
+		err = fmt.Errorf("(request.Stream: full stream) failed: raw=%t; size=%d; file=%s; error=%s", streamRaw, s.Size, s.Filename, ioerr.Error())
+	}
 	return
 }
 
@@ -92,19 +131,36 @@ func (m *MultiStreamer) MultiStream() (err error) {
 		pReader, pWriter := io.Pipe()
 		f.Body = pReader
 		go func(lf *file.FileInfo) {
-			for _, sr := range lf.R {
-				io.Copy(pWriter, sr)
+			for i, sr := range lf.R {
+				_, ioerr := io.Copy(pWriter, sr)
+				if ioerr != nil {
+					lf.E = ioerr
+					lf.ESection = i
+				}
 			}
 			pWriter.Close()
 		}(f)
 	}
 
+	// identify any error files
+	for _, f := range m.Files {
+		if f.E != nil {
+			err = fmt.Errorf("(request.MultiStream: section %d) failed: size=%d; file=%s; error=%s", f.ESection, f.Size, f.Name, f.E.Error())
+			return
+		}
+	}
+
 	// pass pipes through archiver to ResponseWriter
 	aReader := archive.ArchiveReader(m.Archive, m.Files)
-	_, err = io.Copy(m.W, aReader)
+	_, ioerr := io.Copy(m.W, aReader)
+
 	aReader.Close()
 	for _, f := range m.Files {
 		f.Body.Close()
+	}
+
+	if ioerr != nil {
+		err = fmt.Errorf("(request.MultiStream: full stream) failed: file=%s; error=%s", m.Filename, ioerr.Error())
 	}
 	return
 }
@@ -125,32 +181,42 @@ func (s *Streamer) StreamSamtools(filePath string, region string, args ...string
 	index.LoadBamIndex(filePath)
 
 	cmd := exec.Command("samtools", argv...)
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
+	stdout, perr := cmd.StdoutPipe()
+	if perr != nil {
+		err = fmt.Errorf("(request.StreamSamtools) failed: file=%s; error=%s", filePath, perr.Error())
 		return
 	}
-	err = cmd.Start()
-	if err != nil {
-		return err
+
+	serr := cmd.Start()
+	if serr != nil {
+		err = fmt.Errorf("(request.StreamSamtools) failed: file=%s; error=%s", filePath, serr.Error())
+		return
 	}
 
-	go io.Copy(s.W, stdout)
+	go func() {
+		_, ioerr := io.Copy(s.W, stdout)
+		if ioerr != nil {
+			s.E = ioerr
+		}
+	}()
+	if s.E != nil {
+		err = fmt.Errorf("(request.StreamSamtools) failed: file=%s; error=%s", filePath, s.E.Error())
+		return
+	}
 
-	err = cmd.Wait()
-	if err != nil {
-		return err
+	werr := cmd.Wait()
+	if werr != nil {
+		err = fmt.Errorf("(request.StreamSamtools) failed: file=%s; error=%s", filePath, werr.Error())
+		return
 	}
 
 	index.UnLoadBamIndex(filePath)
-
 	return
 }
 
 //helper function to translate args in URL query to samtools args
 //manual: http://samtools.sourceforge.net/samtools.shtml
-func ParseSamtoolsArgs(ctx context.Context) (argv []string, err error) {
-
-	query := ctx.HttpRequest().URL.Query()
+func ParseSamtoolsArgs(query url.Values) (argv []string, err error) {
 	var (
 		filter_options = map[string]string{
 			"head":     "-h",
