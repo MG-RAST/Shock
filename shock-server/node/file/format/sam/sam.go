@@ -78,25 +78,6 @@ func (self *Reader) Read() (sequence *seq.Seq, err error) {
 	return
 }
 
-// Read a single sequence and return it or an error. (used for making record index)
-func (self *Reader) ReadRaw(p []byte) (n int, err error) {
-	for {
-		read, er := self.r.ReadBytes('\n')
-		n += len(read)
-		if len(read) > 1 {
-			if read[0] == '@' {
-				continue
-			}
-			copy(p[0:len(read)], read[0:len(read)])
-			break
-		} else if er != nil {
-			err = er
-			break
-		}
-	}
-	return
-}
-
 // Read a single sequence and return read offset for indexing.
 func (self *Reader) GetReadOffset() (n int, err error) {
 	for {

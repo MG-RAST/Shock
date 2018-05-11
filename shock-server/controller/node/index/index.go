@@ -51,11 +51,12 @@ func IndexTypedRequest(ctx context.Context) {
 	n, err := node.Load(nid)
 	if err != nil {
 		if err == mgo.ErrNotFound {
+			logger.Error("err@node_Index: (node.Load) id=" + nid + ": " + e.NodeNotFound)
 			responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
-			err_msg := "Err@node_Index:LoadNode: " + nid + ":" + err.Error()
+			err_msg := "err@node_Index: (node.Load) id=" + nid + ":" + err.Error()
 			logger.Error(err_msg)
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 		}
@@ -67,24 +68,28 @@ func IndexTypedRequest(ctx context.Context) {
 	switch rmeth {
 	case "DELETE":
 		if rights["write"] == false && u.Admin == false && n.Acl.Owner != u.Uuid {
+			logger.Error("err@node_Index: (Authenticate) id=" + nid + ": " + e.UnAuth)
 			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 			return
 		}
 
 		if _, has := n.Indexes[idxType]; has {
-			if err := n.DeleteIndex(idxType); err != nil {
-				err_msg := err.Error()
+			if err = n.DeleteIndex(idxType); err != nil {
+				err_msg := "err@node_Index: (node.DeleteIndex) id=" + nid + ":" + err.Error()
 				logger.Error(err_msg)
 				responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 				return
 			}
 			responder.RespondOK(ctx)
 		} else {
-			responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("Node %s does not have index of type %s.", n.Id, idxType))
+			err_msg := fmt.Sprintf("Node %s does not have index of type %s.", n.Id, idxType)
+			logger.Error("err@node_Index: (node.Indexes) id=" + nid + ": " + err_msg)
+			responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 		}
 
 	case "GET":
 		if rights["read"] == false && u.Admin == false && n.Acl.Owner != u.Uuid {
+			logger.Error("err@node_Index: (Authenticate) id=" + nid + ": " + e.UnAuth)
 			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 			return
 		}
@@ -92,14 +97,27 @@ func IndexTypedRequest(ctx context.Context) {
 		if v, has := n.Indexes[idxType]; has {
 			responder.RespondWithData(ctx, map[string]interface{}{idxType: v})
 		} else {
-			responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("Node %s does not have index of type %s.", n.Id, idxType))
+			err_msg := fmt.Sprintf("Node %s does not have index of type %s.", n.Id, idxType)
+			logger.Error("err@node_Index: (node.Indexes) id=" + nid + ": " + err_msg)
+			responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 		}
 
 	case "PUT":
 		if rights["write"] == false && u.Admin == false && n.Acl.Owner != u.Uuid {
+			logger.Error("err@node_Index: (Authenticate) id=" + nid + ": " + e.UnAuth)
 			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 			return
 		}
+
+		// lock node
+		err = node.LockMgr.LockNode(nid)
+		if err != nil {
+			err_msg := "err@node_Index: (LockNode) id=" + nid + ": " + err.Error()
+			logger.Error(err_msg)
+			responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+			return
+		}
+		defer node.LockMgr.UnlockNode(nid)
 
 		// Gather query params
 		query := ctx.HttpRequest().URL.Query()
@@ -110,24 +128,34 @@ func IndexTypedRequest(ctx context.Context) {
 				responder.RespondOK(ctx)
 				return
 			} else if !forceRebuild {
-				responder.RespondWithError(ctx, http.StatusBadRequest, "This index already exists, please add the parameter 'force_rebuild=1' to force a rebuild of the existing index.")
+				err_msg := "This index already exists, please add the parameter 'force_rebuild=1' to force a rebuild of the existing index."
+				logger.Error("err@node_Index: (node.Indexes) id=" + nid + ": " + err_msg)
+				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				return
 			}
 		}
 
 		if !n.HasFile() {
-			responder.RespondWithError(ctx, http.StatusBadRequest, "Node has no file.")
+			err_msg := "Node has no file."
+			logger.Error("err@node_Index: (node.Indexes) id=" + nid + ": " + err_msg)
+			responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 			return
 		} else if idxType == "" {
-			responder.RespondWithError(ctx, http.StatusBadRequest, "Index create requires type.")
+			err_msg := "Index create requires type."
+			logger.Error("err@node_Index: (node.Indexes) id=" + nid + ": " + err_msg)
+			responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 			return
 		}
 		if _, ok := index.Indexers[idxType]; !ok && idxType != "bai" && idxType != "subset" && idxType != "column" {
-			responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("Index type %s unavailable.", idxType))
+			err_msg := fmt.Sprintf("Index type %s unavailable.", idxType)
+			logger.Error("err@node_Index: (node.Indexes) id=" + nid + ": " + err_msg)
+			responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 			return
 		}
 		if idxType == "size" {
-			responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("Index type size is a virtual index and does not require index building."))
+			err_msg := fmt.Sprintf("Index type size is a virtual index and does not require index building.")
+			logger.Error("err@node_Index: (node.Indexes) id=" + nid + ": " + err_msg)
+			responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 			return
 		}
 
@@ -138,18 +166,24 @@ func IndexTypedRequest(ctx context.Context) {
 		if idxType == "bai" {
 			//bam index is created by the command-line tool samtools
 			if n.Type == "subset" {
-				responder.RespondWithError(ctx, http.StatusBadRequest, "Shock does not support bam index creation on subset nodes.")
+				err_msg := "subset nodes do not support bam indices"
+				logger.Error("err@node_Index: (index/bai) id=" + nid + ": " + err_msg)
+				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				return
 			}
 
 			if ext := n.FileExt(); ext == ".bam" {
 				if err := index.CreateBamIndex(n.FilePath()); err != nil {
-					responder.RespondWithError(ctx, http.StatusInternalServerError, "Error while creating bam index.")
+					err_msg := "Error while creating bam index."
+					logger.Error("err@node_Index: (index/bai) id=" + nid + ": " + err_msg)
+					responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 					return
 				}
 				responder.RespondOK(ctx)
 			} else {
-				responder.RespondWithError(ctx, http.StatusBadRequest, "Index type bai requires .bam file.")
+				err_msg := "Index type bai requires .bam file."
+				logger.Error("err@node_Index: (index/bai) id=" + nid + ": " + err_msg)
+				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 			}
 			return
 		}
@@ -164,32 +198,44 @@ func IndexTypedRequest(ctx context.Context) {
 			// clean up temp dir !!
 			defer node.RemoveAllFormFiles(files)
 			if err != nil {
-				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+				err_msg := "err@node_Index: (ParseMultipartForm) id=" + nid + ":" + err.Error()
+				logger.Error(err_msg)
+				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				return
 			}
 
 			parentIndex, hasParent := params["parent_index"]
 			if !hasParent {
-				responder.RespondWithError(ctx, http.StatusBadRequest, "Index type subset requires parent_index param.")
+				err_msg := "Index type subset requires parent_index param."
+				logger.Error("err@node_Index: (index/subset) id=" + nid + ": " + err_msg)
+				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				return
 			} else if _, has := n.Indexes[parentIndex]; !has {
-				responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("Node %s does not have index of type %s.", n.Id, parentIndex))
+				err_msg := fmt.Sprintf("Node %s does not have index of type %s.", n.Id, parentIndex)
+				logger.Error("err@node_Index: (index/subset) id=" + nid + ": " + err_msg)
+				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				return
 			}
 
 			newIndex, hasName := params["index_name"]
 			if !hasName {
-				responder.RespondWithError(ctx, http.StatusBadRequest, "Index type subset requires index_name param.")
+				err_msg := "Index type subset requires index_name param."
+				logger.Error("err@node_Index: (index/subset) id=" + nid + ": " + err_msg)
+				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				return
 			} else if _, reservedName := index.Indexers[newIndex]; reservedName || newIndex == "bai" {
-				responder.RespondWithError(ctx, http.StatusBadRequest, fmt.Sprintf("%s is a reserved index name and cannot be used to create a custom subset index.", newIndex))
+				err_msg := fmt.Sprintf("%s is a reserved index name and cannot be used to create a custom subset index.", newIndex)
+				logger.Error("err@node_Index: (index/subset) id=" + nid + ": " + err_msg)
+				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				return
 			}
 			subsetName = newIndex
 
 			subsetIndices, hasFile := files["subset_indices"]
 			if !hasFile {
-				responder.RespondWithError(ctx, http.StatusBadRequest, "Index type subset requires subset_indices file.")
+				err_msg := "Index type subset requires subset_indices file."
+				logger.Error("err@node_Index: (index/subset) id=" + nid + ": " + err_msg)
+				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				return
 			}
 
@@ -204,8 +250,9 @@ func IndexTypedRequest(ctx context.Context) {
 			}
 			count, subsetSize, err = index.CreateSubsetIndex(&idxer, n.IndexPath()+"/"+newIndex+".idx", n.IndexPath()+"/"+parentIndex+".idx", indexFormat, n.Indexes[parentIndex].TotalUnits)
 			if err != nil {
-				logger.Error("err " + err.Error())
-				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+				err_msg := "err@node_Index: (index/subset) id=" + nid + ":" + err.Error()
+				logger.Error(err_msg)
+				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				return
 			}
 
@@ -214,13 +261,15 @@ func IndexTypedRequest(ctx context.Context) {
 			query := ctx.HttpRequest().URL.Query()
 
 			if n.Type == "subset" {
-				responder.RespondWithError(ctx, http.StatusBadRequest, "Shock does not support column index creation on subset nodes.")
+				err_msg := "Shock does not support column index creation on subset nodes."
+				logger.Error("err@node_Index: (index/column) id=" + nid + ": " + err_msg)
+				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				return
 			}
 
 			if _, exists := query["number"]; !exists {
 				err_msg := "Index type column requires a number parameter in the url."
-				logger.Error(err_msg)
+				logger.Error("err@node_Index: (index/column) id=" + nid + ": " + err_msg)
 				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				return
 			}
@@ -230,7 +279,7 @@ func IndexTypedRequest(ctx context.Context) {
 			num, err := strconv.Atoi(num_str)
 			if err != nil || num < 1 {
 				err_msg := "Index type column requires a number parameter in the url of an integer greater than zero."
-				logger.Error(err_msg)
+				logger.Error("err@node_Index: (index/column) id=" + nid + ": " + err_msg)
 				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				return
 			}
@@ -240,13 +289,16 @@ func IndexTypedRequest(ctx context.Context) {
 			idxer := index.NewColumnIndexer(f)
 			count, indexFormat, err = index.CreateColumnIndex(&idxer, num, n.IndexPath()+"/"+idxType+".idx")
 			if err != nil {
-				logger.Error("err " + err.Error())
-				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+				err_msg := "err@node_Index: (CreateColumnIndex) id=" + nid + ":" + err.Error()
+				logger.Error(err_msg)
+				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				return
 			}
 		} else {
 			if n.Type == "subset" && (idxType != "chunkrecord" || n.Subset.Parent.IndexName != "record") {
-				responder.RespondWithError(ctx, http.StatusBadRequest, "For subset nodes, Shock currently only supports subset and chunkrecord indexes. Also, for a chunkrecord index, the subset node must have been generated from a record index.")
+				err_msg := "For subset nodes, Shock currently only supports subset and chunkrecord indexes. Also, for a chunkrecord index, the subset node must have been generated from a record index."
+				logger.Error("err@node_Index: (index/subset) id=" + nid + ": " + err_msg)
+				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				return
 			}
 
@@ -261,14 +313,17 @@ func IndexTypedRequest(ctx context.Context) {
 			}
 			count, indexFormat, err = idxer.Create(n.IndexPath() + "/" + idxType + ".idx")
 			if err != nil {
-				logger.Error("err " + err.Error())
-				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+				err_msg := "err@node_Index: (idxer.Create) id=" + nid + ": " + err.Error()
+				logger.Error(err_msg)
+				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 				return
 			}
 		}
 
 		if count == 0 {
-			responder.RespondWithError(ctx, http.StatusBadRequest, "Index empty.")
+			err_msg := "Index empty."
+			logger.Error("err@node_Index: (index) id=" + nid + ": " + err_msg)
+			responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 			return
 		}
 
@@ -285,23 +340,12 @@ func IndexTypedRequest(ctx context.Context) {
 			idxInfo.AvgUnitSize = subsetSize / count
 		}
 
-		// reload node by id before updating mongo document (attempting to avoid race conditions)
-		n, err := node.Load(nid)
-		if err != nil {
-			if err == mgo.ErrNotFound {
-				responder.RespondWithError(ctx, http.StatusNotFound, "Node deleted during index creation.")
-			} else {
-				// In theory the db connection could be lost between
-				// checking user and load but seems unlikely.
-				err_msg := "Err@node_Index:LoadNode: " + nid + ":" + err.Error()
-				logger.Error(err_msg)
-				responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
-			}
+		n.SetIndexInfo(idxType, idxInfo)
+		if err = n.Save(); err != nil {
+			err_msg := "err@node_Index (node.Save): id=" + nid + ": " + err.Error()
+			logger.Error(err_msg)
+			responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 			return
-		}
-
-		if err := n.SetIndexInfo(idxType, idxInfo); err != nil {
-			logger.Error("err@node.SetIndexInfo: " + err.Error())
 		}
 
 		if conf.LOG_PERF {

@@ -40,6 +40,7 @@ func CreateColumnIndex(c *column, column int, ofile string) (count int64, format
 	defer f.Close()
 
 	format = "array"
+	eof := false     // identifies EOF
 	curr := int64(0) // stores the offset position of the current index
 	count = 0        // stores the number of indexed positions and get returned
 	total_n := 0     // stores the number of bytes read for the current index record
@@ -57,13 +58,17 @@ func CreateColumnIndex(c *column, column int, ofile string) (count int64, format
 				err = er
 				return
 			}
-			break
+			eof = true
 		}
 		// skip empty line
 		if n <= 1 {
 			total_n += n
 			line_count += 1
-			continue
+			if eof {
+				break
+			} else {
+				continue
+			}
 		}
 		// split line by columns and test if column value has changed
 		slices := bytes.Split(buf, []byte("\t"))
@@ -96,6 +101,10 @@ func CreateColumnIndex(c *column, column int, ofile string) (count int64, format
 		}
 		total_n += n
 		line_count += 1
+
+		if eof {
+			break
+		}
 	}
 
 	// Calculating position in byte array

@@ -116,10 +116,9 @@ func streamDownload(ctx context.Context, pid string, nodes []string, options map
 			Compression: compressionFormat,
 		}
 		if err := s.Stream(false); err != nil {
-			// causes "multiple response.WriteHeader calls" error but better than no response
-			err_msg := "err:@preAuth: s.stream: " + err.Error()
+			err_msg := "err:@preAuth: " + err.Error()
 			logger.Error(err_msg)
-			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+			return
 		}
 	} else if (len(files) > 1) && (archiveFormat != "") {
 		// create multi node / file streamer, must have archive format
@@ -131,10 +130,9 @@ func streamDownload(ctx context.Context, pid string, nodes []string, options map
 			Archive:     archiveFormat,
 		}
 		if err := m.MultiStream(); err != nil {
-			// causes "multiple response.WriteHeader calls" error but better than no response
-			err_msg := "err:@preAuth: m.multistream: " + err.Error()
+			err_msg := "err:@preAuth: " + err.Error()
 			logger.Error(err_msg)
-			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+			return
 		}
 	} else {
 		// something broke

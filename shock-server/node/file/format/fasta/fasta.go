@@ -39,45 +39,50 @@ func (self *Reader) Read() (sequence *seq.Seq, err error) {
 	if self.r == nil {
 		self.r = bufio.NewReader(self.f)
 	}
-	var label, body []byte
+	var prev, read, label, body []byte
+	var eof bool
 	for {
-		read, err := self.r.ReadBytes('>')
-		if len(read) > 1 {
-			lines := bytes.Split(read, []byte{'\n'})
-			if len(lines) > 1 {
-				label = lines[0]
-				body = bytes.Join(lines[1:len(lines)-1], []byte{})
+		read, err = self.r.ReadBytes('>')
+		// non eof error
+		if err != nil {
+			if err == io.EOF {
+				eof = true
+			} else {
+				return
 			}
-			break
-		} else if err != nil {
-			return nil, io.EOF
 		}
+		if len(prev) > 0 {
+			read = append(prev, read...)
+		}
+		// only have '>'
+		if len(read) == 1 {
+			if eof {
+				break
+			} else {
+				continue
+			}
+		}
+		// found an embedded '>'
+		if !bytes.Contains(read, []byte{'\n'}) {
+			prev = read
+			continue
+		}
+		// process lines
+		read = bytes.TrimSpace(bytes.TrimRight(read, ">"))
+		lines := bytes.Split(read, []byte{'\n'})
+		if len(lines) > 1 {
+			label = lines[0]
+			body = bytes.Join(lines[1:], []byte{})
+		}
+		break
 	}
 	if len(label) > 0 && len(body) > 0 {
 		sequence = seq.New(label, body, nil)
 	} else {
-		return nil, errors.New("Invalid fasta entry")
+		err = errors.New("Invalid fasta entry")
 	}
-	return
-}
-
-// Read a single sequence and return it or an error.
-func (self *Reader) ReadRaw(p []byte) (n int, err error) {
-	if self.r == nil {
-		self.r = bufio.NewReader(self.f)
-	}
-	p[n] = byte('>')
-	n = 1
-	for {
-		read, er := self.r.ReadBytes('>')
-		if len(read) > 1 {
-			copy(p[n:n+len(read)-1], read[0:len(read)-1])
-			n += len(read) - 1
-			break
-		} else if er != nil {
-			err = er
-			break
-		}
+	if eof {
+		err = io.EOF
 	}
 	return
 }
@@ -88,27 +93,40 @@ func (self *Reader) GetReadOffset() (n int, err error) {
 		self.r = bufio.NewReader(self.f)
 	}
 	n = 0
+	var read []byte
+	var eof bool
 	for {
-		read, er := self.r.ReadBytes('>')
-		if len(read) > 1 {
-			if er == io.EOF {
+		read, err = self.r.ReadBytes('>')
+		// non eof error
+		if err != nil {
+			if err == io.EOF {
+				eof = true
+			} else {
+				return
+			}
+		}
+		// handle embedded '>'
+		if (len(read) > 1) && bytes.Contains(read, []byte{'\n'}) {
+			// check for sequence
+			lines := bytes.Split(bytes.TrimSpace(bytes.TrimRight(read, ">")), []byte{'\n'})
+			seq := bytes.Join(lines[1:], []byte{})
+			if len(seq) == 0 {
+				err = errors.New("Invalid fasta entry")
+				return
+			}
+			if eof {
 				n += len(read)
-			} else if read[len(read)-2] != '\n' {
-				n += len(read)
-				continue
+				err = io.EOF
 			} else {
 				n += len(read) - 1
-			}
-			if read[len(read)-1] == '>' {
-				if unread_err := self.r.UnreadByte(); unread_err != nil {
-					err = unread_err
-				}
+				err = self.r.UnreadByte()
 			}
 			break
-		} else if len(read) == 1 {
-			n += 1
-		} else if er != nil {
-			err = er
+		} else {
+			n += len(read)
+		}
+		if eof {
+			err = io.EOF
 			break
 		}
 	}
