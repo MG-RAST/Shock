@@ -7,6 +7,12 @@ import (
 // Node array type
 type Nodes []*Node
 
+func (n *Nodes) DBInit() {
+	for i := 0; i < len(*n); i++ {
+		(*n)[i].DBInit()
+	}
+}
+
 func (n *Nodes) GetAll(q bson.M) (err error) {
 	_, err = dbFind(q, n, "", nil)
 	return

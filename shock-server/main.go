@@ -11,6 +11,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/db"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
+	"github.com/MG-RAST/Shock/shock-server/node/locker"
 	"github.com/MG-RAST/Shock/shock-server/preauth"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
@@ -119,13 +120,20 @@ func mapRoutes() {
 		return nil
 	})
 
-	goweb.Map("/locked", func(ctx context.Context) error {
-		ids := node.LockMgr.GetLocked()
+	goweb.Map("/locker", func(ctx context.Context) error {
+		ids := locker.NodeLockMgr.GetAll()
 		return responder.RespondWithData(ctx, ids)
 	})
-
-	goweb.Map("/locker", func(ctx context.Context) error {
-		ids := node.LockMgr.GetAll()
+	goweb.Map("/locked/node", func(ctx context.Context) error {
+		ids := locker.NodeLockMgr.GetLocked()
+		return responder.RespondWithData(ctx, ids)
+	})
+	goweb.Map("/locked/file", func(ctx context.Context) error {
+		ids := locker.FileLockMgr.GetAll()
+		return responder.RespondWithData(ctx, ids)
+	})
+	goweb.Map("/locked/index", func(ctx context.Context) error {
+		ids := locker.IndexLockMgr.GetAll()
 		return responder.RespondWithData(ctx, ids)
 	})
 
