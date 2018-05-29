@@ -81,14 +81,14 @@ func (r *Reader) GetReadOffset() (n int, err error) {
 	return r.r.GetReadOffset()
 }
 
-func (r *Reader) SeekChunk(carryOver int64) (n int64, err error) {
+func (r *Reader) SeekChunk(carryOver int64, lastIndex bool) (n int64, err error) {
 	if r.r == nil {
 		err := r.DetermineFormat()
 		if err != nil {
 			return 0, err
 		}
 	}
-	return r.r.SeekChunk(carryOver)
+	return r.r.SeekChunk(carryOver, lastIndex)
 }
 
 func (r *Reader) Format(s *seq.Seq, w io.Writer) (n int, err error) {
