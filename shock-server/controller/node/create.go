@@ -6,6 +6,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/node/archive"
+	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/preauth"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
@@ -38,7 +39,7 @@ func (cr *NodeController) Create(ctx context.Context) error {
 	// all POSTed files writen to temp dir
 	params, files, err := request.ParseMultipartForm(ctx.HttpRequest())
 	// clean up temp dir !!
-	defer node.RemoveAllFormFiles(files)
+	defer file.RemoveAllFormFiles(files)
 	if err != nil {
 		if err.Error() == "request Content-Type isn't multipart/form-data" {
 			// If not multipart/form-data it will try to read the Body of the
@@ -109,7 +110,7 @@ func (cr *NodeController) Create(ctx context.Context) error {
 					logger.Error("err@node_Create: (download_url) (Authenticate) id=" + id + ": " + e.UnAuth)
 					return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 				}
-				if n.HasFile() && !n.File.LockDownload {
+				if n.HasFile() && !n.HasFileLock() {
 					nodeIds = append(nodeIds, n.Id)
 					totalBytes += n.File.Size
 				}

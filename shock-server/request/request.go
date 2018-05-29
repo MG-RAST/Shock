@@ -8,8 +8,8 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
-	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/node/archive"
+	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
@@ -76,12 +76,12 @@ func AuthError(err error, ctx context.Context) error {
 }
 
 // helper function to create a node from an http data post
-func DataUpload(r *http.Request) (params map[string]string, files node.FormFiles, err error) {
+func DataUpload(r *http.Request) (params map[string]string, files file.FormFiles, err error) {
 	params = make(map[string]string)
-	files = make(node.FormFiles)
+	files = make(file.FormFiles)
 	tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
 
-	files["upload"] = node.FormFile{Name: "filename", Path: tmpPath, Checksum: make(map[string]string)}
+	files["upload"] = file.FormFile{Name: "filename", Path: tmpPath, Checksum: make(map[string]string)}
 	if tmpFile, err := os.Create(tmpPath); err == nil {
 		defer tmpFile.Close()
 		md5h := md5.New()
@@ -98,9 +98,9 @@ func DataUpload(r *http.Request) (params map[string]string, files node.FormFiles
 }
 
 // helper function for create & update
-func ParseMultipartForm(r *http.Request) (params map[string]string, files node.FormFiles, err error) {
+func ParseMultipartForm(r *http.Request) (params map[string]string, files file.FormFiles, err error) {
 	params = make(map[string]string)
-	files = make(node.FormFiles)
+	files = make(file.FormFiles)
 	reader, err := r.MultipartReader()
 	if err != nil {
 		return
@@ -123,7 +123,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 				formValue := fmt.Sprintf("%s", buffer[0:n])
 				if part.FormName() == "upload_url" {
 					tmpPath = fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
-					files[part.FormName()] = node.FormFile{Name: "", Path: tmpPath, Checksum: make(map[string]string)}
+					files[part.FormName()] = file.FormFile{Name: "", Path: tmpPath, Checksum: make(map[string]string)}
 					// download from url
 					if tmpFile, err := os.Create(tmpPath); err == nil {
 						defer tmpFile.Close()
@@ -163,7 +163,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files node.F
 				}
 				// download it
 				tmpPath = fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
-				files[part.FormName()] = node.FormFile{Name: part.FileName(), Path: tmpPath, Checksum: make(map[string]string)}
+				files[part.FormName()] = file.FormFile{Name: part.FileName(), Path: tmpPath, Checksum: make(map[string]string)}
 				if tmpFile, err := os.Create(tmpPath); err == nil {
 					defer tmpFile.Close()
 					if util.IsValidUploadFile(part.FormName()) || isPartsFile || isSubsetFile {

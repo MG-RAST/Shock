@@ -223,7 +223,7 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 		var nodeIds []string
 		var totalBytes int64
 		for _, n := range nodes {
-			if n.HasFile() && !n.File.LockDownload {
+			if n.HasFile() && !n.HasFileLock() {
 				nodeIds = append(nodeIds, n.Id)
 				totalBytes += n.File.Size
 			}
