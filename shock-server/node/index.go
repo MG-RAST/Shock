@@ -103,7 +103,7 @@ func AsyncIndexer(idxType string, nid string, colNum int, ctx context.Context) {
 		if err != nil {
 			return
 		}
-	} else {
+	} else if n.File.Size > 0 {
 		newIndexer := index.Indexers[idxType]
 		f, err = os.Open(n.FilePath())
 		if err != nil {
@@ -137,13 +137,15 @@ func AsyncIndexer(idxType string, nid string, colNum int, ctx context.Context) {
 
 	if idxType == "bai" {
 		avgSize = 0
-	} else if count == 0 {
+	} else if (count == 0) && (n.File.Size > 0) {
 		err = errors.New("Index is empty.")
 		return
-	} else if idxType == "subset" {
-		avgSize = subsetSize / count
-	} else {
-		avgSize = n.File.Size / count
+	} else if count > 0 {
+		if idxType == "subset" {
+			avgSize = subsetSize / count
+		} else {
+			avgSize = n.File.Size / count
+		}
 	}
 
 	idxInfo := &IdxInfo{
