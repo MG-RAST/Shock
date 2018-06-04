@@ -5,6 +5,8 @@ import (
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
+	"github.com/MG-RAST/Shock/shock-server/node/file"
+	"github.com/MG-RAST/Shock/shock-server/node/locker"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
@@ -28,6 +30,15 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
 		}
 	}
+
+	// lock before loading
+	err = locker.NodeLockMgr.LockNode(id)
+	if err != nil {
+		err_msg := "err@node_Update: (LockMgr.LockNode) id=" + id + ": " + err.Error()
+		logger.Error(err_msg)
+		return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+	}
+	defer locker.NodeLockMgr.UnlockNode(id)
 
 	// Load node by id
 	n, err := node.Load(id)
@@ -56,7 +67,7 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 	}
 	params, files, err := request.ParseMultipartForm(ctx.HttpRequest())
 	// clean up temp dir !!
-	defer node.RemoveAllFormFiles(files)
+	defer file.RemoveAllFormFiles(files)
 	if err != nil {
 		err_msg := "err@node_Update: (ParseMultipartForm) id=" + id + ": " + err.Error()
 		logger.Error(err_msg)
@@ -85,7 +96,7 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 		}
 	}
 
-	err = n.Update(params, files, false)
+	err = n.Update(params, files, true)
 	if err != nil {
 		err_msg := "err@node_Update: (node.Update) id=" + id + ": " + err.Error()
 		logger.Error(err_msg)

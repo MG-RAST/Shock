@@ -8,6 +8,8 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/node/archive"
+	"github.com/MG-RAST/Shock/shock-server/node/file"
+	"github.com/MG-RAST/Shock/shock-server/node/locker"
 	"github.com/MG-RAST/Shock/shock-server/util"
 	"gopkg.in/mgo.v2/bson"
 	"io/ioutil"
@@ -19,7 +21,7 @@ import (
 )
 
 //Modification functions
-func (node *Node) Update(params map[string]string, files FormFiles, isNew bool) (err error) {
+func (node *Node) Update(params map[string]string, files file.FormFiles, hasLock bool) (err error) {
 	// Exclusive conditions
 	// 1.1. has files[upload] (regular upload)
 	// 1.2. has files[gzip] (compressed upload)
@@ -34,23 +36,14 @@ func (node *Node) Update(params map[string]string, files FormFiles, isNew bool) 
 	//
 	// state is saved to mongodb at end of update function
 
-	// global lock on a node that is being updated
-	err = LockMgr.LockNode(node.Id)
-	if err != nil {
-		err = fmt.Errorf("(LockMgr.LockNode) %s", err.Error())
-		return
-	}
-	defer LockMgr.UnlockNode(node.Id)
-
-	// refresh node state if not new
-	if !isNew {
-		var n *Node
-		n, err = Load(node.Id)
+	// global lock on a node if not already set
+	if !hasLock {
+		err = locker.NodeLockMgr.LockNode(node.Id)
 		if err != nil {
-			err = fmt.Errorf("(node.Load) %s", err.Error())
+			err = fmt.Errorf("(LockMgr.LockNode) %s", err.Error())
 			return
 		}
-		node = n
+		defer locker.NodeLockMgr.UnlockNode(node.Id)
 	}
 
 	for _, u := range util.ValidUpload {
@@ -117,9 +110,13 @@ func (node *Node) Update(params map[string]string, files FormFiles, isNew bool) 
 		err = errors.New("can not upload parts file when creating parts node")
 	}
 
-	// Check if immutable
+	// check if immutable
 	if node.HasFile() && (isRegularUpload || isUrlUpload || isPartialUpload || hasPartsFile || isVirtualNode || isPathUpload || isCopyUpload || isSubsetUpload) {
 		err = errors.New(e.FileImut)
+	}
+	// check if locked
+	if node.HasFileLock() && (isRegularUpload || isUrlUpload || isPartialUpload || hasPartsFile || isVirtualNode || isPathUpload || isCopyUpload || isSubsetUpload) {
+		err = errors.New(e.NodeFileLock)
 	}
 
 	// we found an error
@@ -260,6 +257,7 @@ func (node *Node) Update(params map[string]string, files FormFiles, isNew bool) 
 		}
 
 		// Copy node indexes
+		var copyIdxInfo *IdxInfo
 		if _, copyIndex := params["copy_indexes"]; copyIndex && (len(n.Indexes) > 0) {
 			// loop through parent indexes
 			for idxType, idxInfo := range n.Indexes {
@@ -272,11 +270,13 @@ func (node *Node) Update(params map[string]string, files FormFiles, isNew bool) 
 					}
 				}
 				// copy index struct
-				node.SetIndexInfo(idxType, idxInfo)
+				*copyIdxInfo = *idxInfo
+				node.SetIndexInfo(idxType, copyIdxInfo)
 			}
 		} else if sizeIndex, exists := n.Indexes["size"]; exists {
 			// just copy size index
-			node.SetIndexInfo("size", sizeIndex)
+			*copyIdxInfo = *sizeIndex
+			node.SetIndexInfo("size", copyIdxInfo)
 		}
 
 		if n.File.Path == "" {
@@ -450,10 +450,6 @@ func (node *Node) Update(params map[string]string, files FormFiles, isNew bool) 
 
 	// handle part file
 	if hasPartsFile {
-		if node.HasFile() {
-			err = errors.New(e.FileImut)
-			return
-		}
 		if (node.Type != "parts") || (node.Parts == nil) {
 			err = errors.New("This is not a parts node and thus does not support uploading in parts.")
 			return
@@ -480,6 +476,15 @@ func (node *Node) Update(params map[string]string, files FormFiles, isNew bool) 
 				return
 			}
 		}
+	}
+
+	// file lock updated
+	if _, hasLock := params["file_lock"]; hasLock {
+		node.File.Locked = locker.FileLockMgr.Add(node.Id)
+	}
+	if _, hasUnlock := params["file_unlock"]; hasUnlock {
+		locker.FileLockMgr.Remove(node.Id)
+		node.File.Locked = nil
 	}
 
 	// save only after all updates applied
