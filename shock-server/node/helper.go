@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
+	"github.com/MG-RAST/Shock/shock-server/node/locker"
 	"github.com/MG-RAST/golib/go-uuid/uuid"
 	"os"
 	"path/filepath"
@@ -15,6 +16,24 @@ func (node *Node) HasFile() bool {
 		return false
 	}
 	return true
+}
+
+func (node *Node) HasFileLock() bool {
+	node.File.Locked = locker.FileLockMgr.Get(node.Id)
+	if node.File.Locked != nil {
+		return true
+	}
+	return false
+}
+
+func (node *Node) HasIndexLock(name string) bool {
+	if info, ok := node.Indexes[name]; ok {
+		info.Locked = locker.IndexLockMgr.Get(node.Id, name)
+		if info.Locked != nil {
+			return true
+		}
+	}
+	return false
 }
 
 func (node *Node) HasIndex(index string) bool {

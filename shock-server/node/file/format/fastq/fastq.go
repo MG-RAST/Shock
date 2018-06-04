@@ -12,12 +12,14 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/node/file/format/seq"
 	"io"
+	"math"
 	"os"
 	"regexp"
 )
 
 var (
-	Regex = regexp.MustCompile(`^[\n\r]*@\S+[\S\t ]+[\n\r]+[A-Za-z\-]+[\n\r]+\+[\S\t ]*[\n\r]+\S*[\n\r]+`)
+	Regex  = regexp.MustCompile(`^[\n\r]*@\S+[\S\t ]+[\n\r]+[A-Za-z\-]+[\n\r]+\+[\S\t ]*[\n\r]+\S*[\n\r]+`)
+	Record = regexp.MustCompile(`@\S(.*)?[\n\r]+[A-Za-z\-]+[\n\r]+\+(.*)?[\n\r]+(\S+)[\n\r]+`)
 )
 
 // Fastq sequence format reader type.
@@ -209,7 +211,7 @@ func (self *Reader) GetReadOffset() (n int, err error) {
 }
 
 // seek sequences which add up to a size close to the configured chunk size (conf.CHUNK_SIZE, e.g. 1M)
-func (self *Reader) SeekChunk(offSet int64) (n int64, err error) {
+func (self *Reader) SeekChunk(offSet int64, lastIndex bool) (n int64, err error) {
 	winSize := int64(32768)
 	r := io.NewSectionReader(self.f, offSet+conf.CHUNK_SIZE-winSize, winSize)
 	buf := make([]byte, winSize)
@@ -217,19 +219,25 @@ func (self *Reader) SeekChunk(offSet int64) (n int64, err error) {
 		// EOF reached
 		return int64(n), err
 	}
-	// recursivly extend by window size until start of new record found
-	// try both /n and /r
-	var pos int
-	pos = bytes.LastIndex(buf, []byte("\n@"))
-	if pos == -1 {
-		pos = bytes.LastIndex(buf, []byte("\r@"))
+	// recursivly extend by window size until new record found
+	// first time get last record in window, succesive times get first record
+	var loc []int
+
+	if lastIndex {
+		locs := Record.FindAllIndex(buf, -1)
+		if locs != nil {
+			loc = locs[len(locs)-1]
+		}
+	} else {
+		loc = Record.FindIndex(buf)
 	}
-	if pos == -1 {
-		indexPos, err := self.SeekChunk(offSet + winSize)
+	if loc == nil {
+		indexPos, err := self.SeekChunk(offSet+winSize, false)
 		return (winSize + indexPos), err
 	}
-	// done, start new record found
-	return conf.CHUNK_SIZE - winSize + int64(pos+1), nil
+	// done, last record for this chunk found
+	pos := int64(math.Min(float64(loc[1]), float64(len(buf)-1)))
+	return conf.CHUNK_SIZE - winSize + pos, nil
 }
 
 // Rewind the reader.

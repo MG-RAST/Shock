@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
+	"github.com/MG-RAST/Shock/shock-server/node/file"
+	"github.com/MG-RAST/Shock/shock-server/node/locker"
 	"gopkg.in/mgo.v2/bson"
 	"io"
 	"os"
@@ -59,10 +61,10 @@ func (node *Node) addVirtualParts(ids []string) (err error) {
 	}
 	node.File.Virtual = true
 	for _, n := range nodes {
-		if n.HasFile() {
+		if n.HasFile() && !n.HasFileLock() {
 			node.File.VirtualParts = append(node.File.VirtualParts, n.Id)
 		} else {
-			return errors.New("node %s: has no file. All nodes in source must have files.")
+			return errors.New("node %s: has no file or file is locked. All nodes in source must have available files.")
 		}
 	}
 	if reader, err := node.FileReader(); err == nil {
@@ -80,7 +82,7 @@ func (node *Node) addVirtualParts(ids []string) (err error) {
 	return
 }
 
-func (node *Node) addPart(n int, file *FormFile) (err error) {
+func (node *Node) addPart(n int, file *file.FormFile) (err error) {
 	if n >= node.Parts.Count && !node.Parts.VarLen {
 		return errors.New("part number is greater than node length: " + strconv.Itoa(node.Parts.Length))
 	}
@@ -114,11 +116,9 @@ func (node *Node) addPart(n int, file *FormFile) (err error) {
 }
 
 func (node *Node) closeParts(allowEmpty bool) (err error) {
-	// Second param says we will allow empty parts in merging of those parts
-	// true for variable length parts
-	if err = node.SetFileFromParts(allowEmpty); err != nil {
-		return err
-	}
-	err = os.RemoveAll(node.Path() + "/parts/")
+	// Second param says we will allow empty parts in merging of those parts, true for variable length parts
+	// This is an asynchronous action that will update node in DB when completed, or send error to node.File.Locked.Error
+	node.File.Locked = locker.FileLockMgr.Add(node.Id)
+	go SetFileFromParts(node.Id, node.Parts.Compression, node.Parts.Count, allowEmpty)
 	return
 }

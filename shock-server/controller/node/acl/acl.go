@@ -7,6 +7,7 @@ import (
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
+	"github.com/MG-RAST/Shock/shock-server/node/locker"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
@@ -138,14 +139,14 @@ func AclTypedRequest(ctx context.Context) {
 	}
 
 	// lock node
-	err = node.LockMgr.LockNode(nid)
+	err = locker.NodeLockMgr.LockNode(nid)
 	if err != nil {
 		err_msg := "err@node_Acl: (LockNode) id=" + nid + ": " + err.Error()
 		logger.Error(err_msg)
 		responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 		return
 	}
-	defer node.LockMgr.UnlockNode(nid)
+	defer locker.NodeLockMgr.UnlockNode(nid)
 
 	// Users that are not an admin or the node owner can only delete themselves from an ACL.
 	if n.Acl.Owner != u.Uuid && u.Admin == false {

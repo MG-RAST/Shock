@@ -25,4 +25,6 @@ const (
 	NodeDoesNotExist         = "Node does not exist"
 	NodeNotFound             = "Node not found"
 	NodeNoFile               = "Node has no file"
+	NodeFileLock             = "Node file is locked"
+	NodeIndexLock            = "Node index is locked"
 )
