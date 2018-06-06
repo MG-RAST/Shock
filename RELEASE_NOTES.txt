@@ -1,3 +1,16 @@
+# v0.9.26
+
+- remove repeat saves
+- fix chunkrecord indexer for fastq and last record
+- handle index of empty files gracefully
+- overhaul locker, now can lock node, file, index
+  - if file locked, unable to download file
+  - if index loxked, unable to download using that index
+  - locks have timeouts and exist in-memory only
+- parts nodes merge is async and locks file during merge
+- indexing is async and locks index during build
+- add /locker /locked/node /locked/file locked/index resources to view states
+
 # v0.9.25
 
 - add node lock to index and acl actions
