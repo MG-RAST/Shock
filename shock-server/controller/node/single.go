@@ -12,6 +12,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/node/filter"
+	"github.com/MG-RAST/Shock/shock-server/node/locker"
 	"github.com/MG-RAST/Shock/shock-server/preauth"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
@@ -98,6 +99,10 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 	// ?download=1 or ?download_raw=1
 	_, download_raw := query["download_raw"]
 	if _, ok := query["download"]; ok || download_raw {
+		if n.HasFileLock() {
+			logger.Error("err@node_Read: id=" + id + ": " + e.NodeFileLock)
+			return responder.RespondWithError(ctx, http.StatusLocked, e.NodeFileLock)
+		}
 		if !n.HasFile() {
 			logger.Error("err@node_Read: id=" + id + ": " + e.NodeNoFile)
 			return responder.RespondWithError(ctx, http.StatusBadRequest, e.NodeNoFile)
@@ -168,8 +173,14 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				return errors.New(err_msg)
 			}
 		} else if _, ok := query["index"]; ok {
+			idxName := query.Get("index")
+			// check for lock
+			if n.HasIndexLock(idxName) {
+				logger.Error("err@node_Read: (index) id=" + id + ": " + e.NodeFileLock)
+				return responder.RespondWithError(ctx, http.StatusBadRequest, e.NodeFileLock)
+			}
 			//handling bam file
-			if query.Get("index") == "bai" {
+			if idxName == "bai" {
 				if n.Type == "subset" {
 					err_msg := "subset nodes do not support bam indices"
 					logger.Error("err@node_Read: (index/bai) id=" + id + ": " + err_msg)
@@ -209,24 +220,32 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			}
 
 			// load index obj and info
-			idxName := query.Get("index")
 			idxInfo, ok := n.Indexes[idxName]
 
 			if !ok {
 				if idxName == "size" {
+					// auto-generate size index if missing
 					totalunits := n.File.Size / conf.CHUNK_SIZE
 					m := n.File.Size % conf.CHUNK_SIZE
 					if m != 0 {
 						totalunits += 1
 					}
-					n.Indexes["size"] = node.IdxInfo{
+					n.Indexes["size"] = &node.IdxInfo{
 						Type:        "size",
 						TotalUnits:  totalunits,
 						AvgUnitSize: conf.CHUNK_SIZE,
 						Format:      "dynamic",
 						CreatedOn:   time.Now(),
 					}
+					// lock during save
+					err = locker.NodeLockMgr.LockNode(n.Id)
+					if err != nil {
+						err_msg := "err@node_Read: (LockNode) id=" + n.Id + ": " + err.Error()
+						logger.Error(err_msg)
+						return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+					}
 					err = n.Save()
+					locker.NodeLockMgr.UnlockNode(n.Id)
 					if err != nil {
 						err_msg := "Size index could not be auto-generated for node that did not have one."
 						logger.Error("err@node_Read: (index/size) id=" + id + ": " + err_msg)
@@ -423,7 +442,10 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			}
 		}
 	} else if _, ok := query["download_url"]; ok {
-		if !n.HasFile() {
+		if n.HasFileLock() {
+			logger.Error("err@node_Read: id=" + id + ": " + e.NodeFileLock)
+			return responder.RespondWithError(ctx, http.StatusLocked, e.NodeFileLock)
+		} else if !n.HasFile() {
 			logger.Error("err:@node_Read: (download_url) " + e.NodeNoFile)
 			return responder.RespondWithError(ctx, http.StatusBadRequest, e.NodeNoFile)
 		} else {
@@ -496,7 +518,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		form := client.NewForm()
 		form.AddParam("file_name", n.File.Name)
 
-		if post_opts["post_data"] == 1 {
+		if (post_opts["post_data"] == 1) && n.HasFile() && !n.HasFileLock() {
 			form.AddFile("upload", n.FilePath())
 		}
 

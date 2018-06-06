@@ -3,6 +3,7 @@ package node
 import (
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/logger"
+	"github.com/MG-RAST/Shock/shock-server/node/locker"
 	"gopkg.in/mgo.v2/bson"
 	"regexp"
 	"time"
@@ -40,8 +41,10 @@ func (nr *NodeReaper) Handle() {
 				logger.Error(err_msg)
 			}
 		}
-		// remove old nodes from Locker, value is hours old
-		LockMgr.RemoveOldNodes(1)
+		// garbage collection: remove old nodes from Lockers, value is hours old
+		locker.NodeLockMgr.RemoveOld(1)
+		locker.FileLockMgr.RemoveOld(6)
+		locker.IndexLockMgr.RemoveOld(6)
 	}
 }
 
