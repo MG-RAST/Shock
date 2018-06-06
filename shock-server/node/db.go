@@ -76,16 +76,24 @@ func dbFind(q bson.M, results *Nodes, order string, options map[string]int) (cou
 	if limit, has := options["limit"]; has {
 		if offset, has := options["offset"]; has {
 			query := c.Find(q).Sort(order)
-			if count, err = query.Count(); err != nil {
-				return 0, err
+			count, err = query.Count()
+			if err != nil {
+				count = 0
+				return
 			}
 			err = query.Limit(limit).Skip(offset).All(results)
-			return
 		} else {
-			return 0, errors.New("store.db.Find options limit and offset must be used together")
+			err = errors.New("store.db.Find options limit and offset must be used together")
 		}
 	}
+	if err != nil {
+		return
+	}
 	err = c.Find(q).Sort(order).All(results)
+	if err != nil {
+		return
+	}
+	results.DBInit()
 	return
 }
 
@@ -102,11 +110,12 @@ func Load(id string) (n *Node, err error) {
 	defer session.Close()
 	c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
 	n = new(Node)
-	if err = c.Find(bson.M{"id": id}).One(&n); err == nil {
-		return n, nil
-	} else {
-		return nil, err
+	err = c.Find(bson.M{"id": id}).One(&n)
+	if err != nil {
+		n = nil
+		return
 	}
+	n.DBInit()
 	return
 }
 

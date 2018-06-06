@@ -26,12 +26,6 @@ var validToArchive = []string{"zip", "tar"}
 var validArchive = []string{"zip", "tar", "tar.gz", "tar.bz2"}
 var ArchiveList = strings.Join(validArchive, ", ")
 
-type FormFile struct {
-	Name     string
-	Path     string
-	Checksum map[string]string
-}
-
 func IsValidToArchive(a string) bool {
 	for _, b := range validToArchive {
 		if b == a {
@@ -68,7 +62,7 @@ func IsValidCompress(a string) bool {
 	return false
 }
 
-func FilesFromArchive(format string, filePath string) (fileList []FormFile, unpackDir string, err error) {
+func FilesFromArchive(format string, filePath string) (fileList []file.FormFile, unpackDir string, err error) {
 	// set unpack dir
 	unpackDir = fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
 	if merr := os.Mkdir(unpackDir, 0777); merr != nil {
@@ -90,7 +84,7 @@ func FilesFromArchive(format string, filePath string) (fileList []FormFile, unpa
 	return
 }
 
-func unTar(filePath string, unpackDir string, compression string) (fileList []FormFile, err error) {
+func unTar(filePath string, unpackDir string, compression string) (fileList []file.FormFile, err error) {
 	// get file handle
 	openFile, err := os.Open(filePath)
 	if err != nil {
@@ -142,7 +136,7 @@ func unTar(filePath string, unpackDir string, compression string) (fileList []Fo
 				return
 			}
 			// add to filelist
-			ffile := FormFile{Name: baseName, Path: path, Checksum: make(map[string]string)}
+			ffile := file.FormFile{Name: baseName, Path: path, Checksum: make(map[string]string)}
 			ffile.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
 			fileList = append(fileList, ffile)
 		case tar.TypeDir:
@@ -156,7 +150,7 @@ func unTar(filePath string, unpackDir string, compression string) (fileList []Fo
 	return
 }
 
-func unZip(filePath string, unpackDir string) (fileList []FormFile, err error) {
+func unZip(filePath string, unpackDir string) (fileList []file.FormFile, err error) {
 	// open file with unzip
 	zipReader, err := zip.OpenReader(filePath)
 	if err != nil {
@@ -201,7 +195,7 @@ func unZip(filePath string, unpackDir string) (fileList []FormFile, err error) {
 				return
 			}
 			// add to filelist
-			ffile := FormFile{Name: baseName, Path: path, Checksum: make(map[string]string)}
+			ffile := file.FormFile{Name: baseName, Path: path, Checksum: make(map[string]string)}
 			ffile.Checksum["md5"] = fmt.Sprintf("%x", md5h.Sum(nil))
 			fileList = append(fileList, ffile)
 		}

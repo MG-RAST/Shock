@@ -2,6 +2,7 @@
 package file
 
 import (
+	"github.com/MG-RAST/Shock/shock-server/node/locker"
 	"io"
 	"os"
 	"time"
@@ -17,6 +18,29 @@ type File struct {
 	Virtual      bool              `bson:"virtual" json:"virtual"`
 	VirtualParts []string          `bson:"virtual_parts" json:"virtual_parts"`
 	CreatedOn    time.Time         `bson:"created_on" json:"created_on"`
+	Locked       *locker.LockInfo  `bson:"-" json:"locked"`
+}
+
+type FormFiles map[string]FormFile
+
+type FormFile struct {
+	Name     string
+	Path     string
+	Checksum map[string]string
+}
+
+func (formfile *FormFile) Remove() {
+	if _, err := os.Stat(formfile.Path); err == nil {
+		os.Remove(formfile.Path)
+	}
+	return
+}
+
+func RemoveAllFormFiles(formfiles FormFiles) {
+	for _, formfile := range formfiles {
+		formfile.Remove()
+	}
+	return
 }
 
 // FileInfo for streaming file content

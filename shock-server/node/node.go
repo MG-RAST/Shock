@@ -9,6 +9,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node/archive"
 	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
+	"github.com/MG-RAST/Shock/shock-server/node/locker"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
 	"gopkg.in/mgo.v2/bson"
@@ -45,36 +46,15 @@ type linkage struct {
 	Operation string   `bson:"operation" json:"operation"`
 }
 
-type Indexes map[string]IdxInfo
+type Indexes map[string]*IdxInfo
 
 type IdxInfo struct {
-	Type        string    `bson:"index_type" json:"-"`
-	TotalUnits  int64     `bson:"total_units" json:"total_units"`
-	AvgUnitSize int64     `bson:"average_unit_size" json:"average_unit_size"`
-	Format      string    `bson:"format" json:"-"`
-	CreatedOn   time.Time `bson:"created_on" json:"created_on"`
-}
-
-type FormFiles map[string]FormFile
-
-type FormFile struct {
-	Name     string
-	Path     string
-	Checksum map[string]string
-}
-
-func (formfile *FormFile) Remove() {
-	if _, err := os.Stat(formfile.Path); err == nil {
-		os.Remove(formfile.Path)
-	}
-	return
-}
-
-func RemoveAllFormFiles(formfiles FormFiles) {
-	for _, formfile := range formfiles {
-		formfile.Remove()
-	}
-	return
+	Type        string           `bson:"index_type" json:"-"`
+	TotalUnits  int64            `bson:"total_units" json:"total_units"`
+	AvgUnitSize int64            `bson:"average_unit_size" json:"average_unit_size"`
+	Format      string           `bson:"format" json:"-"`
+	CreatedOn   time.Time        `bson:"created_on" json:"created_on"`
+	Locked      *locker.LockInfo `bson:"-" json:"locked"`
 }
 
 // Subset is used to store information about a subset node's parent and its index.
@@ -99,13 +79,20 @@ type SubsetNodeIdxInfo struct {
 
 func New() (node *Node) {
 	node = new(Node)
-	node.Indexes = make(map[string]IdxInfo)
+	node.Indexes = make(map[string]*IdxInfo)
 	node.File.Checksum = make(map[string]string)
 	node.setId()
 	return
 }
 
-func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (node *Node, err error) {
+func (node *Node) DBInit() {
+	node.File.Locked = locker.FileLockMgr.Get(node.Id)
+	for name, info := range node.Indexes {
+		info.Locked = locker.IndexLockMgr.Get(node.Id, name)
+	}
+}
+
+func CreateNodeUpload(u *user.User, params map[string]string, files file.FormFiles) (node *Node, err error) {
 	// if copying node or creating subset node from parent, check if user has rights to the original node
 	if _, hasCopyData := params["copy_data"]; hasCopyData {
 		_, err = Load(params["copy_data"])
@@ -132,7 +119,7 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 	}
 
 	// update saves node
-	err = node.Update(params, files, true)
+	err = node.Update(params, files, false)
 	if err != nil {
 		err = fmt.Errorf("(node.Update) %s", err.Error())
 		node.Rmdir()
@@ -141,7 +128,7 @@ func CreateNodeUpload(u *user.User, params map[string]string, files FormFiles) (
 	return
 }
 
-func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFiles, archiveId string) (nodes []*Node, err error) {
+func CreateNodesFromArchive(u *user.User, params map[string]string, files file.FormFiles, archiveId string) (nodes []*Node, err error) {
 	// get parent node
 	archiveNode, err := Load(archiveId)
 	if err != nil {
@@ -189,7 +176,7 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFi
 
 	// build nodes
 	var tempNodes []*Node
-	for _, file := range fileList {
+	for _, f := range fileList {
 		// create link
 		link := linkage{Type: "parent", Operation: aFormat, Ids: []string{archiveId}}
 		// create and populate node
@@ -210,8 +197,8 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files FormFi
 			return nil, err
 		}
 		// set file
-		f := FormFile{Name: file.Name, Path: file.Path, Checksum: file.Checksum}
-		if err = node.SetFile(f); err != nil {
+		ffile := file.FormFile{Name: f.Name, Path: f.Path, Checksum: f.Checksum}
+		if err = node.SetFile(ffile); err != nil {
 			node.Rmdir()
 			return nil, err
 		}
@@ -266,11 +253,11 @@ func (node *Node) DynamicIndex(name string) (idx index.Index, err error) {
 
 func (node *Node) Delete() (err error) {
 	// lock node
-	err = LockMgr.LockNode(node.Id)
+	err = locker.NodeLockMgr.LockNode(node.Id)
 	if err != nil {
 		return
 	}
-	defer LockMgr.RemoveNode(node.Id)
+	defer locker.NodeLockMgr.Remove(node.Id)
 
 	// check to make sure this node isn't referenced by a vnode
 	virtualNodes := Nodes{}
@@ -295,11 +282,20 @@ func (node *Node) Delete() (err error) {
 	}
 	if len(copiedNodes) != 0 && dataFileExists {
 		for index, copiedNode := range copiedNodes {
+			// lock copynode for save
+			err = locker.NodeLockMgr.LockNode(copiedNode.Id)
+			if err != nil {
+				err = errors.New("This node has a data file linked to another node which could not be locked during data file copy: " + err.Error())
+				return
+			}
+			defer locker.NodeLockMgr.UnlockNode(copiedNode.Id)
+
 			if index == 0 {
 				newDataFilePath = fmt.Sprintf("%s/%s.data", getPath(copiedNode.Id), copiedNode.Id)
 				if rerr := os.Rename(dataFilePath, newDataFilePath); rerr != nil {
 					if _, cerr := util.CopyFile(dataFilePath, newDataFilePath); cerr != nil {
-						return errors.New("This node has a data file linked to another node and the data file could not be copied elsewhere to allow for node deletion.")
+						err = errors.New("This node has a data file linked to another node and the data file could not be copied elsewhere to allow for node deletion.")
+						return
 					}
 				}
 				copiedNode.File.Path = ""
@@ -311,8 +307,9 @@ func (node *Node) Delete() (err error) {
 		}
 	}
 
-	if err = dbDelete(bson.M{"id": node.Id}); err != nil {
-		return err
+	err = dbDelete(bson.M{"id": node.Id})
+	if err != nil {
+		return
 	}
 	err = node.Rmdir()
 	return
@@ -320,11 +317,11 @@ func (node *Node) Delete() (err error) {
 
 func (node *Node) DeleteIndex(indextype string) (err error) {
 	// lock node
-	err = LockMgr.LockNode(node.Id)
+	err = locker.NodeLockMgr.LockNode(node.Id)
 	if err != nil {
 		return
 	}
-	defer LockMgr.UnlockNode(node.Id)
+	defer locker.NodeLockMgr.UnlockNode(node.Id)
 
 	delete(node.Indexes, indextype)
 	IndexFilePath := fmt.Sprintf("%s/%s.idx", node.IndexPath(), indextype)
@@ -335,7 +332,7 @@ func (node *Node) DeleteIndex(indextype string) (err error) {
 	return
 }
 
-func (node *Node) SetIndexInfo(indextype string, idxinfo IdxInfo) {
+func (node *Node) SetIndexInfo(indextype string, idxinfo *IdxInfo) {
 	node.Indexes[indextype] = idxinfo
 }
 
@@ -361,7 +358,7 @@ func (node *Node) SetExpiration(expire string) (err error) {
 	return
 }
 
-func (node *Node) SetAttributes(attr FormFile) (err error) {
+func (node *Node) SetAttributes(attr file.FormFile) (err error) {
 	defer attr.Remove()
 	attributes, err := ioutil.ReadFile(attr.Path)
 	if err != nil {

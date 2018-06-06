@@ -96,7 +96,7 @@ func (self *Reader) GetReadOffset() (n int, err error) {
 	return
 }
 
-func (self *Reader) SeekChunk(offSet int64) (n int64, err error) {
+func (self *Reader) SeekChunk(offSet int64, lastIndex bool) (n int64, err error) {
 	return
 }
 

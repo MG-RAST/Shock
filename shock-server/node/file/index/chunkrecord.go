@@ -50,6 +50,7 @@ func (i *chunkRecord) Create(file string) (count int64, format string, err error
 		defer f.Close()
 
 		format = "array"
+		eof := false
 		curr := int64(0)
 		count = 0
 		buffer_pos := 0 // used to track the location in our byte array
@@ -57,13 +58,15 @@ func (i *chunkRecord) Create(file string) (count int64, format string, err error
 		// Writing index file in 16MB chunks
 		var b [16777216]byte
 		for {
-			n, er := i.r.SeekChunk(curr)
+			n, er := i.r.SeekChunk(curr, true)
 			if er != nil {
 				if er != io.EOF {
 					err = er
 					return
 				}
+				eof = true
 			}
+
 			// Calculating position in byte array
 			x := (buffer_pos * 16)
 			if x == 16777216 {
@@ -71,17 +74,20 @@ func (i *chunkRecord) Create(file string) (count int64, format string, err error
 				buffer_pos = 0
 				x = 0
 			}
-			binary.LittleEndian.PutUint64(b[x:x+8], uint64(curr))
-			if er == io.EOF {
-				binary.LittleEndian.PutUint64(b[x+8:x+16], uint64(i.size-curr))
-			} else {
-				binary.LittleEndian.PutUint64(b[x+8:x+16], uint64(n))
-			}
+			y := x + 8
+			z := x + 16
 
+			binary.LittleEndian.PutUint64(b[x:y], uint64(curr))
+			if eof {
+				binary.LittleEndian.PutUint64(b[y:z], uint64(i.size-curr))
+			} else {
+				binary.LittleEndian.PutUint64(b[y:z], uint64(n))
+			}
 			curr += int64(n)
 			count += 1
 			buffer_pos += 1
-			if er == io.EOF {
+
+			if eof {
 				break
 			}
 		}
