@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"runtime/trace"
 	"strconv"
 	"strings"
 	"time"
@@ -198,6 +199,21 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Err@conf.Initialize: %s\n", err.Error())
 		os.Exit(1)
+	}
+
+	// init trace
+	if conf.LOG_TRACE {
+		f, err := os.Create(conf.PATH_LOGS + "/trace.out")
+		if err != nil {
+			panic(err)
+		}
+		defer f.Close()
+
+		err = trace.Start(f)
+		if err != nil {
+			panic(err)
+		}
+		defer trace.Stop()
 	}
 
 	// init logging system

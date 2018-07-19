@@ -68,6 +68,7 @@ var (
 	LOG_PERF   bool // Indicates whether performance logs should be stored
 	LOG_ROTATE bool // Indicates whether logs should be rotated daily
 	LOG_OUTPUT string
+	LOG_TRACE  bool // enable trace logging
 
 	// Mongo information
 	MONGODB_HOSTS             string
@@ -240,6 +241,7 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddBool(&LOG_PERF, false, "Log", "perf_log", "", "")
 	c_store.AddBool(&LOG_ROTATE, true, "Log", "rotate", "", "")
 	c_store.AddString(&LOG_OUTPUT, "both", "Log", "logoutput", "console, file or both", "")
+	c_store.AddBool(&LOG_TRACE, false, "Log", "trace", "", "")
 
 	// Mongodb
 	c_store.AddString(&MONGODB_ATTRIBUTE_INDEXES, "", "Mongodb", "attribute_indexes", "", "")
