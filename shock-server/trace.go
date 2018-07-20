@@ -26,10 +26,12 @@ func durationTrace(wait time.Duration) {
 	epoc := time.Now().Unix()
 
 	traceFile, _ := os.Create(fmt.Sprintf("%s/trace.%d.log", conf.PATH_LOGS, epoc))
-	defer traceFile.Close()
-
 	trace.Start(traceFile)
-	defer trace.Stop()
+
+	defer func() {
+		trace.Stop()
+		traceFile.Close()
+	}()
 
 	time.Sleep(wait)
 }
