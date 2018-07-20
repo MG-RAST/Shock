@@ -24,7 +24,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"runtime/trace"
 	"strconv"
 	"strings"
 	"time"
@@ -203,17 +202,7 @@ func main() {
 
 	// init trace
 	if conf.LOG_TRACE {
-		f, err := os.Create(conf.PATH_LOGS + "/trace.out")
-		if err != nil {
-			panic(err)
-		}
-		defer f.Close()
-
-		err = trace.Start(f)
-		if err != nil {
-			panic(err)
-		}
-		defer trace.Stop()
+		go dailyTrace()
 	}
 
 	// init logging system
