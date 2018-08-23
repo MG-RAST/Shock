@@ -21,8 +21,10 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/versions"
 	"github.com/MG-RAST/golib/stretchr/goweb"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
+	"log"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
@@ -146,7 +148,7 @@ func mapRoutes() {
 		if err != nil && err.Error() != e.NoAuth {
 			return request.AuthError(err, ctx)
 		}
-		if !u.Admin {
+		if u == nil || !u.Admin {
 			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
 		}
 		fname := traceFileName()
@@ -161,10 +163,13 @@ func mapRoutes() {
 		if err != nil && err.Error() != e.NoAuth {
 			return request.AuthError(err, ctx)
 		}
-		if !u.Admin {
+		if u == nil || !u.Admin {
 			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
 		}
-		stopTrace()
+		err = stopTrace()
+		if err != nil {
+			return responder.RespondWithError(ctx, http.StatusInternalServerError, fmt.Sprintf("error stopping trace: %s", err.Error()))
+		}
 		return responder.RespondWithData(ctx, "trace stoped")
 	})
 
@@ -233,8 +238,13 @@ func main() {
 
 	// init trace
 	if conf.LOG_TRACE {
-		go dailyTrace()
+		go hourlyTrace()
 	}
+
+	// init profile
+	go func() {
+		log.Println(http.ListenAndServe(conf.API_IP+":6060", nil))
+	}()
 
 	// init logging system
 	logger.Initialize()

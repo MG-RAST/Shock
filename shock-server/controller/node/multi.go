@@ -247,7 +247,7 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 				Files:     len(nodeIds),
 				Size:      totalBytes,
 			}
-			return responder.RespondWithPaginatedData(ctx, data, limit, offset, count)
+			return responder.RespondWithData(ctx, data)
 		}
 	}
 
