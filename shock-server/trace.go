@@ -37,6 +37,10 @@ func durationTrace(wait time.Duration) {
 }
 
 func startTrace(name string) (err error) {
+	if traceOn && (traceFile != nil) {
+		err = fmt.Errorf("tracing is already enabled with file %s", traceFile.Name())
+		return
+	}
 	traceFile, err = os.Create(fmt.Sprintf("%s/%s", conf.PATH_LOGS, name))
 	if err != nil {
 		return
@@ -50,10 +54,13 @@ func startTrace(name string) (err error) {
 	return
 }
 
-func stopTrace() {
+func stopTrace() (err error) {
 	if traceOn {
 		trace.Stop()
 		traceOn = false
-		traceFile.Close()
+		err = traceFile.Close()
+	} else {
+		err = fmt.Errorf("tracing is not enabled")
 	}
+	return
 }
