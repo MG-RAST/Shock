@@ -21,7 +21,6 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/versions"
 	"github.com/MG-RAST/golib/stretchr/goweb"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
-	"log"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -237,13 +236,13 @@ func main() {
 	}
 
 	// init trace
-	if conf.LOG_TRACE {
-		go hourlyTrace()
-	}
+	//if conf.LOG_TRACE {
+	//	go hourlyTrace()
+	//}
 
 	// init profile
 	go func() {
-		log.Println(http.ListenAndServe(conf.API_IP+":6060", nil))
+		fmt.Println(http.ListenAndServe(conf.API_IP+":6060", nil))
 	}()
 
 	// init logging system

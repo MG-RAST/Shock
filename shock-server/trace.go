@@ -15,15 +15,15 @@ func traceFileName() string {
 	return fmt.Sprintf("trace.%d.log", time.Now().Unix())
 }
 
-func dailyTrace() {
-	wait := 24 * time.Hour
+func hourlyTrace() {
+	wait := 60 * time.Minute
 	for {
 		durationTrace(wait)
 	}
 }
 
-func hourlyTrace() {
-	wait := 60 * time.Minute
+func minuteTrace() {
+	wait := 1 * time.Minute
 	for {
 		durationTrace(wait)
 	}
