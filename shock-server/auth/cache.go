@@ -8,7 +8,7 @@ import (
 )
 
 type cache struct {
-	sync.Mutex
+	sync.RWMutex
 	m map[string]cacheValue
 }
 
@@ -18,16 +18,29 @@ type cacheValue struct {
 }
 
 func (c *cache) lookup(header string) *user.User {
-	if v, ok := c.m[header]; ok {
+	v, ok := c.get(header)
+	if ok {
 		if time.Now().Before(v.expires) {
 			return v.user
 		} else {
-			c.Lock()
-			defer c.Unlock()
-			delete(c.m, header)
+			c.delete(header)
 		}
 	}
 	return nil
+}
+
+func (c *cache) get(header string) (v cacheValue, ok bool) {
+	c.RLock()
+	defer c.RUnlock()
+	v, ok = c.m[header]
+	return
+}
+
+func (c *cache) delete(header string) {
+	c.Lock()
+	defer c.Unlock()
+	delete(c.m, header)
+	return
 }
 
 func (c *cache) add(header string, u *user.User) {
@@ -35,8 +48,7 @@ func (c *cache) add(header string, u *user.User) {
 	defer c.Unlock()
 	c.m[header] = cacheValue{
 		expires: time.Now().Add(time.Duration(conf.AUTH_CACHE_TIMEOUT) * time.Minute),
-		//expires: time.Now().Add(1 * time.Minute),
-		user: u,
+		user:    u,
 	}
 	return
 }
