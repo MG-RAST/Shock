@@ -1,9 +1,7 @@
 package node
 
 import (
-	"encoding/json"
 	"errors"
-	client "github.com/MG-RAST/Shock/shock-client/lib/httpclient"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
@@ -18,11 +16,12 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
+	sc "github.com/MG-RAST/go-shock-client"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	mgo "gopkg.in/mgo.v2"
 	"io"
-	"io/ioutil"
 	"net/http"
+	"reflect"
 	"strconv"
 	"time"
 )
@@ -515,61 +514,36 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			}
 		}
 
-		form := client.NewForm()
-		form.AddParam("file_name", n.File.Name)
+		var authToken string
+		if _, hasAuth := ctx.HttpRequest().Header["Authorization"]; hasAuth {
+			authToken = ctx.HttpRequest().Header.Get("Authorization")
+		}
+		client := sc.NewShockClient(post_url, authToken, false)
 
+		var uploadPath string
 		if (post_opts["post_data"] == 1) && n.HasFile() && !n.HasFileLock() {
-			form.AddFile("upload", n.FilePath())
+			uploadPath = n.FilePath()
 		}
 
-		if post_opts["post_attr"] == 1 && n.Attributes != nil {
-			attr, _ := json.Marshal(n.Attributes)
-			form.AddParam("attributes_str", string(attr[:]))
+		var nodeAttr map[string]interface{}
+		if (post_opts["post_attr"]) == 1 && (n.Attributes != nil) {
+			var ok bool
+			nodeAttr, ok = n.Attributes.(map[string]interface{})
+			if !ok {
+				err_msg := "Node corrupted, got type " + reflect.TypeOf(n.Attributes).String() + " for attributes"
+				logger.Error("err@node_Read: (download_post) id=" + id + ": " + err_msg)
+				return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+			}
 		}
 
-		err = form.Create()
+		node, err := client.PostFileWithAttributes(uploadPath, n.File.Name, nodeAttr)
 		if err != nil {
-			err_msg := "could not create multipart form for posting to Shock server: " + err.Error()
-			logger.Error("err@node_Read: (download_post) id=" + id + ": " + err_msg)
+			err_msg := "err:@node_Read POST: " + err.Error()
+			logger.Error(err_msg)
 			return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 		}
+		return responder.RespondWithData(ctx, node)
 
-		headers := client.Header{
-			"Content-Type":   form.ContentType,
-			"Content-Length": strconv.FormatInt(form.Length, 10),
-		}
-
-		if _, hasAuth := ctx.HttpRequest().Header["Authorization"]; hasAuth {
-			headers["Authorization"] = ctx.HttpRequest().Header.Get("Authorization")
-		}
-
-		if res, err := client.Do("POST", post_url, headers, form.Reader); err == nil {
-			if res.StatusCode == 200 {
-				r := responseWrapper{}
-				body, _ := ioutil.ReadAll(res.Body)
-				if err = json.Unmarshal(body, &r); err != nil {
-					err_msg := "err:@node_Read POST: " + err.Error()
-					logger.Error(err_msg)
-					return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
-				} else {
-					return responder.WriteResponseObject(ctx, http.StatusOK, r)
-				}
-			} else {
-				r := responseWrapper{}
-				body, _ := ioutil.ReadAll(res.Body)
-				if err = json.Unmarshal(body, &r); err == nil {
-					err_msg := "err:@node_Read POST " + post_url + " = " + res.Status + ":" + (*r.Error)[0]
-					logger.Error(err_msg)
-					return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
-				} else {
-					err_msg := "err:@node_Read POST " + post_url + " = " + res.Status
-					logger.Error(err_msg)
-					return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
-				}
-			}
-		} else {
-			return err
-		}
 	} else {
 		// Base case respond with node in json
 		return responder.RespondWithData(ctx, n)
