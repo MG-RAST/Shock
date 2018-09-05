@@ -4,9 +4,7 @@ import (
 	"flag"
 	"fmt"
 	sc "github.com/MG-RAST/go-shock-client"
-	"net/url"
 	"os"
-	"strings"
 )
 
 var (
@@ -23,13 +21,14 @@ var (
 	filename   string
 	filepath   string
 	force      bool
-	format     string
 	index      string
 	limit      int
 	md5        bool
 	offset     int
 	order      string
+	output     string
 	part       string
+	pretty     bool
 	remote     string
 	shock_url  string
 	token      string
@@ -38,27 +37,34 @@ var (
 )
 
 func stub(x string) {
-	fmt.Println("hello world: " + x)
+	fmt.Println("not implamented: " + x)
 }
 
 func main() {
 	if len(os.Args) < 2 {
 		exitError("missing command")
 	}
+	command := os.Args[1]
+	if command == "help" {
+		exitHelp()
+	}
 
 	flags = setFlags()
-	flags.Parse(os.Args[1:])
-	args := flags.Args()
+	flags.Parse(os.Args[2:])
+	//args := flags.Args()
 
 	url, auth := getUserInfo()
-	client := sc.NewShockClient(url, auth)
+	client := sc.NewShockClient(url, auth, true)
 
-	command := args[0]
-	switch args[0] {
+	switch command {
 	case "help":
 		exitHelp()
 	case "info":
-		stub(command)
+		info, err := client.ServerInfo()
+		if err != nil {
+			exitError(err.Error())
+		}
+		exitOutput(&info)
 	case "create", "update":
 		stub(command)
 	case "index":
@@ -73,6 +79,8 @@ func main() {
 		stub(command)
 	case "acl", "public", "chown":
 		stub(command)
+	default:
+		exitError("invalid command: " + command)
 	}
 
 }

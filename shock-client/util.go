@@ -1,16 +1,21 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 )
 
 const USAGE = `Usage: shock-client <command> [options...] [args..]
+
 Global Options:
-    --shock_url                 URL of shock-server, or env SHOCK_URL
-    --token                     User token for authorization, or env TOKEN
-    --bearer                    Bearer token, default is 'mgrast', or env BEARER
+    --shock_url=<url>           URL of shock-server, or env SHOCK_URL
+    --token=<s>                 User token for authorization, or env TOKEN
+    --bearer=<s>                Bearer token, default is 'mgrast', or env BEARER
+    --output=<p>                File to write ouput too, default is stdout
+    --pretty                    JSON output is pretty-print format, default is condensed
 
 Commands:
 
@@ -25,9 +30,9 @@ create [options...]
     --chunk=<i>                 Upload in chunks, able to resume if disconnected
                                 Note: for --filepath option only
     --filename=<s>              Filename to use, default is upload-file basename
-    --expiration=<s>            Epiration time: [0-9]+[MHD]
-    --compressed=<gzip|bzip2>   Uncompress after upload
-    --archive=<tar|zip>         Unpack after upload
+    --expiration=<s>            Epiration time: [0-9]+[MHD], default is no expiration
+    --compressed=<gzip|bzip2>   Uncompress after upload, default is off
+    --archive=<tar|zip>         Unpack after upload, default is off
     
     Mutualy exclusive options:
     --filepath=<p>              Path to file
@@ -46,37 +51,33 @@ index [options...] <id> <line|column|record|chunkrecord|bai>
     --force                     Forces index to be rebuilt if exists
     --column=<i>                Column number to index by if using 'column' type
 
-delete <id>
+delete [options...] <id>
 
-get <id> [<output>]
-    Note: if output is not present the result will be written to stdout.
+get [options...] <id>
 
-query [<output>]
-    Note: if output is not present the results will be written to stdout.
-          use 
-    --format=<json|table>       Output JSON ot tabbed table
-    --limit=<i>                 Max number of output nodes, default 25
-    --offset=<i>                Position to start rerieving nodes at, default 0
-    --order=<s>                 Field to sort nodes by, default 'created_on'
-    --direction=<asc|desc>      Direction to sort by, default 'desc'
+query [options...] 
+    --limit=<i>                 Max number of output nodes, default is 25
+    --offset=<i>                Position to start rerieving nodes at, default is 0
+    --order=<s>                 Field to sort nodes by, default is 'created_on'
+    --direction=<asc|desc>      Direction to sort by, default is 'desc'
     --attributes=<s>            Attribute field and value to search with
                                 Note: use "FIELD_NAME:VALUE"
     --other=<s>                 Any non-attributes node field and value to search with
     --distinct=<s>              An attribute field name, returns all unique values in that field
 
-download [options...] <id> [<output>]
+download [options...] <id>
     Note: if output is not present the download will be written to stdout.
     --md5                       Create md5 checksum of downloaded file
     --index=<s>                 Name of index (must be used with -parts)
     --part={s}                  Part(s) from index, may be a range eg. 1-10
 
-acl <get|add|delete> <all|read|write|delete> <id> <users>
+acl [options...] <get|add|delete> <all|read|write|delete> <id> <users>
     Note: users are in the form of comma delimited list of user-names or uuids,
           not required for get action
 
-public <add|delete> <all|read|write|delete> <id>
+public [options...] <add|delete> <all|read|write|delete> <id>
 
-chown <id> <user>
+chown [options...] <id> <user>
     Note: user is user-name or uuid 
 
 `
@@ -94,6 +95,29 @@ func exitError(msg string) {
 	os.Exit(1)
 }
 
+func exitOutput(v interface{}) {
+	var b []byte
+	var e error
+	if pretty {
+		b, e = json.MarshalIndent(v, "", "   ")
+	} else {
+		b, e = json.Marshal(v)
+	}
+	if e != nil {
+		exitError(e.Error())
+	}
+	if (output == "") || (output == "-") || (output == "stdout") {
+		fmt.Println(string(b))
+	} else {
+		b = append(b, '\n')
+		e = ioutil.WriteFile(output, b, 0644)
+		if e != nil {
+			exitError(e.Error())
+		}
+	}
+	os.Exit(0)
+}
+
 func setFlags() (flags *flag.FlagSet) {
 	flags = flag.NewFlagSet("shockclient", flag.ContinueOnError)
 	flags.StringVar(&archive, "archive", "", "")
@@ -108,17 +132,18 @@ func setFlags() (flags *flag.FlagSet) {
 	flags.StringVar(&filename, "filename", "", "")
 	flags.StringVar(&filepath, "filepath", "", "")
 	flags.BoolVar(&force, "force", false, "")
-	flags.StringVar(&format, "format", "", "")
 	flags.StringVar(&index, "index", "", "")
 	flags.IntVar(&limit, "limit", 0, "")
 	flags.BoolVar(&md5, "md5", false, "")
 	flags.IntVar(&offset, "offset", 0, "")
 	flags.StringVar(&order, "order", "", "")
+	flags.StringVar(&output, "output", "stdout", "")
 	flags.StringVar(&part, "part", "", "")
+	flags.BoolVar(&pretty, "pretty", false, "")
 	flags.StringVar(&remote, "remote", "", "")
+	flags.StringVar(&shock_url, "shock_url", "", "")
 	flags.StringVar(&token, "token", "", "")
 	flags.BoolVar(&unexpire, "unexpire", false, "")
-	flags.StringVar(&url, "url", "", "")
 	flags.StringVar(&virtual, "virtual", "", "")
 	return
 }
@@ -139,7 +164,7 @@ func getUserInfo() (url string, auth string) {
 		auth = bearer + " " + token
 	}
 	if shock_url == "" {
-		exitError("missing required --shock_url")
+		exitError("missing required --shock_url or SHOCK_URL")
 	}
 	url = shock_url
 	return
