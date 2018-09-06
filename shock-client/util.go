@@ -66,21 +66,40 @@ query [options...]
     --distinct=<s>              An attribute field name, returns all unique values in that field
 
 download [options...] <id>
-    Note: if output is not present the download will be written to stdout.
     --md5                       Create md5 checksum of downloaded file
-    --index=<s>                 Name of index (must be used with -parts)
-    --part={s}                  Part(s) from index, may be a range eg. 1-10
+                                Note: requires output file
+    Mutualy exclusive options:
+    --index=<s> --part={s}      Name of index and part(s) to retrieve, may be a range eg. 1-10
+    --seek=<i> --length=<i>     Download bytes from file for given seek and length
 
-acl [options...] <get|add|delete> <all|read|write|delete> <id> <users>
+acl [options...] <id> <get|add|delete> <all|read|write|delete> <users>
     Note: users are in the form of comma delimited list of user-names or uuids,
           not required for get action
 
-public [options...] <add|delete> <all|read|write|delete> <id>
+public [options...] <id>
 
 chown [options...] <id> <user>
     Note: user is user-name or uuid 
 
 `
+
+var CV = map[string]map[string]bool{
+	"aclAction":  map[string]bool{"add": true, "delete": true, "get": true},
+	"aclStatus":  map[string]bool{"add": true, "delete": true, "get": true},
+	"archive":    map[string]bool{"tar": true, "zip": true},
+	"compressed": map[string]bool{"bzip2": true, "gzip": true},
+	"direction":  map[string]bool{"asc": true, "desc": true},
+	"index":      map[string]bool{"bai": true, "chunkrecord": true, "column": true, "line": true, "record": true, "size": true},
+}
+
+func validateCV(name string, value string) bool {
+	if _, ok := CV[name]; ok {
+		if _, ok := CV[name][value]; ok {
+			return true
+		}
+	}
+	return false
+}
 
 func exitHelp() {
 	fmt.Fprintln(os.Stdout, USAGE)
@@ -133,6 +152,7 @@ func setFlags() (flags *flag.FlagSet) {
 	flags.StringVar(&filepath, "filepath", "", "")
 	flags.BoolVar(&force, "force", false, "")
 	flags.StringVar(&index, "index", "", "")
+	flags.IntVar(&length, "length", 0, "")
 	flags.IntVar(&limit, "limit", 0, "")
 	flags.BoolVar(&md5, "md5", false, "")
 	flags.IntVar(&offset, "offset", 0, "")
@@ -141,6 +161,7 @@ func setFlags() (flags *flag.FlagSet) {
 	flags.StringVar(&part, "part", "", "")
 	flags.BoolVar(&pretty, "pretty", false, "")
 	flags.StringVar(&remote, "remote", "", "")
+	flags.IntVar(&seek, "seek", -1, "")
 	flags.StringVar(&shock_url, "shock_url", "", "")
 	flags.StringVar(&token, "token", "", "")
 	flags.BoolVar(&unexpire, "unexpire", false, "")
@@ -148,7 +169,7 @@ func setFlags() (flags *flag.FlagSet) {
 	return
 }
 
-func getUserInfo() (url string, auth string) {
+func getUserInfo() (host string, auth string) {
 	// set from env if exists
 	if shock_url == "" {
 		shock_url = os.Getenv("SHOCK_URL")
@@ -166,7 +187,6 @@ func getUserInfo() (url string, auth string) {
 	if shock_url == "" {
 		exitError("missing required --shock_url or SHOCK_URL")
 	}
-	url = shock_url
+	host = shock_url
 	return
 }
-
