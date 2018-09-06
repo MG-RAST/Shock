@@ -5,6 +5,8 @@
 
 FROM golang:1.7.6-alpine
 
+RUN apk update && apk add git
+
 ENV DIR=/go/src/github.com/MG-RAST/Shock
 WORKDIR /go/bin
 
