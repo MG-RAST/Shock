@@ -169,3 +169,4 @@ func getUserInfo() (url string, auth string) {
 	url = shock_url
 	return
 }
+
