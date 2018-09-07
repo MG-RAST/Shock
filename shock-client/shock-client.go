@@ -76,7 +76,7 @@ func main() {
 		exitError("missing command")
 	}
 	command := os.Args[1]
-	if command == "help" {
+	if (command == "help") || (command == "-h") || (command == "--help") {
 		exitHelp()
 	}
 
@@ -85,11 +85,9 @@ func main() {
 	args := flags.Args()
 
 	host, auth := getUserInfo()
-	client := sc.NewShockClient(host, auth, true)
+	client := sc.NewShockClient(host, auth, false)
 
 	switch command {
-	case "help":
-		exitHelp()
 	case "info":
 		info, err := client.ServerInfo()
 		if err != nil {
@@ -112,7 +110,6 @@ func main() {
 		if err != nil {
 			exitError(err.Error())
 		}
-		os.Exit(0)
 	case "delete":
 		if len(args) < 1 {
 			exitError("missing required ID")
@@ -121,7 +118,6 @@ func main() {
 		if err != nil {
 			exitError(err.Error())
 		}
-		os.Exit(0)
 	case "get":
 		if len(args) < 1 {
 			exitError("missing required ID")
@@ -155,9 +151,32 @@ func main() {
 			}
 			fmt.Printf("download complete\nfile\t%s\nsize\t%d\nmd5\t%s\n", output, size, md5sum)
 		}
-		os.Exit(0)
 	case "acl":
-		stub(command)
+		if (len(args) > 1) && (args[1] == "get") {
+			acl, err := client.GetAcl(args[0])
+			if err != nil {
+				exitError(err.Error())
+			}
+			exitOutput(&acl.Data)
+		} else if len(args) > 3 {
+			if !validateCV("acl", args[2]) {
+				exitError("invalid acl type")
+			}
+			if args[1] == "add" {
+				err := client.PutAcl(args[0], args[2], args[3])
+				if err != nil {
+					exitError(err.Error())
+				}
+			}
+			if args[1] == "delete" {
+				err := client.DeleteAcl(args[0], args[2], args[3])
+				if err != nil {
+					exitError(err.Error())
+				}
+			}
+		} else {
+			exitError("missing required arguments")
+		}
 	case "public":
 		if len(args) < 1 {
 			exitError("missing required ID")
@@ -166,7 +185,6 @@ func main() {
 		if err != nil {
 			exitError(err.Error())
 		}
-		os.Exit(0)
 	case "chown":
 		if len(args) < 2 {
 			exitError("missing required arguments")
@@ -175,9 +193,8 @@ func main() {
 		if err != nil {
 			exitError(err.Error())
 		}
-		os.Exit(0)
 	default:
 		exitError("invalid command: " + command)
 	}
-
+	os.Exit(0)
 }

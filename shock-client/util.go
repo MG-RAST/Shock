@@ -19,7 +19,7 @@ Global Options:
 
 Commands:
 
-help                            This help message
+help / --help / -h              This help message
 
 info
     Note: returns shock-server info from base url
@@ -84,8 +84,7 @@ chown [options...] <id> <user>
 `
 
 var CV = map[string]map[string]bool{
-	"aclAction":  map[string]bool{"add": true, "delete": true, "get": true},
-	"aclStatus":  map[string]bool{"add": true, "delete": true, "get": true},
+	"acl":        map[string]bool{"all": true, "delete": true, "read": true, "write": true},
 	"archive":    map[string]bool{"tar": true, "zip": true},
 	"compressed": map[string]bool{"bzip2": true, "gzip": true},
 	"direction":  map[string]bool{"asc": true, "desc": true},
