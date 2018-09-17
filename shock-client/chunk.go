@@ -14,6 +14,8 @@ import (
 	"strconv"
 )
 
+const MaxBuffer = 64 * 1024
+
 var chunkRegex = regexp.MustCompile(`^(\d+)(K|M|G)$`)
 
 type chunkUploader struct {
