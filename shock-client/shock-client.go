@@ -1,104 +1,14 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	sc "github.com/MG-RAST/go-shock-client"
 	"io"
-	"net/url"
 	"os"
-	"regexp"
 	"strconv"
-	"strings"
 )
 
-type arrayFlags []string
-
-func (i *arrayFlags) String() string {
-	return strings.Join(*i, " ")
-}
-func (i *arrayFlags) Set(value string) error {
-	*i = append(*i, value)
-	return nil
-}
-
-type queryNode struct {
-	values url.Values
-	prefix string
-	full   bool
-}
-
-func newQueryNode() queryNode {
-	return queryNode{
-		values: url.Values{},
-		prefix: "",
-		full:   false,
-	}
-}
-func (q queryNode) processFlags(queries arrayFlags) {
-	for _, val := range queries {
-		parts := strings.Split(val, ":")
-		if len(parts) == 2 {
-			name := q.prefix + parts[0]
-			q.values.Set(name, parts[1])
-		}
-	}
-}
-func (q queryNode) addOptions() {
-	if limit != 0 {
-		q.values.Set("limit", strconv.Itoa(limit))
-	}
-	if offset != 0 {
-		q.values.Set("offset", strconv.Itoa(offset))
-	}
-	if (direction != "") && validateCV("direction", direction) {
-		q.values.Set("direction", direction)
-	}
-	if order != "" {
-		q.values.Set("order", order)
-	}
-}
-
-const MaxBuffer = 64 * 1024
-
-var chunkRegex = regexp.MustCompile(`^(\d+)(K|M|G)$`)
 var client *sc.ShockClient
-
-var (
-	flags       *flag.FlagSet
-	archive     string
-	attributes  string
-	attrQuery   arrayFlags
-	bearer      string
-	chunk       string
-	column      int
-	compression string
-	copy        string
-	debug       bool
-	dir         string
-	direction   string
-	expiration  string
-	filename    string
-	filepath    string
-	force       bool
-	index       string
-	length      int
-	limit       int
-	md5sum      bool
-	offset      int
-	order       string
-	otherQuery  arrayFlags
-	output      string
-	part        int
-	parts       string
-	pretty      bool
-	remote      string
-	seek        int
-	shock_url   string
-	token       string
-	unexpire    bool
-	virtual     string
-)
 
 func main() {
 	if len(os.Args) < 2 {
@@ -114,11 +24,7 @@ func main() {
 	args := flags.Args()
 
 	host, auth := getUserInfo()
-	client = &sc.ShockClient{
-		Host:  host,
-		Token: auth,
-		Debug: debug,
-	}
+	client = sc.NewShockClient(host, auth, debug)
 
 	var err error
 	switch command {
@@ -176,26 +82,27 @@ func main() {
 			}
 			nid, err = client.PutOrPostFile("", nid, 0, attributes, "copy", opts, nil)
 		} else if (chunk != "") && (filepath != "") {
+			// special auto-parts upload, able to resume
 			if dir != "." && (!isDir(dir)) {
 				exitError("invalid --dir path")
 			}
-			// special auto-parts upload, able to resume
+			// first set parts and temp attributes, calculate # of parts
+			cu := newChunkUploader(filepath, chunk)
+			opts["parts"] = strconv.Itoa(cu.parts)
 			if compression != "" {
 				opts["compression"] = compression
 			}
-			// first set parts and temp attributes, calculate # of parts
-			tempAttr := chunkUploadAttr()
-			partSize := tempAttr["parts_size"].(int)
-			opts["parts"] = strconv.Itoa(partSize)
+			tempAttr := cu.getAttr()
 			nid, err = client.PutOrPostFile("", nid, 0, "", "parts", opts, tempAttr)
 			if err != nil {
 				exitError(err.Error())
 			}
 			// upload parts in series
-			err = uploadPartsFiles(nid, 1, tempAttr)
+			err = cu.uploadParts(nid, 1, dir)
 			if err != nil {
-				exitError("error uploading " + filepath + " in chunks")
+				exitError("error uploading " + filepath + " in chunks: " + err.Error())
 			}
+			// final attributes
 			if attributes == "" {
 				var attrMap map[string]interface{}
 				client.UpdateAttributes(nid, "", attrMap)
@@ -218,34 +125,29 @@ func main() {
 		if len(args) < 1 {
 			exitError("missing required ID")
 		}
+		if dir != "." && (!isDir(dir)) {
+			exitError("invalid --dir path")
+		}
 		if filepath == "" {
 			exitError("missing required --filepath")
 		}
 		var node *sc.ShockNode
-		var attr map[string]interface{}
 		node, err = client.GetNode(args[0])
 		if err != nil {
 			exitError(err.Error())
 		}
-		if (node.Type != "parts") || (node.Parts == nil) {
-			exitError("node " + args[0] + " is not a valid parts node")
+		// validate node and get info
+		cu := newChunkUploader(filepath, "")
+		errMsg := cu.validateChunkNode(node)
+		if errMsg != "" {
+			exitError(errMsg)
 		}
-		if node.Parts.Count == node.Parts.Length {
-			exitError("node " + args[0] + " has already completed upload")
-		}
-		if node.Parts.Count != attr["parts_size"].(int) {
-			exitError("invalid parts node: node.attributes.parts_size != node.parts.count")
-		}
-		attr = node.Attributes.(map[string]interface{})
-		nodeMD5, ok := attr["md5sum"]
-		fileMD5 := md5ForFilePath()
-		if !ok || (nodeMD5 != fileMD5) {
-			exitError(fmt.Sprintf("checksum of %s does not match origional file started on node %s", filepath, args[0]))
-		}
-		err = uploadPartsFiles(args[0], node.Parts.Length+1, attr)
+		// upload remaining parts in series
+		err = cu.uploadParts(args[0], node.Parts.Length+1, dir)
 		if err != nil {
-			exitError("error uploading " + filepath + " in chunks")
+			exitError("error uploading " + filepath + " in chunks: " + err.Error())
 		}
+		// final attributes
 		if attributes == "" {
 			var attrMap map[string]interface{}
 			client.UpdateAttributes(args[0], "", attrMap)
