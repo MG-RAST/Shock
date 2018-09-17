@@ -8,8 +8,6 @@ import (
 	"strconv"
 )
 
-const MaxBuffer = 64 * 1024
-
 var client *sc.ShockClient
 
 func main() {
@@ -26,11 +24,7 @@ func main() {
 	args := flags.Args()
 
 	host, auth := getUserInfo()
-	client = &sc.ShockClient{
-		Host:  host,
-		Token: auth,
-		Debug: debug,
-	}
+	client = sc.NewShockClient(host, auth, debug)
 
 	var err error
 	switch command {
