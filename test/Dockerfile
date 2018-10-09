@@ -9,14 +9,18 @@
 
 FROM golang:1.7.6-alpine
 
-RUN apk update && apk add git curl
+RUN apk update && apk add git mongodb
 
 ENV DIR=/go/src/github.com/MG-RAST/Shock
 WORKDIR /go/bin
 
 COPY . /go/src/github.com/MG-RAST/Shock
 
-RUN mkdir -p /var/log/shock /usr/local/shock/data ${DIR}
+RUN mkdir -p /data/db /var/log/shock /usr/local/shock/data ${DIR} && \
+    ln -s ${DIR}/test/testdata /testdata && \
+    ln -s ${DIR}/test/shock-tester.sh /shock-tester.sh && \
+    ln -s ${DIR}/shock-server.sh /etc/init.d/shock-server.sh && \
+    ln -s ${DIR}/shock-server.conf.template /usr/local/shock/shock-server.conf
 
 # set version
 RUN cd ${DIR} && \
@@ -28,5 +32,5 @@ RUN cd ${DIR} && \
     go get -d ./shock-server/ ./shock-client/  && \
     CGO_ENABLED=0 go install -a -installsuffix cgo -v ./shock-server/ ./shock-client/
 
-# since this produces two binaries, we just specify (b)ash
-CMD ["/bin/ash"]
+# run tests
+CMD ["/shock-tester.sh"]

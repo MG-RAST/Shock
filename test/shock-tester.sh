@@ -1,0 +1,92 @@
+#!/bin/sh -e
+
+# /testdata/attr.json
+# /testdata/10kb.fna
+# /testdata10kb.fna.gz
+# /testdata/40kb.fna
+# /testdata/sample1.fq
+# /testdata/nr_subset1.fa
+# /testdata/nr_subset2.fa
+# /testdata/nr_subset.tar.gz
+
+NODEID=""
+SC=/go/bin/shock-client
+
+function run_test() {
+    CMD=$1
+    RESULT=`$CMD`
+    EXIT=$?
+    if [ $EXIT -ne 0 ]; then
+        echo "Failed: $CMD"
+        exit 1
+    fi
+    # create and update produces node id
+    if [ -z "$2" ]; then
+        NODEID=""
+    else
+        NODEID=`echo $RESULT | cut -f3 -d' '`
+    fi
+}
+
+function edit_attr() {
+    NAME=$1
+    FORM=$2
+    FILE=$3
+    sed -e "s/replace_name/$NAME" -e "s/replace_format/$FORM" > $FILE
+}
+
+# start up mongod
+mongod --dbpath /data/db --fork --logpath /mongod.log
+sleep 5
+
+# start up shock
+/etc/init.d/shock-server.sh start
+sleep 5
+
+# run tests
+
+run_test "$SC info"
+
+run_test "$SC create --filename /testdata/10kb.fna" "ID"
+ID1=$NODEID
+run_test "$SC get $ID1"
+run_test "$SC index $ID1 line"
+run_test "$SC download --md5 $ID1"
+
+edit_attr "chunk" "fasta" "/testdata/a2"
+run_test "$SC create --chunk 5K --filename /testdata/40kb.fna --attributes /testdata/a2" "ID"
+ID2=$NODEID
+run_test "$SC index $ID2 record"
+run_test "$SC download --index record --parts \"10-20\" $ID2"
+
+edit_attr "parts" "fasta" "/testdata/a3"
+run_test "$SC create --part 2 --attributes /testdata/a3" "ID"
+ID3=$NODEID
+run_test "$SC update --part 1 --filepath /testdata/nr_subset1.fa $ID3"
+run_test "$SC update --part 2 --filepath /testdata/nr_subset2.fa $ID3"
+run_test "$SC get $ID3"
+
+edit_attr "gzip" "fasta" "/testdata/a4"
+run_test "$SC create --compression gzip --filepath /testdata/10kb.fna.gz --attributes /testdata/a4" "ID"
+ID4=$NODEID
+
+edit_attr "unpack" "fasta" "/testdata/a5"
+run_test "$SC create --filepath /testdata/nr_subset.tar.gz" "ID"
+ID5=$NODEID
+run_test "$SC unpack --archive tar.gz $ID5 --attributes /testdata/a5"
+
+edit_attr "copy" "fasta" "/testdata/a6"
+run_test "$SC create --copy $ID1 --attributes /testdata/a6" "ID"
+ID6=$NODEID
+run_test "$SC delete $ID1"
+
+edit_attr "update" "fastq" "/testdata/a7"
+run_test "$SC create" "ID"
+ID7=$NODEID
+run_test "$SC update --filename /testdata/sample1.fq --attributes /testdata/a7 $ID7"
+
+run_test "$SC query --distinct name"
+run_test "$SC query --attribute format:fasta --attribute name:unpack"
+run_test "$SC query --other file.name:nr_subset1.fa"
+run_test "$SC query --limit 5"
+

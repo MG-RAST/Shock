@@ -111,7 +111,7 @@ func (self *Reader) GetReadOffset() (n int, err error) {
 			lines := bytes.Split(bytes.TrimSpace(bytes.TrimRight(read, ">")), []byte{'\n'})
 			seq := bytes.Join(lines[1:], []byte{})
 			if len(seq) == 0 {
-				err = errors.New("Invalid fasta entry")
+				err = errors.New("Invalid fasta entry:\n" + string(read))
 				return
 			}
 			if eof {

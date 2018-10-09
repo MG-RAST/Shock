@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,6 +10,8 @@ import (
 	"strconv"
 	"time"
 )
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 var CV = map[string]map[string]bool{
 	"acl":         map[string]bool{"all": true, "delete": true, "read": true, "write": true},
@@ -35,7 +36,7 @@ func exitHelp() {
 }
 
 func exitError(msg string) {
-	fmt.Fprintln(os.Stderr, USAGE)
+	//fmt.Fprintln(os.Stderr, USAGE)
 	if msg != "" {
 		fmt.Fprintln(os.Stderr, "Error: "+msg)
 	}
@@ -67,7 +68,7 @@ func exitOutput(v interface{}) {
 
 func getUserInfo() (host string, auth string) {
 	// set from env if exists
-	if shock_url == "" {
+	if os.Getenv("SHOCK_URL") != "" {
 		shock_url = os.Getenv("SHOCK_URL")
 	}
 	if token == "" {
@@ -79,9 +80,6 @@ func getUserInfo() (host string, auth string) {
 	// test and return
 	if token != "" {
 		auth = bearer + " " + token
-	}
-	if shock_url == "" {
-		exitError("missing required --shock_url or SHOCK_URL")
 	}
 	host = shock_url
 	return
@@ -124,7 +122,8 @@ func isDir(d string) bool {
 func randomStr(n int) string {
 	rand.Seed(time.Now().UnixNano())
 	b := make([]byte, n)
-	rand.Read(b)
-	s := base64.StdEncoding.EncodeToString(b)
-	return s[:n]
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
 }
