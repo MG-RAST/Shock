@@ -3,14 +3,14 @@
 #
 # description: auto-starts Shock server
 # processname: shock-server
-# pidfile: /var/run/shock-server.pid
-# logfile: /var/log/shock-server.log
-# config: /etc/shock/shock-server.conf
+# logfile: /var/log/shock/shock-server.log
+# pidfile: /usr/local/shock/pidfile
+# config: /usr/local/shock/shock-server.conf
  
 NAME="shock-server"
-LOG_FILE="/var/log/${NAME}.log"
-PID_FILE="/etc/shock/data/pidfile"
-CONF_FILE="/etc/shock/${NAME}.conf"
+LOG_FILE="/var/log/shock/${NAME}.log"
+PID_FILE="/usr/local/shock/pidfile"
+CONF_FILE="/usr/local/shock/${NAME}.conf"
 
 start() {
     echo -n "Starting $NAME... "

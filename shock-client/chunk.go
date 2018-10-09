@@ -38,7 +38,7 @@ func newChunkUploader(f string, c string) (cu chunkUploader) {
 	return
 }
 
-func (cu chunkUploader) validateChunkNode(node *sc.ShockNode) (msg string) {
+func (cu *chunkUploader) validateChunkNode(node *sc.ShockNode) (msg string) {
 	// basic check
 	if (node.Type != "parts") || (node.Parts == nil) {
 		return "node " + node.Id + " is not a valid parts node"
@@ -48,11 +48,17 @@ func (cu chunkUploader) validateChunkNode(node *sc.ShockNode) (msg string) {
 	}
 	// attr check
 	attr := node.Attributes.(map[string]interface{})
-	aMd5, mok := attr["md5sum"]
-	aParts, pok := attr["parts_size"]
-	if !mok || !pok {
+	_, mok := attr["md5sum"]
+	_, pok := attr["parts_size"]
+	_, cok := attr["chunk_size"]
+	if !mok || !pok || !cok {
 		return "node " + node.Id + " missing required attributes"
 	}
+
+	aMd5 := attr["md5sum"].(string)
+	aParts := int(attr["parts_size"].(float64))
+	aChunk := int64(attr["chunk_size"].(float64))
+
 	if aMd5 != cu.md5 {
 		return fmt.Sprintf("checksum of %s does not match origional file started on node %s", cu.name, node.Id)
 	}
@@ -60,12 +66,13 @@ func (cu chunkUploader) validateChunkNode(node *sc.ShockNode) (msg string) {
 		return "invalid parts node: node.attributes.parts_size != node.parts.count"
 	}
 	// set cu values
-	cu.parts = aParts.(int)
-	cu.chunk = attr["parts_size"].(int64)
+	cu.parts = aParts
+	cu.chunk = aChunk
 	return
 }
 
-func (cu chunkUploader) getAttr() (attr map[string]interface{}) {
+func (cu *chunkUploader) getAttr() (attr map[string]interface{}) {
+	attr = make(map[string]interface{})
 	attr["type"] = "temp"
 	attr["md5sum"] = cu.md5
 	attr["file_name"] = cu.file
@@ -74,7 +81,7 @@ func (cu chunkUploader) getAttr() (attr map[string]interface{}) {
 	return
 }
 
-func (cu chunkUploader) setSizes(c string) {
+func (cu *chunkUploader) setSizes(c string) {
 	fi, err := os.Stat(cu.file)
 	if err != nil {
 		exitError(err.Error())
@@ -84,7 +91,7 @@ func (cu chunkUploader) setSizes(c string) {
 		exitError("chunk format is invalid")
 	}
 
-	chunkBytes, _ := strconv.ParseInt(matched[0], 10, 64)
+	chunkBytes, _ := strconv.ParseInt(matched[1], 10, 64)
 	switch matched[2] {
 	case "K":
 		chunkBytes = chunkBytes * 1024
@@ -110,7 +117,7 @@ func (cu chunkUploader) setSizes(c string) {
 	cu.chunk = chunkBytes
 }
 
-func (cu chunkUploader) setMd5() {
+func (cu *chunkUploader) setMd5() {
 	f, err := os.Open(cu.file)
 	if err != nil {
 		exitError(err.Error())
@@ -124,7 +131,7 @@ func (cu chunkUploader) setMd5() {
 	cu.md5 = fmt.Sprintf("%x", h.Sum(nil))
 }
 
-func (cu chunkUploader) uploadParts(nid string, start int, dir string) (err error) {
+func (cu *chunkUploader) uploadParts(nid string, start int, dir string) (err error) {
 	if start >= cu.parts {
 		err = errors.New("invalid start position")
 		return
