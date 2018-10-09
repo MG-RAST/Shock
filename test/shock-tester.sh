@@ -9,6 +9,24 @@
 # /testdata/nr_subset2.fa
 # /testdata/nr_subset.tar.gz
 
+HOST=http://localhost
+PORT=7445
+TOKEN=""
+
+while getopts h:p: option; do
+    case "${option}"
+        in
+            h) HOST=${OPTARG};;
+            p) PORT=${OPTARG};;
+            t) TOKEN=${OPTARG};;
+    esac
+done
+
+export SHOCK_URL=$HOST:$PORT
+if [ ! -z "$TOKEN" ]; then
+    export TOKEN=$TOKEN
+fi
+
 NODEID=""
 SC=/go/bin/shock-client
 
@@ -35,15 +53,8 @@ function edit_attr() {
     sed -e "s/replace_name/$NAME" -e "s/replace_format/$FORM" > $FILE
 }
 
-# start up mongod
-mongod --dbpath /data/db --fork --logpath /mongod.log
-sleep 5
-
-# start up shock
-/etc/init.d/shock-server.sh start
-sleep 5
-
 # run tests
+set -x
 
 run_test "$SC info"
 
