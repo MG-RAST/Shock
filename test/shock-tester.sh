@@ -32,6 +32,7 @@ SC=/go/bin/shock-client
 
 function run_test() {
     CMD=$1
+    echo "Running: $CMD"
     RESULT=`$CMD`
     EXIT=$?
     if [ $EXIT -ne 0 ]; then
@@ -54,7 +55,6 @@ function edit_attr() {
 }
 
 # run tests
-set -x
 
 run_test "$SC info"
 

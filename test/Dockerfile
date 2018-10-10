@@ -31,4 +31,4 @@ RUN cd ${DIR} && \
     CGO_ENABLED=0 go install -a -installsuffix cgo -v ./shock-client/
 
 # run tests
-CMD ["/shock-tester.sh"]
+CMD ["/bin/ash"]
