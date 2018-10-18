@@ -98,7 +98,8 @@ run_test "$SC create" "ID"
 ID7=$NODEID
 run_test "$SC update --filepath /testdata/sample1.fq --attributes /testdata/a7 $ID7"
 
-run_test "$SC query --distinct name"
+# distinct query required mongodb index on field
+# run_test "$SC query --distinct name"
 run_test "$SC query --attribute format:fasta --attribute name:unpack"
 run_test "$SC query --other file.name:nr_subset1.fa"
 run_test "$SC query --limit 5"
