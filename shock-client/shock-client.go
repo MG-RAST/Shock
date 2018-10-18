@@ -39,7 +39,7 @@ func main() {
 		if len(args) > 0 {
 			nid = args[0]
 		}
-		var opts map[string]string
+		opts := make(map[string]string)
 		if filename != "" {
 			opts["file_name"] = filename
 		}
@@ -104,7 +104,7 @@ func main() {
 			}
 			// final attributes
 			if attributes == "" {
-				var attrMap map[string]interface{}
+				attrMap := make(map[string]interface{})
 				client.UpdateAttributes(nid, "", attrMap)
 			} else {
 				client.UpdateAttributes(nid, attributes, nil)
@@ -149,7 +149,7 @@ func main() {
 		}
 		// final attributes
 		if attributes == "" {
-			var attrMap map[string]interface{}
+			attrMap := make(map[string]interface{})
 			client.UpdateAttributes(args[0], "", attrMap)
 		} else {
 			client.UpdateAttributes(args[0], attributes, nil)

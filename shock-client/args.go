@@ -54,7 +54,7 @@ var (
 const USAGE = `Usage: shock-client <command> [options...] [args..]
 
 Global Options:
-    --shock_url=<url>           URL of shock-server, or env SHOCK_URL
+    --shock_url=<url>           URL of shock-server, default is http://localhost:7445, or env SHOCK_URL
     --token=<s>                 User token for authorization, or env TOKEN
     --bearer=<s>                Bearer token, default is 'mgrast', or env BEARER
     --output=<p>                File to write ouput too, default is stdout
@@ -178,7 +178,7 @@ func setFlags() (flags *flag.FlagSet) {
 	flags.BoolVar(&pretty, "pretty", false, "")
 	flags.StringVar(&remote, "remote", "", "")
 	flags.IntVar(&seek, "seek", -1, "")
-	flags.StringVar(&shock_url, "shock_url", "", "")
+	flags.StringVar(&shock_url, "shock_url", "http://localhost:7445", "")
 	flags.StringVar(&token, "token", "", "")
 	flags.BoolVar(&unexpire, "unexpire", false, "")
 	flags.StringVar(&virtual, "virtual", "", "")
