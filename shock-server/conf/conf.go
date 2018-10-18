@@ -283,7 +283,7 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 
 	// Paths
 	c_store.AddString(&PATH_SITE, "/usr/local/shock/site", "Paths", "site", "", "")
-	c_store.AddString(&PATH_DATA, "/usr/local/shock", "Paths", "data", "", "")
+	c_store.AddString(&PATH_DATA, "/usr/local/shock/data", "Paths", "data", "", "")
 	c_store.AddString(&PATH_LOGS, "/var/log/shock", "Paths", "logs", "", "")
 	c_store.AddString(&PATH_LOCAL, "", "Paths", "local_paths", "", "")
 	c_store.AddString(&PATH_PIDFILE, "", "Paths", "pidfile", "", "")
