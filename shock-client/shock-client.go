@@ -116,7 +116,8 @@ func main() {
 			}
 			nid, err = client.PutOrPostFile(filepath, nid, 0, attributes, "", opts, nil)
 		} else {
-			exitError("invalid option combination")
+			// just make empty node with provided options
+			nid, err = client.PutOrPostFile("", nid, 0, attributes, "", opts, nil)
 		}
 		if err == nil {
 			fmt.Printf("%sd node: %s\n", command, nid)
@@ -202,14 +203,27 @@ func main() {
 			query.processFlags(attrQuery)
 		}
 		query.addOptions()
-		var sqr *sc.ShockQueryResponse
-		if query.full {
-			sqr, err = client.QueryFull(query.values)
+		if query.distinct {
+			var srg *sc.ShockResponseGeneric
+			if query.full {
+				query.values.Set("querynode", "")
+			} else {
+				query.values.Set("query", "")
+			}
+			srg, err = client.QueryDistinct(query.values)
+			if err == nil {
+				exitOutput(&srg)
+			}
 		} else {
-			sqr, err = client.Query(query.values)
-		}
-		if err == nil {
-			exitOutput(&sqr)
+			var sqr *sc.ShockQueryResponse
+			if query.full {
+				sqr, err = client.QueryFull(query.values)
+			} else {
+				sqr, err = client.Query(query.values)
+			}
+			if err == nil {
+				exitOutput(&sqr)
+			}
 		}
 	case "download":
 		if len(args) < 1 {

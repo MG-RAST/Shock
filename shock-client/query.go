@@ -7,16 +7,18 @@ import (
 )
 
 type queryNode struct {
-	values url.Values
-	prefix string
-	full   bool
+	values   url.Values
+	prefix   string
+	distinct bool
+	full     bool
 }
 
 func newQueryNode() queryNode {
 	return queryNode{
-		values: url.Values{},
-		prefix: "",
-		full:   false,
+		values:   url.Values{},
+		prefix:   "",
+		distinct: false,
+		full:     false,
 	}
 }
 
@@ -42,5 +44,9 @@ func (q *queryNode) addOptions() {
 	}
 	if order != "" {
 		q.values.Set("order", order)
+	}
+	if distinct != "" {
+		q.distinct = true
+		q.values.Set("distinct", distinct)
 	}
 }

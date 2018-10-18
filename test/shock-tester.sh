@@ -13,7 +13,7 @@ HOST=http://localhost
 PORT=7445
 TOKEN=""
 
-while getopts h:p: option; do
+while getopts h:p:t: option; do
     case "${option}"
         in
             h) HOST=${OPTARG};;
@@ -30,7 +30,7 @@ fi
 NODEID=""
 SC=/go/bin/shock-client
 
-function run_test() {
+run_test () {
     CMD=$1
     echo "Running: $CMD"
     RESULT=`$CMD`
@@ -43,38 +43,40 @@ function run_test() {
     if [ -z "$2" ]; then
         NODEID=""
     else
-        NODEID=`echo $RESULT | cut -f3 -d' '`
+        NODEID=`echo $RESULT | tail -1 | cut -f3 -d' '`
     fi
 }
 
-function edit_attr() {
+edit_attr () {
     NAME=$1
     FORM=$2
     FILE=$3
-    sed -e "s/replace_name/$NAME" -e "s/replace_format/$FORM" > $FILE
+    sed -e "s/replace_name/$NAME/" -e "s/replace_format/$FORM/" /testdata/attr.json > $FILE
 }
 
 # run tests
 
 run_test "$SC info"
 
-run_test "$SC create --filename /testdata/10kb.fna" "ID"
+run_test "$SC create --filepath /testdata/10kb.fna" "ID"
 ID1=$NODEID
 run_test "$SC get $ID1"
 run_test "$SC index $ID1 line"
 run_test "$SC download --md5 $ID1"
 
 edit_attr "chunk" "fasta" "/testdata/a2"
-run_test "$SC create --chunk 5K --filename /testdata/40kb.fna --attributes /testdata/a2" "ID"
+run_test "$SC create --chunk 5K --filepath /testdata/40kb.fna --attributes /testdata/a2" "ID"
 ID2=$NODEID
 run_test "$SC index $ID2 record"
-run_test "$SC download --index record --parts \"10-20\" $ID2"
+sleep 5 # wait in index action
+run_test "$SC download --index record --parts 10-20 $ID2"
 
 edit_attr "parts" "fasta" "/testdata/a3"
 run_test "$SC create --part 2 --attributes /testdata/a3" "ID"
 ID3=$NODEID
 run_test "$SC update --part 1 --filepath /testdata/nr_subset1.fa $ID3"
 run_test "$SC update --part 2 --filepath /testdata/nr_subset2.fa $ID3"
+run_test "$SC update --filename foo.bar $ID3"
 run_test "$SC get $ID3"
 
 edit_attr "gzip" "fasta" "/testdata/a4"
@@ -94,7 +96,7 @@ run_test "$SC delete $ID1"
 edit_attr "update" "fastq" "/testdata/a7"
 run_test "$SC create" "ID"
 ID7=$NODEID
-run_test "$SC update --filename /testdata/sample1.fq --attributes /testdata/a7 $ID7"
+run_test "$SC update --filepath /testdata/sample1.fq --attributes /testdata/a7 $ID7"
 
 run_test "$SC query --distinct name"
 run_test "$SC query --attribute format:fasta --attribute name:unpack"
