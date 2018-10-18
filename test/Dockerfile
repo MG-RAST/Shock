@@ -20,11 +20,6 @@ RUN mkdir -p /data/db /var/log/shock /usr/local/shock/data ${DIR} && \
     ln -s ${DIR}/test/testdata /testdata && \
     ln -s ${DIR}/test/shock-tester.sh /shock-tester.sh
 
-# set version
-RUN cd ${DIR} && \
-  VERSION=$(cat VERSION) && \
-  sed -i "s/\[% VERSION %\]/${VERSION}/" shock-server/conf/conf.go
-
 # compile
 RUN cd ${DIR} && \
     go get -d ./shock-client/  && \
