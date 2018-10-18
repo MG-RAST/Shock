@@ -1,7 +1,8 @@
 
-
-# docker build -t mgrast/shock-test .
-# docker run --rm --name test -ti mgrast/shock /bin/ash
+# docker build -t mgrast/shock-test -f test/Dockerfile .
+# docker run --rm --name test -t -d mgrast/shock-test ash
+# docker exec test ash -c 'HOSTIP=`/sbin/ip route | head -1 | cut -f3 -d" "`; echo "$HOSTIP skyport.local" >> /etc/hosts'
+# docker exec test /shock-tester.sh -h http://skyport.local -p 7445
 
 # Note the setcap Linux command will only succeed if run as root.
 # This allows the shock-server to bind to port 80 if desired.
@@ -12,7 +13,7 @@ FROM golang:1.7.6-alpine
 RUN apk update && apk add git
 
 ENV DIR=/go/src/github.com/MG-RAST/Shock
-WORKDIR /go/bin
+WORKDIR /
 
 COPY . /go/src/github.com/MG-RAST/Shock
 

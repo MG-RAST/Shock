@@ -136,7 +136,7 @@ func (cu *chunkUploader) uploadParts(nid string, start int, dir string) (err err
 		err = errors.New("invalid start position")
 		return
 	}
-	fmt.Printf("node: %s, %d parts to upload\n", nid, cu.parts-start+1)
+	fmt.Printf("parts node: %s - %d parts to upload\n", nid, cu.parts-start+1)
 
 	var currSize int64
 	var fh *os.File

@@ -28,6 +28,7 @@ var (
 	debug       bool
 	dir         string
 	direction   string
+	distinct    string
 	expiration  string
 	filename    string
 	filepath    string
@@ -161,6 +162,7 @@ func setFlags() (flags *flag.FlagSet) {
 	flags.BoolVar(&debug, "debug", false, "")
 	flags.StringVar(&dir, "dir", ".", "")
 	flags.StringVar(&direction, "direction", "", "")
+	flags.StringVar(&distinct, "distinct", "", "")
 	flags.StringVar(&expiration, "expiration", "", "")
 	flags.StringVar(&filename, "filename", "", "")
 	flags.StringVar(&filepath, "filepath", "", "")
