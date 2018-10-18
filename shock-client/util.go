@@ -86,7 +86,7 @@ func getUserInfo() (host string, auth string) {
 }
 
 func buildDownloadUrl(host string, id string) string {
-	var query url.Values
+	query := url.Values{}
 	query.Add("download", "")
 
 	if (index != "") && (parts != "") {
