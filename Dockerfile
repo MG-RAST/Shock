@@ -28,5 +28,5 @@ RUN cd ${DIR} && \
     go get -d ./shock-server/ ./shock-client/  && \
     CGO_ENABLED=0 go install -a -installsuffix cgo -v ./shock-server/ ./shock-client/
 
-# since this produces two binaries, we just specify (b)ash
-CMD ["/bin/ash"]
+
+CMD ["/go/bin/shock-server"]
