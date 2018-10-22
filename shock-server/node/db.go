@@ -82,16 +82,18 @@ func dbFind(q bson.M, results *Nodes, order string, options map[string]int) (cou
 				return
 			}
 			err = query.Limit(limit).Skip(offset).All(results)
+			if err != nil {
+				return
+			}
 		} else {
 			err = errors.New("store.db.Find options limit and offset must be used together")
+			return
 		}
-	}
-	if err != nil {
-		return
-	}
-	err = c.Find(q).Sort(order).All(results)
-	if err != nil {
-		return
+	} else {
+		err = c.Find(q).Sort(order).All(results)
+		if err != nil {
+			return
+		}
 	}
 	results.DBInit()
 	return
