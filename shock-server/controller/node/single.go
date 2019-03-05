@@ -2,6 +2,12 @@ package node
 
 import (
 	"errors"
+	"io"
+	"net/http"
+	"reflect"
+	"strconv"
+	"time"
+
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
@@ -19,11 +25,6 @@ import (
 	sc "github.com/MG-RAST/go-shock-client"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	mgo "gopkg.in/mgo.v2"
-	"io"
-	"net/http"
-	"reflect"
-	"strconv"
-	"time"
 )
 
 type responseWrapper struct {
