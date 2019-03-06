@@ -4,7 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
 	e "github.com/MG-RAST/Shock/shock-server/errors"
+	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node/acl"
 	"github.com/MG-RAST/Shock/shock-server/node/archive"
 	"github.com/MG-RAST/Shock/shock-server/node/file"
@@ -13,11 +20,6 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
 	"gopkg.in/mgo.v2/bson"
-	"io/ioutil"
-	"os"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type Node struct {
@@ -94,15 +96,37 @@ func (node *Node) DBInit() {
 
 func CreateNodeUpload(u *user.User, params map[string]string, files file.FormFiles) (node *Node, err error) {
 	// if copying node or creating subset node from parent, check if user has rights to the original node
-	if _, hasCopyData := params["copy_data"]; hasCopyData {
-		_, err = Load(params["copy_data"])
+
+	if copy_data_id, hasCopyData := params["copy_data"]; hasCopyData {
+		var copy_data_node *Node
+		copy_data_node, err = Load(copy_data_id)
 		if err != nil {
 			return
 		}
+
+		rights := copy_data_node.Acl.Check(u.Uuid)
+		if copy_data_node.Acl.Owner != u.Uuid && u.Admin == false && copy_data_node.Acl.Owner != "public" && rights["read"] == false {
+			logger.Error("err@CreateNodeUpload: (Authenticate) id=" + copy_data_id + ": " + e.UnAuth)
+			//responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+			//err = request.AuthError(err, ctx)
+			err = fmt.Errorf("copy_data_node auth error")
+			return
+		}
 	}
-	if _, hasParentNode := params["parent_node"]; hasParentNode {
-		_, err = Load(params["parent_node"])
+
+	if parentNode_id, hasParentNode := params["parent_node"]; hasParentNode {
+		var parentNode *Node
+		parentNode, err = Load(parentNode_id)
 		if err != nil {
+			return
+		}
+
+		rights := parentNode.Acl.Check(u.Uuid)
+		if parentNode.Acl.Owner != u.Uuid && u.Admin == false && parentNode.Acl.Owner != "public" && rights["read"] == false {
+			logger.Error("err@CreateNodeUpload: (Authenticate) id=" + parentNode_id + ": " + e.UnAuth)
+			//responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+			//err = request.AuthError(err, ctx)
+			err = fmt.Errorf("parentNode auth error")
 			return
 		}
 	}
