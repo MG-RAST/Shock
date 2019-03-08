@@ -35,6 +35,7 @@ If you only need the statically compiled binary, you can extract it from the Doc
 ```bash
 docker create --name shock mgrast/shock:${TAG}
 docker cp shock:/go/bin/shock-server .
+docker cp shock:/go/bin/shock-client .
 docker rm shock
 ```
 

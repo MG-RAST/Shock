@@ -9,10 +9,12 @@ import (
 	icon "github.com/MG-RAST/Shock/shock-server/controller/node/index"
 	pcon "github.com/MG-RAST/Shock/shock-server/controller/preauth"
 	"github.com/MG-RAST/Shock/shock-server/db"
+	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/node/locker"
 	"github.com/MG-RAST/Shock/shock-server/preauth"
+	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
@@ -21,6 +23,7 @@ import (
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
@@ -120,6 +123,7 @@ func mapRoutes() {
 		return nil
 	})
 
+	// view lock status
 	goweb.Map("/locker", func(ctx context.Context) error {
 		ids := locker.NodeLockMgr.GetAll()
 		return responder.RespondWithData(ctx, ids)
@@ -135,6 +139,37 @@ func mapRoutes() {
 	goweb.Map("/locked/index", func(ctx context.Context) error {
 		ids := locker.IndexLockMgr.GetAll()
 		return responder.RespondWithData(ctx, ids)
+	})
+
+	// admin control of trace file
+	goweb.Map("/trace/start", func(ctx context.Context) error {
+		u, err := request.Authenticate(ctx.HttpRequest())
+		if err != nil && err.Error() != e.NoAuth {
+			return request.AuthError(err, ctx)
+		}
+		if u == nil || !u.Admin {
+			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
+		}
+		fname := traceFileName()
+		err = startTrace(fname)
+		if err != nil {
+			return responder.RespondWithError(ctx, http.StatusInternalServerError, fmt.Sprintf("unable to start trace: %s", err.Error()))
+		}
+		return responder.RespondWithData(ctx, fmt.Sprintf("trace started: %s", fname))
+	})
+	goweb.Map("/trace/stop", func(ctx context.Context) error {
+		u, err := request.Authenticate(ctx.HttpRequest())
+		if err != nil && err.Error() != e.NoAuth {
+			return request.AuthError(err, ctx)
+		}
+		if u == nil || !u.Admin {
+			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
+		}
+		err = stopTrace()
+		if err != nil {
+			return responder.RespondWithError(ctx, http.StatusInternalServerError, fmt.Sprintf("error stopping trace: %s", err.Error()))
+		}
+		return responder.RespondWithData(ctx, "trace stoped")
 	})
 
 	goweb.Map("/", func(ctx context.Context) error {
@@ -199,6 +234,16 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Err@conf.Initialize: %s\n", err.Error())
 		os.Exit(1)
 	}
+
+	// init trace
+	//if conf.LOG_TRACE {
+	//	go hourlyTrace()
+	//}
+
+	// init profile
+	go func() {
+		fmt.Println(http.ListenAndServe(conf.API_IP+":6060", nil))
+	}()
 
 	// init logging system
 	logger.Initialize()

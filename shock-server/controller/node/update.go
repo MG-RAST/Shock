@@ -1,6 +1,8 @@
 package node
 
 import (
+	"net/http"
+
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
@@ -12,11 +14,10 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	mgo "gopkg.in/mgo.v2"
-	"net/http"
 )
 
 // PUT: /node/{id} -> multipart-form
-func (cr *NodeController) Replace(id string, ctx context.Context) error {
+func (cr *NodeController) Replace(id string, ctx context.Context) (err error) {
 	u, err := request.Authenticate(ctx.HttpRequest())
 	if err != nil && err.Error() != e.NoAuth {
 		return request.AuthError(err, ctx)
@@ -82,17 +83,35 @@ func (cr *NodeController) Replace(id string, ctx context.Context) error {
 		}
 	}
 
-	if _, hasCopyData := params["copy_data"]; hasCopyData {
-		_, err = node.Load(params["copy_data"])
+	if copy_data_id, hasCopyData := params["copy_data"]; hasCopyData {
+		var copy_data_node *node.Node
+		copy_data_node, err = node.Load(copy_data_id)
 		if err != nil {
-			return request.AuthError(err, ctx)
+			return
+		}
+
+		rights := copy_data_node.Acl.Check(u.Uuid)
+		if copy_data_node.Acl.Owner != u.Uuid && u.Admin == false && copy_data_node.Acl.Owner != "public" && rights["read"] == false {
+			logger.Error("err@node_Update: (Authenticate) id=" + copy_data_id + ": " + e.UnAuth)
+			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+			err = request.AuthError(err, ctx)
+			return
 		}
 	}
 
-	if _, hasParentNode := params["parent_node"]; hasParentNode {
-		_, err = node.Load(params["parent_node"])
+	if parentNode_id, hasParentNode := params["parent_node"]; hasParentNode {
+		var parentNode *node.Node
+		parentNode, err = node.Load(parentNode_id)
 		if err != nil {
-			return request.AuthError(err, ctx)
+			return
+		}
+
+		rights := parentNode.Acl.Check(u.Uuid)
+		if parentNode.Acl.Owner != u.Uuid && u.Admin == false && parentNode.Acl.Owner != "public" && rights["read"] == false {
+			logger.Error("err@node_Update: (Authenticate) id=" + parentNode_id + ": " + e.UnAuth)
+			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+			err = request.AuthError(err, ctx)
+			return
 		}
 	}
 

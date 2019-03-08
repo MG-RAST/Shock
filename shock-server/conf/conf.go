@@ -68,6 +68,7 @@ var (
 	LOG_PERF   bool // Indicates whether performance logs should be stored
 	LOG_ROTATE bool // Indicates whether logs should be rotated daily
 	LOG_OUTPUT string
+	LOG_TRACE  bool // enable trace logging
 
 	// Mongo information
 	MONGODB_HOSTS             string
@@ -240,6 +241,7 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddBool(&LOG_PERF, false, "Log", "perf_log", "", "")
 	c_store.AddBool(&LOG_ROTATE, true, "Log", "rotate", "", "")
 	c_store.AddString(&LOG_OUTPUT, "both", "Log", "logoutput", "console, file or both", "")
+	c_store.AddBool(&LOG_TRACE, false, "Log", "trace", "", "")
 
 	// Mongodb
 	c_store.AddString(&MONGODB_ATTRIBUTE_INDEXES, "", "Mongodb", "attribute_indexes", "", "")
@@ -281,7 +283,7 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 
 	// Paths
 	c_store.AddString(&PATH_SITE, "/usr/local/shock/site", "Paths", "site", "", "")
-	c_store.AddString(&PATH_DATA, "/usr/local/shock", "Paths", "data", "", "")
+	c_store.AddString(&PATH_DATA, "/usr/local/shock/data", "Paths", "data", "", "")
 	c_store.AddString(&PATH_LOGS, "/var/log/shock", "Paths", "logs", "", "")
 	c_store.AddString(&PATH_LOCAL, "", "Paths", "local_paths", "", "")
 	c_store.AddString(&PATH_PIDFILE, "", "Paths", "pidfile", "", "")

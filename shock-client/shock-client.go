@@ -1,371 +1,291 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"github.com/MG-RAST/Shock/shock-client/conf"
-	"github.com/MG-RAST/Shock/shock-client/lib"
-	"github.com/MG-RAST/golib/gopass"
+	sc "github.com/MG-RAST/go-shock-client"
 	"io"
 	"os"
 	"strconv"
-	"strings"
 )
 
-const Usage = `Usage: shock-client <command> [options...] [args..]
-Global Options:
-    -conf                       Config file location (default ~/.shock-client.cfg)
-
-Commands:
-help                            This help message
-create [options...]
-    -attributes=<i>             JSON formated attribute file
-                                Note: Attributes will replace all current attributes
-    Mutualy exclusive options:
-    -full=<u>                   Path to file
-    -parts=<p>                  Number of parts to be uploaded
-    -virtual_file=<s>           Comma seperated list of node ids
-    -remote_path=<p>            Remote file path
-
-
-pcreate [options...]
-    -full=<u>                   Path to file
-    -threads=<i>                number of threads to use for uploading (default 4)
-
-    Note: parallel uploading for the whole file.
-
-update [options...] <id>
-    -part=<p> -file=<f>         The part number to be uploaded and path to file
-                                Note: parts must be set
-    Note: With the inclusion of part update options are the same as create.
-
-get <id>
-
-download [options...] <id> [<output>]
-    -index=<i>                  Name of index (must be used with -parts)
-    -parts={p}                  Part(s) from index, may be a range eg. 1-10
-    -index_options=<o>          Additional index options. Varies by index type
-
-    Note: if output is not present the download will be written to stdout.
-
-pdownload [options...] <id> [<output>]
-    -threads=<i>                number of threads to use for downloading (default 4)
-
-    Note: parallel download for the whole file. if output is not present the download will 
-          be written to a file named as the shock node id.
-
-acl <add/rm> <all/read/write/delete> <users> <id>
-    Note: users are in the form of comma delimited list of email address or uuids 
-
-chown <user> <id>
-    Note: user is email address or uuid 
-
-auth show                       Displays username of currently authenticated user
-     set                        Prompts for user authentication and store credentials 
-     set-token <token>          Stores credentials from token
-     unset                      Deletes stored credentials
-
-`
-
-// print help & die
-func helpf(e string) {
-	fmt.Fprintln(os.Stderr, Usage)
-	if e != "" {
-		fmt.Fprintln(os.Stderr, "Error: "+e)
-	}
-	os.Exit(1)
-}
-
-func handle(err error) {
-	fmt.Fprint(os.Stderr, err.Error())
-	os.Exit(1)
-}
-
-func handleString(e string) {
-	fmt.Fprintln(os.Stderr, e)
-	os.Exit(1)
-}
-
-func handleToken(err error) {
-	if strings.Contains(err.Error(), "no such file or directory") {
-		fmt.Fprintln(os.Stderr, "No stored authentication credentials found.\n")
-	} else {
-		fmt.Fprintln(os.Stderr, "%s\n", err.Error())
-	}
-	os.Exit(1)
-}
-
-func setToken(fatal bool) {
-	t := &lib.Token{}
-	if err := t.Load(); err != nil {
-		if fatal {
-			handleToken(err)
-		}
-	} else {
-		lib.SetTokenAuth(t)
-	}
-}
-
-func acl(action, perm, users, id string) (err error) {
-	n := lib.Node{Id: id}
-	switch action {
-	case "add":
-		return n.AclAdd(perm, users)
-	case "rm":
-		return n.AclRemove(perm, users)
-	case "chown":
-		return n.AclChown(users)
-	default:
-		helpf("")
-	}
-	return
-}
+var client *sc.ShockClient
 
 func main() {
-	if len(os.Args) == 1 || os.Args[1] == "help" {
-		helpf("")
+	if len(os.Args) < 2 {
+		exitError("missing command")
+	}
+	command := os.Args[1]
+	if (command == "help") || (command == "-h") || (command == "--help") {
+		exitHelp()
 	}
 
-	cmd := os.Args[1]
-	args := conf.Initialize(os.Args[2:])
+	flags = setFlags()
+	flags.Parse(os.Args[2:])
+	args := flags.Args()
 
-	setToken(false)
-	switch cmd {
+	host, auth := getUserInfo()
+	client = sc.NewShockClient(host, auth, debug)
+
+	var err error
+	switch command {
+	case "info":
+		var info *sc.ShockResponseMap
+		info, err = client.ServerInfo()
+		if err == nil {
+			exitOutput(&info)
+		}
 	case "create", "update":
-		n := lib.Node{}
-		if cmd == "update" {
-			if len(args) != 1 {
-				helpf("update requires <id>")
-			} else {
-				n.Id = args[0]
+		var nid string
+		if len(args) > 0 {
+			nid = args[0]
+		}
+		opts := make(map[string]string)
+		if filename != "" {
+			opts["file_name"] = filename
+		}
+		if expiration != "" {
+			opts["expiration"] = expiration
+		}
+		if (command == "update") && unexpire {
+			opts["remove_expiration"] = "true"
+		}
+		if compression != "" {
+			if !validateCV("compression", compression) {
+				exitError("invalid compress type")
 			}
 		}
-		opts := lib.Opts{}
-		if ne(conf.Flags["attributes"]) {
-			opts["attributes"] = (*conf.Flags["attributes"])
-		}
-		if t, err := fileOptions(conf.Flags); err != nil {
-			helpf(err.Error())
+		// do one of these
+		if (part > 0) && (filepath == "") {
+			// set parts node
+			if compression != "" {
+				opts["compression"] = compression
+			}
+			opts["parts"] = strconv.Itoa(part)
+			nid, err = client.PutOrPostFile("", nid, 0, attributes, "parts", opts, nil)
+		} else if (part > 0) && (filepath != "") && (command == "update") {
+			// put part file, update only
+			nid, err = client.PutOrPostFile(filepath, nid, part, attributes, "", opts, nil)
+		} else if virtual != "" {
+			// set virtual file
+			opts["virtual_file"] = virtual
+			nid, err = client.PutOrPostFile("", nid, 0, attributes, "virtual", opts, nil)
+		} else if remote != "" {
+			// add file by remote url
+			opts["remote_url"] = remote
+			nid, err = client.PutOrPostFile("", nid, 0, attributes, "remote", opts, nil)
+		} else if copy != "" {
+			// copy file from another node
+			opts["parent_node"] = copy
+			opts["copy_indexes"] = "true"
+			if attributes == "" {
+				opts["copy_attributes"] = "true"
+			}
+			nid, err = client.PutOrPostFile("", nid, 0, attributes, "copy", opts, nil)
+		} else if (chunk != "") && (filepath != "") {
+			// special auto-parts upload, able to resume
+			if dir != "." && (!isDir(dir)) {
+				exitError("invalid --dir path")
+			}
+			// first set parts and temp attributes, calculate # of parts
+			cu := newChunkUploader(filepath, chunk)
+			opts["parts"] = strconv.Itoa(cu.parts)
+			if compression != "" {
+				opts["compression"] = compression
+			}
+			tempAttr := cu.getAttr()
+			nid, err = client.PutOrPostFile("", nid, 0, "", "parts", opts, tempAttr)
+			if err != nil {
+				exitError(err.Error())
+			}
+			// upload parts in series
+			err = cu.uploadParts(nid, 1, dir)
+			if err != nil {
+				exitError("error uploading " + filepath + " in chunks: " + err.Error())
+			}
+			// final attributes
+			if attributes == "" {
+				attrMap := make(map[string]interface{})
+				client.UpdateAttributes(nid, "", attrMap)
+			} else {
+				client.UpdateAttributes(nid, attributes, nil)
+			}
+		} else if filepath != "" {
+			// basic file upload
+			if compression != "" {
+				opts["compression"] = compression
+			}
+			nid, err = client.PutOrPostFile(filepath, nid, 0, attributes, "", opts, nil)
 		} else {
-			if t == "part" {
-				if cmd == "create" {
-					helpf("part option only usable with update")
-				}
-				if !ne(conf.Flags["file"]) {
-					helpf("part option requires file")
-				}
-				opts["upload_type"] = t
-				opts["part"] = (*conf.Flags["part"])
-				opts["file"] = (*conf.Flags["file"])
-				if err := n.Update(opts); err != nil {
-					handleString(fmt.Sprintf("Error updating %s: %s\n", n.Id, err.Error()))
-				} else {
-					n.PP()
-				}
-			} else {
-				if t != "" {
-					opts["upload_type"] = t
-					opts[t] = (*conf.Flags[t])
-					if cmd == "create" {
-						if err := n.Create(opts); err != nil {
-							handleString(fmt.Sprintf("Error creating node: %s\n", err.Error()))
-						} else {
-							n.PP()
-						}
-					} else {
-						if err := n.Update(opts); err != nil {
-							handleString(fmt.Sprintf("Error updating %s: %s\n", n.Id, err.Error()))
-						} else {
-							n.PP()
-						}
-					}
-				} else {
-					if err := n.Create(opts); err != nil {
-						handleString(fmt.Sprintf("Error creating node: %s\n", err.Error()))
-					} else {
-						n.PP()
-					}
-				}
-			}
+			// just make empty node with provided options
+			nid, err = client.PutOrPostFile("", nid, 0, attributes, "", opts, nil)
 		}
-	case "pcreate":
-		pcreate(args)
-
+		if err == nil {
+			fmt.Printf("%sd node: %s\n", command, nid)
+		}
+	case "resume":
+		if len(args) < 1 {
+			exitError("missing required ID")
+		}
+		if dir != "." && (!isDir(dir)) {
+			exitError("invalid --dir path")
+		}
+		if filepath == "" {
+			exitError("missing required --filepath")
+		}
+		var node *sc.ShockNode
+		node, err = client.GetNode(args[0])
+		if err != nil {
+			exitError(err.Error())
+		}
+		// validate node and get info
+		cu := newChunkUploader(filepath, "")
+		errMsg := cu.validateChunkNode(node)
+		if errMsg != "" {
+			exitError(errMsg)
+		}
+		// upload remaining parts in series
+		err = cu.uploadParts(args[0], node.Parts.Length+1, dir)
+		if err != nil {
+			exitError("error uploading " + filepath + " in chunks: " + err.Error())
+		}
+		// final attributes
+		if attributes == "" {
+			attrMap := make(map[string]interface{})
+			client.UpdateAttributes(args[0], "", attrMap)
+		} else {
+			client.UpdateAttributes(args[0], attributes, nil)
+		}
+	case "unpack":
+		if len(args) < 1 {
+			exitError("missing required ID")
+		}
+		if !validateCV("archive", archive) {
+			exitError("invalid archive type")
+		}
+		var nodes interface{}
+		nodes, err = client.UnpackArchiveNode(args[0], archive, attributes)
+		if err == nil {
+			exitOutput(&nodes)
+		}
+	case "index":
+		if len(args) < 2 {
+			exitError("missing required arguments")
+		}
+		if !validateCV("index", args[1]) {
+			exitError("invalid index type")
+		}
+		if (args[1] == "column") && (column < 1) {
+			exitError("invalid column position")
+		}
+		err = client.PutIndexQuery(args[0], args[1], force, column)
+	case "delete":
+		if len(args) < 1 {
+			exitError("missing required ID")
+		}
+		err = client.DeleteNode(args[0])
 	case "get":
-		if len(args) != 1 {
-			helpf("get requires <id>")
+		if len(args) < 1 {
+			exitError("missing required ID")
 		}
-		n := lib.Node{Id: args[0]}
-		if err := n.Get(); err != nil {
-			fmt.Printf("Error retrieving %s: %s\n", n.Id, err.Error())
+		var node *sc.ShockNode
+		node, err = client.GetNode(args[0])
+		if err == nil {
+			exitOutput(&node)
+		}
+	case "query":
+		query := newQueryNode()
+		if len(otherQuery) > 0 {
+			query.processFlags(otherQuery)
+			query.prefix = "attributes."
+			query.full = true
+		}
+		if len(attrQuery) > 0 {
+			query.processFlags(attrQuery)
+		}
+		query.addOptions()
+		if query.distinct {
+			var srg *sc.ShockResponseGeneric
+			if query.full {
+				query.values.Set("querynode", "")
+			} else {
+				query.values.Set("query", "")
+			}
+			srg, err = client.QueryDistinct(query.values)
+			if err == nil {
+				exitOutput(&srg)
+			}
 		} else {
-			n.PP()
+			var sqr *sc.ShockQueryResponse
+			if query.full {
+				sqr, err = client.QueryFull(query.values)
+			} else {
+				sqr, err = client.Query(query.values)
+			}
+			if err == nil {
+				exitOutput(&sqr)
+			}
 		}
 	case "download":
 		if len(args) < 1 {
-			helpf("download requires <id>")
+			exitError("missing required ID")
 		}
-		index := conf.Flags["index"]
-		parts := conf.Flags["parts"]
-		indexOptions := conf.Flags["index_options"]
-		opts := lib.Opts{}
-		if ne(index) || ne(parts) || ne(indexOptions) {
-			if ne(index) && ne(parts) {
-				opts["index"] = (*index)
-				opts["parts"] = (*parts)
-				if ne(indexOptions) {
-					opts["index_options"] = (*indexOptions)
-				}
-			} else {
-				helpf("index and parts options must be used together")
+		downUrl := buildDownloadUrl(host, args[0])
+		if (output == "") || (output == "-") || (output == "stdout") {
+			body, berr := sc.FetchShockStream(downUrl, auth)
+			if berr != nil {
+				exitError(berr.Error())
 			}
-		}
-		n := lib.Node{Id: args[0]}
-		if ih, err := n.Download(opts); err != nil {
-			fmt.Printf("Error downloading %s: %s\n", n.Id, err.Error())
+			defer body.Close()
+			_, err = io.Copy(os.Stdout, body)
 		} else {
-			if len(args) == 3 {
-				if oh, err := os.Create(args[1]); err == nil {
-					if s, err := io.Copy(oh, ih); err != nil {
-						handleString(fmt.Sprintf("Error writing output: %s\n", err.Error()))
-					} else {
-						fmt.Printf("Success. Wrote %d bytes\n", s)
-					}
-				} else {
-					handleString(fmt.Sprintf("Error writing output: %s\n", err.Error()))
-				}
-			} else {
-				io.Copy(os.Stdout, ih)
-			}
-		}
-	case "pdownload":
-		if len(args) < 1 {
-			helpf("pdownload requires <id>")
-		}
-		n := lib.Node{Id: args[0]}
-		if err := n.Get(); err != nil {
-			handleString(fmt.Sprintf("Error retrieving %s: %s\n", n.Id, err.Error()))
-		}
-
-		totalChunk := int(n.File.Size / conf.CHUNK_SIZE)
-		m := n.File.Size % conf.CHUNK_SIZE
-		if m != 0 {
-			totalChunk += 1
-		}
-		if totalChunk < 1 {
-			totalChunk = 1
-		}
-		splits := conf.DOWNLOAD_THREADS
-		if ne(conf.Flags["threads"]) {
-			if th, err := strconv.Atoi(*conf.Flags["threads"]); err == nil {
-				splits = th
-			}
-		}
-		if totalChunk < splits {
-			splits = totalChunk
-		}
-
-		fmt.Printf("downloading using %d threads\n", splits)
-
-		var filename string
-		if len(args) == 2 {
-			filename = args[1]
-		} else {
-			filename = n.Id
-		}
-
-		oh, err := os.Create(filename)
-		if err != nil {
-			handleString(fmt.Sprintf("Error creating output file %s: %s\n", filename, err.Error()))
-			return
-		}
-		oh.Close()
-
-		ch := make(chan int, 1)
-		split_size := totalChunk / splits
-		remainder := totalChunk % splits
-		//splitting, if total chunk is 10, each split will have 3,3,2,2 chunks respectively
-		for i := 0; i < splits; i++ {
-			var start, end int
-			if i < remainder {
-				start = (split_size+1)*i + 1
-				end = start + split_size
-			} else {
-				start = (split_size+1)*remainder + split_size*(i-remainder) + 1
-				end = start + split_size - 1
-			}
-			part_string := fmt.Sprintf("%d-%d", start, end)
-			opts := lib.Opts{}
-			opts["index"] = "size"
-			opts["parts"] = part_string
-			opts["index_options"] = fmt.Sprintf("chunk_size=%d", conf.CHUNK_SIZE)
-
-			start_offset := (int64(start) - 1) * conf.CHUNK_SIZE
-			go downloadChunk(n, opts, filename, start_offset, ch)
-		}
-		for i := 0; i < splits; i++ {
-			<-ch
-		}
-	case "auth":
-		if len(args) < 1 {
-			helpf("auth requires show/set/set-token/unset")
-		}
-		switch args[0] {
-		case "set":
-			var username, password string
-			fmt.Printf("Please authenticate to store your credentials.\nusername: ")
-			fmt.Scan(&username)
-			password, _ = gopass.GetPass("password: ")
-			if t, err := lib.OAuthToken(username, password); err == nil {
-				if err := t.Store(); err != nil {
-					handleString(fmt.Sprintf("Authenticated but failed to store token: %s\n", err.Error()))
-				}
-				fmt.Printf("Authenticated credentials stored for user %s. Expires in %d days.\n", t.UserName, t.ExpiresInDays())
-			} else {
-				fmt.Printf("%s\n", err.Error())
-			}
-		case "set-token":
-			if len(args) != 2 {
-				helpf("auth set-token requires token.")
-			}
-			t := &lib.Token{}
-			if err := json.Unmarshal([]byte(args[1]), &t); err != nil {
-				handleString("Invalid auth token.\n")
-			}
-			if err := t.Store(); err != nil {
-				handleString(fmt.Sprintf("Failed to store token: %s\n", err.Error()))
-			}
-			fmt.Printf("Authenticated credentials stored for user %s. Expires in %d days.\n", t.UserName, t.ExpiresInDays())
-		case "unset":
-			t := &lib.Token{}
-			if err := t.Delete(); err != nil {
-				fmt.Printf("%s\n", err.Error())
-			} else {
-				fmt.Printf("Stored authentication credentials have been deleted.\n")
-			}
-		case "show":
-			t := &lib.Token{}
-			if err := t.Load(); err != nil {
-				handleToken(err)
-			} else {
-				fmt.Printf("Authenticated credentials stored for user %s. Expires in %d days.\n", t.UserName, t.ExpiresInDays())
+			var size int64
+			var checksum string
+			size, checksum, err = sc.FetchFile(output, downUrl, auth, "", md5sum)
+			if err == nil {
+				fmt.Printf("download complete\nfile\t%s\nsize\t%d\nmd5\t%s\n", output, size, checksum)
 			}
 		}
 	case "acl":
-		if len(args) != 4 {
-			helpf("acl requires 4 arguments")
+		if (len(args) > 1) && (args[1] == "get") {
+			var acl *sc.ShockResponseGeneric
+			acl, err = client.GetAcl(args[0])
+			if err == nil {
+				exitOutput(&acl.Data)
+			}
+		} else if len(args) > 3 {
+			if !validateCV("acl", args[2]) {
+				exitError("invalid acl type")
+			}
+			if args[1] == "add" {
+				err = client.PutAcl(args[0], args[2], args[3])
+			}
+			if args[1] == "delete" {
+				err = client.DeleteAcl(args[0], args[2], args[3])
+			}
+		} else {
+			exitError("missing required arguments")
 		}
-		if err := acl(args[0], args[1], args[2], args[3]); err != nil {
-			handle(err)
+	case "public":
+		if len(args) < 2 {
+			exitError("missing required arguments")
+		}
+		if args[1] == "add" {
+			err = client.MakePublic(args[0])
+		}
+		if args[1] == "delete" {
+			err = client.DeleteAcl(args[0], "public_read", "")
 		}
 	case "chown":
-		if len(args) != 2 {
-			helpf("chown requires <user> and <id>")
+		if len(args) < 2 {
+			exitError("missing required arguments")
 		}
-		if err := acl("chown", "", args[0], args[1]); err != nil {
-			handle(err)
-		}
+		err = client.ChownNode(args[0], args[1])
 	default:
-		helpf("invalid command")
+		exitError("invalid command: " + command)
 	}
+
+	if err != nil {
+		exitError(err.Error())
+	}
+	os.Exit(0)
 }
