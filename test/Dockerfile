@@ -11,7 +11,13 @@
 
 FROM golang:1.7.6-alpine
 
-RUN apk update && apk add git
+RUN apk update && apk add \
+    git
+    python3
+
+RUN pip3 install \
+    pytest
+    requests 
 
 ENV DIR=/go/src/github.com/MG-RAST/Shock
 WORKDIR /
