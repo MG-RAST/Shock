@@ -24,13 +24,15 @@ pipeline {
         stage('Test') { 
             steps {
                 // execute tests
-                sh 'docker run -t --network shock-test mgrast/shock-test-client  /shock-tester.sh -h http://shock-server -p 7445'
+                sh 'docker run -t --rm --network shock-test mgrast/shock-test-client  /shock-tester.sh -h http://shock-server -p 7445'
                 // sh 'docker run -t --rm  mgrast/shock-test-client test ' 
             }   
         }
         stage('Teardown'){
             steps{
                 // shutdown container and network
+                sh 'docker stop shock-server shock-server-mongodb'
+                sh 'docker network rm shock-test'
                 // delete images
             }
         }
