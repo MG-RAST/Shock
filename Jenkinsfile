@@ -33,7 +33,7 @@ pipeline {
         always {
              // shutdown container and network
                 sh 'docker stop shock-server shock-server-mongodb'
-                sh 'docker rmi mgrast/shock:testing mgrast/shock-test-client:latest'
+                sh 'docker rmi shock:testing shock-test-client:testing'
                 sh 'docker network rm shock-test'
                 // delete images
         }
