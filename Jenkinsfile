@@ -28,14 +28,14 @@ pipeline {
                 // sh 'docker run -t --rm  mgrast/shock-test-client test ' 
             }   
         }
-        stage('Teardown'){
-            steps{
-                // shutdown container and network
+    }
+    post {
+        always {
+             // shutdown container and network
                 sh 'docker stop shock-server shock-server-mongodb'
                 sh 'docker rmi mgrast/shock:testing mgrast/shock-test-client:latest'
                 sh 'docker network rm shock-test'
                 // delete images
-            }
         }
     }
 }
