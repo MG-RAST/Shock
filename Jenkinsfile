@@ -17,8 +17,8 @@ pipeline {
                 // Create network
                 sh 'docker network create shock-test'
                 // start services
-                sh 'docker run --rm --network shock-test --name shock-server-mongodb --expose=27017 mongo mongod --dbpath /data/db'
-                sh 'docker run --rm --network shock-test --name shock-server -p 7445:7445 --link=shock-server-mongodb:mongodb mgrast/shock:testing /go/bin/shock-server'
+                sh 'docker run -d --rm --network shock-test --name shock-server-mongodb --expose=27017 mongo mongod --dbpath /data/db'
+                sh 'docker run -d --rm --network shock-test --name shock-server -p 7445:7445 --link=shock-server-mongodb:mongodb mgrast/shock:testing /go/bin/shock-server'
             }
         }
         stage('Test') { 
@@ -32,6 +32,7 @@ pipeline {
             steps{
                 // shutdown container and network
                 sh 'docker stop shock-server shock-server-mongodb'
+                sh 'docker rmi mgrast/shock:testing mgrast/shock-test-client:latest'
                 sh 'docker network rm shock-test'
                 // delete images
             }
