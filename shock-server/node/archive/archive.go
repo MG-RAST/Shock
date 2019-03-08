@@ -9,15 +9,16 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
-	"github.com/MG-RAST/Shock/shock-server/conf"
-	"github.com/MG-RAST/Shock/shock-server/logger"
-	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/MG-RAST/Shock/shock-server/conf"
+	"github.com/MG-RAST/Shock/shock-server/logger"
+	"github.com/MG-RAST/Shock/shock-server/node/file"
 )
 
 var validUncompress = []string{"gzip", "bzip2"}
@@ -218,12 +219,21 @@ func ArchiveReader(format string, files []*file.FileInfo) (outReader io.ReadClos
 					fileNames[f.Name] = 1
 				}
 				fHdr := &tar.Header{Name: fileName, Mode: 0660, ModTime: f.ModTime, Size: f.Size}
-				tWriter.WriteHeader(fHdr)
+				err := tWriter.WriteHeader(fHdr)
+				if err != nil {
+					logger.Error("(ArchiveReader) tWriter.WriteHeader returned: " + err.Error())
+					tWriter.Close()
+					pWriter.Close()
+					return
+				}
 				io.Copy(tWriter, f.Body)
 				if f.Checksum != "" {
 					cHdr := &tar.Header{Name: fileName + ".md5", Mode: 0660, ModTime: f.ModTime, Size: int64(len(f.Checksum))}
 					tWriter.WriteHeader(cHdr)
-					io.Copy(tWriter, bytes.NewBufferString(f.Checksum))
+					cBuf := bytes.NewBufferString(f.Checksum)
+					if cBuf != nil {
+						io.Copy(tWriter, cBuf)
+					}
 				}
 			}
 			tWriter.Close()
@@ -243,14 +253,24 @@ func ArchiveReader(format string, files []*file.FileInfo) (outReader io.ReadClos
 				}
 				zHdr := &zip.FileHeader{Name: fileName, UncompressedSize64: uint64(f.Size)}
 				zHdr.SetModTime(f.ModTime)
-				zFile, _ := zWriter.CreateHeader(zHdr)
+				zFile, zferr := zWriter.CreateHeader(zHdr)
+				if zferr != nil {
+					logger.Error("(ArchiveReader) zWriter.CreateHeader returned: " + zferr.Error())
+					zWriter.Close()
+					pWriter.Close()
+					return
+				}
 				io.Copy(zFile, f.Body)
 				if f.Checksum != "" {
 					cHdr := &zip.FileHeader{Name: fileName + ".md5", UncompressedSize64: uint64(len(f.Checksum))}
 					cHdr.SetModTime(f.ModTime)
-					zSum, _ := zWriter.CreateHeader(cHdr)
-					io.Copy(zSum, bytes.NewBufferString(f.Checksum))
+					zSum, zcerr := zWriter.CreateHeader(cHdr)
+					cBuf := bytes.NewBufferString(f.Checksum)
+					if (zcerr != nil) && (cBuf != nil) {
+						io.Copy(zSum, cBuf)
+					}
 				}
+
 			}
 			zWriter.Close()
 			pWriter.Close()

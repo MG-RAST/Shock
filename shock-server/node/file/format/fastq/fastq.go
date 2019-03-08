@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	Regex  = regexp.MustCompile(`^[\n\r]*@\S+[\S\t ]+[\n\r]+[A-Za-z\-]+[\n\r]+\+[\S\t ]*[\n\r]+\S*[\n\r]+`)
+	Regex  = regexp.MustCompile(`^[\n\r]*@\S+[\S\t ]*[\n\r]+[A-Za-z\-]+[\n\r]+\+[\S\t ]*[\n\r]+\S*[\n\r]+`)
 	Record = regexp.MustCompile(`@\S(.*)?[\n\r]+[A-Za-z\-]+[\n\r]+\+(.*)?[\n\r]+(\S+)[\n\r]+`)
 )
 

@@ -32,7 +32,7 @@ class ShockClient:
                 'post': requests.post,
                 'delete': requests.delete }
     
-    def __init__(self, shock_url='http://shock.metagenomics.anl.gov', bearer='OAuth', token=None):
+    def __init__(self, shock_url='http://shock.mg-rast.org', bearer='OAuth', token=None):
         self.shock_url = shock_url
         if token:
             self.set_auth(bearer, token)

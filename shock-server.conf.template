@@ -59,7 +59,7 @@ password=
 # site directory should contain the documentation files
 site=/usr/local/shock/site
 # data directory should be a location for Shock to store data files
-data=/usr/local/shock
+data=/usr/local/shock/data
 # logs directory should be a location for Shock to store log files
 logs=/var/log/shock
 # local_paths is a path prefix to directories that users are allowed to import files into Shock from

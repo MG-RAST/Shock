@@ -1,64 +1,129 @@
 package main
 
 import (
-	"errors"
+	"encoding/json"
 	"fmt"
-	"github.com/MG-RAST/Shock/shock-client/lib"
-	"io"
+	"io/ioutil"
+	"math/rand"
+	"net/url"
 	"os"
+	"strconv"
+	"time"
 )
 
-type Set map[string]bool
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-var (
-	fileOptionKeys = []string{"full", "parts", "part", "virtual_file", "remote_path"}
-)
-
-func (s *Set) Has(key string) bool {
-	_, has := (*s)[key]
-	return has
+var CV = map[string]map[string]bool{
+	"acl":         map[string]bool{"all": true, "delete": true, "read": true, "write": true},
+	"archive":     map[string]bool{"tar": true, "tar.gz": true, "tar.bz2": true, "zip": true},
+	"compression": map[string]bool{"bzip2": true, "gzip": true},
+	"direction":   map[string]bool{"asc": true, "desc": true},
+	"index":       map[string]bool{"bai": true, "chunkrecord": true, "column": true, "line": true, "record": true, "size": true},
 }
 
-func ne(s *string) bool {
-	if (*s) != "" {
-		return true
+func validateCV(name string, value string) bool {
+	if _, ok := CV[name]; ok {
+		if _, ok := CV[name][value]; ok {
+			return true
+		}
 	}
 	return false
 }
 
-func fileOptions(options map[string]*string) (t string, err error) {
-	c := 0
-	for _, i := range fileOptionKeys {
-		if options[i] != nil && ne(options[i]) {
-			t = i
-			if c += 1; c > 1 {
-				return "", errors.New("file options are multially exclusive")
-			}
+func exitHelp() {
+	fmt.Fprintln(os.Stdout, USAGE)
+	os.Exit(0)
+}
+
+func exitError(msg string) {
+	//fmt.Fprintln(os.Stderr, USAGE)
+	if msg != "" {
+		fmt.Fprintln(os.Stderr, "Error: "+msg)
+	}
+	os.Exit(1)
+}
+
+func exitOutput(v interface{}) {
+	var b []byte
+	var e error
+	if pretty {
+		b, e = json.MarshalIndent(v, "", "   ")
+	} else {
+		b, e = json.Marshal(v)
+	}
+	if e != nil {
+		exitError(e.Error())
+	}
+	if (output == "") || (output == "-") || (output == "stdout") {
+		fmt.Println(string(b))
+	} else {
+		b = append(b, '\n')
+		e = ioutil.WriteFile(output, b, 0644)
+		if e != nil {
+			exitError(e.Error())
 		}
 	}
+	os.Exit(0)
+}
+
+func getUserInfo() (host string, auth string) {
+	// set from env if exists
+	if os.Getenv("SHOCK_URL") != "" {
+		shock_url = os.Getenv("SHOCK_URL")
+	}
+	if token == "" {
+		token = os.Getenv("TOKEN")
+	}
+	if os.Getenv("BEARER") != "" {
+		bearer = os.Getenv("BEARER")
+	}
+	// test and return
+	if token != "" {
+		auth = bearer + " " + token
+	}
+	host = shock_url
 	return
 }
 
-func downloadChunk(n lib.Node, opts lib.Opts, filename string, offset int64, c chan int) {
-	oh, err := os.OpenFile(filename, os.O_RDWR, 0644)
-	if err != nil {
-		fmt.Printf("Error open output file %s: %s\n", filename, err.Error())
-	}
-	defer oh.Close()
+func buildDownloadUrl(host string, id string) string {
+	query := url.Values{}
+	query.Add("download", "")
 
-	_, err = oh.Seek(offset, os.SEEK_SET)
-	if err != nil {
-		fmt.Printf("Error seek output file %s: %s\n", filename, err.Error())
-	}
-
-	if ih, err := n.Download(opts); err != nil {
-		fmt.Printf("Error downloading %s: %s\n", n.Id, err.Error())
-	} else {
-		if s, err := io.Copy(oh, ih); err != nil {
-			fmt.Printf("Error writing output: %s\n", err.Error())
-		} else {
-			fmt.Printf("Success. Wrote %d bytes\n", s)
+	if (index != "") && (parts != "") {
+		if !validateCV("index", index) {
+			exitError("invalid index type")
 		}
+		query.Add("index", index)
+		query.Add("part", parts)
+	} else if (seek > -1) && (length > 0) {
+		query.Add("seek", strconv.Itoa(seek))
+		query.Add("length", strconv.Itoa(length))
 	}
-	c <- 1
+
+	var myurl *url.URL
+	myurl, err := url.ParseRequestURI(host)
+	if err != nil {
+		exitError("error parsing shock url")
+	}
+	(*myurl).Path = "/node/" + id
+	(*myurl).RawQuery = query.Encode()
+
+	return myurl.String()
+}
+
+func isDir(d string) bool {
+	fi, err := os.Stat(d)
+	if err != nil {
+		return false
+	}
+	return fi.IsDir()
+}
+
+func randomStr(n int) string {
+	rand.Seed(time.Now().UnixNano())
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
 }

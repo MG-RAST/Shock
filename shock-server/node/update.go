@@ -257,10 +257,13 @@ func (node *Node) Update(params map[string]string, files file.FormFiles, hasLock
 		}
 
 		// Copy node indexes
-		var copyIdxInfo *IdxInfo
 		if _, copyIndex := params["copy_indexes"]; copyIndex && (len(n.Indexes) > 0) {
 			// loop through parent indexes
 			for idxType, idxInfo := range n.Indexes {
+				if idxInfo == nil {
+					err = fmt.Errorf("(copy_indexes) value of %s was nil", idxType)
+					return
+				}
 				parentFile := n.IndexPath() + "/" + idxType + ".idx"
 				if _, statErr := os.Stat(parentFile); statErr == nil {
 					// copy file if exists
@@ -270,13 +273,11 @@ func (node *Node) Update(params map[string]string, files file.FormFiles, hasLock
 					}
 				}
 				// copy index struct
-				*copyIdxInfo = *idxInfo
-				node.SetIndexInfo(idxType, copyIdxInfo)
+				node.SetIndexInfo(idxType, idxInfo)
 			}
 		} else if sizeIndex, exists := n.Indexes["size"]; exists {
 			// just copy size index
-			*copyIdxInfo = *sizeIndex
-			node.SetIndexInfo("size", copyIdxInfo)
+			node.SetIndexInfo("size", sizeIndex)
 		}
 
 		if n.File.Path == "" {
