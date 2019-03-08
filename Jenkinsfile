@@ -7,9 +7,9 @@ pipeline {
             steps {
                 // Build container
                 sh 'echo Build shock server'
-                sh 'docker build -t mgrast/shock:testing .' 
+                sh 'docker build -t shock:testing .' 
                 sh 'echo Build test client'
-                sh 'docker build -t mgrast/shock-test-client -f test/Dockerfile .'
+                sh 'docker build -t shock-test-client:testing -f test/Dockerfile .'
             }
         }
         stage('Setup') {
@@ -18,13 +18,13 @@ pipeline {
                 sh 'docker network create shock-test'
                 // start services
                 sh 'docker run -d --rm --network shock-test --name shock-server-mongodb --expose=27017 mongo mongod --dbpath /data/db'
-                sh 'docker run -d --rm --network shock-test --name shock-server -p 7445:7445 --link=shock-server-mongodb:mongodb mgrast/shock:testing /go/bin/shock-server'
+                sh 'docker run -d --rm --network shock-test --name shock-server -p 7445:7445 shock:testing /go/bin/shock-server --hosts shock-server-mongodb'
             }
         }
         stage('Test') { 
             steps {
                 // execute tests
-                sh 'docker run -t --rm --network shock-test mgrast/shock-test-client  /shock-tester.sh -h http://shock-server -p 7445'
+                sh 'docker run -t --rm --network shock-test shock-test-client:testing  /shock-tester.sh -h http://shock-server -p 7445'
                 // sh 'docker run -t --rm  mgrast/shock-test-client test ' 
             }   
         }
