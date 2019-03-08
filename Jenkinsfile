@@ -9,7 +9,7 @@ pipeline {
                 sh 'echo Build shock server'
                 sh 'docker build -t mgrast/shock:testing .' 
                 sh 'echo Build test client'
-                sh 'docker build -t mgrast/shock-test-client -f tests/Dockerfile .'
+                sh 'cd tests ; docker build -t mgrast/shock-test-client . ; cd ..'
             }
         }
         stage('Setup') {
