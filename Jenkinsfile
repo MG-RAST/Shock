@@ -25,7 +25,8 @@ pipeline {
             steps {
                 // execute tests
                 sh 'docker run -t --rm --network shock-test shock-test-client:testing  /shock-tester.sh -h http://shock-server -p 7445'
-                // sh 'docker run -t --rm  mgrast/shock-test-client test ' 
+                sh '''docker run -t --rm --network shock-test --env SHOCK_HOST="http://shock-server" --env SHOCK_PORT=7445 mgrast/shock-test-client:testing \
+                    qpytest /go/src/github.com/MG-RAST/Shock/test/test_shock.py  -h http://shock-server -p 7445'''
             }   
         }
     }
