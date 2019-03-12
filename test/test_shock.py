@@ -8,53 +8,37 @@ import requests
 
 DATADIR = dirname(abspath(__file__)) + "/testdata/"
 DEBUG = 1
-PORT = os.environ.get('SHOCK_PORT' , "7445")
-URL  = os.environ.get('SHOCK_HOST' , "http://localhost") 
+PORT = os.environ.get('SHOCK_PORT', "7445")
+URL  = os.environ.get('SHOCK_HOST', "http://localhost") 
 SHOCK_URL = URL + ":" + PORT
 TOKEN = "1234"
 
+FILELIST = ["AAA.txt", "BBB.txt", "CCC.txt"] 
 
-def create_three_nodes():
+def create_nodes(FILELIST):
     NODES = []
     TESTURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
     TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
 # to get multipart-form correctly, data has to be specified in this strange way
 # and passed as the files= parameter to requests.put
     TESTDATA = {"attributes_str": (None, '{"project_id":"TESTPROJECT"}')}
-    FILES = {'upload': open(DATADIR + 'AAA.txt', 'rb')}
-    if DEBUG:
-        print("POST", TESTURL, TESTDATA, TESTHEADERS)
-    response = requests.post(TESTURL, headers=TESTHEADERS, files=FILES)
-    data = json.loads(response.content.decode("utf-8"))
-    assert data["status"] == 200
-    NODES += [data["data"]["id"]]
-    if DEBUG:
-        print("PUT", SHOCK_URL + "/node/" + NODES[-1], TESTDATA)
-    r = requests.put(SHOCK_URL + "/node/" +
-                     NODES[-1], files=TESTDATA, headers=TESTHEADERS)
-    FILES = {'upload': open(DATADIR + 'BBB.txt', 'rb')}
-    if DEBUG:
-        print("POST", TESTURL, FILES)
-    response = requests.post(TESTURL, headers=TESTHEADERS, files=FILES)
-    data = json.loads(response.content.decode("utf-8"))
-    NODES += [data["data"]["id"]]
-    if DEBUG:
-        print("PUT", SHOCK_URL + "/node/" + NODES[-1], TESTDATA)
-    r = requests.put(SHOCK_URL + "/node/" +
-                     NODES[-1], files=TESTDATA, headers=TESTHEADERS)
-    FILES = {'upload': open(DATADIR + 'CCC.txt', 'rb')}
-    if DEBUG:
-        print("POST", TESTURL, FILES)
-    response = requests.post(TESTURL, headers=TESTHEADERS, files=FILES)
-    data = json.loads(response.content.decode("utf-8"))
-    NODES += [data["data"]["id"]]
-    if DEBUG:
-        print("PUT", SHOCK_URL + "/node/" + NODES[-1], TESTDATA)
-    r = requests.put(SHOCK_URL + "/node/" +
-                     NODES[-1], files=TESTDATA, headers=TESTHEADERS)
-    print(r.content.decode("utf-8"))
-    data = json.loads(r.content.decode("utf-8"))
-    assert data["data"]["attributes"]["project_id"] == "TESTPROJECT"
+    for FILE in FILELIST:
+        FILES = {'upload': open(DATADIR + FILE, 'rb')}
+        if DEBUG:
+            print("POST", TESTURL, TESTDATA, TESTHEADERS)
+        response = requests.post(TESTURL, headers=TESTHEADERS, files=FILES, data=TESTDATA)
+        data = json.loads(response.content.decode("utf-8"))
+        assert data["status"] == 200
+        assert data["data"]["attributes"]["project_id"] == "TESTPROJECT"
+        NODES += [data["data"]["id"]]
+        if DEBUG:
+            print("PUT", SHOCK_URL + "/node/" + NODES[-1], TESTDATA)
+        r = requests.put(SHOCK_URL + "/node/" +
+                         NODES[-1], files=TESTDATA, headers=TESTHEADERS)
+        print(r.content.decode("utf-8"))
+        data = json.loads(r.content.decode("utf-8"))
+        print(data)
+        assert data["data"]["attributes"]["project_id"] == "TESTPROJECT"
     return(NODES)
 
 
@@ -131,7 +115,7 @@ def test_upload_emptyfile():
 
 
 def test_upload_threefiles():
-    NODES = create_three_nodes()
+    NODES = create_nodes(FILELIST)
     TESTURL = "{SHOCK_URL}/node/?query".format(SHOCK_URL=SHOCK_URL)
     print(TESTURL)
     TESTDATA = {}
@@ -292,7 +276,7 @@ def test_upload_and_download_node_gzip():
 
 
 def test_download_zip_GET():
-    NODES = create_three_nodes()
+    NODES = create_nodes(FILELIST) 
     # confirm nodes exist
     confirm_nodes_project(NODES, "TESTPROJECT")
     # query for TESTDATA
@@ -334,7 +318,7 @@ def test_download_tar_GET():
     # use download_url with a standard query
     # curl -X GET http://<host>[:<port>]/node?query&download_url&archive=zip&<key>=<value>
 
-    NODES = create_three_nodes()
+    NODES = create_nodes(FILELIST)
     # confirm nodes exist
     confirm_nodes_project(NODES, "TESTPROJECT")
     # query for TESTDATA
@@ -368,13 +352,13 @@ def test_download_tar_GET():
 
 
 def test_download_tar_POST():
-    NODES = create_three_nodes()
+    NODES = create_nodes(FILELIST)
     # confirm nodes exist
     confirm_nodes_project(NODES, "TESTPROJECT")
     # query for TESTDATA
     TESTURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
     TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
-    # Remember, multipart-forms that are not files have format { key: (None, value) }
+    # Remember, multipart-forms that are not files have format {key: (None, value)}
     TESTDATA = {"ids": (None, ",".join(NODES)),
                 "download_url": (None, 1),
                 "archive_format": (None, "tar")}
@@ -402,13 +386,13 @@ def test_download_zip_POST():
     # Per test invokation on https://github.com/MG-RAST/Shock/wiki/API
     # use download_url with a POST and list of node ids
     # curl -X POST -F "download_url=1" -F "archive_format=zip" -F "ids=<node_id_1>,<node_id_2>,<...>" http://<host>[:<port>]/node
-    NODES = create_three_nodes()
+    NODES = create_nodes(FILELIST)
     # confirm nodes exist
     confirm_nodes_project(NODES, "TESTPROJECT")
     # query for TESTDATA
     TESTURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
     TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
-    # Remember, multipart-forms that are not files have format { key: (None, value) }
+    # Remember, multipart-forms that are not files have format {key: (None, value)}
     TESTDATA = {"ids": (None, ",".join(NODES)),
                 "download_url": (None, 1),
                 "archive_format": (None, "zip")}
@@ -430,3 +414,79 @@ def test_download_zip_POST():
     assert b'     4 ' in out  # This fails if there are no 4-byte-files
     # cleanup
     delete_nodes(NODES)
+
+def test_put_attributesstr():
+    NODE = create_nodes(["AAA.txt"])[0]
+    TESTDATA = {"attributes_str": (None, '{"project_id":"TESTPROJECT2"}')}
+    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    if DEBUG:
+        print("PUT", SHOCK_URL + "/node/" + NODE, TESTDATA)
+    r = requests.put(SHOCK_URL + "/node/" +
+                     NODE, files=TESTDATA, headers=TESTHEADERS)
+    print(r.content.decode("utf-8"))
+    data = json.loads(r.content.decode("utf-8"))
+    print(data)
+    assert data["data"]["attributes"]["project_id"] == "TESTPROJECT2"
+    TESTDATA = {"attributes_str": (None, '{"project_id":"TESTPROJECT"}')}
+    if DEBUG:
+        print("PUT", SHOCK_URL + "/node/" + NODE, TESTDATA)
+    r = requests.put(SHOCK_URL + "/node/" +
+                     NODE, files=TESTDATA, headers=TESTHEADERS)
+    print(r.content.decode("utf-8"))
+    data = json.loads(r.content.decode("utf-8"))
+    assert data["data"]["attributes"]["project_id"] == "TESTPROJECT"
+
+
+def test_post_attributes():
+    TESTURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
+    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+# to get multipart-form correctly, data has to be specified in this strange way
+# and passed as the files= parameter to requests.put
+    TESTDATA = {}
+    FILES = {'attributes': open(DATADIR + "attr.json", 'rb'),
+             'upload' : open(DATADIR + "AAA.txt", 'rb')}
+    if DEBUG:
+            print("POST", TESTURL, TESTDATA, TESTHEADERS)
+    response = requests.post(TESTURL, headers=TESTHEADERS, files=FILES, data=TESTDATA)
+    data = json.loads(response.content.decode("utf-8"))
+    assert data["status"] == 200
+    NODE = data["data"]["id"]
+    assert data["data"]["file"]["name"] == "AAA.txt"
+    assert data["data"]["attributes"]["format"] == "replace_format"
+    delete_nodes([NODE])
+
+
+def test_post_gzip():
+    TESTURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
+    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+# to get multipart-form correctly, data has to be specified in this strange way
+# and passed as the files= parameter to requests.put
+    TESTDATA = {"attributes_str": (None, '{"project_id":"TESTPROJECT"}')}
+    FILES = {'gzip': open(DATADIR + "10kb.fna.gz", 'rb')}
+    if DEBUG:
+            print("POST", TESTURL, TESTDATA, TESTHEADERS)
+    response = requests.post(TESTURL, headers=TESTHEADERS, files=FILES, data=TESTDATA)
+    data = json.loads(response.content.decode("utf-8"))
+    assert data["status"] == 200
+    NODE = data["data"]["id"]
+    assert data["data"]["file"]["name"] == "10kb.fna"
+    assert data["data"]["file"]["checksum"]["md5"] == "730c276ea1510e2b7ef6b682094dd889"
+    delete_nodes([NODE])
+
+
+def test_post_bzip():
+    TESTURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
+    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+# to get multipart-form correctly, data has to be specified in this strange way
+# and passed as the files= parameter to requests.put
+    TESTDATA = {"attributes_str": (None, '{"project_id":"TESTPROJECT"}')}
+    FILES = {'bzip2': open(DATADIR + "10kb.fna.bz2", 'rb')}
+    if DEBUG:
+            print("POST", TESTURL, TESTDATA, TESTHEADERS)
+    response = requests.post(TESTURL, headers=TESTHEADERS, files=FILES, data=TESTDATA)
+    data = json.loads(response.content.decode("utf-8"))
+    assert data["status"] == 200
+    NODE = data["data"]["id"]
+    assert data["data"]["file"]["name"] == "10kb.fna"
+    assert data["data"]["file"]["checksum"]["md5"] == "730c276ea1510e2b7ef6b682094dd889"
+    delete_nodes([NODE])
