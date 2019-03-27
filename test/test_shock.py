@@ -25,6 +25,10 @@ def create_three_nodes():
     if DEBUG:
         print("POST", TESTURL, TESTDATA, TESTHEADERS)
     response = requests.post(TESTURL, headers=TESTHEADERS, files=FILES)
+    if DEBUG:
+        print(response.status_code)
+        print(response.text)
+        print(response.error)
     data = json.loads(response.content.decode("utf-8"))
     assert data["status"] == 200
     NODES += [data["data"]["id"]]
