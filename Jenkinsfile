@@ -15,7 +15,14 @@ pipeline {
         stage('Setup') {
             steps {
                 // Create network
-                sh 'docker network create shock-test'
+                sh '''UP=`docker network ls | grep shock-testr` 
+                    if [ -n "$UP" ] ; then  
+                        echo Network already up
+                    else
+                        echo Creatting shock-test network
+                        docker network create shock-test
+                    fi
+                    '''
                 // start services
                 sh 'docker run -d --rm --network shock-test --name shock-server-mongodb --expose=27017 mongo mongod --dbpath /data/db'   
                 sh '''docker run -d --rm --network shock-test \
@@ -34,7 +41,7 @@ pipeline {
                     --env PERL5LIB=/usr/local/apache2/cgi-bin \
                     mgrast/authserver:latest
                 '''       
-                sh 'docker run -d --rm --network shock-test --name shock-server --expose=7445 shock:testing /go/bin/shock-server --hosts shock-server-mongodb --oauth_urls "http://shock-auth-server/cgi-bin/?action=data" --oauth_bearers oauth --write false'         
+                sh 'docker run -d --rm --network shock-test --name shock-server --expose=7445 shock:testing /go/bin/shock-server --hosts shock-server-mongodb --oauth_urls "http://shock-auth-server/cgi-bin/?action=data" --oauth_bearers oauth --write 0'         
             }
         }
         stage('Test') { 
