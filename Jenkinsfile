@@ -24,24 +24,51 @@ pipeline {
                     fi
                     '''
                 // start services
-                sh 'docker run -d --rm --network shock-test --name shock-server-mongodb --expose=27017 mongo mongod --dbpath /data/db'   
-                sh '''docker run -d --rm --network shock-test \
-                                --env MYSQL_ROOT_PASSWORD=secret \
-                                --env MYSQL_DATABASE=TestAppUsers \
-                                --env MYSQL_USER=authService \
-                                --env MYSQL_PASSWORD=authServicePassword \
-                                -v `pwd`/test/dbsetup.mysql:/tmp/dbsetup.mysql \
-                                --name shock-auth-db mysql:5.7 \
-                                --explicit_defaults_for_timestamp --init-file /tmp/dbsetup.mysql'''
-                sh '''docker run -d --rm --network shock-test --name shock-auth-server \
-                    --env MYSQL_HOST=shock-auth-db \
-                    --env MYSQL_DATABASE=TestAppUsers \
-                    --env MYSQL_USER=authService \
-                    --env MYSQL_PASSWORD=authServicePassword \
-                    --env PERL5LIB=/usr/local/apache2/cgi-bin \
-                    mgrast/authserver:latest
-                '''       
-                sh 'docker run -d --rm --network shock-test --name shock-server --expose=7445 shock:testing /go/bin/shock-server --hosts shock-server-mongodb --oauth_urls "http://shock-auth-server/cgi-bin/?action=data" --oauth_bearers oauth --write 0'         
+                sh '''
+                    UP=`docker ps | grep shock-server-mongodb`
+                    if [ -n "$UP" ] ; then
+                        echo Still up shock-server-mongodb, reusing
+                    else     
+                        docker run -d --rm --network shock-test --name shock-server-mongodb --expose=27017 mongo mongod --dbpath /data/db
+                    fi
+                    '''   
+                sh '''
+                    UP=`docker ps | grep shock-server-mongodb`
+                    if [ -n "$UP" ] ; then
+                        echo Still up shock-server-mongodb
+                    else    
+                        docker run -d --rm --network shock-test \
+                                    --env MYSQL_ROOT_PASSWORD=secret \
+                                    --env MYSQL_DATABASE=TestAppUsers \
+                                    --env MYSQL_USER=authService \
+                                    --env MYSQL_PASSWORD=authServicePassword \
+                                    -v `pwd`/test/dbsetup.mysql:/tmp/dbsetup.mysql \
+                                    --name shock-auth-db mysql:5.7 \
+                                    --explicit_defaults_for_timestamp --init-file /tmp/dbsetup.mysql
+                    fi
+                    '''
+                sh '''
+                    UP=`docker ps | grep shock-auth-server`
+                    if [ -n "$UP" ] ; then
+                        echo Still up shock-server-mongodb
+                    else    
+                        docker run -d --rm --network shock-test --name shock-auth-server \
+                        --env MYSQL_HOST=shock-auth-db \
+                        --env MYSQL_DATABASE=TestAppUsers \
+                        --env MYSQL_USER=authService \
+                        --env MYSQL_PASSWORD=authServicePassword \
+                        --env PERL5LIB=/usr/local/apache2/cgi-bin \
+                        mgrast/authserver:latest
+                    fi
+                    '''       
+                sh '''
+                    UP=`docker ps | grep "shock-server$"`
+                    if [ -n "$UP" ] ; then
+                        echo Found old shock server, stopping and starting new one
+                        docker stop shock-server
+                    fi     
+                    docker run -d --rm --network shock-test --name shock-server --expose=7445 shock:testing /go/bin/shock-server --hosts shock-server-mongodb --oauth_urls "http://shock-auth-server/cgi-bin/?action=data" --oauth_bearers oauth --write 0
+                    '''        
             }
         }
         stage('Test') { 
