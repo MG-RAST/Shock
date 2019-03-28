@@ -72,7 +72,7 @@ pipeline {
             steps {
                 // execute tests
                 sh 'docker run -t --rm --network shock-test shock-test-client:testing  /shock-tester.sh -h http://shock-server -p 7445'
-                sh '''docker run -t --rm --network shock-test --env SHOCK_HOST="http://shock-server" --env SHOCK_PORT=7445 shock-test-client:testing \
+                sh '''docker run -t --rm --network shock-test --env DEBUG=1 --env SHOCK_HOST="http://shock-server" --env SHOCK_PORT=7445 shock-test-client:testing \
                     pytest /go/src/github.com/MG-RAST/Shock/test/test_shock.py'''
             }   
         }
