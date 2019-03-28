@@ -82,7 +82,7 @@ pipeline {
              // shutdown container and network
                 sh '''
                     set +e
-                    docker stop shock-server shock-server-mongodb
+                    docker stop shock-server shock-server-mongodb shock-auth-server shock-auth-db
                     docker rmi shock:testing shock-test-client:testing
                     docker network rm shock-test
                     // delete images
