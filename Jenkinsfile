@@ -44,8 +44,9 @@ pipeline {
                                     --name shock-auth-db mysql:5.7 \
                                     --explicit_defaults_for_timestamp --init-file /tmp/dbsetup.mysql
                     fi
+                    docker ps
                     docker logs shock-auth-db
-                    '''
+                    cat test/dbsetup.mysql                     '''
                 sh  '''
                     if [ -n "`docker ps | grep shock-auth-server`" ] ; then
                         echo Still up shock-auth-server
