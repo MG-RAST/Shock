@@ -7,9 +7,9 @@ pipeline {
             steps {
                 // Build container
                 sh 'echo Build shock server'
-                sh 'docker build -t shock:testing .' 
+                sh 'docker build --no-cache -t shock:testing .' 
                 sh 'echo Build test client'
-                sh 'docker build -t shock-test-client:testing -f test/Dockerfile .'
+                sh 'docker build --no-cache -t shock-test-client:testing -f test/Dockerfile .'
             }
         }
         stage('Setup') {
