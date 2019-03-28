@@ -81,10 +81,12 @@ pipeline {
     post {
         always {
              // shutdown container and network
-                sh 'docker stop shock-server shock-server-mongodb'
-                sh 'docker rmi shock:testing shock-test-client:testing'
-                sh 'docker network rm shock-test'
-                // delete images
+                sh '''
+                    docker stop shock-server shock-server-mongodb
+                    docker rmi shock:testing shock-test-client:testing
+                    docker network rm shock-test
+                    // delete images
+                    '''
         }
     }
 }
