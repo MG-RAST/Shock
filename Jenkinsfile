@@ -19,7 +19,7 @@ pipeline {
                     if [ -n "`docker network ls | grep shock-test`" ] ; then  
                         echo Network already up
                     else
-                        echo Creatting shock-test network
+                        echo Creating shock-test network
                         docker network create shock-test
                     fi
                     '''
