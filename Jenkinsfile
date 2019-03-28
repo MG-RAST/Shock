@@ -16,8 +16,7 @@ pipeline {
             steps {
                 // Create network
                 sh '''
-                    UP=`docker network ls | grep shock-test` 
-                    if [ -n "$UP" ] ; then  
+                    if [ -n "`docker network ls | grep shock-test`" ] ; then  
                         echo Network already up
                     else
                         echo Creatting shock-test network
@@ -34,7 +33,7 @@ pipeline {
                     '''   
                 sh  '''
                     if [ -n "`docker ps | grep shock-auth-db`" ] ; then
-                        echo Still up shock-server-mongodb
+                        echo Still up grep shock-auth-db
                     else    
                         docker run -d --rm --network shock-test \
                                     --env MYSQL_ROOT_PASSWORD=secret \
@@ -45,10 +44,11 @@ pipeline {
                                     --name shock-auth-db mysql:5.7 \
                                     --explicit_defaults_for_timestamp --init-file /tmp/dbsetup.mysql
                     fi
+                    docker log shock-auth-db
                     '''
                 sh  '''
                     if [ -n "`docker ps | grep shock-auth-server`" ] ; then
-                        echo Still up shock-server-mongodb
+                        echo Still up shock-auth-server
                     else    
                         docker run -d --rm --network shock-test --name shock-auth-server \
                         --env MYSQL_HOST=shock-auth-db \
@@ -85,7 +85,6 @@ pipeline {
                     docker stop shock-server shock-server-mongodb shock-auth-server shock-auth-db
                     docker rmi shock:testing shock-test-client:testing
                     docker network rm shock-test
-                    // delete images
                     set -e
                     echo Cleanup done
                     '''
