@@ -15,7 +15,7 @@ pipeline {
         stage('Setup') {
             steps {
                 // Create network
-                sh '''UP=`docker network ls | grep shock-testr` 
+                sh '''UP=`docker network ls | grep shock-test` 
                     if [ -n "$UP" ] ; then  
                         echo Network already up
                     else
