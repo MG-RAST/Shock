@@ -7,7 +7,7 @@ import os
 import requests
 
 DATADIR = dirname(abspath(__file__)) + "/testdata/"
-DEBUG = 1
+DEBUG = os.environ.get('DEBUG' , 0)
 PORT = os.environ.get('SHOCK_PORT' , "7445")
 URL  = os.environ.get('SHOCK_HOST' , "http://localhost") 
 SHOCK_URL = URL + ":" + PORT
@@ -28,7 +28,6 @@ def create_three_nodes():
     if DEBUG:
         print(response.status_code)
         print(response.text)
-        print(response.error)
     data = json.loads(response.content.decode("utf-8"))
     assert data["status"] == 200
     NODES += [data["data"]["id"]]
