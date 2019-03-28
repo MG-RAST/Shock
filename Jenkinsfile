@@ -81,10 +81,13 @@ pipeline {
         always {
              // shutdown container and network
                 sh '''
+                    set +e
                     docker stop shock-server shock-server-mongodb
                     docker rmi shock:testing shock-test-client:testing
                     docker network rm shock-test
                     // delete images
+                    set -e
+                    echo Cleanup done
                     '''
         }
     }
