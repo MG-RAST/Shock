@@ -15,7 +15,8 @@ pipeline {
         stage('Setup') {
             steps {
                 // Create network
-                sh '''UP=`docker network ls | grep shock-test` 
+                sh '''
+                    UP=`docker network ls | grep shock-test` 
                     if [ -n "$UP" ] ; then  
                         echo Network already up
                     else
@@ -25,16 +26,14 @@ pipeline {
                     '''
                 // start services
                 sh '''
-                    UP=`docker ps | grep shock-server-mongodb`
-                    if [ -n "$UP" ] ; then
+                    if [ -n "`docker ps | grep shock-server-mongodb`" ] ; then
                         echo Still up shock-server-mongodb, reusing
                     else     
                         docker run -d --rm --network shock-test --name shock-server-mongodb --expose=27017 mongo mongod --dbpath /data/db
                     fi
                     '''   
                 sh '''
-                    UP=`docker ps | grep shock-server-mongodb`
-                    if [ -n "$UP" ] ; then
+                    if [ -n "`docker ps | grep shock-auth-db" ] ; then
                         echo Still up shock-server-mongodb
                     else    
                         docker run -d --rm --network shock-test \
@@ -48,8 +47,7 @@ pipeline {
                     fi
                     '''
                 sh '''
-                    UP=`docker ps | grep shock-auth-server`
-                    if [ -n "$UP" ] ; then
+                    if [ -n "`docker ps | grep shock-auth-server`" ] ; then
                         echo Still up shock-server-mongodb
                     else    
                         docker run -d --rm --network shock-test --name shock-auth-server \
