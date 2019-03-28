@@ -25,15 +25,15 @@ pipeline {
                     fi
                     '''
                 // start services
-                sh '''
+                sh  '''
                     if [ -n "`docker ps | grep shock-server-mongodb`" ] ; then
                         echo Still up shock-server-mongodb, reusing
                     else     
                         docker run -d --rm --network shock-test --name shock-server-mongodb --expose=27017 mongo mongod --dbpath /data/db
                     fi
                     '''   
-                sh '''
-                    if [ -n "`docker ps | grep shock-auth-db" ] ; then
+                sh  '''
+                    if [ -n "`docker ps | grep shock-auth-db`" ] ; then
                         echo Still up shock-server-mongodb
                     else    
                         docker run -d --rm --network shock-test \
@@ -46,7 +46,7 @@ pipeline {
                                     --explicit_defaults_for_timestamp --init-file /tmp/dbsetup.mysql
                     fi
                     '''
-                sh '''
+                sh  '''
                     if [ -n "`docker ps | grep shock-auth-server`" ] ; then
                         echo Still up shock-server-mongodb
                     else    
@@ -59,7 +59,7 @@ pipeline {
                         mgrast/authserver:latest
                     fi
                     '''       
-                sh '''
+                sh  '''
                     UP=`docker ps | grep "shock-server$"`
                     if [ -n "$UP" ] ; then
                         echo Found old shock server, stopping and starting new one
