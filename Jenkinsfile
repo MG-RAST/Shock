@@ -61,7 +61,7 @@ pipeline {
                     fi
                     '''       
                 sh  '''
-                    if [ -n "`docker ps | grep "shock-server$`" ] ; then
+                    if [ -n "`docker ps | grep 'shock-server$'`" ] ; then
                         echo Found old shock server, stopping and starting new one
                         docker stop shock-server
                     fi     
