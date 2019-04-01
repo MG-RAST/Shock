@@ -65,7 +65,7 @@ pipeline {
                         echo Found old shock server, stopping and starting new one
                         docker stop shock-server
                     fi     
-                    docker run -d --rm --network shock-test --name shock-server --expose=7445 shock:testing /go/bin/shock-server --hosts shock-server-mongodb --oauth_urls "http://shock-auth-server/cgi-bin/?action=data" --oauth_bearers oauth --write 0
+                    docker run -d --rm --network shock-test --name shock-server --expose=7445 shock:testing /go/bin/shock-server --hosts shock-server-mongodb --oauth_urls "http://shock-auth-server/cgi-bin/?action=data" --oauth_bearers oauth --api-url 'http://shock-server/' --write 0
                     '''        
             }
         }
