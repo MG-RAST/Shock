@@ -1,0 +1,11 @@
+CREATE DATABASE IF NOT EXISTS TestAppUsers ;
+USE TestAppUsers ;
+CREATE TABLE IF NOT EXISTS user (login CHAR(254) PRIMARY KEY, password text NOT NULL, cookie text, name text, email text, confirmed text, admin BOOLEAN);
+CREATE TABLE IF NOT EXISTS apps (application CHAR(50) PRIMARY KEY, url text NOT NULL, secret text NOT NULL);
+CREATE TABLE IF NOT EXISTS accepts (login CHAR(254), application text NOT NULL, token text NOT NULL);
+CREATE TABLE IF NOT EXISTS tokens (token CHAR(100) PRIMARY KEY, login text NOT NULL, created text NOT NULL);
+CREATE TABLE IF NOT EXISTS scope (name CHAR(254) PRIMARY KEY, user text NOT NULL);
+CREATE TABLE IF NOT EXISTS rights (type CHAR(20) PRIMARY KEY, item text, edit BOOLEAN, view BOOLEAN, scope text, owner BOOLEAN);
+INSERT IGNORE INTO `user` (`login`, `password`, `cookie`, `name`, `email`, `confirmed`, `admin`) VALUES ('demo', 'fe01ce2a7fbac8fafaed7c982a04e229', NULL, 'Demo User', 'demo@somewhere.over.the.rainbow', 'yes', NULL);
+INSERT IGNORE INTO `tokens` (`token`, `login`, `created`) VALUES ('1234', 'demo', '2017-07-21');
+INSERT IGNORE INTO `apps` (`application`, `url`, `secret`) VALUES ('Shock', 'http://shock-server/path/to/auth_client/for/callback', 'vcZYffLyDabuyxXN8vstbsaMdNwpMKfk') ;
