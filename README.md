@@ -32,9 +32,10 @@ docker build --force-rm --no-cache --rm -t mgrast/shock
 
 If you only need the statically compiled binary, you can extract it from the Dockerimage:
 ```bash
-docker create --name shock mgrast/shock:
-docker cp shock:/go/bin/shock-server .
-docker cp shock:/go/bin/shock-client .
+docker create --name shock mgrast/shock
+mkdir -p bin
+docker cp shock:/go/bin/shock-server ./bin/
+docker cp shock:/go/bin/shock-client ./bin/
 docker rm shock
 ```
 
