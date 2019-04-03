@@ -25,15 +25,14 @@ docker pull mgrast/shock
 
 Or, to build the Docker image on you own:
 ```bash
-export TAG=`date +"%Y%m%d.%H%M"`
 git clone --recursive https://github.com/MG-RAST/Shock.git
 cd Shock
-docker build --force-rm --no-cache --rm -t mgrast/shock:${TAG} .
+docker build --force-rm --no-cache --rm -t mgrast/shock
 ```
 
 If you only need the statically compiled binary, you can extract it from the Dockerimage:
 ```bash
-docker create --name shock mgrast/shock:${TAG}
+docker create --name shock mgrast/shock:
 docker cp shock:/go/bin/shock-server .
 docker cp shock:/go/bin/shock-client .
 docker rm shock
