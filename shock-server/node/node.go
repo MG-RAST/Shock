@@ -97,6 +97,27 @@ func (node *Node) DBInit() {
 func CreateNodeUpload(u *user.User, params map[string]string, files file.FormFiles) (node *Node, err error) {
 	// if copying node or creating subset node from parent, check if user has rights to the original node
 
+	checkSumMD5, hasCheckSumMD5 := params["checksum-md5"] //TODO make checksum generic using strings.Split("-") ?
+	if hasCheckSumMD5 {
+		matchingNodes := Nodes{}
+
+		_, err = dbFind(bson.M{"file.checksum.md5": checkSumMD5}, &matchingNodes, "", nil) // TODO search in public and owner nodes only
+		if err != nil {
+			return nil, err
+		}
+
+		if len(matchingNodes) > 0 {
+			var matchingNode *Node
+			matchingNode = matchingNodes[0]
+
+			params["copy_data"] = matchingNode.Id
+			delete(params, "path")
+
+		} else {
+			// node not found, continue as usual
+		}
+	}
+
 	if copy_data_id, hasCopyData := params["copy_data"]; hasCopyData {
 		var copy_data_node *Node
 		copy_data_node, err = Load(copy_data_id)

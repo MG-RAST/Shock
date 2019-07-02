@@ -5,6 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/node/archive"
@@ -12,12 +19,6 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node/locker"
 	"github.com/MG-RAST/Shock/shock-server/util"
 	"gopkg.in/mgo.v2/bson"
-	"io/ioutil"
-	"os"
-	"sort"
-	"strconv"
-	"strings"
-	"time"
 )
 
 //Modification functions
@@ -98,8 +99,9 @@ func (node *Node) Update(params map[string]string, files file.FormFiles, hasLock
 		err = errors.New("parts parameter incompatible with type, path, copy_data and/or parent_node parameter(s)")
 	} else if isVirtualNode && (isPathUpload || isCopyUpload || isSubsetUpload) {
 		err = errors.New("type parameter incompatible with path, copy_data and/or parent_node parameter")
-	} else if isPathUpload && (isCopyUpload || isSubsetUpload) {
-		err = errors.New("path parameter incompatible with copy_data and/or parent_node parameter")
+	} else if isPathUpload && isSubsetUpload { // (isCopyUpload || isSubsetUpload) {
+		//err = errors.New("path parameter incompatible with copy_data and/or parent_node parameter")
+		err = errors.New("path parameter incompatible with isSubsetUpload parameter")
 	} else if isCopyUpload && isSubsetUpload {
 		err = errors.New("copy_data parameter incompatible with parent_node parameter")
 	} else if hasPartsFile && (isRegularUpload || isUrlUpload) {

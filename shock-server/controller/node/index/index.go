@@ -2,10 +2,16 @@ package index
 
 import (
 	"fmt"
+	"net/http"
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
+	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/node/locker"
 	"github.com/MG-RAST/Shock/shock-server/request"
@@ -13,8 +19,6 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	mgo "gopkg.in/mgo.v2"
-	"net/http"
-	"strconv"
 )
 
 type getRes struct {
@@ -28,6 +32,7 @@ type m map[string]string
 func IndexTypedRequest(ctx context.Context) {
 	nid := ctx.PathValue("nid")
 	idxType := ctx.PathValue("idxType")
+
 	rmeth := ctx.HttpRequest().Method
 
 	u, err := request.Authenticate(ctx.HttpRequest())
@@ -101,7 +106,7 @@ func IndexTypedRequest(ctx context.Context) {
 			responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 		}
 
-	case "PUT":
+	case "PUT": // PUT should be idempotent
 		if rights["write"] == false && u.Admin == false && n.Acl.Owner != u.Uuid {
 			logger.Error("err@node_Index: (Authenticate) id=" + nid + ": " + e.UnAuth)
 			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
@@ -133,13 +138,18 @@ func IndexTypedRequest(ctx context.Context) {
 			return
 		} else if idxType == "" {
 			logger.Error("err@node_Index: (node.Indexes) id=" + nid + ": " + e.InvalidIndex)
-			responder.RespondWithError(ctx, http.StatusBadRequest, e.InvalidIndex)
+			responder.RespondWithError(ctx, http.StatusBadRequest, e.InvalidIndex+" , idxType is empty")
 			return
 		}
 
 		// Gather query params
 		query := ctx.HttpRequest().URL.Query()
-		_, forceRebuild := query["force_rebuild"]
+		forceRebuildStr, forceRebuild := query["force_rebuild"]
+		if forceRebuild {
+			if forceRebuildStr[0] == "0" {
+				forceRebuild = false
+			}
+		}
 
 		// does it already exist
 		if _, has := n.Indexes[idxType]; has {
@@ -154,11 +164,15 @@ func IndexTypedRequest(ctx context.Context) {
 			}
 		}
 
-		// check for invalid combinations
-		if _, ok := index.Indexers[idxType]; !ok && idxType != "bai" && idxType != "subset" && idxType != "column" {
-			logger.Error("err@node_Index: (node.Indexes) id=" + nid + ": " + e.InvalidIndex)
-			responder.RespondWithError(ctx, http.StatusBadRequest, e.InvalidIndex)
-			return
+		_, isUpload := query["upload"]
+
+		if !isUpload {
+			// check for invalid combinations
+			if _, ok := index.Indexers[idxType]; !ok && idxType != "bai" && idxType != "subset" && idxType != "column" {
+				logger.Error("err@node_Index: (node.Indexes) id=" + nid + ": " + e.InvalidIndex)
+				responder.RespondWithError(ctx, http.StatusBadRequest, e.InvalidIndex+" , invalid combination")
+				return
+			}
 		}
 		if idxType == "size" {
 			err_msg := fmt.Sprintf("Index type size is a virtual index and does not require index building.")
@@ -212,6 +226,79 @@ func IndexTypedRequest(ctx context.Context) {
 			}
 		}
 
+		if isUpload {
+
+			indexFormat := ""
+			indexFormatValue, hasIndexFormat := query["indexFormat"]
+			if hasIndexFormat {
+				indexFormat = indexFormatValue[0]
+			}
+
+			var avgUnitSize int64
+			avgUnitSize = 0
+			avgUnitSizeValue, hasAvgUnitSize := query["avgUnitSize"]
+			if hasAvgUnitSize {
+				avgUnitSize, err = strconv.ParseInt(avgUnitSizeValue[0], 10, 64)
+				if err != nil {
+					err = fmt.Errorf("Could not parse avgUnitSize: %s", err.Error())
+					responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+					return
+				}
+			}
+
+			var totalUnits int64
+			totalUnits = 0
+			totalUnitsValue, hasTotalUnits := query["totalUnits"]
+			if hasTotalUnits {
+				totalUnits, err = strconv.ParseInt(totalUnitsValue[0], 10, 64)
+				if err != nil {
+					err = fmt.Errorf("Could not parse totalUnits: %s", err.Error())
+					responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+					return
+				}
+			}
+
+			var files file.FormFiles
+			_, files, err = request.ParseMultipartForm(ctx.HttpRequest())
+			if err != nil {
+				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+				return
+			}
+			indexUpload, hasIndexUpload := files["upload"]
+
+			if !hasIndexUpload {
+				err = fmt.Errorf("index file missing, use upload field")
+				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+				return
+			}
+			// move index file
+			newIndexFilePath := n.IndexPath() + "/" + idxType + ".idx"
+			err = os.Rename(indexUpload.Path, newIndexFilePath)
+			if err != nil {
+				responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+				return
+			}
+
+			idxInfo := &node.IdxInfo{
+				Type:        idxType,
+				TotalUnits:  totalUnits,
+				AvgUnitSize: avgUnitSize,
+				Format:      indexFormat,
+				CreatedOn:   time.Now(),
+				Locked:      nil,
+			}
+
+			n.SetIndexInfo(idxType, idxInfo)
+			if err = n.Save(); err != nil {
+				err_msg := "err@node_Index (node.Save): id=" + nid + ": " + err.Error()
+				logger.Error(err_msg)
+				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				return
+			}
+			//responder.RespondOK(ctx)
+			responder.RespondWithData(ctx, idxInfo)
+			return
+		}
 		// lock this index, trigger async indexing, save state
 		idxInfo := &node.IdxInfo{
 			Type:   idxType,
