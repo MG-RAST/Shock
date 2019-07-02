@@ -3,13 +3,19 @@ package index
 import (
 	"encoding/binary"
 	"errors"
-	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"io"
 	"os"
 	"strconv"
 	"strings"
+
+	e "github.com/MG-RAST/Shock/shock-server/errors"
 )
 
+// indexerFunc Constructor function of Indexer objects
+//   example call: (f, n.Type, n.Subset.Index.Format, n.IndexPath()+"/"+n.Subset.Parent.IndexName+".idx")
+//   nType: node type
+//   snFormat: "sn=subset node" index format, e.g. matrix, array
+//   snIndexPath: subset node index file location
 type indexerFunc func(*os.File, string, string, string) Indexer
 
 var (
@@ -22,7 +28,7 @@ var (
 )
 
 type Indexer interface {
-	Create(string) (int64, string, error)
+	Create(string) (int64, string, error) // actual file parsing
 	Close() error
 }
 

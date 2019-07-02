@@ -4,16 +4,17 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
-	"github.com/MG-RAST/Shock/shock-server/conf"
-	"github.com/MG-RAST/Shock/shock-server/node/archive"
-	"github.com/MG-RAST/Shock/shock-server/node/file"
-	"github.com/MG-RAST/Shock/shock-server/node/file/index"
-	"github.com/MG-RAST/Shock/shock-server/node/locker"
 	"io"
 	"math/rand"
 	"os"
 	"syscall"
 	"time"
+
+	"github.com/MG-RAST/Shock/shock-server/conf"
+	"github.com/MG-RAST/Shock/shock-server/node/archive"
+	"github.com/MG-RAST/Shock/shock-server/node/file"
+	"github.com/MG-RAST/Shock/shock-server/node/file/index"
+	"github.com/MG-RAST/Shock/shock-server/node/locker"
 )
 
 func (node *Node) SetFile(file file.FormFile) (err error) {
@@ -22,7 +23,10 @@ func (node *Node) SetFile(file file.FormFile) (err error) {
 		return
 	}
 
-	os.Rename(file.Path, node.FilePath())
+	err = os.Rename(file.Path, node.FilePath())
+	if err != nil {
+		return
+	}
 	node.File.Name = file.Name
 	node.File.Size = fileStat.Size()
 	node.File.Checksum = file.Checksum
@@ -206,9 +210,15 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 	}
 
 	if action == "copy_file" {
-		os.Rename(tmpPath, node.FilePath())
+		err = os.Rename(tmpPath, node.FilePath())
+		if err != nil {
+			return
+		}
 	} else if action == "move_file" {
-		os.Rename(path, node.FilePath())
+		err = os.Rename(path, node.FilePath())
+		if err != nil {
+			return
+		}
 	} else {
 		node.File.Path = path
 	}
