@@ -33,6 +33,11 @@ func IndexTypedRequest(ctx context.Context) {
 	nid := ctx.PathValue("nid")
 	idxType := ctx.PathValue("idxType")
 
+	if idxType == "" {
+		responder.RespondWithError(ctx, http.StatusInternalServerError, "idxType empty")
+		return
+	}
+
 	rmeth := ctx.HttpRequest().Method
 
 	u, err := request.Authenticate(ctx.HttpRequest())
