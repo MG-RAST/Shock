@@ -8,12 +8,14 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"github.com/MG-RAST/Shock/shock-server/conf"
-	"github.com/MG-RAST/Shock/shock-server/node/file"
-	"github.com/MG-RAST/Shock/shock-server/node/file/format/seq"
+	"fmt"
 	"io"
 	"os"
 	"regexp"
+
+	"github.com/MG-RAST/Shock/shock-server/conf"
+	"github.com/MG-RAST/Shock/shock-server/node/file"
+	"github.com/MG-RAST/Shock/shock-server/node/file/format/seq"
 )
 
 var (
@@ -111,7 +113,11 @@ func (self *Reader) GetReadOffset() (n int, err error) {
 			lines := bytes.Split(bytes.TrimSpace(bytes.TrimRight(read, ">")), []byte{'\n'})
 			seq := bytes.Join(lines[1:], []byte{})
 			if len(seq) == 0 {
-				err = errors.New("Invalid fasta entry:\n" + string(read))
+				showLen := len(read)
+				if showLen > 50 {
+					showLen = 50
+				}
+				err = fmt.Errorf("Invalid fasta entry: %s", read[0:showLen])
 				return
 			}
 			if eof {
