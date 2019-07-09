@@ -4,11 +4,12 @@ package conf
 import (
 	"errors"
 	"fmt"
-	"github.com/MG-RAST/golib/goconfig/config"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/MG-RAST/golib/goconfig/config"
 )
 
 type idxOpts struct {
@@ -17,7 +18,8 @@ type idxOpts struct {
 	sparse   bool
 }
 
-const VERSION string = "[% VERSION %]"
+//const VERSION string = "[% VERSION %]"
+var VERSION string
 
 var VERSIONS = map[string]int{
 	"ACL":  2,
