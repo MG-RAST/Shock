@@ -13,14 +13,19 @@ DEBUG = 0
 PORT = os.environ.get('SHOCK_PORT', "7445")
 URL  = os.environ.get('SHOCK_HOST', "http://localhost") 
 SHOCK_URL = URL + ":" + PORT
-TOKEN = "1234"
+TOKEN = os.environ.get("MGRKEY")
+if URL == "http://localhost":
+    TOKEN="1234"
+    AUTH="OAuth: {}".format(TOKEN)
+else:
+    AUTH="mgrast {}".format(TOKEN)
 
 FILELIST = ["AAA.txt", "BBB.txt", "CCC.txt"] 
 
 def create_nodes(FILELIST):
     NODES = []
     TESTURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
 # to get multipart-form correctly, data has to be specified in this strange way
 # and passed as the files= parameter to requests.put
     TESTDATA = {"attributes_str": (None, '{"project_id":"TESTPROJECT"}')}
@@ -49,7 +54,7 @@ def create_nodes(FILELIST):
 def confirm_nodes_project(NODES, PROJECT):
     for NODEID in NODES:
         TESTURL = SHOCK_URL + "/node/{}".format(NODEID)
-        TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+        TESTHEADERS = {"Authorization": AUTH}
         if DEBUG:
             print("curl '{}' -H 'Authorization: Oauth {}'".format(TESTURL, TOKEN))
         response = requests.get(TESTURL, headers=TESTHEADERS)
@@ -59,7 +64,7 @@ def confirm_nodes_project(NODES, PROJECT):
 
 
 def delete_nodes(NODELIST):
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
     for NODEID in NODELIST:
         NODEURL = SHOCK_URL + "/node/{}".format(NODEID)
         response = requests.delete(NODEURL, headers=TESTHEADERS)
@@ -81,7 +86,7 @@ def test_nodelist_noauth():
 def test_nodelist_auth():
     TESTURL = "{SHOCK_URL}/node/?query".format(SHOCK_URL=SHOCK_URL)
     TESTDATA = {}
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
     if DEBUG:
         print(TESTURL, TESTDATA, TESTHEADERS)
     response = requests.get(TESTURL, headers=TESTHEADERS, params=TESTDATA)
@@ -103,7 +108,7 @@ def test_nodelist_badauth():
 
 def test_upload_emptyfile():
     TESTURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
     FILES = {'upload': open(DATADIR + 'emptyfile', 'rb')}
     if DEBUG:
         print(TESTURL, TESTHEADERS)
@@ -124,7 +129,7 @@ def test_upload_threefiles():
     if DEBUG:
         print(TESTURL)
     TESTDATA = {}
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
     response = requests.get(TESTURL, headers=TESTHEADERS, params=TESTDATA)
     data = json.loads(response.content.decode("utf-8"))
     assert data["total_count"] >= 3
@@ -140,7 +145,7 @@ def test_upload_threefiles():
 
 def test_upload_and_delete_node():
     TESTURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
     FILES = {'upload': open(DATADIR + 'CCC.txt', 'rb')}
     if DEBUG:
         print("POST", TESTURL, TESTHEADERS, FILES)
@@ -151,7 +156,7 @@ def test_upload_and_delete_node():
     if DEBUG:
         print("GET", TESTURL, TESTHEADERS)
     TESTURL = SHOCK_URL + "/node/{}".format(NODEID)
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
     FILES = {}
     response = requests.get(TESTURL, headers=TESTHEADERS)
     data = json.loads(response.content.decode("utf-8"))
@@ -160,14 +165,14 @@ def test_upload_and_delete_node():
     if DEBUG:
         print("DELETE", TESTURL, TESTHEADERS)
     TESTURL = SHOCK_URL+"/node/{}".format(NODEID)
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
     response = requests.delete(TESTURL, headers=TESTHEADERS)
     data = json.loads(response.content.decode("utf-8"))
     # test my node is gone
     if DEBUG:
         print("GET", TESTURL, TESTHEADERS)
     TESTURL = SHOCK_URL + "/node/{}".format(NODEID)
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
     response = requests.get(TESTURL, headers=TESTHEADERS)
     data = json.loads(response.content.decode("utf-8"))
     assert data["status"] == 404
@@ -175,7 +180,7 @@ def test_upload_and_delete_node():
 
 def test_upload_and_download_node_GET():
     TESTURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
     FILES = {'upload': open(DATADIR + 'CCC.txt', 'rb')}
     if DEBUG:
         print("POST", TESTURL, TESTHEADERS, FILES)
@@ -186,7 +191,7 @@ def test_upload_and_download_node_GET():
     if DEBUG:
         print("GET", TESTURL, TESTHEADERS)
     TESTURL = SHOCK_URL + "/node/{}".format(NODEID)
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
     FILES = {}
     response = requests.get(TESTURL, headers=TESTHEADERS)
     data = json.loads(response.content.decode("utf-8"))
@@ -204,7 +209,7 @@ def test_upload_and_download_node_GET_gzip():
     # curl -X GET http://<host>[:<port>]/node/<node_id>?download&compression=<zip|gzip>
     # upload node
     TESTURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
     FILES = {'upload': open(DATADIR + 'CCC.txt', 'rb')}
     if DEBUG:
         print("POST", TESTURL, TESTHEADERS, FILES)
@@ -213,7 +218,7 @@ def test_upload_and_download_node_GET_gzip():
     NODEID = data["data"]["id"]
     # test my node exists
     TESTURL = SHOCK_URL + "/node/{}".format(NODEID)
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
     FILES = {}
     if DEBUG:
         print("GET", TESTURL, TESTHEADERS)
@@ -231,7 +236,7 @@ def test_upload_and_download_node_GET_gzip():
 
 def test_upload_and_download_node_GET_zip():
     TESTURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
     FILES = {'upload': open(DATADIR + 'CCC.txt', 'rb')}
     if DEBUG:
         print("POST", TESTURL, TESTHEADERS, FILES)
@@ -242,7 +247,7 @@ def test_upload_and_download_node_GET_zip():
     if DEBUG:
         print("GET", TESTURL, TESTHEADERS)
     TESTURL = SHOCK_URL + "/node/{}".format(NODEID)
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
     FILES = {}
     response = requests.get(TESTURL, headers=TESTHEADERS)
     data = json.loads(response.content.decode("utf-8"))
@@ -257,7 +262,7 @@ def test_upload_and_download_node_GET_zip():
 
 def test_upload_and_download_node_gzip():
     TESTURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
     FILES = {'upload': open(DATADIR + 'CCC.txt', 'rb')}
     if DEBUG:
         print("POST", TESTURL, TESTHEADERS, FILES)
@@ -287,7 +292,7 @@ def test_download_zip_GET():
     # query for TESTDATA
     TESTURL = "{SHOCK_URL}/node?query".format(SHOCK_URL=SHOCK_URL)
     TESTDATA = {"project_id": "TESTPROJECT"}
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
     if DEBUG:
         print("GET", TESTURL, TESTDATA)
     response = requests.get(TESTURL, headers=TESTHEADERS, params=TESTDATA)
@@ -342,7 +347,7 @@ def test_download_tar_GET():
     # query for TESTDATA
     TESTURL = "{SHOCK_URL}/node?query".format(SHOCK_URL=SHOCK_URL)
     TESTDATA = {"project_id": "TESTPROJECT"}
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
     if DEBUG:
         print("GET", TESTURL, TESTDATA)
     response = requests.get(TESTURL, headers=TESTHEADERS, params=TESTDATA)
@@ -375,7 +380,7 @@ def test_download_tar_POST():
     confirm_nodes_project(NODES, "TESTPROJECT")
     # query for TESTDATA
     TESTURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
     # Remember, multipart-forms that are not files have format {key: (None, value)}
     TESTDATA = {"ids": (None, ",".join(NODES)),
                 "download_url": (None, 1),
@@ -409,7 +414,7 @@ def test_download_zip_POST():
     confirm_nodes_project(NODES, "TESTPROJECT")
     # query for TESTDATA
     TESTURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
     # Remember, multipart-forms that are not files have format {key: (None, value)}
     TESTDATA = {"ids": (None, ",".join(NODES)),
                 "download_url": (None, 1),
@@ -438,7 +443,7 @@ def test_download_zip_POST():
 def test_put_attributesstr():
     NODE = create_nodes(["AAA.txt"])[0]
     TESTDATA = {"attributes_str": (None, '{"project_id":"TESTPROJECT2"}')}
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
     if DEBUG:
         print("PUT", SHOCK_URL + "/node/" + NODE, TESTDATA)
     r = requests.put(SHOCK_URL + "/node/" +
@@ -462,7 +467,7 @@ def test_put_attributesstr():
 
 def test_post_attributes():
     TESTURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
 # to get multipart-form correctly, data has to be specified in this strange way
 # and passed as the files= parameter to requests.put
     TESTDATA = {}
@@ -481,7 +486,7 @@ def test_post_attributes():
 
 def test_post_gzip():
     TESTURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
 # to get multipart-form correctly, data has to be specified in this strange way
 # and passed as the files= parameter to requests.put
     TESTDATA = {"attributes_str": (None, '{"project_id":"TESTPROJECT"}')}
@@ -499,7 +504,7 @@ def test_post_gzip():
 
 def test_post_bzip():
     TESTURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
-    TESTHEADERS = {"Authorization": "OAuth {}".format(TOKEN)}
+    TESTHEADERS = {"Authorization": AUTH}
 # to get multipart-form correctly, data has to be specified in this strange way
 # and passed as the files= parameter to requests.put
     TESTDATA = {"attributes_str": (None, '{"project_id":"TESTPROJECT"}')}
