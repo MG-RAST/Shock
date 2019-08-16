@@ -40,7 +40,7 @@ type Node struct {
 	Type         string            `bson:"type" json:"type"`
 	Subset       Subset            `bson:"subset" json:"-"`
 	Parts        *PartsList        `bson:"parts" json:"parts"`
-	Locations		 []string					 `bson:"remotes" json:"remotes"`					
+	Locations    []string          `bson:"remotes" json:"remotes"`
 }
 
 type linkage struct {
@@ -280,7 +280,7 @@ func (node *Node) FileReader() (reader file.ReaderAt, err error) {
 		}
 		return file.MultiReaderAt(readers...), nil
 	}
-	return os.Open(node.FilePath())
+	return FMOpen(node.FilePath())
 }
 
 func (node *Node) DynamicIndex(name string) (idx index.Index, err error) {

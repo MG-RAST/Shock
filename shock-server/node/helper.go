@@ -3,11 +3,14 @@ package node
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path"
+	"path/filepath"
+	"strings"
+
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/node/locker"
 	"github.com/MG-RAST/golib/go-uuid/uuid"
-	"os"
-	"path/filepath"
 )
 
 // has
@@ -104,6 +107,21 @@ func contains(list []string, elem string) bool {
 
 func getPath(id string) string {
 	return fmt.Sprintf("%s/%s/%s/%s/%s", conf.PATH_DATA, id[0:2], id[2:4], id[4:6], id)
+}
+
+// uuid2Path extract UUID from path
+func uuid2Path(id string) string {
+	return fmt.Sprintf("%s/%s/%s/%s/%s", conf.PATH_DATA, id[0:2], id[2:4], id[4:6], id)
+}
+
+// Path2uuid extract uuid from path
+func Path2uuid(filepath string) string {
+
+	ext := path.Ext(filepath)                     // identify extension
+	filename := strings.TrimSuffix(filepath, ext) // find filename
+	uuid := path.Base(filename)                   // implement basename cmd
+
+	return uuid
 }
 
 func getIndexPath(id string) string {
