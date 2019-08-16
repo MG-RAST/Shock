@@ -1,12 +1,13 @@
 package node
 
 import (
+	"regexp"
+	"time"
+
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node/locker"
 	"gopkg.in/mgo.v2/bson"
-	"regexp"
-	"time"
 )
 
 var (
