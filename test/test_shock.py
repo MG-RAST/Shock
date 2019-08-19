@@ -10,7 +10,7 @@ import subprocess
 DATADIR = dirname(abspath(__file__)) + "/testdata/"
 DEBUG = 1
 PORT = os.environ.get('SHOCK_PORT', "7445")
-URL  = os.environ.get('SHOCK_HOST', "http://localhost") 
+URL  = os.environ.get('SHOCK_HOST', "http://localhost")
 SHOCK_URL = URL + ":" + PORT
 TOKEN = os.environ.get("MGRKEY")
 if URL == "http://localhost":
@@ -19,9 +19,12 @@ if URL == "http://localhost":
 else:
     AUTH = "mgrast {}".format(TOKEN)
 
-FILELIST = ["AAA.txt", "BBB.txt", "CCC.txt"] 
+FILELIST = ["AAA.txt", "BBB.txt", "CCC.txt"]
 TESTHEADERS = {"Authorization": AUTH}
-DONTDELETE = 1
+if URL == "https://sequencing.bio.anl.gov":
+    TESTHEADERS= {"AUTH" : TOKEN}
+
+DONTDELETE = 0
 
 def create_nodes(FILELIST):
     '''Takes a list of filenames, uploads to shock, returns list of shock ids.'''
@@ -57,8 +60,8 @@ def confirm_nodes_project(NODES, PROJECT):
         if DEBUG:
             print("curl '{}' -H 'Authorization: Oauth {}'".format(TESTURL, TOKEN))
         response = requests.get(TESTURL, headers=TESTHEADERS)
+        assert response.status_code == 200, response.content.decode("utf-8")
         data = json.loads(response.content.decode("utf-8"))
-        assert data["status"] == 200, data["error"]
         assert PROJECT in data["data"]["attributes"]["project_id"]
 
 
@@ -74,6 +77,7 @@ def delete_nodes(NODELIST):
     return
 
 def test_delete_nodes():
+    assert DONTDELETE is not 1, "This test fails unless deleting is enabled"
     NODEID = create_nodes(["AAA.txt"])[0]
     NODEURL = SHOCK_URL + "/node/{}".format(NODEID)
     if DEBUG:
@@ -96,6 +100,7 @@ def test_nodelist_noauth():
     if DEBUG:
         print("GET", TESTURL, TESTDATA, TESTHEADERS)
     response = requests.get(TESTURL, headers=TESTHEADERS, params=TESTDATA)
+    assert response.status_code == 200, response.content.decode("utf-8")
     data = json.loads(response.content.decode("utf-8"))
     assert data["status"] == 200, data["error"]
     assert data["total_count"] >= 0
@@ -107,6 +112,7 @@ def test_nodelist_auth():
     if DEBUG:
         print("GET", TESTURL, TESTDATA, TESTHEADERS)
     response = requests.get(TESTURL, headers=TESTHEADERS, params=TESTDATA)
+    assert response.status_code == 200, response.content.decode("utf-8")
     data = json.loads(response.content.decode("utf-8"))
     assert data["status"] == 200, data["error"]
     assert data["total_count"] >= 0
@@ -119,6 +125,7 @@ def test_nodelist_badauth():
     if DEBUG:
         print("GET", TESTURL, TESTDATA, TESTHEADERS)
     response = requests.get(TESTURL, headers=TESTHEADERS, params=TESTDATA)
+    assert response.status_code == 403 or response.status_code == 400, response.content.decode("utf-8")
     data = json.loads(response.content.decode("utf-8"))
     # 403 unauthorized 400 bad query
     assert data["status"] == 403 or data["status"] == 400
@@ -130,6 +137,7 @@ def test_upload_emptyfile():
     if DEBUG:
         print("POST", TESTURL, TESTHEADERS, FILES)
     response = requests.post(TESTURL, headers=TESTHEADERS, files=FILES)
+    assert response.status_code == 200, response.content.decode("utf-8")
     data = json.loads(response.content.decode("utf-8"))
     if DEBUG:
         print("RESPONSE", response.content.decode("utf-8"))
@@ -170,6 +178,7 @@ def test_upload_and_delete_node():
         print("GET", TESTURL, TESTHEADERS)
     TESTURL = SHOCK_URL + "/node/{}".format(NODEID)
     response = requests.get(TESTURL, headers=TESTHEADERS)
+    assert response.status_code == 200, response.content.decode("utf-8")
     data = json.loads(response.content.decode("utf-8"))
     assert data["status"] == 200, data["error"]
    # delete my node
@@ -183,6 +192,7 @@ def test_upload_and_delete_node():
         print("GET", TESTURL, TESTHEADERS)
     TESTURL = SHOCK_URL + "/node/{}".format(NODEID)
     response = requests.get(TESTURL, headers=TESTHEADERS)
+    assert response.status_code == 404, response.content.decode("utf-8")
     data = json.loads(response.content.decode("utf-8"))
     assert data["status"] == 404
 
@@ -201,6 +211,7 @@ def test_upload_and_download_node_GET():
     TESTURL = SHOCK_URL + "/node/{}".format(NODEID)
     FILES = {}
     response = requests.get(TESTURL, headers=TESTHEADERS)
+    assert response.status_code == 200, response.content.decode("utf-8")
     data = json.loads(response.content.decode("utf-8"))
     assert data["status"] == 200, data["error"]
     DLURL = SHOCK_URL + "/node/{}?download".format(NODEID)
@@ -227,6 +238,7 @@ def test_upload_and_download_node_GET_gzip():
     if DEBUG:
         print("GET", TESTURL, TESTHEADERS)
     response = requests.get(TESTURL, headers=TESTHEADERS)
+    assert response.status_code == 200, response.content.decode("utf-8")
     data = json.loads(response.content.decode("utf-8"))
     assert data["status"] == 200, data["error"]
     # Download node
@@ -253,6 +265,7 @@ def test_upload_and_download_node_GET_zip():
     TESTURL = SHOCK_URL + "/node/{}".format(NODEID)
     FILES = {}
     response = requests.get(TESTURL, headers=TESTHEADERS)
+    assert response.status_code == 200, response.content.decode("utf-8")
     data = json.loads(response.content.decode("utf-8"))
     assert data["status"] == 200, data["error"]
     DLURL = SHOCK_URL + "/node/{}?download&compression=zip".format(NODEID)
@@ -275,6 +288,7 @@ def test_upload_and_download_node_gzip():
     if DEBUG:
         print("GET", TESTURL, TESTHEADERS)
     response = requests.get(TESTURL, headers=TESTHEADERS)
+    assert response.status_code == 200, response.content.decode("utf-8")
     data = json.loads(response.content.decode("utf-8"))
     assert data["status"] == 200, data["error"]
     DLURL = SHOCK_URL + "/node/{}?download&compression=gzip".format(NODEID)
@@ -284,8 +298,8 @@ def test_upload_and_download_node_gzip():
     delete_nodes([NODEID])
 
 
-def test_download_zip_GET():
-    NODES = create_nodes(FILELIST) 
+def test_download_url_zip_GET():
+    NODES = create_nodes(FILELIST)
     # confirm nodes exist
     confirm_nodes_project(NODES, "TESTPROJECT")
     # query for TESTDATA
@@ -294,7 +308,7 @@ def test_download_zip_GET():
     if DEBUG:
         print("GET", TESTURL, TESTDATA)
     response = requests.get(TESTURL, headers=TESTHEADERS, params=TESTDATA)
-    if DEBUG: 
+    if DEBUG:
         print("RESPONSE", response.content)
     data = json.loads(response.content.decode("utf-8"))
     assert data["total_count"] >= 3, "Missing or incorrect total_count" + " ".join([str(response.status_code), str(response.content)])
@@ -307,16 +321,15 @@ def test_download_zip_GET():
     print(" ".join([ "Debugging ZIP Download", str(response.status_code), str(response.content)]))
     data = json.loads(response.content.decode("utf-8"))
     # extract preauth uri from response
-
     PREAUTH = data["data"]["url"]
-    if DEBUG:  
+    if DEBUG:
         print("GET", PREAUTH, TESTHEADERS);
     with requests.get(PREAUTH, headers=TESTHEADERS, stream=True) as response:
         # write it to file and test ZIP
         print("Debugging status code: " + str(response.status_code))
         if response.encoding is None:
             response.encoding = 'utf-8'
-        # subprocess.run(["ls", "-l"], shell=True) 
+        # subprocess.run(["ls", "-l"], shell=True)
         with open("TEST.zip", "wb") as F:
             subprocess.run("ls -l TEST.zip", shell=True)
             for chunk in response.iter_content(chunk_size=512):
@@ -330,7 +343,7 @@ def test_download_zip_GET():
     # cleanup
     delete_nodes(NODES)
 
-def test_download_tar_GET():
+def test_download_url_tar_GET():
     # Per test invokation on https://github.com/MG-RAST/Shock/wiki/API
     # download multiple files in a single archive format (zip or tar), returns 1-time use download url for archive
     # use download_url with a standard query
@@ -370,7 +383,7 @@ def test_download_tar_GET():
     delete_nodes(NODES)
 
 
-def test_download_tar_POST():
+def test_download_url_tar_POST():
     NODES = create_nodes(FILELIST)
     # confirm nodes exist
     confirm_nodes_project(NODES, "TESTPROJECT")
@@ -402,7 +415,7 @@ def test_download_tar_POST():
     delete_nodes(NODES)
 
 
-def test_download_zip_POST():
+def test_download_url_zip_POST():
     # Per test invokation on https://github.com/MG-RAST/Shock/wiki/API
     # use download_url with a POST and list of node ids
     # curl -X POST -F "download_url=1" -F "archive_format=zip" -F "ids=<node_id_1>,<node_id_2>,<...>" http://<host>[:<port>]/node
@@ -473,6 +486,7 @@ def test_post_attributes():
     if DEBUG:
             print("POST", TESTURL, TESTDATA, TESTHEADERS, FILES)
     response = requests.post(TESTURL, headers=TESTHEADERS, files=FILES, data=TESTDATA)
+    assert response.status_code == 200, response.content.decode("utf-8")
     data = json.loads(response.content.decode("utf-8"))
     assert data["status"] == 200, data["error"]
     NODE = data["data"]["id"]
@@ -489,6 +503,7 @@ def test_post_gzip():
     if DEBUG:
             print("POST", TESTURL, TESTDATA, TESTHEADERS)
     response = requests.post(TESTURL, headers=TESTHEADERS, files=FILES, data=TESTDATA)
+    assert response.status_code == 200, response.content.decode("utf-8")
     data = json.loads(response.content.decode("utf-8"))
     assert data["status"] == 200, data["error"]
     NODE = data["data"]["id"]
@@ -505,6 +520,7 @@ def test_post_bzip():
     if DEBUG:
             print("POST", TESTURL, TESTDATA, TESTHEADERS)
     response = requests.post(TESTURL, headers=TESTHEADERS, files=FILES, data=TESTDATA)
+    assert response.status_code == 200, response.content.decode("utf-8")
     data = json.loads(response.content.decode("utf-8"))
     assert data["status"] == 200, data["error"]
     NODE = data["data"]["id"]
@@ -514,7 +530,7 @@ def test_post_bzip():
 
 def test_copynode():
     NODE = create_nodes(["AAA.txt"])[0]
-    NODEURL = "{SHOCK_URL}/node/".format(SHOCK_URL=SHOCK_URL)
+    NODEURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
 # to get multipart-form correctly, data has to be specified in this strange way
 # and passed as the files= parameter to requests.put
     TESTDATA = {"copy_data": (None, NODE)}
@@ -522,13 +538,14 @@ def test_copynode():
             print("POST", NODEURL, TESTDATA, TESTHEADERS)
     response = requests.post(NODEURL, headers=TESTHEADERS, files=TESTDATA)
     assert response.status_code == 200
-    data = json.loads(response.content.decode("utf-8")) 
+    data = json.loads(response.content.decode("utf-8"))
     print(data)
     NODE2 = data["data"]["id"]
     NODE2URL = "{SHOCK_URL}/node/{NODE2}".format(SHOCK_URL=SHOCK_URL, NODE2=NODE2)
     if DEBUG:
         print("GET", NODE2URL, TESTHEADERS)
     response = requests.get(NODE2URL, headers=TESTHEADERS)
+    assert response.status_code == 200, response.content.decode("utf-8")
     data = json.loads(response.content.decode("utf-8"))
     assert data["status"] == 200, data["error"]
     assert data["data"]["file"]["checksum"]["md5"] == "8880cd8c1fb402585779766f681b868b" # AAA.txt
