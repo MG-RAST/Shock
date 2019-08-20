@@ -5,11 +5,12 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"github.com/MG-RAST/Shock/shock-server/node/file"
-	"github.com/MG-RAST/Shock/shock-server/node/file/format/seq"
 	"io"
 	"os"
 	"regexp"
+
+	"github.com/MG-RAST/Shock/shock-server/node/file"
+	"github.com/MG-RAST/Shock/shock-server/node/file/format/seq"
 )
 
 var (

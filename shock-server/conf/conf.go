@@ -4,13 +4,44 @@ package conf
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/MG-RAST/golib/goconfig/config"
+	"gopkg.in/yaml.v2"
 )
+
+// Location set of storage locations
+type Location struct {
+	ID          string `bson:"ID" json:"ID" yaml:"ID" `                           // e.g. ANLs3 or local for local store
+	Description string `bson:"Description" json:"Description" yaml:"Description"` // e.g. ANL official S3 service
+	Type        string `bson:"type" json:"type" yaml:"Type" `                     // e.g. S3
+	URL         string `bson:"url" json:"url" yaml:"URL"`                         // e.g. http://s3api.invalid.org/download&id=
+	Token       string `bson:"token" json:"-" yaml:"Token" `                      // e.g.  Key or password
+	Prefix      string `bson:"prefix" json:"-" yaml:"Prefix"`                     // e.g. any prefix needed
+	AuthKey     string `bson:"AuthKey" json:"-" yaml:"AuthKey"`                   // e.g. AWS auth-key
+
+	S3Location `bson:",inline" json:",inline" yaml:",inline"`
+}
+
+// S3Location S3 specific fields
+type S3Location struct {
+	Bucket    string `bson:"bucket" json:"bucket" yaml:"bucket" `
+	Prefix    string `bson:"prefix" json:"-" yaml:"Prefix"`        // e.g.g S3 Bucket or username
+	SecretKey string `bson:"SecretKey" json:"-" yaml:"SecretKey" ` // e.g.g AWS secret-key
+}
+
+// LocationsMap allow access to Location objects via Locations("ID")
+var LocationsMap map[string]*Location
+
+// Config contains an array of Location objects
+type Config struct {
+	Locations []Location `bson:"Locations" json:"Locations" yaml:"Locations" `
+}
 
 type idxOpts struct {
 	unique   bool
@@ -159,6 +190,18 @@ func Initialize() (err error) {
 		os.Exit(0)
 	}
 
+	// read Locations.yaml file from same directory as config file
+	var LocationsPath = path.Base(CONFIG_FILE)
+	// reset for now to local dir
+	LocationsPath = "./Locations.yaml"
+
+	//LocationsPath = path.Join(LocationsPath, "Locations.yaml")
+
+	fmt.Sprintf("read Locations file: %s", LocationsPath)
+	err = readYAMLConfig(LocationsPath)
+	if err != nil {
+		return errors.New("error reading Locations file: " + err.Error())
+	}
 	return
 }
 
@@ -354,4 +397,32 @@ func cleanPath(p string) string {
 		p, _ = filepath.Abs(p)
 	}
 	return p
+}
+
+// readYAMLConfig read a YAML style config file with Shock configuration
+// the file has to be a yaml file, currently for Locations only
+func readYAMLConfig(filename string) (err error) {
+
+	var conf Config
+
+	source, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return (err)
+	}
+	err = yaml.Unmarshal(source, &conf)
+	if err != nil {
+		return (err)
+	}
+
+	// create a global
+	//var Locations Locations
+	LocationsMap = make(map[string]*Location)
+
+	for i, _ := range conf.Locations {
+		loc := &conf.Locations[i]
+
+		LocationsMap[loc.ID] = loc
+	}
+
+	return
 }

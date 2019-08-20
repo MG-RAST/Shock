@@ -3,6 +3,7 @@ package node
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -70,6 +71,10 @@ func (node *Node) IndexPath() string {
 	return getIndexPath(node.Id)
 }
 
+func (node *Node) IndexFiles() []string {
+	return getIndexFiles(node.Id)
+}
+
 func (node *Node) FilePath() string {
 	if node.File.Path != "" {
 		return node.File.Path
@@ -126,4 +131,17 @@ func Path2uuid(filepath string) string {
 
 func getIndexPath(id string) string {
 	return fmt.Sprintf("%s/idx", getPath(id))
+}
+
+// getIndexFiles return index files
+func getIndexFiles(id string) (files []string) {
+
+	indexpath := getIndexPath(id)
+
+	files, err := filepath.Glob(indexpath + "/*")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return
 }

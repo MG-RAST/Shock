@@ -40,7 +40,7 @@ type Node struct {
 	Type         string            `bson:"type" json:"type"`
 	Subset       Subset            `bson:"subset" json:"-"`
 	Parts        *PartsList        `bson:"parts" json:"parts"`
-	Locations    []string          `bson:"remotes" json:"remotes"`
+	Locations    []string          `bson:"locations" json:"locations"`
 }
 
 type linkage struct {

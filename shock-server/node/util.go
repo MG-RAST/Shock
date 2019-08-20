@@ -12,10 +12,11 @@ import (
 	"sort"
 	"strings"
 
-	. "github.com/MG-RAST/Shock/shock-server/Location"
+	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
@@ -77,19 +78,6 @@ func FMOpen(filepath string) (f *os.File, err error) {
 
 	var nodeInstance, _ = Load(uuid)
 
-	// needs to be moved to server initialization
-	var id2loc map[string]*Location
-
-	var locations []Location
-
-	locations = append(locations, Location{ID: "ANLS3", Type: "S3"})
-
-	id2loc = make(map[string]*Location)
-
-	for _, loc := range locations {
-		id2loc[loc.ID] = &loc
-	}
-
 	// create the directory infrastructure for node and index
 	err = nodeInstance.Mkdir()
 	if err != nil {
@@ -99,18 +87,20 @@ func FMOpen(filepath string) (f *os.File, err error) {
 	// ideally we should loop over all instances of remotes
 	//for _, locationStr := range nodeInstance.Locations {
 Loop:
-	for _, locationStr := range []string{"ANLS3"} {
+	for _, locationStr := range []string{"anls3_anlseq"} {
 
-		location, ok := id2loc[locationStr]
+		location, ok := conf.LocationsMap[locationStr]
 		if !ok {
-			err = fmt.Errorf("location unknown %s", locationStr)
+			err = fmt.Errorf("(FM) location unknown %s", locationStr)
 			return
 		}
+		// debug
+		//	spew.Dump(location)
 
 		switch location.Type {
 		// we implement only S3 for now
 		case "S3":
-			err = S3Download(uuid, nodeInstance)
+			err = S3Download(uuid, nodeInstance, location)
 			if err != nil {
 				// debug output
 				err = fmt.Errorf("(FMOpen) S3download returned: %s", err.Error())
@@ -154,23 +144,19 @@ Loop:
 }
 
 // S3Download download a file and its indices from an S3 source
-func S3Download(uuid string, nodeInstance *Node) (err error) {
+func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err error) {
 
 	// return error if file not found in S3bucket
-	fmt.Printf("(S3Download) attempting download, UUID: %s, nodeID: %s", uuid, nodeInstance.Id)
-	logger.Infof("(S3Download) attempting download, UUID: %s, nodeID: %s", uuid, nodeInstance.Id)
+	fmt.Printf("(S3Download) attempting download, UUID: %s, nodeID: %s from: %s\n", uuid, nodeInstance.Id, location.URL)
+	//logger.Infof("(S3Download) attempting download, UUID: %s, nodeID: %s", uuid, nodeInstance.Id)
 
-	// NOTE: you need to store your AWS credentials in ~/.aws/credentials
-
-	// 1) Define your bucket and item names
-	bucket := "anlseq" // need to provided by config object later
+	Bucket := location.Bucket
 
 	// 2) Create an AWS session
 	s3Config := &aws.Config{
-		// we need to read credentials from AWS_SHARED_CREDENTIALS_FILE using localtion_ID==profile
-		//Credentials: credentials.NewStaticCredentials("XX", "YY", ""),
-		Endpoint: aws.String("https://s3.it.anl.gov:18082"),
-		Region:   aws.String("us-east-1"),
+		Credentials: credentials.NewStaticCredentials(location.AuthKey, location.SecretKey, ""),
+		Endpoint:    aws.String(location.URL),
+		Region:      aws.String("us-east-1"),
 		//DisableSSL:       aws.Bool(true),
 		S3ForcePathStyle: aws.Bool(true),
 	}
@@ -185,8 +171,8 @@ func S3Download(uuid string, nodeInstance *Node) (err error) {
 	itemS3key := fmt.Sprintf("%s.data", uuid)
 	itemfile := fmt.Sprintf("%s/%s.data", itempath, uuid)
 
-	fmt.Printf("(S3Download) attempting download, UUID: %s, itemS3key: %s", uuid, itemS3key)
-	logger.Infof("(S3Download) attempting download, UUID: %s, itemS3key: %s", uuid, itemS3key)
+	//	fmt.Printf("(S3Download) attempting download, UUID: %s, itemS3key: %s", uuid, itemS3key)
+	//logger.Infof("(S3Download) attempting download, UUID: %s, itemS3key: %s", uuid, itemS3key)
 
 	file, err := os.Create(itemfile)
 	if err != nil {
@@ -195,12 +181,12 @@ func S3Download(uuid string, nodeInstance *Node) (err error) {
 
 	numBytes, err := downloader.Download(file,
 		&s3.GetObjectInput{
-			Bucket: aws.String(bucket),
+			Bucket: aws.String(Bucket),
 			Key:    aws.String(itemS3key),
 		})
 
 	if err != nil {
-		log.Fatalf("Unable to download item %q for %s, %v", itemS3key, itemfile, err)
+		log.Fatalf("(S3Download) Unable to download item %q for %s, %v", itemS3key, itemfile, err)
 		return
 	}
 
@@ -208,8 +194,8 @@ func S3Download(uuid string, nodeInstance *Node) (err error) {
 
 	//	time.Sleep(time.Second * 3)
 
-	fmt.Printf("(S3Download) downloaded, UUID: %s, itemS3key: %s", uuid, itemS3key)
-	logger.Infof("(S3Download)  downloaded, UUID: %s, itemS3key: %s", uuid, itemS3key)
+	//fmt.Printf("(S3Download) downloaded, UUID: %s, itemS3key: %s", uuid, itemS3key)
+	//logger.Infof("(S3Download)  downloaded, UUID: %s, itemS3key: %s", uuid, itemS3key)
 
 	if false {
 		// download the zipped archive with all the indexed
@@ -226,7 +212,7 @@ func S3Download(uuid string, nodeInstance *Node) (err error) {
 
 		numBytes, err = downloader.Download(file,
 			&s3.GetObjectInput{
-				Bucket: aws.String(bucket),
+				Bucket: aws.String(Bucket),
 				Key:    aws.String(indexfile),
 			})
 
