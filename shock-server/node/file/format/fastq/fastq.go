@@ -8,13 +8,14 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"github.com/MG-RAST/Shock/shock-server/conf"
-	"github.com/MG-RAST/Shock/shock-server/node/file"
-	"github.com/MG-RAST/Shock/shock-server/node/file/format/seq"
 	"io"
 	"math"
 	"os"
 	"regexp"
+
+	"github.com/MG-RAST/Shock/shock-server/conf"
+	"github.com/MG-RAST/Shock/shock-server/node/file"
+	"github.com/MG-RAST/Shock/shock-server/node/file/format/seq"
 )
 
 var (
@@ -39,7 +40,8 @@ func NewReader(f file.SectionReader) seq.ReadRewinder {
 // Returns a new fastq format reader using a filename.
 func NewReaderName(name string) (r seq.ReadRewinder, err error) {
 	var f *os.File
-	if f, err = os.Open(name); err != nil {
+	if f, err = os.Open(name); err != nil { // used to be os.Open(name);
+		//if f, err = node.FMOpen(name); err != nil { // used to be os.Open(name);
 		return
 	}
 	return NewReader(f), nil

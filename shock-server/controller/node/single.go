@@ -2,8 +2,10 @@ package node
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"reflect"
 	"strconv"
 	"time"
@@ -92,6 +94,64 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 	if _, ok := query["compression"]; ok {
 		if archive.IsValidCompress(query.Get("compression")) {
 			compressionFormat = query.Get("compression")
+		}
+	}
+
+	if _, ok := query["download_idx"]; ok {
+
+		// create a zip file from the idx_directory
+		//var indexfiles []os.FileInfo
+
+		indexfiles := n.IndexFiles()
+		// list all index files
+
+		var files []*file.FileInfo
+
+		// process nodes
+		for _, indexfile := range indexfiles { // loop thru index files
+			// get node
+
+			// get filereader
+			nf, err := os.Open(indexfile)
+			if err != nil {
+				nf.Close()
+				continue
+			}
+			// add to file array
+			var fileInfo file.FileInfo
+
+			fileInfo.R = append(fileInfo.R, nf)
+
+			defer nf.Close()
+
+			// add to file info
+			fileInfo.Name = indexfile
+			// fileInfo.Size = n.File.Size
+			//fileInfo.ModTime = n.File.CreatedOn
+			// if _, ok := n.File.Checksum["md5"]; ok {
+			// 	fileInfo.Checksum = n.File.Checksum["md5"]
+			// }
+			files = append(files, &fileInfo)
+		}
+
+		zipfilename := fmt.Sprintf("%s.idx.zip", n.Id)
+
+		// if there are no index files, just return
+
+		//	create a read for Zip file	and hand into streamer object
+		//if (len(files) > 1) && (archiveFormat != "")
+		// create multi node / file streamer, must have archive format
+		m := &request.MultiStreamer{
+			Files:       files,
+			W:           ctx.HttpResponseWriter(),
+			ContentType: "application/octet-stream",
+			Filename:    zipfilename,
+			Archive:     "zip", // fix to zip
+		}
+		if err := m.MultiStream(); err != nil {
+			err_msg := "err:@preAuth: " + err.Error()
+			logger.Error(err_msg)
+			return err
 		}
 	}
 
