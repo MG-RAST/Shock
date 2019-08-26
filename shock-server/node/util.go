@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/MG-RAST/Shock/shock-server/cache"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 
@@ -62,19 +63,21 @@ func SortByteArray(b []byte) []byte {
 func FMOpen(filepath string) (f *os.File, err error) {
 
 	// try to read file from disk
-	f, err = os.Open(filepath)
-
-	// check if we encounter an error
-	if err == nil {
-		return
-	}
-
-	// WE NEED TO LOCK THIS NODE at this point
+	f, err = os.Open(filepath) // this will also open a sym link from the cache location
 
 	// extract UUID from path(should be path2UUID function really)
 	ext := path.Ext(filepath)                     // identify extension
 	filename := strings.TrimSuffix(filepath, ext) // find filename
 	uuid := path.Base(filename)                   // implement basename cmd
+
+	// check if we encounter an error AND if the file is cached (e.g. UUID.cache exists and UUID.data is a symlink)
+	if err == nil {
+		// update cache LRU info
+		cache.Touch(uuid)
+		return
+	}
+
+	// WE NEED TO LOCK THIS NODE at this point
 
 	var nodeInstance, _ = Load(uuid)
 
@@ -87,7 +90,8 @@ func FMOpen(filepath string) (f *os.File, err error) {
 	// ideally we should loop over all instances of remotes
 	//for _, locationStr := range nodeInstance.Locations {
 Loop:
-	for _, locationStr := range []string{"anls3_anlseq"} {
+	//for _, locationStr := range []string{"anls3_anlseq"} {
+	for _, locationStr := range nodeInstance.Locations {
 
 		location, ok := conf.LocationsMap[locationStr]
 		if !ok {
@@ -128,8 +132,10 @@ Loop:
 			err = fmt.Errorf("(FMOpen) returned: %s", err.Error())
 			return
 		}
-	}
 
+	}
+	// notify the Cache of the new local file
+	cache.Add(uuid, nodeInstance.File.Size)
 	// WE NEED TO REMOE THE LOCK ON THE NODE...
 
 	// create file handle for newly downloaded file on local disk
@@ -147,34 +153,53 @@ Loop:
 func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err error) {
 
 	// return error if file not found in S3bucket
-	fmt.Printf("(S3Download) attempting download, UUID: %s, nodeID: %s from: %s\n", uuid, nodeInstance.Id, location.URL)
-	//logger.Infof("(S3Download) attempting download, UUID: %s, nodeID: %s", uuid, nodeInstance.Id)
+	//fmt.Printf("(S3Download) attempting download, UUID: %s, nodeID: %s from: %s\n", uuid, nodeInstance.Id, location.URL)
 
 	Bucket := location.Bucket
+	//logger.Infof("(S3Download) attempting download, UUID: %s, nodeID: %s, Bucket:%s", uuid, nodeInstance.Id, Bucket)
 
 	// 2) Create an AWS session
 	s3Config := &aws.Config{
 		Credentials: credentials.NewStaticCredentials(location.AuthKey, location.SecretKey, ""),
 		Endpoint:    aws.String(location.URL),
-		Region:      aws.String("us-east-1"),
+		Region:      aws.String(location.Region),
+
 		//DisableSSL:       aws.Bool(true),
 		S3ForcePathStyle: aws.Bool(true),
 	}
-	sess := session.New(s3Config)
+	sess, err := session.NewSession(s3Config)
+	if err != nil {
+		logger.Errorf("(S3Download) creating S3 session failed with Endpoint: %s, Region: %s, Bucket: %s, Authkey: %s, SessionKey: %s (err: %s)\n",
+			aws.String(location.URL),
+			aws.String("us-east-1"),
+			Bucket,
+			location.AuthKey,
+			location.SecretKey,
+			err.Error())
+	}
 
 	// 3) Create a new AWS S3 downloader
 	downloader := s3manager.NewDownloader(sess)
 
 	// 4) Download the item from the bucket. If an error occurs, log it and exit. Otherwise, notify the user that the download succeeded.
 	// needs to create a full path
+	cacheitempath := uuid2CachePath(uuid)
+	cacheitemfile := fmt.Sprintf("%s/%s.data", cacheitempath, uuid)
+
 	itempath := uuid2Path(uuid)
 	itemS3key := fmt.Sprintf("%s.data", uuid)
 	itemfile := fmt.Sprintf("%s/%s.data", itempath, uuid)
 
+	// create cache dir path
+	err = os.MkdirAll(cacheitempath, 0777)
+	//	if err != nil || os.IsExist(err) == false {
+	//		log.Fatalf("(S3Download) Unable to create cache path for item %s [%s], %s", cacheitemfile, cacheitempath, err.Error())
+	//	}
+
 	//	fmt.Printf("(S3Download) attempting download, UUID: %s, itemS3key: %s", uuid, itemS3key)
 	//logger.Infof("(S3Download) attempting download, UUID: %s, itemS3key: %s", uuid, itemS3key)
-
-	file, err := os.Create(itemfile)
+	// create a cache item here
+	file, err := os.Create(cacheitemfile)
 	if err != nil {
 		return
 	}
@@ -186,11 +211,19 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err e
 		})
 
 	if err != nil {
-		log.Fatalf("(S3Download) Unable to download item %q for %s, %v", itemS3key, itemfile, err)
+		log.Fatalf("(S3Download) Unable to download item %q for %s, %s", itemS3key, itemfile, err.Error())
 		return
 	}
 
 	file.Close()
+
+	// add sym link from cacheItemPath to itemPath
+	err = os.Symlink(cacheitemfile, itemfile)
+	if err != nil {
+
+		log.Fatalf("(S3Download) Unable to download to create symlink from %s to %s, %s", cacheitemfile, itemfile, err.Error())
+
+	}
 
 	//	time.Sleep(time.Second * 3)
 

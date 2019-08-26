@@ -24,14 +24,15 @@ type Location struct {
 	Token       string `bson:"token" json:"-" yaml:"Token" `                      // e.g.  Key or password
 	Prefix      string `bson:"prefix" json:"-" yaml:"Prefix"`                     // e.g. any prefix needed
 	AuthKey     string `bson:"AuthKey" json:"-" yaml:"AuthKey"`                   // e.g. AWS auth-key
+	Persistent  bool   `bson:"persistent" json:"persistent" yaml:"Persistent"`    // e.g. is this a valid long term storage location
 
 	S3Location `bson:",inline" json:",inline" yaml:",inline"`
 }
 
 // S3Location S3 specific fields
 type S3Location struct {
-	Bucket    string `bson:"bucket" json:"bucket" yaml:"bucket" `
-	Prefix    string `bson:"prefix" json:"-" yaml:"Prefix"`        // e.g.g S3 Bucket or username
+	Bucket    string `bson:"bucket" json:"bucket" yaml:"Bucket" `
+	Region    string `bson:"region" json:"region" yaml:"Region" `
 	SecretKey string `bson:"SecretKey" json:"-" yaml:"SecretKey" ` // e.g.g AWS secret-key
 }
 
@@ -132,6 +133,10 @@ var (
 	SHOW_HELP    bool // simple usage
 	SHOW_VERSION bool
 
+	// change behavior of system from cache to backend store
+	IS_CACHE   bool   //
+	PATH_CACHE string //   path to cache directory, default is PATH_DATA
+
 	// internal config control
 	FAKE_VAR = false
 )
@@ -191,13 +196,12 @@ func Initialize() (err error) {
 	}
 
 	// read Locations.yaml file from same directory as config file
-	var LocationsPath = path.Base(CONFIG_FILE)
+	var LocationsPath = path.Dir(CONFIG_FILE)
 	// reset for now to local dir
-	LocationsPath = "./Locations.yaml"
+	//	LocationsPath = "./locations.yaml"
+	LocationsPath = path.Join(LocationsPath, "Locations.yaml")
 
-	//LocationsPath = path.Join(LocationsPath, "Locations.yaml")
-
-	fmt.Sprintf("read Locations file: %s", LocationsPath)
+	fmt.Printf("read Locations file: %s\n", LocationsPath)
 	err = readYAMLConfig(LocationsPath)
 	if err != nil {
 		return errors.New("error reading Locations file: " + err.Error())
@@ -333,6 +337,10 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddString(&PATH_LOCAL, "", "Paths", "local_paths", "", "")
 	c_store.AddString(&PATH_PIDFILE, "", "Paths", "pidfile", "", "")
 
+	// cache
+	//c_store.AddBool(&IS_CACHE, false, "Other", "is_cache", "", "")
+	c_store.AddString(&PATH_CACHE, "", "Paths", "cache", "", "") // cache directory path, default is nil, if this is set the system will function as a cache
+
 	// SSL
 	c_store.AddBool(&SSL, false, "SSL", "enable", "", "")
 	c_store.AddString(&SSL_KEY, "", "SSL", "key", "", "")
@@ -388,6 +396,7 @@ func parseConfiguration() (err error) {
 	PATH_LOGS = cleanPath(PATH_LOGS)
 	PATH_LOCAL = cleanPath(PATH_LOCAL)
 	PATH_PIDFILE = cleanPath(PATH_PIDFILE)
+	PATH_CACHE = cleanPath(PATH_CACHE)
 
 	return
 }

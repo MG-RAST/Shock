@@ -36,11 +36,11 @@ type Node struct {
 	Priority     int               `bson:"priority" json:"priority"`
 	CreatedOn    time.Time         `bson:"created_on" json:"created_on"`
 	LastModified time.Time         `bson:"last_modified" json:"last_modified"`
-	Expiration   time.Time         `bson:"expiration" json:"expiration"` // 0 means no expiration
+	Expiration   time.Time         `bson:"expiration" json:"expiration"` // 0 means no expiration of Node
 	Type         string            `bson:"type" json:"type"`
 	Subset       Subset            `bson:"subset" json:"-"`
 	Parts        *PartsList        `bson:"parts" json:"parts"`
-	Locations    []string          `bson:"locations" json:"locations"`
+	Locations    []string          `bson:"locations" json:"locations"` // alternate storage location for File + Indexes, to be staged in via node.FMOpen
 }
 
 type linkage struct {

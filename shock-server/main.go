@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/MG-RAST/Shock/shock-server/auth"
+	"github.com/MG-RAST/Shock/shock-server/cache"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	ncon "github.com/MG-RAST/Shock/shock-server/controller/node"
 	acon "github.com/MG-RAST/Shock/shock-server/controller/node/acl"
@@ -271,7 +272,9 @@ func main() {
 	node.Initialize()
 	preauth.Initialize()
 	auth.Initialize()
+	cache.Initialize()
 	node.InitReaper()
+
 	err = versions.Initialize()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Err@versions.Initialize: %s\n", err.Error())
@@ -294,6 +297,7 @@ func main() {
 	}
 	printLogo()
 	conf.Print()
+
 	if err := versions.Print(); err != nil {
 		fmt.Fprintf(os.Stderr, "Err@versions.Print: %s\n", err.Error())
 		logger.Error("Err@versions.Print: " + err.Error())
