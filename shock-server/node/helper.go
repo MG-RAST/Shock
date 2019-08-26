@@ -114,9 +114,14 @@ func getPath(id string) string {
 	return fmt.Sprintf("%s/%s/%s/%s/%s", conf.PATH_DATA, id[0:2], id[2:4], id[4:6], id)
 }
 
-// uuid2Path extract UUID from path
+// uuid2Path build PATH for UUID
 func uuid2Path(id string) string {
 	return fmt.Sprintf("%s/%s/%s/%s/%s", conf.PATH_DATA, id[0:2], id[2:4], id[4:6], id)
+}
+
+// uuid2CachePath build Cache Path for UUID
+func uuid2CachePath(id string) string {
+	return fmt.Sprintf("%s/%s/%s/%s/%s", conf.PATH_CACHE, id[0:2], id[2:4], id[4:6], id)
 }
 
 // Path2uuid extract uuid from path
