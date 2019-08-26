@@ -3,6 +3,8 @@ package auth
 
 import (
 	"errors"
+
+	"github.com/MG-RAST/Shock/shock-server/auth/basic"
 	"github.com/MG-RAST/Shock/shock-server/auth/globus"
 	"github.com/MG-RAST/Shock/shock-server/auth/oauth"
 	"github.com/MG-RAST/Shock/shock-server/conf"
@@ -23,6 +25,10 @@ func Initialize() {
 	}
 	if conf.AUTH_GLOBUS_TOKEN_URL != "" && conf.AUTH_GLOBUS_PROFILE_URL != "" {
 		authMethods = append(authMethods, globus.Auth)
+	}
+
+	if conf.AUTH_BASIC {
+		authMethods = append(authMethods, basic.Auth)
 	}
 }
 
