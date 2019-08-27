@@ -2,6 +2,16 @@ package main
 
 import (
 	"fmt"
+	"net"
+	"net/http"
+	_ "net/http/pprof"
+	"os"
+	"os/signal"
+	"runtime"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/MG-RAST/Shock/shock-server/auth"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	ncon "github.com/MG-RAST/Shock/shock-server/controller/node"
@@ -21,15 +31,6 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/versions"
 	"github.com/MG-RAST/golib/stretchr/goweb"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
-	"net"
-	"net/http"
-	_ "net/http/pprof"
-	"os"
-	"os/signal"
-	"runtime"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const (
@@ -120,6 +121,22 @@ func mapRoutes() {
 			return responder.RespondOK(ctx)
 		}
 		icon.IndexTypedRequest(ctx)
+		return nil
+	})
+
+	goweb.Map("/node/{nid}/locations/", func(ctx context.Context) error {
+		if ctx.HttpRequest().Method == "OPTIONS" {
+			return responder.RespondOK(ctx)
+		}
+		node.LocationsRequest(ctx)
+		return nil
+	})
+
+	goweb.Map("/node/{nid}/locations/{loc}", func(ctx context.Context) error {
+		if ctx.HttpRequest().Method == "OPTIONS" {
+			return responder.RespondOK(ctx)
+		}
+		node.LocationsRequest(ctx)
 		return nil
 	})
 
