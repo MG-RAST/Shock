@@ -445,3 +445,81 @@ func (node *Node) UpdateLinkages(ltype string, ids string, operation string) {
 	link.Operation = operation
 	node.Linkages = append(node.Linkages, link)
 }
+
+// AddLocation _
+func (node *Node) AddLocation(loc string) (err error) {
+	if node.Locations == nil {
+		node.Locations = []string{loc}
+		return
+	}
+
+	for _, location := range node.Locations {
+		if location == loc {
+			err = fmt.Errorf("%s already exists", loc)
+			return
+		}
+	}
+
+	node.Locations = append(node.Locations, loc)
+	return
+}
+
+// GetLocations _
+func (node *Node) GetLocations() (locations []string) {
+
+	locations = node.Locations
+	if locations == nil {
+		locations = []string{}
+	}
+
+	return
+}
+
+// GetLocation _
+func (node *Node) GetLocation(loc string) (err error) {
+	if node.Locations == nil {
+		err = fmt.Errorf("location %s not found", loc)
+		return
+	}
+
+	for _, location := range node.Locations {
+		if location == loc {
+			return
+		}
+
+	}
+
+	err = fmt.Errorf("location %s not found", loc)
+
+	return
+}
+
+// DeleteLocation _
+func (node *Node) DeleteLocation(loc string) (err error) {
+	if node.Locations == nil {
+		err = fmt.Errorf("location %s not found", loc)
+		return
+	}
+
+	newLocations := []string{}
+	found := false
+	for _, location := range node.Locations {
+		if location == loc {
+			found = true
+			continue
+		}
+		newLocations = append(newLocations, location)
+	}
+
+	if !found {
+		err = fmt.Errorf("location %s not found", loc)
+		return
+	}
+	node.Locations = newLocations
+	return
+}
+
+func (node *Node) DeleteLocations() (err error) {
+	node.Locations = []string{}
+	return
+}

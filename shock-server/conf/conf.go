@@ -134,8 +134,9 @@ var (
 	SHOW_VERSION bool
 
 	// change behavior of system from cache to backend store
-	IS_CACHE   bool   //
+	//IS_CACHE   bool   //
 	PATH_CACHE string //   path to cache directory, default is PATH_DATA
+	CACHE_TTL  int    // time in hours for cache items to be retained
 
 	// internal config control
 	FAKE_VAR = false
@@ -338,8 +339,8 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddString(&PATH_PIDFILE, "", "Paths", "pidfile", "", "")
 
 	// cache
-	//c_store.AddBool(&IS_CACHE, false, "Other", "is_cache", "", "")
-	c_store.AddString(&PATH_CACHE, "", "Paths", "cache", "", "") // cache directory path, default is nil, if this is set the system will function as a cache
+	c_store.AddString(&PATH_CACHE, "", "Paths", "cache_path", "", "") // cache directory path, default is nil, if this is set the system will function as a cache
+	c_store.AddInt(&CACHE_TTL, 24.0, "Cache", "cache_ttl", "", "")    // ttl in hours for cache items
 
 	// SSL
 	c_store.AddBool(&SSL, false, "SSL", "enable", "", "")

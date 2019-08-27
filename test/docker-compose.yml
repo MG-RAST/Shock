@@ -32,7 +32,7 @@ services:
           - ${DATADIR}/shock/data:/usr/local/shock
           
           # mount local source code
-          - $HOME/git/Shock:/go/src/github.com/MG-RAST/Shock
+          - $HOME/go/src/github.com/MG-RAST/Shock:/go/src/github.com/MG-RAST/Shock
           
           # mount config file 
           #- ${CONFIGDIR}/Shock/shock-server.container.cfg:/shock-config/shock-server.cfg
