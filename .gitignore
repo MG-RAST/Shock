@@ -25,6 +25,9 @@ _obj
 pkg
 bin
 
+.vscode/
+
+
 # os x files
 *.DS_Store
 
