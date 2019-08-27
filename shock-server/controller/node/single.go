@@ -104,11 +104,22 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 
 		indexfiles := n.IndexFiles()
 		// list all index files
+		//	logger.Info(fmt.Sprintf("(Single-->Download_idx: n.IndexFiles \n) "))
+
+		//spew.Dump(n)
+		logger.Info(fmt.Sprintf("(Single-->Download_idx: indexfiles\n) "))
+
+		//spew.Dump(indexfiles)
 
 		var files []*file.FileInfo
 
+		logger.Info(fmt.Sprintf("(Single-->Download_idx) "))
+
 		// process nodes
 		for _, indexfile := range indexfiles { // loop thru index files
+
+			logger.Info(fmt.Sprintf("(Single-->Download_idx: file %s\n) ", indexfile))
+
 			// get node
 
 			// get filereader
@@ -153,6 +164,8 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			logger.Error(err_msg)
 			return err
 		}
+
+		return responder.RespondWithData(ctx, m)
 	}
 
 	// Switch though param flags

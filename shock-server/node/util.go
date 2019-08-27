@@ -196,7 +196,6 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err e
 	//		log.Fatalf("(S3Download) Unable to create cache path for item %s [%s], %s", cacheitemfile, cacheitempath, err.Error())
 	//	}
 
-	//	fmt.Printf("(S3Download) attempting download, UUID: %s, itemS3key: %s", uuid, itemS3key)
 	//logger.Infof("(S3Download) attempting download, UUID: %s, itemS3key: %s", uuid, itemS3key)
 	// create a cache item here
 	file, err := os.Create(cacheitemfile)
@@ -227,7 +226,6 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err e
 
 	//	time.Sleep(time.Second * 3)
 
-	//fmt.Printf("(S3Download) downloaded, UUID: %s, itemS3key: %s", uuid, itemS3key)
 	//logger.Infof("(S3Download)  downloaded, UUID: %s, itemS3key: %s", uuid, itemS3key)
 
 	if false {
@@ -236,6 +234,8 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err e
 		indexpath := uuid2Path(uuid)
 		indextemppath := fmt.Sprintf("%s/idx.zip", indexpath)
 		indexdir := fmt.Sprintf("%s/idx", indexpath)
+
+		//cacheindexpath := uuid2CachePath(uuid)
 
 		file, err = os.Create(indextemppath)
 		if err != nil {

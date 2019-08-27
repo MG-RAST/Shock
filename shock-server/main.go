@@ -125,6 +125,22 @@ func mapRoutes() {
 		return nil
 	})
 
+	goweb.Map("/node/{nid}/locations/", func(ctx context.Context) error {
+		if ctx.HttpRequest().Method == "OPTIONS" {
+			return responder.RespondOK(ctx)
+		}
+		node.LocationsRequest(ctx)
+		return nil
+	})
+
+	goweb.Map("/node/{nid}/locations/{loc}", func(ctx context.Context) error {
+		if ctx.HttpRequest().Method == "OPTIONS" {
+			return responder.RespondOK(ctx)
+		}
+		node.LocationsRequest(ctx)
+		return nil
+	})
+
 	// view lock status
 	goweb.Map("/locker", func(ctx context.Context) error {
 		ids := locker.NodeLockMgr.GetAll()

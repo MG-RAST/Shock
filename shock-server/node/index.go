@@ -3,13 +3,14 @@ package node
 import (
 	"errors"
 	"fmt"
+	"os"
+	"time"
+
 	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/node/locker"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
-	"os"
-	"time"
 )
 
 func AsyncIndexer(idxType string, nid string, colNum int, ctx context.Context) {
@@ -104,7 +105,7 @@ func AsyncIndexer(idxType string, nid string, colNum int, ctx context.Context) {
 			return
 		}
 	} else if n.File.Size > 0 {
-		newIndexer := index.Indexers[idxType]
+		newIndexer := index.Indexers[idxType] // newIndexer is only a constructor function
 		f, err = os.Open(n.FilePath())
 		if err != nil {
 			return

@@ -66,7 +66,7 @@ func (nr *NodeReaper) Handle() {
 			diff := now.Sub(lru)
 
 			// we use a very simple scheme for caching initially (file not used for 1 day)
-			if diff.Hours() < 24 {
+			if diff.Hours() < float64(conf.CACHE_TTL) {
 				//	fmt.Printf("(Reaper-->FileReaper) not deleting %s from cache it was last accessed %s hours ago\n", ID, diff.Hours())
 				continue
 			}
