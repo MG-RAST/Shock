@@ -58,7 +58,7 @@ func (nr *NodeReaper) Handle() {
 		// start a FILE REAPER that loops thru CacheMap[*]
 		for ID := range cache.CacheMap {
 
-			fmt.Printf("(Reaper-->FileReaper) checking %s in cache\n", ID)
+			//fmt.Printf("(Reaper-->FileReaper) checking %s in cache\n", ID)
 
 			now := time.Now()
 			lru := cache.CacheMap[ID].Access

@@ -110,53 +110,47 @@ func Add(ID string, size int64) {
 
 // Remove an entry to the CacheMap and the file on disk
 func Remove(ID string) (err error) {
-
-	//	var file os.File
-
 	// return immediately if system is not setup to be cache
 	if conf.PATH_CACHE == "" {
 		return
 	}
 
-	// identify PATH to data
-	// remove ..
-	cachefile := fmt.Sprintf("%s/*/*/*/%s", conf.PATH_CACHE, ID) // the data file in cache
-	itemfile := fmt.Sprintf("%s/*/*/*/%s", conf.PATH_DATA, ID)   // the symlink
+	cachepath := fmt.Sprintf("%s/*/*/*/%s", conf.PATH_CACHE, ID) // the data file in cache
+	itempath := fmt.Sprintf("%s/*/*/*/%s", conf.PATH_DATA, ID)   // the symlink
 
-	// uncomment to only remove data files
-	//pattern := fmt.Sprintf("%s/*/*/*/%s/%s.data", DataRoot, ID, ID) // remove only data file
-
-	cacheitempath, err := filepath.Glob(cachefile)
-	//fmt.Println(itempath)
+	// remove cacheitem
+	err = os.RemoveAll(cachepath)
 	if err != nil {
-		logger.Info(fmt.Sprintf("(Cache-->Remove) removing %s --> %s from cache \n (%s)", cachefile, cacheitempath, err.Error()))
+		logger.Info(fmt.Sprintf("(Cache-->Remove) cannot remove %s from cache (%s)\n ", cachepath, err.Error()))
 	}
-
-	_, err = os.Stat(cacheitempath[0])
-	if err == nil {
-		logger.Info(fmt.Sprintf("(Cache-->Remove) removing %s from cache \n ", cacheitempath))
-		os.RemoveAll(cacheitempath[0])
-	} else {
-		logger.Info(fmt.Sprintf("(Cache-->Remove) cannot remove %s from cache (%s)\n ", cacheitempath, err.Error()))
-	}
-
-	// remove object from Map and remove Cache Entry
-	delete(CacheMap, ID)
 
 	// remove link
-	itempath, err := filepath.Glob(itemfile)
-	//fmt.Println(itempath)
+	err = os.RemoveAll(itempath)
 	if err != nil {
-		logger.Info(fmt.Sprintf("(Cache-->Remove) removing %s --> %s from cache \n (%s)", cachefile, cacheitempath, err.Error()))
-	}
-	_, err = os.Stat(itempath[0])
-	if err == nil {
-		logger.Info(fmt.Sprintf("(Cache-->Remove) removing symlink for %s  \n ", itempath))
-		os.RemoveAll(itempath[0])
-	} else {
-		logger.Info(fmt.Sprintf("(Cache-->Remove) cannot remove symlink %s (%s)\n ", cacheitempath, err.Error()))
+		logger.Info(fmt.Sprintf("(Cache-->Remove) cannot remove symlink %s (%s)\n ", cachepath, err.Error()))
 	}
 
+	// remove index files and index sym link as well
+	cacheindexdir := fmt.Sprintf("%s/*/*/*/%s/idx", conf.PATH_CACHE, ID) // the data file in cache
+	indexdir := fmt.Sprintf("%s/*/*/*/%s/idx", conf.PATH_DATA, ID)       // the symlink
+
+	err = os.RemoveAll(cacheindexdir)
+	if err != nil {
+		logger.Info(fmt.Sprintf("(Cache-->Remove) cannot remove %s from cache (%s)\n ", indexdir, err.Error()))
+	}
+
+	err = os.RemoveAll(indexdir)
+	if err != nil {
+		logger.Info(fmt.Sprintf("(Cache-->Remove) cannot remove %s from cache (%s)\n ", indexdir, err.Error()))
+	}
+
+	_, ok := CacheMap[ID]
+	if !ok {
+		logger.Info(fmt.Sprintf("(Cache-->Remove) cannot remove ID: [%s] from CacheMap (%s)\n ", ID, err.Error()))
+		return
+	}
+	// remove object from Map and remove Cache Entry
+	delete(CacheMap, ID)
 	return
 
 }
