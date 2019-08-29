@@ -80,11 +80,19 @@ type SubsetNodeIdxInfo struct {
 	Format      string `bson:"format" json:"-"`
 }
 
-func New() (node *Node) {
+func New(uuid string) (node *Node) {
 	node = new(Node)
 	node.Indexes = make(map[string]*IdxInfo)
 	node.File.Checksum = make(map[string]string)
-	node.setId()
+
+	if uuid == "" {
+		node.setId()
+	} else {
+
+		logger.Infof("(Node-->New) we need to check with the upstream node (UUID-Master) if UUID is available ")
+
+	}
+
 	return
 }
 
@@ -153,7 +161,7 @@ func CreateNodeUpload(u *user.User, params map[string]string, files file.FormFil
 		}
 	}
 
-	node = New()
+	node = New("")
 	node.Type = "basic"
 
 	node.Acl.SetOwner(u.Uuid)
@@ -226,7 +234,7 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files file.F
 		// create link
 		link := linkage{Type: "parent", Operation: aFormat, Ids: []string{archiveId}}
 		// create and populate node
-		node := New()
+		node := New("")
 		node.Type = "basic"
 		node.Linkages = append(node.Linkages, link)
 		node.Attributes = atttributes

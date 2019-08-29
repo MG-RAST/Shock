@@ -166,6 +166,11 @@ func Touch(ID string) {
 
 	//spew.Dump(CacheMap)
 
+	_, ok := CacheMap[ID]
+	if !ok {
+		return
+	}
+
 	CacheMap[ID].Access = time.Now()
 	logger.Info(fmt.Sprintf("(Cache-->Touch) lru for  %s updated to %s\n ", ID, time.Now()))
 
