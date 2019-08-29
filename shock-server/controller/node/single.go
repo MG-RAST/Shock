@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"reflect"
 	"strconv"
 	"time"
@@ -113,7 +114,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 
 		var files []*file.FileInfo
 
-		logger.Info(fmt.Sprintf("(Single-->Download_idx) "))
+		//		logger.Info(fmt.Sprintf("(Single-->Download_idx) "))
 
 		// process nodes
 		for _, indexfile := range indexfiles { // loop thru index files
@@ -136,8 +137,8 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			defer nf.Close()
 
 			// add to file info
-			fileInfo.Name = indexfile
-			// fileInfo.Size = n.File.Size
+			fileInfo.Name = path.Base(indexfile)
+			//fileInfo.Size = nf.
 			//fileInfo.ModTime = n.File.CreatedOn
 			// if _, ok := n.File.Checksum["md5"]; ok {
 			// 	fileInfo.Checksum = n.File.Checksum["md5"]
@@ -157,7 +158,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			W:           ctx.HttpResponseWriter(),
 			ContentType: "application/octet-stream",
 			Filename:    zipfilename,
-			Archive:     "zip", // fix to zip
+			Archive:     "zip", // supported: tar , zip
 		}
 		if err := m.MultiStream(); err != nil {
 			err_msg := "err:@preAuth: " + err.Error()
@@ -165,7 +166,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			return err
 		}
 
-		return responder.RespondWithData(ctx, m)
+		return nil
 	}
 
 	// Switch though param flags

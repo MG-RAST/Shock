@@ -55,6 +55,10 @@ func SortByteArray(b []byte) []byte {
 	return sb
 }
 
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+
 // func Open(name string) (*File, error)
 //  Open opens the named file for reading from local disk
 //  Open file on list of remote stores
@@ -120,6 +124,17 @@ Loop:
 				return
 			}
 			break Loop
+
+		case "Daos":
+			// this should call a DAOS downloader
+			err = DaosDownload(uuid, nodeInstance)
+			if err != nil {
+				// debug output
+				err = fmt.Errorf("(FMOpen) DaosDownload returned: %s", err.Error())
+				return
+			}
+			break Loop
+
 		default:
 			err = fmt.Errorf("(FMOpen) Location type %s not supported", location.Type)
 			return
@@ -149,6 +164,10 @@ Loop:
 	return
 }
 
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+
 // S3Download download a file and its indices from an S3 source
 func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err error) {
 
@@ -156,7 +175,7 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err e
 	//fmt.Printf("(S3Download) attempting download, UUID: %s, nodeID: %s from: %s\n", uuid, nodeInstance.Id, location.URL)
 
 	Bucket := location.Bucket
-	//logger.Infof("(S3Download) attempting download, UUID: %s, nodeID: %s, Bucket:%s", uuid, nodeInstance.Id, Bucket)
+	logger.Infof("(S3Download) attempting download, UUID: %s, nodeID: %s, Bucket:%s", uuid, nodeInstance.Id, Bucket)
 
 	// 2) Create an AWS session
 	s3Config := &aws.Config{
@@ -203,7 +222,7 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err e
 		return
 	}
 
-	numBytes, err := downloader.Download(file,
+	_, err = downloader.Download(file,
 		&s3.GetObjectInput{
 			Bucket: aws.String(Bucket),
 			Key:    aws.String(itemS3key),
@@ -219,62 +238,86 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err e
 	// add sym link from cacheItemPath to itemPath
 	err = os.Symlink(cacheitemfile, itemfile)
 	if err != nil {
-
 		log.Fatalf("(S3Download) Unable to download to create symlink from %s to %s, %s", cacheitemfile, itemfile, err.Error())
-
 	}
 
-	//	time.Sleep(time.Second * 3)
+	// download the zipped archive with all the indexed
+	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
+	cacheindexpath := uuid2CachePath(uuid)
+	indexpath := uuid2Path(uuid)
 
-	//logger.Infof("(S3Download)  downloaded, UUID: %s, itemS3key: %s", uuid, itemS3key)
+	indextemppath := fmt.Sprintf("/var/tmp/%s", indexfile) // this should probably be configurable
 
-	if false {
-		// download the zipped archive with all the indexed
-		indexfile := fmt.Sprintf("%s.idx", uuid) // the zipped contents of the idx directory in S3
-		indexpath := uuid2Path(uuid)
-		indextemppath := fmt.Sprintf("%s/idx.zip", indexpath)
-		indexdir := fmt.Sprintf("%s/idx", indexpath)
+	logger.Infof("(S3Download) attempting index download (indexfile: %s), cacheindexpath: %s\n", indexfile, cacheindexpath)
 
-		//cacheindexpath := uuid2CachePath(uuid)
+	file, err = os.Create(indextemppath)
+	if err != nil {
+		logger.Infof("(S3Download) attempting create index temp dir: %s FAILED\n", indextemppath)
 
-		file, err = os.Create(indextemppath)
-		if err != nil {
-			return
-		}
-		defer file.Close()
-
-		numBytes, err = downloader.Download(file,
-			&s3.GetObjectInput{
-				Bucket: aws.String(Bucket),
-				Key:    aws.String(indexfile),
-			})
-
-		// we should distinguish between file not found and transfer error
-
-		// if there is no index archive in S3
-		if err == nil {
-			// log.Fatalf("Unable to download index %q, %v", indexfile, err)
-
-			fmt.Println("Downloaded", file.Name(), numBytes, "bytes")
-
-			// unzip the index file
-			_, err = Unzip(indexfile, indexdir) // unzip into idx folder
-			if err != nil {
-				// debug output
-				err = fmt.Errorf("(S3Download) error decompressing d: %s", err.Error())
-				return
-			}
-			// remove the zip file
-			err = os.Remove(indextemppath)
-			if err != nil {
-				// debug output
-				err = fmt.Errorf("(S3Download) error removing temp file d: %s", err.Error())
-				return
-			}
-		}
+		return
 	}
+	defer file.Close()
+
+	_, err = downloader.Download(file,
+		&s3.GetObjectInput{
+			Bucket: aws.String(Bucket),
+			Key:    aws.String(indexfile),
+		})
+
+	file.Close()
+
+	if err != nil {
+
+		// check if S3 tells us there is no file
+		if strings.HasPrefix(err.Error(), "NoSuchKey") {
+			// we did not find an index
+			logger.Infof("no index for %s", uuid)
+			return nil // do not report an error
+		}
+		log.Fatalf("(S3Download) Unable to download item %q for %s, %s", itemS3key, itemfile, err.Error())
+
+		return err
+	}
+	//logger.Infof("Downloaded: %s (%d Bytes) \n", file.Name(), numBytes)
+
+	// unzip the index file
+	_, err = Unzip(indexfile, cacheindexpath) // unzip into idx folder
+	if err != nil {
+		// debug output
+		err = fmt.Errorf("(S3Download) error decompressing d: %s", err.Error())
+		return
+	}
+	// remove the zip file
+	err = os.Remove(indextemppath)
+	if err != nil {
+		// debug output
+		err = fmt.Errorf("(S3Download) error removing temp file d: %s", err.Error())
+		return
+	}
+
+	// add sym link from cacheItemPath to itemPath
+	err = os.Symlink(cacheindexpath+"/idx", indexpath+"/idx")
+	if err != nil {
+		log.Fatalf("(S3Download) Unable to download to create symlink from %s to %s, %s", cacheindexpath, indexpath, err.Error())
+	}
+
 	return
 }
+
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+
+// DaosDownload support for downloading off https://github.com/daos-stack
+func DaosDownload(uuid string, nodeInstance *Node) (err error) {
+	logger.Infof("(S3Download--> DAOS ) needs to be implemented\n")
+
+	return
+}
+
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
 // ShockDownload download a file from a Shock server
 func ShockDownload(uuid string, nodeInstance *Node) (err error) {
