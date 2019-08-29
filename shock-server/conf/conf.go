@@ -198,8 +198,6 @@ func Initialize() (err error) {
 
 	// read Locations.yaml file from same directory as config file
 	var LocationsPath = path.Dir(CONFIG_FILE)
-	// reset for now to local dir
-	//	LocationsPath = "./locations.yaml"
 	LocationsPath = path.Join(LocationsPath, "Locations.yaml")
 
 	fmt.Printf("read Locations file: %s\n", LocationsPath)
@@ -233,7 +231,7 @@ func Print() {
 		}
 	}
 	fmt.Printf("##### Admin #####\nusers:\t%s\n\n", ADMIN_USERS)
-	fmt.Printf("##### Paths #####\nsite:\t%s\ndata:\t%s\nlogs:\t%s\nlocal_paths:\t%s\n\n", PATH_SITE, PATH_DATA, PATH_LOGS, PATH_LOCAL)
+	fmt.Printf("##### Paths #####\nsite:\t%s\ndata:\t%s\nlogs:\t%s\nlocal_paths:\t%s\ncache_path:\t%s\n\n", PATH_SITE, PATH_DATA, PATH_LOGS, PATH_LOCAL, PATH_CACHE)
 	if SSL {
 		fmt.Printf("##### SSL enabled #####\n")
 		fmt.Printf("##### SSL key:\t%s\n##### SSL cert:\t%s\n\n", SSL_KEY, SSL_CERT)
@@ -335,7 +333,7 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddString(&PATH_SITE, "/usr/local/shock/site", "Paths", "site", "", "")
 	c_store.AddString(&PATH_DATA, "/usr/local/shock/data", "Paths", "data", "", "")
 	c_store.AddString(&PATH_LOGS, "/var/log/shock", "Paths", "logs", "", "")
-	c_store.AddString(&PATH_LOCAL, "", "Paths", "local_paths", "", "")
+	c_store.AddString(&PATH_LOCAL, "/var/tmp", "Paths", "local_paths", "", "")
 	c_store.AddString(&PATH_PIDFILE, "", "Paths", "pidfile", "", "")
 
 	// cache

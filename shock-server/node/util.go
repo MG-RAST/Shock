@@ -246,9 +246,9 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err e
 	cacheindexpath := uuid2CachePath(uuid)
 	indexpath := uuid2Path(uuid)
 
-	indextemppath := fmt.Sprintf("/var/tmp/%s", indexfile) // this should probably be configurable
+	indextemppath := fmt.Sprintf("%s/%s", conf.PATH_LOCAL, indexfile) // use the PATH_LOCAL to configure tmp dir
 
-	logger.Infof("(S3Download) attempting index download (indexfile: %s), cacheindexpath: %s\n", indexfile, cacheindexpath)
+	//	logger.Infof("(S3Download) attempting index download (indexfile: %s), cacheindexpath: %s\n", indexfile, cacheindexpath)
 
 	file, err = os.Create(indextemppath)
 	if err != nil {
@@ -271,7 +271,7 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err e
 		// check if S3 tells us there is no file
 		if strings.HasPrefix(err.Error(), "NoSuchKey") {
 			// we did not find an index
-			logger.Infof("no index for %s", uuid)
+			//	logger.Infof("no index for %s", uuid)
 			return nil // do not report an error
 		}
 		log.Fatalf("(S3Download) Unable to download item %q for %s, %s", itemS3key, itemfile, err.Error())
