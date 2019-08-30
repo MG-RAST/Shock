@@ -69,6 +69,10 @@ func FMOpen(filepath string) (f *os.File, err error) {
 	// try to read file from disk
 	f, err = os.Open(filepath) // this will also open a sym link from the cache location
 
+	if err != nil {
+		return
+	}
+
 	// extract UUID from path(should be path2UUID function really)
 	ext := path.Ext(filepath)                     // identify extension
 	filename := strings.TrimSuffix(filepath, ext) // find filename
@@ -195,6 +199,7 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err e
 			location.AuthKey,
 			location.SecretKey,
 			err.Error())
+		return
 	}
 
 	// 3) Create a new AWS S3 downloader
@@ -211,13 +216,16 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err e
 
 	// create cache dir path
 	err = os.MkdirAll(cacheitempath, 0777)
-	//	if err != nil || os.IsExist(err) == false {
-	//		log.Fatalf("(S3Download) Unable to create cache path for item %s [%s], %s", cacheitemfile, cacheitempath, err.Error())
-	//	}
+	if err != nil {
+		log.Fatalf("(S3Download) Unable to create cache path for item %s [%s], %s", cacheitemfile, cacheitempath, err.Error())
+		return
+	}
 
 	//logger.Infof("(S3Download) attempting download, UUID: %s, itemS3key: %s", uuid, itemS3key)
 	// create a cache item here
 	file, err := os.Create(cacheitemfile)
+	defer file.Close()
+
 	if err != nil {
 		return
 	}
@@ -239,6 +247,7 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err e
 	err = os.Symlink(cacheitemfile, itemfile)
 	if err != nil {
 		log.Fatalf("(S3Download) Unable to download to create symlink from %s to %s, %s", cacheitemfile, itemfile, err.Error())
+		return
 	}
 
 	// download the zipped archive with all the indexed
@@ -299,6 +308,7 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err e
 	err = os.Symlink(cacheindexpath+"/idx", indexpath+"/idx")
 	if err != nil {
 		log.Fatalf("(S3Download) Unable to download to create symlink from %s to %s, %s", cacheindexpath, indexpath, err.Error())
+		return
 	}
 
 	return
@@ -310,7 +320,7 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err e
 
 // DaosDownload support for downloading off https://github.com/daos-stack
 func DaosDownload(uuid string, nodeInstance *Node) (err error) {
-	logger.Infof("(S3Download--> DAOS ) needs to be implemented\n")
+	logger.Infof("(S3Download--> DAOS ) needs to be implemented !! \n")
 
 	return
 }
