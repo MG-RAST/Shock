@@ -3,6 +3,7 @@ package logger
 
 import (
 	"fmt"
+
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	l4g "github.com/MG-RAST/golib/log4go"
 
@@ -138,8 +139,14 @@ func (l *Logger) Log(log string, lvl l4g.Level, message string) {
 	return
 }
 
-func (l *Logger) Debug(log string, message string) {
-	l.Log(log, l4g.DEBUG, message)
+// func (l *Logger) Debug(log string, message string) {
+// 	l.Log(log, l4g.DEBUG, message)
+// 	return
+// }
+func (l *Logger) Debug(level int, format string, a ...interface{}) {
+	if level <= conf.DEBUG_LEVEL {
+		l.Log("debug", l4g.DEBUG, fmt.Sprintf(format, a...))
+	}
 	return
 }
 
