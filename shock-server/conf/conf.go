@@ -337,8 +337,8 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddString(&PATH_PIDFILE, "", "Paths", "pidfile", "", "")
 
 	// cache
-	c_store.AddString(&PATH_CACHE, "", "Paths", "cache_path", "", "") // cache directory path, default is nil, if this is set the system will function as a cache
-	c_store.AddInt(&CACHE_TTL, 24.0, "Cache", "cache_ttl", "", "")    // ttl in hours for cache items
+	c_store.AddString(&PATH_CACHE, "", "Paths", "cache_path", "", "cache directory path, default is nil, if this is set the system will function as a cache")
+	c_store.AddInt(&CACHE_TTL, 24.0, "Cache", "cache_ttl", "", "ttl in hours for cache items")
 
 	// SSL
 	c_store.AddBool(&SSL, false, "SSL", "enable", "", "")

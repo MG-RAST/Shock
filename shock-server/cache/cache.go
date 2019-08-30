@@ -61,8 +61,6 @@ func Initialize() (err error) {
 
 	for _, file := range nodefiles {
 
-		//		fmt.Printf("(cache->Initialize) file %s \n", file)
-
 		var fileinfo os.FileInfo
 		fileinfo, err = os.Stat(file)
 
