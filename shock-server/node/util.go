@@ -99,7 +99,7 @@ Loop:
 
 		location, ok := conf.LocationsMap[locationStr]
 		if !ok {
-			err = fmt.Errorf("(FM) location unknown %s", locationStr)
+			err = fmt.Errorf("(FMOpen) location unknown %s", locationStr)
 			return
 		}
 		// debug
@@ -323,7 +323,6 @@ func DaosDownload(uuid string, nodeInstance *Node) (err error) {
 func ShockDownload(uuid string, nodeInstance *Node) (err error) {
 
 	// return error if file not found in S3bucket
-	fmt.Printf("(ShockDownload) attempting download, UUID: %s, nodeID: %s", uuid, nodeInstance.Id)
 	logger.Infof("(ShockDownload) attempting download, UUID: %s, nodeID: %s", uuid, nodeInstance.Id)
 
 	// authkey
