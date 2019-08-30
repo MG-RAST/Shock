@@ -51,7 +51,7 @@ func (nr *NodeReaper) Handle() {
 
 		// we do not start deletings files if we are not in cache mode
 		if conf.PATH_CACHE == "" {
-			return
+			continue
 		}
 	Loop2:
 		// start a FILE REAPER that loops thru CacheMap[*]
