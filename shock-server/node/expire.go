@@ -1,7 +1,6 @@
 package node
 
 import (
-	"fmt"
 	"regexp"
 	"time"
 
@@ -82,20 +81,20 @@ func (nr *NodeReaper) Handle() {
 				// delete only if other locations exist
 				locObj, ok := conf.LocationsMap[loc]
 				if !ok {
-					logger.Info(fmt.Sprintf("(Reaper-->FileReaper) location %s is not OK \n ", loc))
+					logger.Infof("(Reaper-->FileReaper) location %s is not OK \n ", loc)
 					continue
 				}
 				//fmt.Printf("(Reaper-->FileReaper) locObj.Persistent =  %b  \n ", locObj.Persistent)
 
 				if locObj.Persistent == true {
-					logger.Info(fmt.Sprintf("(Reaper-->FileReaper) has remote Location (%s) removing from Cache: %s", loc, ID))
+					logger.Infof("(Reaper-->FileReaper) has remote Location (%s) removing from Cache: %s", loc, ID)
 
 					cache.Remove(ID)
 					break Loop2 // the innermost loop
 				}
 			}
 
-			logger.Info(fmt.Sprintf("(Reaper-->FileReaper) cannot delete %s from cache", ID))
+			logger.Infof("(Reaper-->FileReaper) cannot delete %s from cache", ID)
 
 		}
 	}

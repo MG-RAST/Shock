@@ -284,11 +284,24 @@ func main() {
 		os.Exit(1)
 	}
 
-	user.Initialize()
+	err = user.Initialize()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Err@user.Initialize: %s\n", err.Error())
+		logger.Error("Err@user.Initialize: " + err.Error())
+		os.Exit(1)
+	}
+
 	node.Initialize()
 	preauth.Initialize()
 	auth.Initialize()
-	cache.Initialize()
+	err = cache.Initialize()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Err@cache.Initialize: %s\n", err.Error())
+		logger.Error("Err@cache.Initialize: " + err.Error())
+		os.Exit(1)
+
+	}
+
 	node.InitReaper()
 
 	err = versions.Initialize()
