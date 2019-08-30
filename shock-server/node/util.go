@@ -188,7 +188,7 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err e
 	}
 	sess, err := session.NewSession(s3Config)
 	if err != nil {
-		logger.Errorf("(S3Download) creating S3 session failed with Endpoint: %s, Region: %s, Bucket: %s, Authkey: %s, SessionKey: %s (err: %s)\n",
+		logger.Errorf("(S3Download) creating S3 session failed with Endpoint: %s, Region: %s, Bucket: %s, Authkey: %s, SessionKey: %s (err: %s)",
 			aws.String(location.URL),
 			aws.String("us-east-1"),
 			Bucket,
@@ -252,7 +252,7 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err e
 
 	file, err = os.Create(indextemppath)
 	if err != nil {
-		logger.Infof("(S3Download) attempting create index temp dir: %s FAILED\n", indextemppath)
+		logger.Infof("(S3Download) attempting create index temp dir: %s FAILED", indextemppath)
 
 		return
 	}
