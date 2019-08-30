@@ -30,6 +30,11 @@ func Initialize() {
 	go Log.Handle()
 }
 
+func Debug(level int, format string, a ...interface{}) {
+	Log.Debug(level, format, a...)
+	return
+}
+
 // Info is a short cut function that uses package initialized logger
 func Info(message string) {
 	Log.Info(message)
