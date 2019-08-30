@@ -27,7 +27,7 @@ Or, to build the Docker image on you own:
 ```bash
 git clone --recursive https://github.com/MG-RAST/Shock.git
 cd Shock
-docker build --force-rm --no-cache --rm -t mgrast/shock
+docker build --force-rm --no-cache --rm -t mgrast/shock .
 ```
 
 If you only need the statically compiled binary, you can extract it from the Dockerimage:
