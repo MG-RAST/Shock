@@ -88,14 +88,14 @@ func (nr *NodeReaper) Handle() {
 				//fmt.Printf("(Reaper-->FileReaper) locObj.Persistent =  %b  \n ", locObj.Persistent)
 
 				if locObj.Persistent == true {
-					logger.Info(fmt.Sprintf("(Reaper-->FileReaper) has remote Location (%s) removing from Cache: %s \n", loc, ID))
+					logger.Info(fmt.Sprintf("(Reaper-->FileReaper) has remote Location (%s) removing from Cache: %s", loc, ID))
 
 					cache.Remove(ID)
 					break Loop2 // the innermost loop
 				}
 			}
 
-			logger.Info(fmt.Sprintf("(Reaper-->FileReaper) cannot delete %s from cache\n ", ID))
+			logger.Info(fmt.Sprintf("(Reaper-->FileReaper) cannot delete %s from cache", ID))
 
 		}
 	}

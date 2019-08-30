@@ -40,7 +40,7 @@ func path2uuid(fpath string) string {
 func Initialize() (err error) {
 
 	if conf.PATH_CACHE == "" { // no PATH_CACHE set will stop
-		logger.Info(fmt.Sprintf("(cache) not initializing; not configured)\n "))
+		logger.Info(fmt.Sprintf("(cache) not initializing; not configured)"))
 		return
 	}
 
@@ -49,7 +49,7 @@ func Initialize() (err error) {
 	Pattern := fmt.Sprintf("%s/*/*/*/*/*.data", conf.PATH_CACHE)
 
 	//debug
-	logger.Info(fmt.Sprintf("(cache->Initialize) listing files for Pattern: %s\n ", Pattern))
+	logger.Info(fmt.Sprintf("(cache->Initialize) listing files for Pattern: %s", Pattern))
 
 	nodefiles, err := filepath.Glob(Pattern)
 
@@ -83,7 +83,7 @@ func Initialize() (err error) {
 		diff := now.Sub(age)
 		hours := diff.Hours()
 
-		logger.Info(fmt.Sprintf("(cache->Initialize) added UUID %s, Size: %d, age(h): %f\n", entry.UUID, entry.Size, hours))
+		logger.Info(fmt.Sprintf("(cache->Initialize) added UUID %s, Size: %d, age(h): %f", entry.UUID, entry.Size, hours))
 
 		// add the map bits
 		CacheMap[entry.UUID] = &entry
@@ -103,7 +103,7 @@ func Add(ID string, size int64) {
 
 	CacheMap[entry.UUID] = &entry
 
-	logger.Info(fmt.Sprintf("(Cache-->Add) added file: %s with size: %d\n ", ID, size))
+	logger.Info(fmt.Sprintf("(Cache-->Add) added file: %s with size: %d", ID, size))
 
 	return
 }
@@ -121,13 +121,13 @@ func Remove(ID string) (err error) {
 	// remove cacheitem
 	err = os.RemoveAll(cachepath)
 	if err != nil {
-		logger.Info(fmt.Sprintf("(Cache-->Remove) cannot remove %s from cache (%s)\n ", cachepath, err.Error()))
+		logger.Info(fmt.Sprintf("(Cache-->Remove) cannot remove %s from cache (%s)", cachepath, err.Error()))
 	}
 
 	// remove link
 	err = os.RemoveAll(itempath)
 	if err != nil {
-		logger.Info(fmt.Sprintf("(Cache-->Remove) cannot remove symlink %s (%s)\n ", cachepath, err.Error()))
+		logger.Info(fmt.Sprintf("(Cache-->Remove) cannot remove symlink %s (%s)", cachepath, err.Error()))
 	}
 
 	// remove index files and index sym link as well
@@ -136,17 +136,17 @@ func Remove(ID string) (err error) {
 
 	err = os.RemoveAll(cacheindexdir)
 	if err != nil {
-		logger.Info(fmt.Sprintf("(Cache-->Remove) cannot remove %s from cache (%s)\n ", indexdir, err.Error()))
+		logger.Info(fmt.Sprintf("(Cache-->Remove) cannot remove %s from cache (%s)", cacheindexdir, err.Error()))
 	}
 
 	err = os.RemoveAll(indexdir)
 	if err != nil {
-		logger.Info(fmt.Sprintf("(Cache-->Remove) cannot remove %s from cache (%s)\n ", indexdir, err.Error()))
+		logger.Info(fmt.Sprintf("(Cache-->Remove) cannot symlink %s from cache (%s)", indexdir, err.Error()))
 	}
 
 	_, ok := CacheMap[ID]
 	if !ok {
-		logger.Info(fmt.Sprintf("(Cache-->Remove) cannot remove ID: [%s] from CacheMap (%s)\n ", ID, err.Error()))
+		logger.Info(fmt.Sprintf("(Cache-->Remove) cannot remove ID: [%s] from CacheMap (%s) ", ID, err.Error()))
 		return
 	}
 	// remove object from Map and remove Cache Entry
@@ -166,6 +166,6 @@ func Touch(ID string) {
 	}
 
 	CacheMap[ID].Access = time.Now()
-	logger.Info(fmt.Sprintf("(Cache-->Touch) lru for  %s updated to %s\n ", ID, time.Now()))
+	logger.Info(fmt.Sprintf("(Cache-->Touch) lru for  %s updated to %s", ID, time.Now()))
 
 }

@@ -108,7 +108,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		//	logger.Info(fmt.Sprintf("(Single-->Download_idx: n.IndexFiles \n) "))
 
 		//spew.Dump(n)
-		logger.Info(fmt.Sprintf("(Single-->Download_idx: indexfiles\n) "))
+		//logger.Info(fmt.Sprintf("(Single-->Download_idx: indexfiles) "))
 
 		//spew.Dump(indexfiles)
 
@@ -119,7 +119,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		// process nodes
 		for _, indexfile := range indexfiles { // loop thru index files
 
-			logger.Info(fmt.Sprintf("(Single-->Download_idx: file %s\n) ", indexfile))
+			//logger.Info(fmt.Sprintf("(Single-->Download_idx: file %s) ", indexfile))
 
 			// get node
 
