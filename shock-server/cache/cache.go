@@ -6,6 +6,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/MG-RAST/Shock/shock-server/conf"
@@ -24,6 +25,9 @@ type Item struct {
 
 // CacheMap store UUID, size, type, atime and ctime in separate (sorted) table for access by fileReaper
 var CacheMap map[string]*Item
+
+// CacheMapLock lock write access to the CacheMap
+var CacheMapLock = sync.RWMutex{}
 
 // Path2uuid extract uuid from path
 func path2uuid(fpath string) string {
@@ -99,6 +103,9 @@ func Add(ID string, size int64) {
 	entry.Size = size
 	entry.CreatedOn = time.Now()
 
+	CacheMapLock.Lock()
+	defer CacheMapLock.Unlock()
+
 	CacheMap[entry.UUID] = &entry
 
 	logger.Infof("(Cache-->Add) added file: %s with size: %d", ID, size)
@@ -142,6 +149,8 @@ func Remove(ID string) (err error) {
 		logger.Infof("(Cache-->Remove) cannot symlink %s from cache (%s)", indexdir, err.Error())
 	}
 
+	CacheMapLock.Lock()
+	defer CacheMapLock.Unlock()
 	_, ok := CacheMap[ID]
 	if !ok {
 		logger.Infof("(Cache-->Remove) cannot remove ID: [%s] from CacheMap (%s) ", ID, err.Error())
@@ -162,6 +171,8 @@ func Touch(ID string) {
 	if !ok {
 		return
 	}
+	CacheMapLock.Lock()
+	defer CacheMapLock.Unlock()
 
 	CacheMap[ID].Access = time.Now()
 	logger.Infof("(Cache-->Touch) lru for  %s updated to %s", ID, time.Now())
