@@ -99,10 +99,11 @@ var (
 	MAX_REVISIONS int // max number of node revisions to keep; values < 0 mean keep all
 
 	// Logs
-	LOG_PERF   bool // Indicates whether performance logs should be stored
-	LOG_ROTATE bool // Indicates whether logs should be rotated daily
-	LOG_OUTPUT string
-	LOG_TRACE  bool // enable trace logging
+	LOG_PERF    bool // Indicates whether performance logs should be stored
+	LOG_ROTATE  bool // Indicates whether logs should be rotated daily
+	LOG_OUTPUT  string
+	LOG_TRACE   bool // enable trace logging
+	DEBUG_LEVEL int
 
 	// Mongo information
 	MONGODB_HOSTS             string
@@ -290,6 +291,7 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddBool(&LOG_ROTATE, true, "Log", "rotate", "", "")
 	c_store.AddString(&LOG_OUTPUT, "both", "Log", "logoutput", "console, file or both", "")
 	c_store.AddBool(&LOG_TRACE, false, "Log", "trace", "", "")
+	c_store.AddInt(&DEBUG_LEVEL, 0, "Log", "debuglevel", "debug level: 0-3", "")
 
 	// Mongodb
 	c_store.AddString(&MONGODB_ATTRIBUTE_INDEXES, "", "Mongodb", "attribute_indexes", "", "")
