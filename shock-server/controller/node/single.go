@@ -105,21 +105,21 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 
 		indexfiles := n.IndexFiles()
 		// list all index files
-		//	logger.Info(fmt.Sprintf("(Single-->Download_idx: n.IndexFiles \n) "))
+		//	logger.Infof("(Single-->Download_idx: n.IndexFiles \n) ")
 
 		//spew.Dump(n)
-		//logger.Info(fmt.Sprintf("(Single-->Download_idx: indexfiles) "))
+		//logger.Infof("(Single-->Download_idx: indexfiles) ")
 
 		//spew.Dump(indexfiles)
 
 		var files []*file.FileInfo
 
-		//		logger.Info(fmt.Sprintf("(Single-->Download_idx) "))
+		//		logger.Infof("(Single-->Download_idx) ")
 
 		// process nodes
 		for _, indexfile := range indexfiles { // loop thru index files
 
-			//logger.Info(fmt.Sprintf("(Single-->Download_idx: file %s) ", indexfile))
+			//logger.Infof("(Single-->Download_idx: file %s) ", indexfile)
 
 			// get node
 
@@ -162,7 +162,7 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		}
 		if err := m.MultiStream(); err != nil {
 			err_msg := "err:@preAuth: " + err.Error()
-			logger.Error(err_msg)
+			logger.Errorf("(single->download_idx) %s ", err_msg)
 			return err
 		}
 
