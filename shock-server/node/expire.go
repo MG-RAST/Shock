@@ -61,7 +61,6 @@ func (nr *NodeReaper) Handle() {
 
 			now := time.Now()
 			lru := cache.CacheMap[ID].Access
-
 			diff := now.Sub(lru)
 
 			// we use a very simple scheme for caching initially (file not used for 1 day)
@@ -70,32 +69,28 @@ func (nr *NodeReaper) Handle() {
 				continue
 			}
 
-			// START HERE ON MONDAY
-			// ideally we would only have things in the cache that have a remote location
-			// maybe init cache from Mongo instead of local filesystem? it'd be faster...
+			n, err := Load(ID)
+			if err != nil {
+				logger.Infof("(Reaper-->FileReaper) Cannot access CacheMapItem[%s] (%s)", ID, err.Error())
+				continue
+			}
 
-			//fmt.Printf("(Reaper-->FileReaper) trying to delete %s from cache\n ", ID)
-
-			n, _ := Load(ID)
 			for _, loc := range n.Locations {
 				// delete only if other locations exist
 				locObj, ok := conf.LocationsMap[loc]
 				if !ok {
-					logger.Infof("(Reaper-->FileReaper) location %s is not OK \n ", loc)
+					logger.Errorf("(Reaper-->FileReaper) location %s is not defined in this server instance \n ", loc)
 					continue
 				}
 				//fmt.Printf("(Reaper-->FileReaper) locObj.Persistent =  %b  \n ", locObj.Persistent)
-
 				if locObj.Persistent == true {
 					logger.Infof("(Reaper-->FileReaper) has remote Location (%s) removing from Cache: %s", loc, ID)
 
 					cache.Remove(ID)
-					break Loop2 // the innermost loop
+					continue Loop2 // the innermost loop
 				}
 			}
-
-			logger.Infof("(Reaper-->FileReaper) cannot delete %s from cache", ID)
-
+			logger.Errorf("(Reaper-->FileReaper) cannot delete %s from cache [This should not happen!!]", ID)
 		}
 	}
 
