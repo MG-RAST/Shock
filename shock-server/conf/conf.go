@@ -25,8 +25,12 @@ type Location struct {
 	Prefix      string `bson:"prefix" json:"-" yaml:"Prefix"`                     // e.g. any prefix needed
 	AuthKey     string `bson:"AuthKey" json:"-" yaml:"AuthKey"`                   // e.g. AWS auth-key
 	Persistent  bool   `bson:"persistent" json:"persistent" yaml:"Persistent"`    // e.g. is this a valid long term storage location
+	Priority    int    `bson:"priority" json:"priority" yaml:"Priority"`          // e.g. prio for pushing files upstream to this location, 0 is lowest, 100 highest
+	Tier        int    `bson:"tier" json:"tier" yaml:"Tier"`                      // e.g. class or tier 0= cache, 3=ssd based backend, 5=disk based backend, 10=tape archive
+	Cost        int    `bson:"cost" json:"cost" yaml:"Cost"`                      // e.g. dollar cost per GB for this store, default=0
 
-	S3Location `bson:",inline" json:",inline" yaml:",inline"`
+	S3Location  `bson:",inline" json:",inline" yaml:",inline"` // extensions specific to S3
+	TSMLocation `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to IBM TSM
 }
 
 // S3Location S3 specific fields
@@ -34,6 +38,11 @@ type S3Location struct {
 	Bucket    string `bson:"bucket" json:"bucket" yaml:"Bucket" `
 	Region    string `bson:"region" json:"region" yaml:"Region" `
 	SecretKey string `bson:"SecretKey" json:"-" yaml:"SecretKey" ` // e.g.g AWS secret-key
+}
+
+// TSMLocation IBM TSM specific fields
+type TSMLocation struct {
+	Recoverycommand string `bson:"recoverycommand" json:"recoverycommand" yaml:"Recoverycommand" `
 }
 
 // LocationsMap allow access to Location objects via Locations("ID")
