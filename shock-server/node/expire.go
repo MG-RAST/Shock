@@ -57,7 +57,7 @@ func (nr *NodeReaper) Handle() {
 		// start a FILE REAPER that loops thru CacheMap[*]
 		for ID := range cache.CacheMap {
 
-			//fmt.Printf("(Reaper-->FileReaper) checking %s in cache\n", ID)
+			logger.Debug(3, "(Reaper-->FileReaper) checking %s in cache\n", ID)
 
 			now := time.Now()
 			lru := cache.CacheMap[ID].Access
@@ -71,7 +71,7 @@ func (nr *NodeReaper) Handle() {
 
 			n, err := Load(ID)
 			if err != nil {
-				logger.Infof("(Reaper-->FileReaper) Cannot access CacheMapItem[%s] (%s)", ID, err.Error())
+				logger.Debug(1, "(Reaper-->FileReaper) Cannot access CacheMapItem[%s] (%s)", ID, err.Error())
 				continue
 			}
 
@@ -84,7 +84,7 @@ func (nr *NodeReaper) Handle() {
 				}
 				//fmt.Printf("(Reaper-->FileReaper) locObj.Persistent =  %b  \n ", locObj.Persistent)
 				if locObj.Persistent == true {
-					logger.Infof("(Reaper-->FileReaper) has remote Location (%s) removing from Cache: %s", loc, ID)
+					logger.Debug(2, "(Reaper-->FileReaper) has remote Location (%s) removing from Cache: %s", loc, ID)
 
 					cache.Remove(ID)
 					continue Loop2 // the innermost loop
