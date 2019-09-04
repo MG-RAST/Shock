@@ -40,11 +40,11 @@ type Node struct {
 	Type         string            `bson:"type" json:"type"`
 	Subset       Subset            `bson:"subset" json:"-"`
 	Parts        *PartsList        `bson:"parts" json:"parts"`
-	Locations    []location        `bson:"locations" json:"locations"` // see below
+	Locations    []Location        `bson:"locations" json:"locations"` // see below
 }
 
 // location a data type to represent storage locations (defined in LocationConfig) and status of data in flight
-type location struct {
+type Location struct {
 	ID            string    `bson:"id" json:"id"`                                           // name of the location, if present data is verified to exist in said location
 	Requested     bool      `bson:"requested,omitempty" json:"requested,omitempty"`         // is the data item in flight to a location
 	RequestedDate time.Time `bson:"requestedDate,omitempty" json:"requestedDate,omitempty"` // what is the date the data item was send on its way
@@ -312,6 +312,10 @@ func (node *Node) DynamicIndex(name string) (idx index.Index, err error) {
 	return
 }
 
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+
 // DeleteFiles delete the files on disk while keeping information in Mongo
 // FMopen will stage back the files from external Locations if requested
 // data for nodes will subsequently be cached in PATH_CACHE not stored in PATH_DATA
@@ -322,7 +326,6 @@ func (node *Node) DeleteFiles() (err error) {
 		return
 	}
 	defer locker.NodeLockMgr.Remove(node.Id)
-	//logger.Errorf("(Node->DeleteFiles) NOT IMPLEMENTED")
 
 	// Check to see if this node has a data file and if it's referenced by another node.
 	// If it is, we will move the data file to the first node we find, and point all other nodes to that node's path
@@ -363,8 +366,19 @@ func (node *Node) DeleteFiles() (err error) {
 		}
 	}
 
+	// we shoudl really delete the index files as well
+	logger.Debug(1, "(Node->DeleteFiles) we still need to delete the index files!")
+	// IndexFilePath := fmt.Sprintf("%s/%s.idx", node.IndexPath(), indextype)
+	// if err = os.Remove(IndexFilePath); err != nil {
+	// 	return
+	// }
+
 	return
 }
+
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
 // Delete the node from Mongo and Disk
 func (node *Node) Delete() (err error) {
@@ -430,6 +444,10 @@ func (node *Node) Delete() (err error) {
 	err = node.Rmdir()
 	return
 }
+
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
 func (node *Node) DeleteIndex(indextype string) (err error) {
 	// lock node

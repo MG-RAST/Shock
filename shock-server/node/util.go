@@ -318,6 +318,25 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err e
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
+// TSMDownload support for downloading files of an existing IBM Tivoli service
+func TSMDownload(uuid string, nodeInstance *Node) (err error) {
+	logger.Infof("(S3Download--> TSMDownload ) needs to be implemented !! \n")
+
+	// the turn around time here is ~12-24 hours
+	// check a dedicated TSMrestore directory in the temp area
+	// move file sform there
+
+	// add .data and .idx.zip files to the list of files to be downloaded from TSM
+
+	//
+
+	return
+}
+
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+
 // DaosDownload support for downloading off https://github.com/daos-stack
 func DaosDownload(uuid string, nodeInstance *Node) (err error) {
 	logger.Infof("(S3Download--> DAOS ) needs to be implemented !! \n")
@@ -333,7 +352,7 @@ func DaosDownload(uuid string, nodeInstance *Node) (err error) {
 func ShockDownload(uuid string, nodeInstance *Node) (err error) {
 
 	// return error if file not found in S3bucket
-	logger.Infof("(ShockDownload) attempting download, UUID: %s, nodeID: %s", uuid, nodeInstance.Id)
+	logger.Debug(1, "(ShockDownload) attempting download, UUID: %s, nodeID: %s", uuid, nodeInstance.Id)
 
 	// authkey
 	var authkey = "blah" // this needs to be read from the auth config file (YAML file)
@@ -384,57 +403,57 @@ func ShockDownload(uuid string, nodeInstance *Node) (err error) {
 	logger.Infof("(ShockDownload)  downloaded, UUID: %s, itemS3key: %s", uuid, itemfile)
 
 	//this will download the indices via a new API feature in SHOCK
-	if false {
-		// download the zipped archive with all the indexed
-		indexfile := fmt.Sprintf("%s.idx", uuid) // the zipped contents of the idx directory in S3
-		indexpath := uuid2Path(uuid)
-		indextemppath := fmt.Sprintf("%s/idx.zip", indexpath)
-		indexdir := fmt.Sprintf("%s/idx", indexpath)
+	// download the zipped archive with all the indexed
+	indexfile := fmt.Sprintf("%s.idx", uuid) // the zipped contents of the idx directory in S3
+	indexpath := uuid2CachePath(uuid)
+	indextemppath := fmt.Sprintf("%s/idx.zip", indexpath)
+	indexdir := fmt.Sprintf("%s/idx", indexpath)
 
-		url = fmt.Sprintf("%s/%s.?download", baseurl, indexfile)
-		options = fmt.Sprint("%s", authkey)
+	url = fmt.Sprintf("%s/%s.?download", baseurl, indexfile)
+	options = fmt.Sprint("%s", authkey)
 
-		// Create the file
-		out, err = os.Create(itemfile)
-		if err != nil {
-			return err
-		}
-		defer out.Close()
-
-		// Get the data
-		resp, err = http.Get(url)
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-
-		// Check server response
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("bad status: %s", resp.Status)
-		}
-
-		// Writer the body to file
-		_, err = io.Copy(out, resp.Body)
-		if err != nil {
-			log.Fatalf("(ShockDownload) Unable to download item %q for %s, %v", itemfile, itemfile, err)
-			return
-		}
-		// unzip the index file
-		_, err = Unzip(indexfile, indexdir) // unzip into idx folder
-		if err != nil {
-			// debug output
-			err = fmt.Errorf("(ShockDownload) error decompressing d: %s", err.Error())
-			return
-		}
-		// remove the zip file
-		err = os.Remove(indextemppath)
-		if err != nil {
-			// debug output
-			err = fmt.Errorf("(ShockDownload) error removing temp file d: %s", err.Error())
-			return
-		}
-
+	// Create the file
+	out, err = os.Create(itemfile)
+	if err != nil {
+		return err
 	}
+	defer out.Close()
+
+	// Get the data
+	resp, err = http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Check server response
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("bad status: %s", resp.Status)
+	}
+
+	// Writer the body to file
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		logger.Debug(1, "(ShockDownload) Unable to download item %q for %s, %v", itemfile, itemfile, err)
+		return
+	}
+	// unzip the index file
+	_, err = Unzip(indexfile, indexdir) // unzip into idx folder
+	if err != nil {
+		logger.Debug(1, "(ShockDownload) error decompressing %q, %v", itemfile, err)
+		// debug output
+		err = fmt.Errorf("(ShockDownload) error decompressing d: %s", err.Error())
+		return
+	}
+	// remove the zip file
+	err = os.Remove(indextemppath)
+	if err != nil {
+		// debug output
+		logger.Debug(1, "(ShockDownload) error removing temp file d: %s", err.Error())
+		err = fmt.Errorf("(ShockDownload) error removing temp file d: %s", err.Error())
+		return
+	}
+
 	return
 }
 
