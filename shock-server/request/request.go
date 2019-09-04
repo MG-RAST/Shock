@@ -4,6 +4,17 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
+	"hash"
+	"io"
+	"io/ioutil"
+	"math/rand"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
+
 	"github.com/MG-RAST/Shock/shock-server/auth"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
@@ -16,16 +27,6 @@ import (
 	"github.com/MG-RAST/golib/httpclient"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"github.com/jum/tinyftp"
-	"hash"
-	"io"
-	"io/ioutil"
-	"math/rand"
-	"net"
-	"net/http"
-	"net/url"
-	"os"
-	"strconv"
-	"strings"
 )
 
 type checkSumCom struct {
@@ -56,6 +57,7 @@ func Log(req *http.Request) {
 	logger.Infof("%s \"%s%s\"", host, url, suffix)
 }
 
+// Authenticate _
 func Authenticate(req *http.Request) (u *user.User, err error) {
 	if _, ok := req.Header["Authorization"]; !ok {
 		err = errors.New(e.NoAuth)
@@ -66,7 +68,13 @@ func Authenticate(req *http.Request) (u *user.User, err error) {
 	return
 }
 
+// AuthError _
 func AuthError(err error, ctx context.Context) error {
+
+	if conf.DEBUG_AUTH {
+		return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+	}
+
 	if err.Error() == e.InvalidAuth {
 		return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid authorization header or content")
 	}
