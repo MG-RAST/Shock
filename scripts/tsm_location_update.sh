@@ -77,7 +77,8 @@ while read line; do
      elif echo ${JSON}| grep -q "Node not found" ; then
       missingcount=`expr $missingcount + 1`
     else
-      echo "$(basename $0) can't write to ${SHOCK_SERVER_URL}; existing" >&2
+      echo "$(basename $0) can't write to ${SHOCK_SERVER_URL}; exiting (node: ${id})" >&2
+      echo "RAW JSON: \n${JSON}\n"
      exit 1
      fi 
 
