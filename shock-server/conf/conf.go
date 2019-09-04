@@ -16,7 +16,7 @@ import (
 )
 
 // Location set of storage locations
-type Location struct {
+type LocationConfig struct {
 	ID          string `bson:"ID" json:"ID" yaml:"ID" `                           // e.g. ANLs3 or local for local store
 	Description string `bson:"Description" json:"Description" yaml:"Description"` // e.g. ANL official S3 service
 	Type        string `bson:"type" json:"type" yaml:"Type" `                     // e.g. S3
@@ -25,7 +25,8 @@ type Location struct {
 	Prefix      string `bson:"prefix" json:"-" yaml:"Prefix"`                     // e.g. any prefix needed
 	AuthKey     string `bson:"AuthKey" json:"-" yaml:"AuthKey"`                   // e.g. AWS auth-key
 	Persistent  bool   `bson:"persistent" json:"persistent" yaml:"Persistent"`    // e.g. is this a valid long term storage location
-	Priority    int    `bson:"priority" json:"priority" yaml:"Priority"`          // e.g. prio for pushing files upstream to this location, 0 is lowest, 100 highest
+	Priority    int    `bson:"priority" json:"priority" yaml:"Priority"`          // e.g. location priority for pushing files upstream to this location, 0 is lowest, 100 highest
+	MinPriority int    `bson:"minpriority" json:"minpriority" yaml:"MinPriority"` // e.g. minimum node priority level for this location (e.g. some stores will only handle non temporary files or high value files)
 	Tier        int    `bson:"tier" json:"tier" yaml:"Tier"`                      // e.g. class or tier 0= cache, 3=ssd based backend, 5=disk based backend, 10=tape archive
 	Cost        int    `bson:"cost" json:"cost" yaml:"Cost"`                      // e.g. dollar cost per GB for this store, default=0
 
@@ -46,11 +47,11 @@ type TSMLocation struct {
 }
 
 // LocationsMap allow access to Location objects via Locations("ID")
-var LocationsMap map[string]*Location
+var LocationsMap map[string]*LocationConfig
 
 // Config contains an array of Location objects
 type Config struct {
-	Locations []Location `bson:"Locations" json:"Locations" yaml:"Locations" `
+	Locations []LocationConfig `bson:"Locations" json:"Locations" yaml:"Locations" `
 }
 
 type idxOpts struct {
@@ -438,7 +439,7 @@ func readYAMLConfig(filename string) (err error) {
 
 	// create a global
 	//var Locations Locations
-	LocationsMap = make(map[string]*Location)
+	LocationsMap = make(map[string]*LocationConfig)
 
 	for i, _ := range conf.Locations {
 		loc := &conf.Locations[i]
