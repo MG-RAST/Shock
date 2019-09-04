@@ -146,8 +146,9 @@ var (
 
 	// change behavior of system from cache to backend store
 	//IS_CACHE   bool   //
-	PATH_CACHE string //   path to cache directory, default is PATH_DATA
-	CACHE_TTL  int    // time in hours for cache items to be retained
+	PATH_CACHE        string //   path to cache directory, default is PATH_DATA
+	MIN_REPLICA_COUNT int    // minimum number of Locations required before enabling delete of local file in DATA_PATH
+	CACHE_TTL         int    // time in hours for cache items to be retained
 
 	// internal config control
 	FAKE_VAR = false
@@ -263,6 +264,7 @@ func Print() {
 		fmt.Printf("##### Log rotation disabled #####\n\n")
 	}
 	fmt.Printf("##### Expiration #####\nexpire_wait:\t%d minutes\n\n", EXPIRE_WAIT)
+	fmt.Printf("##### Minimum Replica Count in other Locations #####\nmin_replica_count:\t%d (before removing local files)\n\n", MIN_REPLICA_COUNT)
 	fmt.Printf("##### Max Revisions #####\nmax_revisions:\t%d\n\n", MAX_REVISIONS)
 	fmt.Printf("API_PORT: %d\n", API_PORT)
 }
@@ -354,6 +356,7 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	// cache
 	c_store.AddString(&PATH_CACHE, "", "Paths", "cache_path", "", "cache directory path, default is nil, if this is set the system will function as a cache")
 	c_store.AddInt(&CACHE_TTL, 24.0, "Cache", "cache_ttl", "", "ttl in hours for cache items")
+	c_store.AddInt(&MIN_REPLICA_COUNT, 2, "Other", "min_replica_count", "", "minimum number of locations required before enabling local Node file deletion")
 
 	// SSL
 	c_store.AddBool(&SSL, false, "SSL", "enable", "", "")
