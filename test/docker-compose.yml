@@ -3,12 +3,11 @@ version: '3.1'
 
 
 # *** required ***
-# set DATADIR for persistent data store , e.g. /var/tmp
+# set DATADIR for persistent data store , e.g. /var/tmp/Shock
 
 
 # optional
 # set CONFIGDIR to path to config
-# set SHOCKDIR for persistent Shock data store , e.g. /var/tmp/Shock
 # set LOGDIR to path to local log dir
 
 services:
@@ -20,19 +19,22 @@ services:
         depends_on:
           - shock-mongo
         entrypoint: 
-          - /bin/sleep
-          - 999d  # start Shock:    docker exec -ti test_shock_1 /go/bin/shock-server --hosts=shock-mongo
+          - /go/bin/shock-server 
+          - --hosts=shock-mongo 
+          - --basic=true 
+          - --users=admin   
+          # docker exec -ti test_shock_1 /go/bin/shock-server --hosts=shock-mongo --basic=true --users=admin
         
           #- /go/bin/shock-server
           #- --hosts=shock-mongo
           # - --conf
           # - /shock-config/shock-server.cfg
-        volumes:
+        #volumes:
           # persistent data
-          - ${DATADIR}/shock/data:/usr/local/shock
+          #- ${DATADIR}/shock/data:/usr/local/shock
           
           # mount local source code
-          - $HOME/go/src/github.com/MG-RAST/Shock:/go/src/github.com/MG-RAST/Shock
+          #- $HOME/go/src/github.com/MG-RAST/Shock:/go/src/github.com/MG-RAST/Shock
           
           # mount config file 
           #- ${CONFIGDIR}/Shock/shock-server.container.cfg:/shock-config/shock-server.cfg
@@ -51,7 +53,27 @@ services:
         image: mongo:3.6
         ports:
           - 27017
-        volumes:
+        #volumes:
           # persistent data
-          - ${DATADIR}/mongo/db:/data/db
+          #- ${DATADIR}/mongo/db:/data/db
+
+    # create admin account
+    shock-mongo-seed:
+        image: mongo:3.6
+        depends_on:
+          - shock-mongo
+        entrypoint: >
+          /bin/bash -c "
+            set -x
+            until mongo mongodb://shock-mongo:27017/ShockDB  --eval version 
+            do
+              echo sleeping;
+              sleep 1;
+            done;
+            echo Connected!;
+            mongo mongodb://shock-mongo:27017/ShockDB --eval 'db.Users.updateOne({username: \"admin\"}, {$$set: { password: \"secret\" , shock_admin: true } } )';
+          "
+# mongo mongodb://shock-mongo:27017/ShockDB  --eval 'version'
+         
+
 

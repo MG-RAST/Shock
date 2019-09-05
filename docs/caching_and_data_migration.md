@@ -1,4 +1,4 @@
-# Shock Setup for caching and data migration (new options with v1.0)
+# Shock Setup for caching and data migration (new options with v2.0)
 
 Author: Folker Meyer (folker@anl.gov)
 

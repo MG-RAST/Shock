@@ -99,20 +99,20 @@ func FMOpen(filepath string) (f *os.File, err error) {
 	//for _, locationStr := range nodeInstance.Locations {
 Loop:
 	//for _, locationStr := range []string{"anls3_anlseq"} {
-	for _, locationStr := range nodeInstance.Locations {
+	for _, location := range nodeInstance.Locations {
 
-		location, ok := conf.LocationsMap[locationStr]
+		locationConfig, ok := conf.LocationsMap[location.ID]
 		if !ok {
-			err = fmt.Errorf("(FMOpen) location unknown %s", locationStr)
+			err = fmt.Errorf("(FMOpen) location unknown %s", location.ID)
 			return
 		}
 		// debug
 		//	spew.Dump(location)
 
-		switch location.Type {
+		switch locationConfig.Type {
 		// we implement only S3 for now
 		case "S3":
-			err = S3Download(uuid, nodeInstance, location)
+			err = S3Download(uuid, nodeInstance, locationConfig)
 			if err != nil {
 				// debug output
 				err = fmt.Errorf("(FMOpen) S3download returned: %s", err.Error())
@@ -140,7 +140,7 @@ Loop:
 			break Loop
 
 		default:
-			err = fmt.Errorf("(FMOpen) Location type %s not supported", location.Type)
+			err = fmt.Errorf("(FMOpen) Location type %s not supported", locationConfig.Type)
 			return
 		}
 		// if we are here we did not find what we needed
@@ -173,7 +173,7 @@ Loop:
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
 // S3Download download a file and its indices from an S3 source
-func S3Download(uuid string, nodeInstance *Node, location *conf.Location) (err error) {
+func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error) {
 
 	// return error if file not found in S3bucket
 	//fmt.Printf("(S3Download) attempting download, UUID: %s, nodeID: %s from: %s\n", uuid, nodeInstance.Id, location.URL)

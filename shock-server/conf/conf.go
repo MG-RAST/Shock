@@ -226,6 +226,8 @@ func Initialize() (err error) {
 			return errors.New("error reading Locations file: " + err.Error())
 		}
 	}
+	err = nil
+
 	return
 }
 
