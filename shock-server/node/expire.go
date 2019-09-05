@@ -52,38 +52,48 @@ MainLoop:
 			//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
 			// write info for node migration
-			logger.Debug(1, "writing info for node migration: %s", n.Id)
+			logger.Debug(3, "writing info for node migration: %s", n.Id)
 			// CODE MISSING HERE FOR WRITING FILES WITH INFO FOR MIGRATION
+
+			// check if we want to migrate nodes
+			if conf.NODE_MIGRATION != true {
+				logger.Debug(3, "not starting node migration")
+				continue MainLoop
+			}
+
+			// CODE for data migration here...
+
 			//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 			//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 			//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 			//	for this node check all locations to check if node Data files can be erased
-			for _, loc := range n.Locations {
-				var counter int = 0 // we need at least N locations before we can erase data files on local disk
 
-				// delete only if other locations exist
-				locObj, ok := conf.LocationsMap[loc.ID]
-
-				if !ok {
-					logger.Errorf("(Reaper-->FileReaper) location %s is not defined in this server instance \n ", loc)
-					continue
-				}
-				//fmt.Printf("(Reaper-->FileReaper) locObj.Persistent =  %b  \n ", locObj.Persistent)
-				if locObj.Persistent == true {
-					logger.Debug(2, "(Reaper-->FileReaper) has remote Location (%s) removing from Data: %s", loc.ID, n.Id)
-					counter++ // increment counter
-				}
-				if counter >= conf.MIN_REPLICA_COUNT {
-					err := n.DeleteFiles() // delete all data files for node in PATH_DATA NOTE: this is different from PATH_CACHE
-					if err != nil {
-						logger.Errorf("(Reaper-->FileReaper) files for node %s could not be deleted (Err: %s) ", n.Id, err.Error())
+			// check global flag to see if we want to remove local data
+			if conf.NODE_DATA_REMOVAL == true {
+				for _, loc := range n.Locations {
+					var counter int = 0 // we need at least N locations before we can erase data files on local disk
+					// delete only if other locations exist
+					locObj, ok := conf.LocationsMap[loc.ID]
+					if !ok {
+						logger.Errorf("(Reaper-->FileReaper) location %s is not defined in this server instance \n ", loc)
 						continue
 					}
-					continue NodeLoop
-					// the innermost loop
+					//fmt.Printf("(Reaper-->FileReaper) locObj.Persistent =  %b  \n ", locObj.Persistent)
+					if locObj.Persistent == true {
+						logger.Debug(2, "(Reaper-->FileReaper) has remote Location (%s) removing from Data: %s", loc.ID, n.Id)
+						counter++ // increment counter
+					}
+					if counter >= conf.MIN_REPLICA_COUNT {
+						err := n.DeleteFiles() // delete all data files for node in PATH_DATA NOTE: this is different from PATH_CACHE
+						if err != nil {
+							logger.Errorf("(Reaper-->FileReaper) files for node %s could not be deleted (Err: %s) ", n.Id, err.Error())
+							continue
+						}
+						continue NodeLoop
+						// the innermost loop
+					}
+					///
 				}
-				///
-
 			}
 			// garbage collection: remove old nodes from Lockers, value is hours old
 			locker.NodeLockMgr.RemoveOld(1)
