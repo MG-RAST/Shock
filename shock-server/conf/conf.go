@@ -114,7 +114,7 @@ var (
 	LOG_OUTPUT  string
 	LOG_TRACE   bool // enable trace logging
 	DEBUG_LEVEL int
-
+	DEBUG_AUTH  = false
 	// Mongo information
 	MONGODB_HOSTS             string
 	MONGODB_DATABASE          string

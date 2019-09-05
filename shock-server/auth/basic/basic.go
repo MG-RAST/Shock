@@ -7,6 +7,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/user"
 )
@@ -16,6 +17,10 @@ import (
 func DecodeHeader(header string) (username string, password string, err error) {
 	headerArray := strings.Split(header, " ")
 	if len(headerArray) != 2 {
+		if conf.DEBUG_AUTH {
+			err = errors.New("(basic/DecodeHeader) len(headerArray) != 2")
+			return
+		}
 		err = errors.New(e.InvalidAuth)
 		return
 	}
@@ -23,19 +28,37 @@ func DecodeHeader(header string) (username string, password string, err error) {
 	token := headerArray[1]
 	if strings.ToLower(bearer) == "basic" {
 
-		if val, err := base64.URLEncoding.DecodeString(token); err == nil {
-			tmp := strings.Split(string(val), ":")
-			if len(tmp) >= 2 {
-				return tmp[0], tmp[1], nil
-			} else {
-				return "", "", errors.New(e.InvalidAuth)
+		var val []byte
+		val, err = base64.URLEncoding.DecodeString(token)
+		if err != nil {
+			if conf.DEBUG_AUTH {
+				err = errors.New("(basic/DecodeHeader) " + err.Error())
+				return
 			}
-		} else {
 			return "", "", errors.New(e.InvalidAuth)
 		}
 
+		tmp := strings.Split(string(val), ":")
+		if len(tmp) <= 1 {
+			if conf.DEBUG_AUTH {
+				err = errors.New("(basic/DecodeHeader) len(tmp) <=1")
+				return
+			}
+			err = errors.New(e.InvalidAuth)
+			return
+		}
+		username = tmp[0]
+		password = tmp[1]
+		return
 	}
-	return "", "", errors.New(e.InvalidAuth)
+
+	if conf.DEBUG_AUTH {
+		err = errors.New("(basic/DecodeHeader) bearer \"basic\" is missing")
+		return
+	}
+	err = errors.New(e.InvalidAuth)
+	return
+
 }
 
 // Auth takes the request authorization header and returns
@@ -43,9 +66,12 @@ func DecodeHeader(header string) (username string, password string, err error) {
 func Auth(header string) (u *user.User, err error) {
 	//fmt.Printf("auth: %s\n", header)
 	username, password, err := DecodeHeader(header)
-	//fmt.Printf("auth: %s %s\n", username, password)
-	if err == nil {
-		return user.FindByUsernamePassword(username, password)
+	if err != nil {
+		return
 	}
-	return nil, err
+	//fmt.Printf("auth: %s %s\n", username, password)
+
+	u, err = user.FindByUsernamePassword(username, password)
+
+	return
 }
