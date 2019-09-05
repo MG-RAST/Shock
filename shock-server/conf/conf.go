@@ -16,7 +16,7 @@ import (
 )
 
 // Location set of storage locations
-type Location struct {
+type LocationConfig struct {
 	ID          string `bson:"ID" json:"ID" yaml:"ID" `                           // e.g. ANLs3 or local for local store
 	Description string `bson:"Description" json:"Description" yaml:"Description"` // e.g. ANL official S3 service
 	Type        string `bson:"type" json:"type" yaml:"Type" `                     // e.g. S3
@@ -46,11 +46,11 @@ type TSMLocation struct {
 }
 
 // LocationsMap allow access to Location objects via Locations("ID")
-var LocationsMap map[string]*Location
+var LocationsMap map[string]*LocationConfig
 
 // Config contains an array of Location objects
 type Config struct {
-	Locations []Location `bson:"Locations" json:"Locations" yaml:"Locations" `
+	Locations []LocationConfig `bson:"Locations" json:"Locations" yaml:"Locations" `
 }
 
 type idxOpts struct {
@@ -438,7 +438,7 @@ func readYAMLConfig(filename string) (err error) {
 
 	// create a global
 	//var Locations Locations
-	LocationsMap = make(map[string]*Location)
+	LocationsMap = make(map[string]*LocationConfig)
 
 	for i, _ := range conf.Locations {
 		loc := &conf.Locations[i]
