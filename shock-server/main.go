@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/MG-RAST/Shock/shock-server/auth"
+	"github.com/MG-RAST/Shock/shock-server/cache"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	ncon "github.com/MG-RAST/Shock/shock-server/controller/node"
 	acon "github.com/MG-RAST/Shock/shock-server/controller/node/acl"
@@ -283,11 +284,26 @@ func main() {
 		os.Exit(1)
 	}
 
-	user.Initialize()
+	err = user.Initialize()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Err@user.Initialize: %s\n", err.Error())
+		logger.Error("Err@user.Initialize: " + err.Error())
+		os.Exit(1)
+	}
+
 	node.Initialize()
 	preauth.Initialize()
 	auth.Initialize()
+	err = cache.Initialize()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Err@cache.Initialize: %s\n", err.Error())
+		logger.Error("Err@cache.Initialize: " + err.Error())
+		os.Exit(1)
+
+	}
+
 	node.InitReaper()
+
 	err = versions.Initialize()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Err@versions.Initialize: %s\n", err.Error())
@@ -310,6 +326,7 @@ func main() {
 	}
 	printLogo()
 	conf.Print()
+
 	if err := versions.Print(); err != nil {
 		fmt.Fprintf(os.Stderr, "Err@versions.Print: %s\n", err.Error())
 		logger.Error("Err@versions.Print: " + err.Error())

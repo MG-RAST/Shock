@@ -2,8 +2,11 @@ package node
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path"
 	"reflect"
 	"strconv"
 	"time"
@@ -93,6 +96,77 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		if archive.IsValidCompress(query.Get("compression")) {
 			compressionFormat = query.Get("compression")
 		}
+	}
+
+	if _, ok := query["download_idx"]; ok {
+
+		// create a zip file from the idx_directory
+		//var indexfiles []os.FileInfo
+
+		indexfiles := n.IndexFiles()
+		// list all index files
+		//	logger.Infof("(Single-->Download_idx: n.IndexFiles \n) ")
+
+		//spew.Dump(n)
+		//logger.Infof("(Single-->Download_idx: indexfiles) ")
+
+		//spew.Dump(indexfiles)
+
+		var files []*file.FileInfo
+
+		//		logger.Infof("(Single-->Download_idx) ")
+
+		// process nodes
+		for _, indexfile := range indexfiles { // loop thru index files
+
+			//logger.Infof("(Single-->Download_idx: file %s) ", indexfile)
+
+			// get node
+
+			// get filereader
+			nf, err := os.Open(indexfile)
+			if err != nil {
+				nf.Close()
+				continue
+			}
+			// add to file array
+			var fileInfo file.FileInfo
+
+			fileInfo.R = append(fileInfo.R, nf)
+
+			defer nf.Close()
+
+			// add to file info
+			fileInfo.Name = path.Base(indexfile)
+			//fileInfo.Size = nf.
+			//fileInfo.ModTime = n.File.CreatedOn
+			// if _, ok := n.File.Checksum["md5"]; ok {
+			// 	fileInfo.Checksum = n.File.Checksum["md5"]
+			// }
+			files = append(files, &fileInfo)
+		}
+
+		zipfilename := fmt.Sprintf("%s.idx.zip", n.Id)
+
+		// if there are no index files, just return
+
+		//	create a read for Zip file	and hand into streamer object
+		//if (len(files) > 1) && (archiveFormat != "")
+		// create multi node / file streamer, must have archive format
+		m := &request.MultiStreamer{
+			Files:       files,
+			W:           ctx.HttpResponseWriter(),
+			ContentType: "application/octet-stream",
+			Filename:    zipfilename,
+			Archive:     "zip", // supported: tar , zip
+		}
+		if err := m.MultiStream(); err != nil {
+			err_msg := "err:@preAuth: " + err.Error()
+			logger.Errorf("(single->download_idx) %s ", err_msg)
+			return err
+		}
+
+		return nil
 	}
 
 	// Switch though param flags
