@@ -26,8 +26,7 @@ RUN mkdir -p /var/log/shock /usr/local/shock/data ${DIR}
 # compile
 RUN cd ${DIR} && \
     go get github.com/MG-RAST/go-shock-client && \
-    #go get -d ./shock-server/ ./shock-client/  && 
-    CGO_ENABLED=0 go install -a -installsuffix cgo -v -ldflags="-X github.com/MG-RAST/Shock/shock-server/conf.VERSION=$(git describe --tags)" ./shock-server/ 
+    ./compile-server.sh
 
 
 CMD ["/go/bin/shock-server"]
