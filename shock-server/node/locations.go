@@ -3,6 +3,7 @@ package node
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
@@ -11,13 +12,14 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
+	"github.com/davecgh/go-spew/spew"
 	mgo "gopkg.in/mgo.v2"
 )
 
-// GET, PUT, DELETE: /node/{nid}/locations/{loc}
+// GET, PUT, DELETE: /node/{nid}/locations/{loc}  , for PUT send body: {loc}, specify -H "Content-Type: application/json"
 func LocationsRequest(ctx context.Context) {
 	nid := ctx.PathValue("nid")
-	location := ctx.PathValue("loc")
+	locationID := ctx.PathValue("loc")
 
 	rmeth := ctx.HttpRequest().Method
 
@@ -64,27 +66,107 @@ func LocationsRequest(ctx context.Context) {
 
 	//case "PUT": //PUT is idempotent
 	case "GET":
-		if location == "" { // /node/{nid}/locations
+		if locationID == "" { // /node/{nid}/locations
 			locations := n.GetLocations()
 			responder.RespondWithData(ctx, locations)
 			return
 		} else { // /node/{nid}/locations/{loc}
-			err = n.GetLocation(location)
+			var thisLocation Location
+			thisLocation, err = n.GetLocation(locationID)
 			if err != nil {
 				responder.RespondWithError(ctx, http.StatusInternalServerError, err.Error())
 				return
 			}
-			responder.RespondOK(ctx)
+			responder.RespondWithData(ctx, thisLocation)
 			return
 
 		}
 	case "POST": // append
 		if !u.Admin {
-			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+			errmsg := e.UnAuth
+			if conf.DEBUG_AUTH {
+				errmsg = "admin required"
+			}
+
+			responder.RespondWithError(ctx, http.StatusUnauthorized, errmsg) //
 			return
 		}
 
-		err = n.AddLocation(location)
+		var locationObjectIf interface{}
+		locationObjectIf, err = ctx.RequestData()
+		if err != nil {
+			responder.RespondWithError(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+		spew.Dump(locationObjectIf)
+
+		newLocation := Location{}
+
+		switch locationObjectIf.(type) {
+		case map[string]interface{}:
+			locationObjectMap := locationObjectIf.(map[string]interface{})
+
+			locIDIf, ok := locationObjectMap["id"]
+			if !ok {
+				responder.RespondWithError(ctx, http.StatusInternalServerError, "id not found")
+				return
+			}
+
+			if locIDIf == "" {
+				responder.RespondWithError(ctx, http.StatusInternalServerError, "id empty")
+				return
+			}
+
+			locID, ok := locIDIf.(string)
+			if !ok {
+				responder.RespondWithError(ctx, http.StatusInternalServerError, "id not a string")
+				return
+			}
+
+			newLocation.ID = locID
+			fmt.Println(locID)
+			requestedIf, ok := locationObjectMap["requested"]
+			if ok {
+
+				requested, ok := requestedIf.(bool)
+				if ok {
+					newLocation.Requested = requested
+				}
+			}
+
+			requestedDateIf, ok := locationObjectMap["requestedDate"]
+			if ok {
+				requestedDateStr, ok := requestedDateIf.(string)
+				if !ok {
+					responder.RespondWithError(ctx, http.StatusInternalServerError, "timestamp not a string")
+					return
+				}
+				var requestedDate time.Time
+				requestedDate, err = time.Parse(shortDateForm, requestedDateStr)
+				if err != nil {
+
+					requestedDate, err = time.Parse(longDateForm, requestedDateStr)
+					if err != nil {
+						responder.RespondWithError(ctx, http.StatusInternalServerError, "could not parse timestamp")
+						return
+					}
+				}
+
+				fmt.Println(requestedDate)
+				newLocation.RequestedDate = &requestedDate
+
+			} else {
+				fmt.Println("date not found")
+			}
+
+		default:
+			responder.RespondWithError(ctx, http.StatusInternalServerError, "type of object not recognized")
+			return
+		}
+
+		//locationObject := locationObjectIf.(Location)
+
+		err = n.AddLocation(newLocation)
 		if err != nil {
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err.Error())
 			return
@@ -98,8 +180,8 @@ func LocationsRequest(ctx context.Context) {
 			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 			return
 		}
-		if location != "" { // /node/{nid}/locations/{loc}
-			err = n.DeleteLocation(location)
+		if locationID != "" { // /node/{nid}/locations/{loc}
+			err = n.DeleteLocation(locationID)
 			if err != nil {
 				responder.RespondWithError(ctx, http.StatusInternalServerError, err.Error())
 				return
