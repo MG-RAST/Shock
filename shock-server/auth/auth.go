@@ -17,6 +17,7 @@ import (
 var authCache cache
 var authMethods []func(string) (*user.User, error)
 
+// Initialize _
 func Initialize() {
 	authCache = cache{m: make(map[string]cacheValue)}
 	authMethods = []func(string) (*user.User, error){}
@@ -32,21 +33,27 @@ func Initialize() {
 	}
 }
 
+// Authenticate _
 func Authenticate(header string) (u *user.User, err error) {
-	if u = authCache.lookup(header); u != nil {
-		return u, nil
-	} else {
-		for _, auth := range authMethods {
-			u, err := auth(header)
-			if u != nil && err == nil {
-				authCache.add(header, u)
-				return u, nil
-			}
-			if err != nil {
-				// log actual error, return consistant invalid auth to user
-				logger.Error("Err@auth.Authenticate: " + err.Error())
-			}
-		}
+	u = authCache.lookup(header)
+	if u != nil {
+		return
 	}
+
+	for _, auth := range authMethods {
+		u, err = auth(header)
+		if err != nil {
+			// log actual error, return consistant invalid auth to user
+			logger.Error("Err@auth.Authenticate: " + err.Error())
+			continue
+		}
+
+		if u != nil {
+			authCache.add(header, u)
+		}
+		return
+
+	}
+
 	return nil, errors.New(e.InvalidAuth)
 }
