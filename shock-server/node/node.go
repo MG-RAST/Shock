@@ -36,7 +36,7 @@ type Node struct {
 	Priority     int               `bson:"priority" json:"priority"`
 	CreatedOn    time.Time         `bson:"created_on" json:"created_on"`
 	LastModified time.Time         `bson:"last_modified" json:"last_modified"`
-	Expiration   time.Time         `bson:"expiration" json:"expiration"` // 0 means no expiration
+	Expiration   time.Time         `bson:"expiration" json:"expiration"` // 0 means no expiration of Node
 	Type         string            `bson:"type" json:"type"`
 	Subset       Subset            `bson:"subset" json:"-"`
 	Parts        *PartsList        `bson:"parts" json:"parts"`
@@ -91,11 +91,19 @@ const (
 	shortDateForm = "2006-01-02"
 )
 
-func New() (node *Node) {
+func New(uuid string) (node *Node) {
 	node = new(Node)
 	node.Indexes = make(map[string]*IdxInfo)
 	node.File.Checksum = make(map[string]string)
-	node.setId()
+
+	if uuid == "" {
+		node.setId()
+	} else {
+
+		logger.Infof("(Node-->New) we need to check with the upstream node (UUID-Master) if UUID is available ")
+
+	}
+
 	return
 }
 
@@ -164,7 +172,7 @@ func CreateNodeUpload(u *user.User, params map[string]string, files file.FormFil
 		}
 	}
 
-	node = New()
+	node = New("")
 	node.Type = "basic"
 
 	node.Acl.SetOwner(u.Uuid)
@@ -237,7 +245,7 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files file.F
 		// create link
 		link := linkage{Type: "parent", Operation: aFormat, Ids: []string{archiveId}}
 		// create and populate node
-		node := New()
+		node := New("")
 		node.Type = "basic"
 		node.Linkages = append(node.Linkages, link)
 		node.Attributes = atttributes
@@ -291,7 +299,7 @@ func (node *Node) FileReader() (reader file.ReaderAt, err error) {
 		}
 		return file.MultiReaderAt(readers...), nil
 	}
-	return os.Open(node.FilePath())
+	return FMOpen(node.FilePath())
 }
 
 func (node *Node) DynamicIndex(name string) (idx index.Index, err error) {

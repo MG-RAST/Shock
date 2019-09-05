@@ -3,11 +3,12 @@ package locker
 import (
 	"bytes"
 	"fmt"
-	"github.com/MG-RAST/Shock/shock-server/logger"
 	"runtime"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/MG-RAST/Shock/shock-server/logger"
 )
 
 var (
@@ -208,7 +209,7 @@ func (f *FileLocker) Error(id string, err error) {
 	defer f.Unlock()
 	if info, ok := f.nodes[id]; ok {
 		info.Error = err.Error()
-		logger.Error(fmt.Sprintf("error during asynchronous file processing node=%s: %s", id, err.Error()))
+		logger.Errorf("error during asynchronous file processing node=%s: %s", id, err.Error())
 	}
 }
 
@@ -225,7 +226,7 @@ func (f *FileLocker) RemoveOld(hours int) {
 	expireTime := currTime.Add(time.Duration(hours*-1) * time.Hour)
 	for id, info := range f.nodes {
 		if info.CreatedOn.Before(expireTime) {
-			logger.Error(fmt.Sprintf("Removing stale file lock: node=%s", id))
+			logger.Errorf("Removing stale file lock: node=%s", id)
 			delete(f.nodes, id)
 		}
 	}

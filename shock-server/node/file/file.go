@@ -2,10 +2,11 @@
 package file
 
 import (
-	"github.com/MG-RAST/Shock/shock-server/node/locker"
 	"io"
 	"os"
 	"time"
+
+	"github.com/MG-RAST/Shock/shock-server/node/locker"
 )
 
 // File is the Node file structure. Contains the json/bson marshalling controls.

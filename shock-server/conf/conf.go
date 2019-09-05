@@ -4,13 +4,54 @@ package conf
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/MG-RAST/golib/goconfig/config"
+	"gopkg.in/yaml.v2"
 )
+
+// Location set of storage locations
+type LocationConfig struct {
+	ID          string `bson:"ID" json:"ID" yaml:"ID" `                           // e.g. ANLs3 or local for local store
+	Description string `bson:"Description" json:"Description" yaml:"Description"` // e.g. ANL official S3 service
+	Type        string `bson:"type" json:"type" yaml:"Type" `                     // e.g. S3
+	URL         string `bson:"url" json:"url" yaml:"URL"`                         // e.g. http://s3api.invalid.org/download&id=
+	Token       string `bson:"token" json:"-" yaml:"Token" `                      // e.g.  Key or password
+	Prefix      string `bson:"prefix" json:"-" yaml:"Prefix"`                     // e.g. any prefix needed
+	AuthKey     string `bson:"AuthKey" json:"-" yaml:"AuthKey"`                   // e.g. AWS auth-key
+	Persistent  bool   `bson:"persistent" json:"persistent" yaml:"Persistent"`    // e.g. is this a valid long term storage location
+	Priority    int    `bson:"priority" json:"priority" yaml:"Priority"`          // e.g. prio for pushing files upstream to this location, 0 is lowest, 100 highest
+	Tier        int    `bson:"tier" json:"tier" yaml:"Tier"`                      // e.g. class or tier 0= cache, 3=ssd based backend, 5=disk based backend, 10=tape archive
+	Cost        int    `bson:"cost" json:"cost" yaml:"Cost"`                      // e.g. dollar cost per GB for this store, default=0
+
+	S3Location  `bson:",inline" json:",inline" yaml:",inline"` // extensions specific to S3
+	TSMLocation `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to IBM TSM
+}
+
+// S3Location S3 specific fields
+type S3Location struct {
+	Bucket    string `bson:"bucket" json:"bucket" yaml:"Bucket" `
+	Region    string `bson:"region" json:"region" yaml:"Region" `
+	SecretKey string `bson:"SecretKey" json:"-" yaml:"SecretKey" ` // e.g.g AWS secret-key
+}
+
+// TSMLocation IBM TSM specific fields
+type TSMLocation struct {
+	Recoverycommand string `bson:"recoverycommand" json:"recoverycommand" yaml:"Recoverycommand" `
+}
+
+// LocationsMap allow access to Location objects via Locations("ID")
+var LocationsMap map[string]*LocationConfig
+
+// Config contains an array of Location objects
+type Config struct {
+	Locations []LocationConfig `bson:"Locations" json:"Locations" yaml:"Locations" `
+}
 
 type idxOpts struct {
 	unique   bool
@@ -102,6 +143,11 @@ var (
 	SHOW_HELP    bool // simple usage
 	SHOW_VERSION bool
 
+	// change behavior of system from cache to backend store
+	//IS_CACHE   bool   //
+	PATH_CACHE string //   path to cache directory, default is PATH_DATA
+	CACHE_TTL  int    // time in hours for cache items to be retained
+
 	// internal config control
 	FAKE_VAR = false
 )
@@ -160,6 +206,18 @@ func Initialize() (err error) {
 		os.Exit(0)
 	}
 
+	// read Locations.yaml file from same directory as config file
+	var LocationsPath = path.Dir(CONFIG_FILE)
+	LocationsPath = path.Join(LocationsPath, "Locations.yaml")
+
+	fmt.Printf("read Locations file: %s\n", LocationsPath)
+
+	// we should check the YAML config file for correctness and schema compliance
+	// TOBEADDED --> https://github.com/santhosh-tekuri/jsonschema/issues/5
+	err = readYAMLConfig(LocationsPath)
+	if err != nil {
+		return errors.New("error reading Locations file: " + err.Error())
+	}
 	return
 }
 
@@ -186,7 +244,7 @@ func Print() {
 		}
 	}
 	fmt.Printf("##### Admin #####\nusers:\t%s\n\n", ADMIN_USERS)
-	fmt.Printf("##### Paths #####\nsite:\t%s\ndata:\t%s\nlogs:\t%s\nlocal_paths:\t%s\n\n", PATH_SITE, PATH_DATA, PATH_LOGS, PATH_LOCAL)
+	fmt.Printf("##### Paths #####\nsite:\t%s\ndata:\t%s\nlogs:\t%s\nlocal_paths:\t%s\ncache_path:\t%s\n\n", PATH_SITE, PATH_DATA, PATH_LOGS, PATH_LOCAL, PATH_CACHE)
 	if SSL {
 		fmt.Printf("##### SSL enabled #####\n")
 		fmt.Printf("##### SSL key:\t%s\n##### SSL cert:\t%s\n\n", SSL_KEY, SSL_CERT)
@@ -289,8 +347,12 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddString(&PATH_SITE, "/usr/local/shock/site", "Paths", "site", "", "")
 	c_store.AddString(&PATH_DATA, "/usr/local/shock/data", "Paths", "data", "", "")
 	c_store.AddString(&PATH_LOGS, "/var/log/shock", "Paths", "logs", "", "")
-	c_store.AddString(&PATH_LOCAL, "", "Paths", "local_paths", "", "")
+	c_store.AddString(&PATH_LOCAL, "/var/tmp", "Paths", "local_paths", "", "")
 	c_store.AddString(&PATH_PIDFILE, "", "Paths", "pidfile", "", "")
+
+	// cache
+	c_store.AddString(&PATH_CACHE, "", "Paths", "cache_path", "", "cache directory path, default is nil, if this is set the system will function as a cache")
+	c_store.AddInt(&CACHE_TTL, 24.0, "Cache", "cache_ttl", "", "ttl in hours for cache items")
 
 	// SSL
 	c_store.AddBool(&SSL, false, "SSL", "enable", "", "")
@@ -347,6 +409,7 @@ func parseConfiguration() (err error) {
 	PATH_LOGS = cleanPath(PATH_LOGS)
 	PATH_LOCAL = cleanPath(PATH_LOCAL)
 	PATH_PIDFILE = cleanPath(PATH_PIDFILE)
+	PATH_CACHE = cleanPath(PATH_CACHE)
 
 	return
 }
@@ -356,4 +419,32 @@ func cleanPath(p string) string {
 		p, _ = filepath.Abs(p)
 	}
 	return p
+}
+
+// readYAMLConfig read a YAML style config file with Shock configuration
+// the file has to be a yaml file, currently for Locations only
+func readYAMLConfig(filename string) (err error) {
+
+	var conf Config
+
+	source, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return (err)
+	}
+	err = yaml.Unmarshal(source, &conf)
+	if err != nil {
+		return (err)
+	}
+
+	// create a global
+	//var Locations Locations
+	LocationsMap = make(map[string]*LocationConfig)
+
+	for i, _ := range conf.Locations {
+		loc := &conf.Locations[i]
+
+		LocationsMap[loc.ID] = loc
+	}
+
+	return
 }

@@ -1,12 +1,14 @@
 package node
 
 import (
+	"regexp"
+	"time"
+
+	"github.com/MG-RAST/Shock/shock-server/cache"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node/locker"
 	"gopkg.in/mgo.v2/bson"
-	"regexp"
-	"time"
 )
 
 var (
@@ -27,6 +29,7 @@ func NewNodeReaper() *NodeReaper {
 func (nr *NodeReaper) Handle() {
 	waitDuration := time.Duration(conf.EXPIRE_WAIT) * time.Minute
 	for {
+
 		// sleep
 		time.Sleep(waitDuration)
 		// query to get expired nodes
@@ -45,7 +48,53 @@ func (nr *NodeReaper) Handle() {
 		locker.NodeLockMgr.RemoveOld(1)
 		locker.FileLockMgr.RemoveOld(6)
 		locker.IndexLockMgr.RemoveOld(6)
+
+		// we do not start deletings files if we are not in cache mode
+		if conf.PATH_CACHE == "" {
+			continue
+		}
+	Loop2:
+		// start a FILE REAPER that loops thru CacheMap[*]
+		for ID := range cache.CacheMap {
+
+			logger.Debug(3, "(Reaper-->FileReaper) checking %s in cache\n", ID)
+
+			now := time.Now()
+			lru := cache.CacheMap[ID].Access
+			diff := now.Sub(lru)
+
+			// we use a very simple scheme for caching initially (file not used for 1 day)
+			if diff.Hours() < float64(conf.CACHE_TTL) {
+				//	fmt.Printf("(Reaper-->FileReaper) not deleting %s from cache it was last accessed %s hours ago\n", ID, diff.Hours())
+				continue
+			}
+
+			n, err := Load(ID)
+			if err != nil {
+				logger.Debug(1, "(Reaper-->FileReaper) Cannot access CacheMapItem[%s] (%s)", ID, err.Error())
+				continue
+			}
+
+			for _, loc := range n.Locations {
+				// delete only if other locations exist
+				locObj, ok := conf.LocationsMap[loc.ID]
+				if !ok {
+					logger.Errorf("(Reaper-->FileReaper) location %s is not defined in this server instance \n ", loc)
+					continue
+				}
+				//fmt.Printf("(Reaper-->FileReaper) locObj.Persistent =  %b  \n ", locObj.Persistent)
+				if locObj.Persistent == true {
+					logger.Debug(2, "(Reaper-->FileReaper) has remote Location (%s) removing from Cache: %s", loc, ID)
+
+					cache.Remove(ID)
+					continue Loop2 // the innermost loop
+				}
+			}
+			logger.Errorf("(Reaper-->FileReaper) cannot delete %s from cache [This should not happen!!]", ID)
+		}
 	}
+
+	return
 }
 
 func (nr *NodeReaper) getQuery() (query bson.M) {
