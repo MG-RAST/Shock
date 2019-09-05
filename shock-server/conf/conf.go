@@ -28,7 +28,7 @@ type LocationConfig struct {
 	Priority    int    `bson:"priority" json:"priority" yaml:"Priority"`          // e.g. location priority for pushing files upstream to this location, 0 is lowest, 100 highest
 	MinPriority int    `bson:"minpriority" json:"minpriority" yaml:"MinPriority"` // e.g. minimum node priority level for this location (e.g. some stores will only handle non temporary files or high value files)
 	Tier        int    `bson:"tier" json:"tier" yaml:"Tier"`                      // e.g. class or tier 0= cache, 3=ssd based backend, 5=disk based backend, 10=tape archive
-	Cost        int    `bson:"cost" json:"cost" yaml:"Cost"`                      // e.g. dollar cost per GB for this store, default=0
+	Cost        int    `bson:"cost" json:"cost" yaml:"Cost"`                      // e.g.  cost per GB for this store, default=0
 
 	S3Location  `bson:",inline" json:",inline" yaml:",inline"` // extensions specific to S3
 	TSMLocation `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to IBM TSM
@@ -270,6 +270,7 @@ func Print() {
 	fmt.Printf("##### Max Revisions #####\nmax_revisions:\t%d\n\n", MAX_REVISIONS)
 	fmt.Printf("##### Node migration #####\nnode_migration::\t%b\n\n", NODE_MIGRATION)
 	fmt.Printf("##### Node file deletion (after migration) #####\nnode_data_removal::\t%b\n\n", NODE_DATA_REMOVAL)
+	fmt.Printf("##### Cache file TTL #####\ncache_ttl::\t%b\n\n", CACHE_TTL)
 	fmt.Printf("API_PORT: %d\n", API_PORT)
 }
 
