@@ -149,6 +149,8 @@ var (
 	PATH_CACHE        string //   path to cache directory, default is PATH_DATA
 	MIN_REPLICA_COUNT int    // minimum number of Locations required before enabling delete of local file in DATA_PATH
 	CACHE_TTL         int    // time in hours for cache items to be retained
+	NODE_MIGRATION    bool   // if true shock server will attempt to migrate data to remote Locations (see locations.yaml)
+	NODE_DATA_REMOVAL bool   // if true shock server will attempt to remove local if at least MIN_REPLICA_COUNT copies exist
 
 	// internal config control
 	FAKE_VAR = false
@@ -266,6 +268,8 @@ func Print() {
 	fmt.Printf("##### Expiration #####\nexpire_wait:\t%d minutes\n\n", EXPIRE_WAIT)
 	fmt.Printf("##### Minimum Replica Count in other Locations #####\nmin_replica_count:\t%d (before removing local files)\n\n", MIN_REPLICA_COUNT)
 	fmt.Printf("##### Max Revisions #####\nmax_revisions:\t%d\n\n", MAX_REVISIONS)
+	fmt.Printf("##### Node migration #####\nnode_migration::\t%b\n\n", NODE_MIGRATION)
+	fmt.Printf("##### Node file deletion (after migration) #####\nnode_data_removal::\t%b\n\n", NODE_DATA_REMOVAL)
 	fmt.Printf("API_PORT: %d\n", API_PORT)
 }
 
@@ -354,9 +358,13 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddString(&PATH_PIDFILE, "", "Paths", "pidfile", "", "")
 
 	// cache
-	c_store.AddString(&PATH_CACHE, "", "Paths", "cache_path", "", "cache directory path, default is nil, if this is set the system will function as a cache")
+	c_store.AddString(&PATH_CACHE, "", "Cache", "cache_path", "", "cache directory path, default is nil, if this is set the system will function as a cache")
 	c_store.AddInt(&CACHE_TTL, 24.0, "Cache", "cache_ttl", "", "ttl in hours for cache items")
-	c_store.AddInt(&MIN_REPLICA_COUNT, 2, "Other", "min_replica_count", "", "minimum number of locations required before enabling local Node file deletion")
+
+	// migrate
+	c_store.AddInt(&MIN_REPLICA_COUNT, 2, "Migrate", "min_replica_count", "", "minimum number of locations required before enabling local Node file deletion")
+	c_store.AddBool(&NODE_MIGRATION, false, "Migrate", "node_migration", "", "migrate nodes to remote locations")
+	c_store.AddBool(&NODE_DATA_REMOVAL, false, "Migrate", "node_data_removal", "", "remove data for nodes with at least MIN_REPLICA_COUNT copies")
 
 	// SSL
 	c_store.AddBool(&SSL, false, "SSL", "enable", "", "")
