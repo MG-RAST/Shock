@@ -43,11 +43,11 @@ type Node struct {
 	Locations    []Location        `bson:"locations" json:"locations"` // see below
 }
 
-// location a data type to represent storage locations (defined in LocationConfig) and status of data in flight
+// Location a data type to represent storage locations (defined in LocationConfig) and status of data in flight
 type Location struct {
-	ID            string    `bson:"id" json:"id"`                                           // name of the location, if present data is verified to exist in said location
-	Requested     bool      `bson:"requested,omitempty" json:"requested,omitempty"`         // is the data item in flight to a location
-	RequestedDate time.Time `bson:"requestedDate,omitempty" json:"requestedDate,omitempty"` // what is the date the data item was send on its way
+	ID            string     `bson:"id" json:"id"`                                           // name of the location, if present data is verified to exist in said location
+	Requested     bool       `bson:"requested,omitempty" json:"requested,omitempty"`         // is the data item in flight to a location
+	RequestedDate *time.Time `bson:"requestedDate,omitempty" json:"requestedDate,omitempty"` // what is the date the data item was send on its way
 }
 
 type linkage struct {
@@ -86,6 +86,11 @@ type SubsetNodeIdxInfo struct {
 	AvgUnitSize int64  `bson:"average_unit_size" json:"-"`
 	Format      string `bson:"format" json:"-"`
 }
+
+const (
+	longDateForm  = "2006-01-02T15:04:05-07:00"
+	shortDateForm = "2006-01-02"
+)
 
 func New(uuid string) (node *Node) {
 	node = new(Node)
@@ -535,15 +540,15 @@ func (node *Node) UpdateLinkages(ltype string, ids string, operation string) {
 }
 
 // AddLocation _
-func (node *Node) AddLocation(loc string) (err error) {
+func (node *Node) AddLocation(loc Location) (err error) {
 	if node.Locations == nil {
-		node.Locations = []string{loc}
+		node.Locations = []Location{loc}
 		return
 	}
 
 	for _, location := range node.Locations {
-		if location == loc {
-			err = fmt.Errorf("%s already exists", loc)
+		if location.ID == loc.ID {
+			err = fmt.Errorf("%s already exists", loc.ID)
 			return
 		}
 	}
@@ -553,46 +558,47 @@ func (node *Node) AddLocation(loc string) (err error) {
 }
 
 // GetLocations _
-func (node *Node) GetLocations() (locations []string) {
+func (node *Node) GetLocations() (locations []Location) {
 
 	locations = node.Locations
 	if locations == nil {
-		locations = []string{}
+		locations = []Location{}
 	}
 
 	return
 }
 
 // GetLocation _
-func (node *Node) GetLocation(loc string) (err error) {
+func (node *Node) GetLocation(locID string) (myLocation Location, err error) {
 	if node.Locations == nil {
-		err = fmt.Errorf("location %s not found", loc)
+		err = fmt.Errorf("location %s not found", locID)
 		return
 	}
 
 	for _, location := range node.Locations {
-		if location == loc {
+		if location.ID == locID {
+			myLocation = location
 			return
 		}
 
 	}
 
-	err = fmt.Errorf("location %s not found", loc)
+	err = fmt.Errorf("location %s not found", locID)
 
 	return
 }
 
 // DeleteLocation _
-func (node *Node) DeleteLocation(loc string) (err error) {
+func (node *Node) DeleteLocation(locID string) (err error) {
 	if node.Locations == nil {
-		err = fmt.Errorf("location %s not found", loc)
+		err = fmt.Errorf("location %s not found", locID)
 		return
 	}
 
-	newLocations := []string{}
+	newLocations := []Location{}
 	found := false
 	for _, location := range node.Locations {
-		if location == loc {
+		if location.ID == locID {
 			found = true
 			continue
 		}
@@ -600,14 +606,15 @@ func (node *Node) DeleteLocation(loc string) (err error) {
 	}
 
 	if !found {
-		err = fmt.Errorf("location %s not found", loc)
+		err = fmt.Errorf("location %s not found", locID)
 		return
 	}
 	node.Locations = newLocations
 	return
 }
 
+// DeleteLocations _
 func (node *Node) DeleteLocations() (err error) {
-	node.Locations = []string{}
+	node.Locations = []Location{}
 	return
 }
