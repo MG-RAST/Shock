@@ -77,7 +77,7 @@ func (nr *NodeReaper) Handle() {
 
 			for _, loc := range n.Locations {
 				// delete only if other locations exist
-				locObj, ok := conf.LocationsMap[loc]
+				locObj, ok := conf.LocationsMap[loc.ID]
 				if !ok {
 					logger.Errorf("(Reaper-->FileReaper) location %s is not defined in this server instance \n ", loc)
 					continue
