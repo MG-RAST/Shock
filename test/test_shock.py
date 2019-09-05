@@ -550,3 +550,27 @@ def test_copynode():
     assert data["status"] == 200, data["error"]
     assert data["data"]["file"]["checksum"]["md5"] == "8880cd8c1fb402585779766f681b868b" # AAA.txt
     delete_nodes([NODE, NODE2])
+
+def test_querynode_md5():
+    NODE = create_nodes(["AAA.txt"])[0]
+    NODEURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
+    PARAMS = {"querynode": "1", "file.checksum.md5": "8880cd8c1fb402585779766f681b868b"}
+    response = requests.get(NODEURL, headers=TESTHEADERS, params=PARAMS)
+    assert response.status_code == 200
+    data = json.loads(response.content.decode("utf-8"))
+    delete_nodes([NODE])
+    assert "total_count" in data.keys(), data
+    assert data["total_count"] > 0, data
+    assert data["data"][0]["file"]["checksum"]["md5"] == "8880cd8c1fb402585779766f681b868b"
+
+def test_querynode_name():
+    NODE = create_nodes(["AAA.txt"])[0]
+    NODEURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
+    PARAMS = {"querynode": "1", "file.name": "AAA.txt"}
+    response = requests.get(NODEURL, headers=TESTHEADERS, params=PARAMS)
+    assert response.status_code == 200
+    data = json.loads(response.content.decode("utf-8"))
+    delete_nodes([NODE])
+    assert "total_count" in data.keys(), data
+    assert data["total_count"] > 0, data
+    assert data["data"][0]["file"]["name"] == "AAA.txt"
