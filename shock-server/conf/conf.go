@@ -214,10 +214,16 @@ func Initialize() (err error) {
 
 	// we should check the YAML config file for correctness and schema compliance
 	// TOBEADDED --> https://github.com/santhosh-tekuri/jsonschema/issues/5
-	err = readYAMLConfig(LocationsPath)
-	if err != nil {
-		return errors.New("error reading Locations file: " + err.Error())
+
+	_, err = os.Stat(LocationsPath)
+	if err == nil {
+		err = readYAMLConfig(LocationsPath)
+		if err != nil {
+			return errors.New("error reading Locations file: " + err.Error())
+		}
 	}
+	err = nil
+
 	return
 }
 
