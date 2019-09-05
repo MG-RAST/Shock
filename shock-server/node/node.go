@@ -45,7 +45,7 @@ type Node struct {
 
 type Location struct {
 	ID            string     `bson:"id" json:"id"`                                           // name of the location, if present data is verified to exist in said location
-	Requested     bool       `bson:"requested,omitempty" json:"requested,omitempty"`         // is the data item in flight to a location
+	Stored        bool       `bson:"stored,omitempty" json:"stored,omitempty"`               //
 	RequestedDate *time.Time `bson:"requestedDate,omitempty" json:"requestedDate,omitempty"` // what is the date the data item was send on its way
 }
 
