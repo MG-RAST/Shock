@@ -220,7 +220,11 @@ func Initialize() (err error) {
 	// TOBEADDED --> https://github.com/santhosh-tekuri/jsonschema/issues/5
 	err = readYAMLConfig(LocationsPath)
 	if err != nil {
-		return errors.New("error reading Locations file: " + err.Error())
+		// if we are trying to cache or migrate data we need a locations.yaml file
+		if (PATH_CACHE != "") || (NODE_MIGRATION != true) {
+			fmt.Printf("We need a Locations.yaml file to enable Caching and/or migrations")
+			return errors.New("error reading Locations file: " + err.Error())
+		}
 	}
 	return
 }
