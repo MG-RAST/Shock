@@ -15,6 +15,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// types Config
+type TypeConfig struct {
+	ID          string `bson:"id" json:"id" yaml:"ID" `                           // e.g. default or Image or Backup
+	Description string `bson:"description" json:"description" yaml:"Description"` // e.g. some description
+	Priority    int    `bson:"priority" json:"priority" yaml:"Priority"`          // e.g. location priority for pushing files upstream to remote locations, 0 is lowest, 100 highest
+}
+
 // Location set of storage locations
 type LocationConfig struct {
 	ID          string `bson:"ID" json:"ID" yaml:"ID" `                           // e.g. ANLs3 or local for local store
@@ -25,7 +32,7 @@ type LocationConfig struct {
 	Prefix      string `bson:"prefix" json:"-" yaml:"Prefix"`                     // e.g. any prefix needed
 	AuthKey     string `bson:"AuthKey" json:"-" yaml:"AuthKey"`                   // e.g. AWS auth-key
 	Persistent  bool   `bson:"persistent" json:"persistent" yaml:"Persistent"`    // e.g. is this a valid long term storage location
-	Priority    int    `bson:"priority" json:"priority" yaml:"Priority"`          // e.g. location priority for pushing files upstream to this location, 0 is lowest, 100 highest
+	Priority    int    `bson:"priority" json:"priority" yaml:"Priority"`          // e.g. f priority for pushing files upstream to this location, 0 is lowest, 100 highest
 	MinPriority int    `bson:"minpriority" json:"minpriority" yaml:"MinPriority"` // e.g. minimum node priority level for this location (e.g. some stores will only handle non temporary files or high value files)
 	Tier        int    `bson:"tier" json:"tier" yaml:"Tier"`                      // e.g. class or tier 0= cache, 3=ssd based backend, 5=disk based backend, 10=tape archive
 	Cost        int    `bson:"cost" json:"cost" yaml:"Cost"`                      // e.g.  cost per GB for this store, default=0
@@ -49,9 +56,17 @@ type TSMLocation struct {
 // LocationsMap allow access to Location objects via Locations("ID")
 var LocationsMap map[string]*LocationConfig
 
+// TypesMap allow access to all types via Types("ID")
+var TypesMap map[string]*TypeConfig
+
 // Config contains an array of Location objects
 type Config struct {
 	Locations []LocationConfig `bson:"Locations" json:"Locations" yaml:"Locations" `
+}
+
+// TypesConfig contains an array of Type objects
+type TConfig struct {
+	Types []TypeConfig `bson:"Types" json:"Types" yaml:"Types" `
 }
 
 type idxOpts struct {
@@ -222,11 +237,25 @@ func Initialize() (err error) {
 	err = readYAMLConfig(LocationsPath)
 	if err != nil {
 		// if we are trying to cache or migrate data we need a locations.yaml file
-		if (PATH_CACHE != "") || (NODE_MIGRATION != true) {
+		if (PATH_CACHE != "") || (NODE_MIGRATION == true) {
 			fmt.Printf("We need a Locations.yaml file to enable Caching and/or migrations")
-			return errors.New("error reading Locations file: " + err.Error())
+			return errors.New("error reading locations file: " + err.Error())
 		}
 	}
+
+	var typesPath = path.Dir(CONFIG_FILE)
+	typesPath = path.Join(typesPath, "Types.yaml")
+	// we should check the YAML config file for correctness and schema compliance
+	// TOBEADDED --> https://github.com/santhosh-tekuri/jsonschema/issues/5
+	err = readYAMLTypesConfig(typesPath)
+	if err != nil {
+		// if we are trying to cache or migrate data we need a types.yaml file
+		if (PATH_CACHE != "") || (NODE_MIGRATION != false) {
+			fmt.Printf("We need a types.yaml file to enable data migration and or chaching")
+			return errors.New("error reading types file: " + err.Error())
+		}
+	}
+
 	err = nil
 
 	return
@@ -465,6 +494,34 @@ func readYAMLConfig(filename string) (err error) {
 		loc := &conf.Locations[i]
 
 		LocationsMap[loc.ID] = loc
+	}
+
+	return
+}
+
+// readYAMLTypesConfig read a YAML style config file with Shock configuration
+// the file has to be a yaml file, currently for types only
+func readYAMLTypesConfig(filename string) (err error) {
+
+	var conf TConfig
+
+	source, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return (err)
+	}
+	err = yaml.Unmarshal(source, &conf)
+	if err != nil {
+		return (err)
+	}
+
+	// create a global
+	//var Locations Locations
+	TypesMap = make(map[string]*TypeConfig)
+
+	for i, _ := range conf.Types {
+		typeentry := &conf.Types[i]
+
+		TypesMap[typeentry.ID] = typeentry
 	}
 
 	return
