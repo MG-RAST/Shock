@@ -12,7 +12,6 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
-	"github.com/davecgh/go-spew/spew"
 	mgo "gopkg.in/mgo.v2"
 )
 
@@ -98,7 +97,7 @@ func LocationsRequest(ctx context.Context) {
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err.Error())
 			return
 		}
-		spew.Dump(locationObjectIf)
+		//spew.Dump(locationObjectIf)
 
 		newLocation := Location{}
 
