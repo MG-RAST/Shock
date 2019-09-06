@@ -114,7 +114,8 @@ var (
 	LOG_OUTPUT  string
 	LOG_TRACE   bool // enable trace logging
 	DEBUG_LEVEL int
-	DEBUG_AUTH  = false
+	DEBUG_AUTH  bool // set this to disable auth checking in most functions
+
 	// Mongo information
 	MONGODB_HOSTS             string
 	MONGODB_DATABASE          string
@@ -318,6 +319,7 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddString(&LOG_OUTPUT, "both", "Log", "logoutput", "console, file or both", "")
 	c_store.AddBool(&LOG_TRACE, false, "Log", "trace", "", "")
 	c_store.AddInt(&DEBUG_LEVEL, 0, "Log", "debuglevel", "debug level: 0-3", "")
+	c_store.AddBool(&DEBUG_AUTH, false, "Log", "debugauth", "", "enable debugging; remove auth requirements for most functions")
 
 	// Mongodb
 	c_store.AddString(&MONGODB_ATTRIBUTE_INDEXES, "", "Mongodb", "attribute_indexes", "", "")
