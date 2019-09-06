@@ -1,0 +1,57 @@
+
+version: '3.1'
+
+
+# *** required ***
+# set DATADIR for persistent data store , e.g. /var/tmp
+
+
+# optional
+# set CONFIGDIR to path to config
+# set SHOCKDIR for persistent Shock data store , e.g. /var/tmp/Shock
+# set LOGDIR to path to local log dir
+
+services:
+
+    # the SHOCK object store
+    # to make SHOCK data persistent uncomment the lines here and in "mongo" below
+    shock:
+        image: mgrast/shock
+        depends_on:
+          - shock-mongo
+        entrypoint: 
+          - /bin/sleep
+          - 999d  # start Shock:    docker exec -ti test_shock_1 /go/bin/shock-server --hosts=shock-mongo
+        
+          #- /go/bin/shock-server
+          #- --hosts=shock-mongo
+          # - --conf
+          # - /shock-config/shock-server.cfg
+        volumes:
+          # persistent data
+          - ${DATADIR}/shock/data:/usr/local/shock
+          
+          # mount local source code
+          - $HOME/git/Shock:/go/src/github.com/MG-RAST/Shock
+          
+          # mount config file 
+          #- ${CONFIGDIR}/Shock/shock-server.container.cfg:/shock-config/shock-server.cfg
+          
+          # mount log directory
+          #   - ${LOGDIR}/shock:/var/log/shock
+          
+        ports:
+          - 7445:7445
+          
+  
+  
+
+    # mongoDB for the SHOCK service, provides metadata storage
+    shock-mongo:
+        image: mongo:3.6
+        ports:
+          - 27017
+        volumes:
+          # persistent data
+          - ${DATADIR}/mongo/db:/data/db
+

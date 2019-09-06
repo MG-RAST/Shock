@@ -47,21 +47,6 @@ MainLoop:
 				err_msg := "err:@node_delete: " + err.Error()
 				logger.Error(err_msg)
 			}
-			//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
-			//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
-			//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
-
-			// write info for node migration
-			logger.Debug(3, "writing info for node migration: %s", n.Id)
-			// CODE MISSING HERE FOR WRITING FILES WITH INFO FOR MIGRATION
-
-			// check if we want to migrate nodes
-			if conf.NODE_MIGRATION != true {
-				logger.Debug(3, "not starting node migration")
-				continue MainLoop
-			}
-
-			// CODE for data migration here...
 
 			//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 			//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
@@ -109,31 +94,26 @@ MainLoop:
 			if conf.PATH_CACHE == "" {
 				continue MainLoop
 			}
-		CacheMapLoop:
-			// start a FILE REAPER that loops thru CacheMap[*]
-			for ID := range cache.CacheMap {
+		}
+	CacheMapLoop:
+		// start a FILE REAPER that loops thru CacheMap[*]
+		for ID := range cache.CacheMap {
 
-				logger.Debug(3, "(Reaper-->FileReaper) checking %s in cache\n", ID)
+			logger.Debug(3, "(Reaper-->FileReaper) checking %s in cache\n", ID)
 
-				now := time.Now()
-				lru := cache.CacheMap[ID].Access
-				diff := now.Sub(lru)
+			now := time.Now()
+			lru := cache.CacheMap[ID].Access
+			diff := now.Sub(lru)
 
-				// we use a very simple scheme for caching initially (file not used for 1 day)
-				if diff.Hours() < float64(conf.CACHE_TTL) {
-					logger.Debug(3, "Reaper-->FileReaper) not deleting %s from cache it was last accessed %s hours ago\n", ID, diff.Hours())
-					continue CacheMapLoop
-				}
-
-				n, err := Load(ID)
-				if err != nil {
-					logger.Debug(1, "(Reaper-->FileReaper) Cannot access CacheMapItem[%s] (%s)", ID, err.Error())
-					continue CacheMapLoop
-				}
-				cache.Remove(ID)
-
-				logger.Errorf("(Reaper-->FileReaper) cannot delete %s from cache [This should not happen!!]", ID)
+			// we use a very simple scheme for caching initially (file not used for 1 day)
+			if diff.Hours() < float64(conf.CACHE_TTL) {
+				logger.Debug(3, "Reaper-->FileReaper) not deleting %s from cache it was last accessed %s hours ago\n", ID, diff.Hours())
+				continue CacheMapLoop
 			}
+
+			cache.Remove(ID)
+
+			logger.Errorf("(Reaper-->FileReaper) cannot delete %s from cache [This should not happen!!]", ID)
 		}
 	}
 	return

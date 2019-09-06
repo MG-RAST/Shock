@@ -1,8 +1,12 @@
 #!/bin/sh
 
 # usage: ./cmd [-v]
-# connect with Shock to retrieve list of files to be moved to location
-
+# connect with Shock to retrieve list of files to be moved to TSM
+# connect with TSM to get list of files already in TSM
+# for each file in Shock list,
+#     check if file is already in TSM (with JSON{"id": "${LOCATION_NAME}", "stored": = "true" } )
+#     submit via dsmc for backup and add JSON to /node/${id}/location/${LOCATION_NAME}/ with { "id": "${LOCATION_NAME}", "stored": "false" }
+# 
 
 # send data items in Shock output to a TSM instance
 # the Shockoutput will be of the form
