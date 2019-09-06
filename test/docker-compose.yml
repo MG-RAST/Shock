@@ -73,7 +73,10 @@ services:
             echo Connected!;
             mongo mongodb://shock-mongo:27017/ShockDB --eval 'db.Users.updateOne({username: \"admin\"}, {$$set: { password: \"secret\" , shock_admin: true } } )';
           "
-# mongo mongodb://shock-mongo:27017/ShockDB  --eval 'version'
+
+# create admin user manually           
+#
+# docker exec -ti test_shock-mongo_1 mongo ShockDB --eval 'db.Users.insert({username: "admin",  password: "secret" , shock_admin: true }  )';
          
 
 
