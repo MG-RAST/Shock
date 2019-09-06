@@ -19,6 +19,7 @@ Author: Folker Meyer (folker@anl.gov)
     * Google Cloud Storage
     * Microsoft Azure Data Storage
 - Shock nodes are migrated listed for migration by external scripts (check the /scripts folder in this repo) by the server according to the paramters provided
+- the new /location/<locname>/{missing|present|inflight} query lists the files that need to be backed up missing, the ones current being backed-up (inflight) and those stored already (present)
 
 
 ## Caching
