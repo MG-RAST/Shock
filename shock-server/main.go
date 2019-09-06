@@ -21,6 +21,7 @@ import (
 	pcon "github.com/MG-RAST/Shock/shock-server/controller/preauth"
 	"github.com/MG-RAST/Shock/shock-server/db"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
+	"github.com/MG-RAST/Shock/shock-server/location"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/node/locker"
@@ -138,6 +139,22 @@ func mapRoutes() {
 			return responder.RespondOK(ctx)
 		}
 		node.LocationsRequest(ctx)
+		return nil
+	})
+
+	// goweb.Map("/location/{loc}", func(ctx context.Context) error {
+	// 	if ctx.HttpRequest().Method == "OPTIONS" {
+	// 		return responder.RespondOK(ctx)
+	// 	}
+	// 	LocationRequest(ctx)
+	// 	return nil
+	// })
+
+	goweb.Map("/location/{loc}/{function}", func(ctx context.Context) error {
+		if ctx.HttpRequest().Method == "OPTIONS" {
+			return responder.RespondOK(ctx)
+		}
+		location.LocRequest(ctx)
 		return nil
 	})
 
