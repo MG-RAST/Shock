@@ -32,15 +32,33 @@ SHOCK_DATA_PATH="/dpool/mgrast/shock/data"
 LOCATION_NAME="anltsm"
 # name of the dump file for TSM data
 TSM_DUMP=${SHOCK_DATA_PATH/backends/${LOCATION_NAME}}
+# TSM servername
+TSM_SERVER=TSM_CELS
 # NOTE: we assume authentication bits to be contain in the AUTH env variable
 WCOPY=${SHOCK_DATA_PATH}/$(basename $0)_wcopy.$$.txt
 OUTCOPY=${SHOCK_DATA_PATH}/$(basename $0)_output.$$.txt
+LOCKF=$${SHOCK_DATA_PATH}/$(basename $0).lock
 
 ### no more config
 ### ################################################################################
 ### ################################################################################
 ### ################################################################################
 ### ################################################################################
+
+### return the age of a file in hours
+function cleanup() {
+
+# clean up
+rm -f ${WCOPY} ${OUTCOPY} 
+rm -f ${LOCKF}
+
+}
+
+### ################################################################################
+### ################################################################################
+### ################################################################################
+### ################################################################################
+
 
 ### return the age of a file in hours
 function fileage() {
@@ -64,7 +82,7 @@ test $FILEAGE -lt $MAXAGE && {  # this is a very ugly hack and needs to return t
 ### ################################################################################
 
 ###  extract a list of all items in TSM backup once every day
-update_TSM_dump () {
+function update_TSM_dump () {
 
 filename=$1
 cachefiledate=$(fileage ${filename})
@@ -92,7 +110,7 @@ fi
 ### ################################################################################
 
 ### set location with stored == false, indicating that data is in flight to TSM
-write_location() {
+function write_location() {
 id=$1
 
 local val=false
@@ -122,7 +140,7 @@ curl -s -X POST -H "$AUTH" "${SHOCK_SERVER_URL}/node/${id}/locations/ -d ${JSON_
 ### ################################################################################
 
 #### write usage info
-usage() {
+function usage() {
       echo "script usage: $(basename $0) [-v] [-h] -d <TSM_dumpfile> filename" >&2
       echo "connect with Shock to retrieve list of files to be moved to location" >&2
 }
@@ -138,7 +156,8 @@ usage() {
 ### ################################################################################
 
 ## main
-
+# in case of error or interruption, clean up the temp files and exist cleanly
+trap 'cleanup; exit 1' 0 1 2 3 15
 
 #
 while getopts 'vfh' OPTION; do
@@ -168,6 +187,12 @@ if [ ! -f $1 ] ; then
 	exit 1	
 fi
 
+if ["${force}x" -eq "x" ] && [ -e ${LOCKF} ]; then 
+  echo " [$(basename $0)] Lockfile ${LOCKF} exists; exiting"
+  exit 1
+fi
+
+
 if [[ $verbose == "1" ]] ;then 
   echo "Settings:"
   echo "SHOCK_SERVER_URL:\t\t${SHOCK_SERVER_URL}"
@@ -184,18 +209,16 @@ fi
 
 if [ ! "${force}x" -eq "x" ] ; then 
   if [ -x ${WCOPY} ] || [ -x ${OUTCOPY} ] ; then
-     echo " [$(basename $0)] Can't connect to "
+     echo " [$(basename $0)] Output files from last run exist, exiting. (check: ${WCOPY} and/or ${OUTCOPY}) "
     exit 1
   fi
 fi
  
 
-# download the file from SHOCK
-
-curl -s -X POST -H "$AUTH" "${SHOCK_SERVER_URL}/location/nodes/" > WCOPY
-
+# download the file of nodes that require submission to DSMC from SHOCK
+curl -s -X POST -H "$AUTH" "${SHOCK_SERVER_URL}/locations/${LOCATION_NAME}/missing" > ${WCOPY}
 if [ $? != 0 ] ; then 
-  echo " [$(basename $0)] Can't connect to ${SHOCK_SERVER_URL}"
+  echo " [$(basename $0)] Can't connect to ${SHOCK_SERVER_URL} or disk full"
   exit 1
 fi
 
@@ -236,34 +259,42 @@ while read line; do
       if [[ $verbose == "1" ]] ; then 
 	      echo "${id} NOT found in TSM"
       fi
-      # write names to request file
-      echo "${DATAFILE}" >> ${OUTCOPY}
-      echo "${INDEXFILE" >> ${OUTCOPY}
 
-      JSON=$(write_location ${id} )
+      # check if node is already requested
+      JSON=$(curl -s -X GET -H "$AUTH" "${SHOCK_SERVER_URL}/node/${id}/locations/${LOCATION_NAME}/" )
 
-      if echo ${JSON} |  grep -q 200  ; then 
-        writecount=`expr $writecount + 1`
-      elif echo ${JSON}| grep -q "Node not found" ; then
-        missingcount=`expr $missingcount + 1`
-      else
-        echo " [$(basename $0)] can't write to ${SHOCK_SERVER_URL}; exiting (node: ${id})" >&2
-        echo "RAW JSON: \n${JSON}\n"
-        exit 1
-      fi 
+      if echo ${JSON} |  grep -q locations.stored="false" ; then 
+        # already requested skip to next ${id}
+      else {
+         # write names to request file
+         echo "${DATAFILE}" >> ${OUTCOPY}
+         echo "${INDEXFILE}" >> ${OUTCOPY}
 
-    fi
-done <$1
+         JSON=$(write_location ${id} )
+
+         if echo ${JSON} |  grep -q 200  ; then 
+            writecount=$(expr $writecount + 1 )
+         else
+            echo " [$(basename $0)] can't write to ${SHOCK_SERVER_URL}; exiting (node: ${id})" >&2
+            echo "RAW JSON: \n${JSON}\n"
+            exit 1
+          fi 
+      fi  
+done <${WCOPY}
 
 if [[ ${verbose == "1" } ]] ; then
-  echo "found $writecount items to add to TSM"
-  echo "found $verifycount items to confirm as in TSM"
+  echo "found ${writecount} items to add to TSM"
+  echo "found ${verifycount} items to confirm as in TSM"
   echo "found ${missingcount} nodes missing in MongoDB)"
 fi
 
 # run the command to request archiving
-dsmc command ..
 
+ dsmc inc -se=$TSM_SERVER -filelist=${OUTCOPY} > /dev/null
+ if [[ $verbose == "1" ]] ; then
+    echo "running dsmc inc -se=$SERV -filelist=${OUTCOPY} > /dev/null"
+ fi
 
-# clean up
-rm -f ${WCOPY} ${OUTCOPY} 
+# run cleanup function
+cleanup
+
