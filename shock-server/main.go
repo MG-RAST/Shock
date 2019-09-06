@@ -28,6 +28,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/preauth"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
+	"github.com/MG-RAST/Shock/shock-server/types"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
 	"github.com/MG-RAST/Shock/shock-server/versions"
@@ -205,6 +206,14 @@ func mapRoutes() {
 			return responder.RespondWithError(ctx, http.StatusInternalServerError, fmt.Sprintf("error stopping trace: %s", err.Error()))
 		}
 		return responder.RespondWithData(ctx, "trace stoped")
+	})
+
+	goweb.Map("/types/{type}/{function}/", func(ctx context.Context) error {
+		if ctx.HttpRequest().Method == "OPTIONS" {
+			return responder.RespondOK(ctx)
+		}
+		types.TypeRequest(ctx)
+		return nil
 	})
 
 	goweb.Map("/", func(ctx context.Context) error {
