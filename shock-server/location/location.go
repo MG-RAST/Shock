@@ -11,7 +11,6 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
-	"github.com/davecgh/go-spew/spew"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -77,48 +76,51 @@ func LocRequest(ctx context.Context) {
 
 	// ensure we only list nodes with Priority higher or equal to the one defined for the location
 
+	MinPrio := locConf.MinPriority
+	MinPrio = 0 // for debugging only
+
+	// find Node Types with Priority > MinPrio
+	nodes := node.Nodes{}
+	matchesminprioquery := bson.M{"priority": bson.M{"$ge": MinPrio}}
+
 	switch function {
 
 	case "missing":
-		nodes := node.Nodes{}
-
 		// we ensure we only list nodes with Priority higher or equal to the one defined for the location
+		nolocationquery := bson.M{"locations.id": bson.M{"$ne": locationID}}
+		locationstoredfalsequery := bson.M{"locations.stored": bson.M{"$ne": "true"}}
 
-		//query := bson.M{"$and": []bson.M{"Location": bson.M{"$ne": locationID}}, bson.M{"Priority": bson.M{"$gt": locConf.MinPriority}
-		query := bson.M{"Location": bson.M{"$ne": locationID}}
+		// check either node priority or priority of the data type
+		// nodes with Priority encoded in JSON directly
+		aquery := bson.M{"$and": []bson.M{nolocationquery, matchesminprioquery}}
+		bquery := bson.M{"$and": []bson.M{locationstoredfalsequery, matchesminprioquery}}
+		query := bson.M{"$and": []bson.M{aquery, bquery}}
 
-		// 	bson.M{"$or": []interface{}{
-		// 		bson.M{"$and": []interface{}{
-		// 			bson.M{"Priority": "$gt": locConf.MinPriority},
-		// 			bson.M{"Location.Id": "$eq": locationID},
-		// 			bson.M{"Location.stored": "$eq": locConf.MinPriority},
-		// 		},
-		// 	},
-		// }
-
+		// nodes with no JSON priority but Attr.Type that has a priority
 		nodes.GetAll(query)
-
-		spew.Dump(nodes)
-
+		//spew.Dump(nodes)
 		// list all nodes without Location set or marked as Location.stored==false  MongoDB
 		responder.RespondWithData(ctx, nodes)
 		return
 
-	// 	// list all nodes marked as stored==true in Location in MongoDB
-	// case "present":
-	// 	present :=
-	// 		responder.RespondWithData(ctx, present)
-	// 	return
+	// 	list all nodes marked as stored==true in Location in MongoDB
+	case "present":
+		query := bson.M{"locations.stored": bson.M{"$ne": "true"}}
+		nodes.GetAll(query)
+		responder.RespondWithData(ctx, nodes)
+		return
 
-	// // list all nodes marked as Location.stored==false
-	// case "inflight":
-	// 	inflight :=
-	// 		responder.RespondWithData(ctx, inflight)
-	// 	return
+		// // list all nodes marked as Location.stored==false and priority
+	case "inflight":
+		locationstoredfalsequery := bson.M{"locations.stored": bson.M{"$eq": "false"}}
+		query := bson.M{"$and": []bson.M{locationstoredfalsequery, matchesminprioquery}}
+		nodes.GetAll(query)
+		responder.RespondWithData(ctx, nodes)
+		responder.RespondWithData(ctx, nodes)
+		return
 
 	//return config info for Node.
 	case "info":
-
 		// spew.Dump(locConf)
 		responder.RespondWithData(ctx, locConf)
 		return
