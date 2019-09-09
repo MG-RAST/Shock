@@ -100,10 +100,70 @@ Turn on _NODE_DATA_REMOVAL_ (e.g. `--node_data_removal==true`).
 If there are at least *MIN_REPLICA_COUNT* copies in the *Persistent* Locations, nodes (and their indices) can be removed from the the local disk. 
 The NodeReaper will after expiring nodes that have reached their TTL and outputting nodes for migration, remove data matching the requirements above.
 
+## Data migration
+
+To migrate data a plug-in architecture is used (see `/scripts` in this repo). We provide a number of generic scripts but expect adopters to create their own/modify these scripts. 
+The status of each node is (as usual) maintained in the Mongo database.
+
+The location resource provides four calls to support a set of external migration tools. We provide tools for S3 and TSM at this time.
+
+We note that externalizing the data migration we enabled massive scaling and allowed for the Shock server to remain lean.
+
+
+### Server resources
+#### `curl -X GET "localhost:7445/location/S3/info"`
+
+will yield a JSON dump  information on the location itself
+~~~~
+{
+  "status": 200,
+  "data": {
+    "ID": "S3",
+    "Description": "Example S3 Service ",
+    "type": "S3",
+    "url": "https://s3.example.com",
+    "persistent": true,
+    "priority": 0,
+    "minpriority": 7,
+    "tier": 5,
+    "cost": 0,
+    "bucket": "mgrast",
+    "region": "us-east-1",
+    "recoverycommand": ""
+  },
+  "error": null
+}
+~~~~
+#### `curl -X GET "localhost:7445/location/S3/missing`
+This is the most important call for the data migration system. It lists all nodes that are eligible for migration to this resource (based on the priority and the resources minpriority).
+
+#### `curl -X GET "localhost:7445/location/S3/inflight`
+This call will produce a list of all flights currently in flight, for a non batch system like S3 it would typically return an empty list. This is primarily intended for batched locations e.g. TSM.
+
+
+#### `curl -X GET "localhost:7445/location/S3 /present`
+
+This will list all nodes that have presently been stored on the S3 resource. We note that the primary purpose for this call is house cleaning. In the case of TSM this will generate a catalogue of files on tape.
+
+
+### Scripts for data migration
+
+#### TSM Backup
+The script in `/scripts/tsm_backup.sh` will submit data to an already installed IBM Tivoli client (`dsmc`). It needs to be run with systems priviledges on a node with access to the file systems underlying the Shock data store and access to Tivoli.
+
+The script will connect to Shock to retrieve list of ("missing") files to be moved to TSM. It will also connect to TSM to get list of files already in TSM. Once downloaded it will loop over the list of "missing" files and for each file in Shock list,
+check if file is already in TSM (with `JSON{"id": "${LOCATION_NAME}", "stored": = "true" }` ). Files truly missing will be submitted via `dsmc` for backup and JSON to `/node/${id}/location/${LOCATION_NAME}/` with `{ "id": "${LOCATION_NAME}", "stored": "false" }`.
+
+#### S3 migration
+
+~~~~
+TBA by Andreas
+~~~~
+
 
 ## Misc
 
-### Example `Locatioons.yaml` file
+### Example `Locations.yaml` file
 This is a copy of the contents of Example_Locations.yaml file from the repo. Please check that file as well for updates.
 ~~~~
 Locations:
@@ -119,6 +179,7 @@ Locations:
     Priority: 0
     Tier: 5
     Cost: 0
+    MinPriority: 7
  -  ID: "S3SSD"
     Type: "S3"
     Description: "Example_S3_SSD Service"
@@ -152,6 +213,99 @@ Locations:
     Priority: 0
     Tier: 10
     Cost: 0
+~~~~
+
+### Type.yaml from the configuration
+
+~~~~
+Types:
+- ID: "default"
+  Description: "default"
+  Priority: 0
+- ID: "temp"
+  Description: "temporary file"
+  Priority: 0
+- ID: "EBI Submission Receipt"
+  Description: "EBI Submission Receipt"
+  Priority: 7
+- ID: "VM"
+  Description: "Virtual Machine"
+  Priority: 1
+- ID: "run-folder-archive-fastq"
+  Description: "run-folder-archive-fastq"
+  Priority: 9
+  Data-Types:
+    - fastq
+- ID: "run-folder-archive-raw"
+  Description: "run-folder-archive-raw"
+  Priority: 4
+- ID: "run-folder-archive-sav"
+  Description: "run-folder-archive-sav"
+  Priority: 9
+  Data-Types:
+    - sav
+- ID: "run-folder-archive-thumbnails"
+  Description: "run-folder-archive-thumbnails"
+  Priority: 1
+  Data-Types:
+    - 
+- ID: "inbox"
+  Description: "MG-RAST inbox node"
+  Priority: 1
+- ID: "metagenome"
+  Description: "MG-RAST metagenome"
+  Priority: 9
+  Data-Types:
+    - fa
+    - fasta
+    - fastq
+    - fq
+    - bam
+    - sam
+- ID: "image"
+  Description: "image file"
+  Priority: 1
+  Data-Types:
+    - jpeg
+    - jpg
+    - gif
+    - tif
+    - png
+- ID: "submission"
+  Description: "MG-RAST submission"
+  Priority: 9
+- ID: "cv"
+  Description: "Controlled Vocabulary"
+  Priority: 7
+- ID: "ontology"
+  Description: "ontology"
+  Priority: 7
+- ID: "backup"
+  Description: "Backup or Dump from another system e.g. MongoDB or MySQL"
+  Priority: 9
+- ID: "metadata"
+  Description: "metadata"
+  Priority: 7
+- ID: "mixs"
+  Description: "GSC MIxS Metadata file XLS format"
+  Priority: 9
+  Data-Types:
+    - xls
+    - xlsx
+    - json
+- ID: "reference"
+  Description: "reference database"
+  Priority: 7
+- ID: "analysisObject"
+  Description: "MG-RAST analysisObject"
+  Priority: 1
+- ID: "analysisRecipe"
+  Description: "MG-RAST analysisRecipe"
+  Priority: 1
+- ID: "preference"
+  Description: "MG-RAST user preference"
+  Priority: 1
+
 ~~~~
 
 ### Complete config from the source code
