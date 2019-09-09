@@ -125,12 +125,12 @@ func LocationsRequest(ctx context.Context) {
 
 			newLocation.ID = locID
 			fmt.Println(locID)
-			requestedIf, ok := locationObjectMap["requested"]
+			storedIf, ok := locationObjectMap["stored"]
 			if ok {
 
-				requested, ok := requestedIf.(bool)
+				stored, ok := storedIf.(bool)
 				if ok {
-					newLocation.Requested = requested
+					newLocation.Stored = stored
 				}
 			}
 
