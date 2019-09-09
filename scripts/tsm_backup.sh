@@ -1,7 +1,8 @@
 #!/bin/sh
 
-# usage: ./cmd [-v]
-# connect with Shock to retrieve list of files to be moved to TSM
+# usage: ./tsm_backup [-v]
+# audience: Shock admin
+# connect with Shock to retrieve list of files to be moved to TSM 
 # connect with TSM to get list of files already in TSM
 # for each file in Shock list,
 #     check if file is already in TSM (with JSON{"id": "${LOCATION_NAME}", "stored": = "true" } )
@@ -220,7 +221,7 @@ fi
  
 
 # download the file of nodes that require submission to DSMC from SHOCK
-curl -s -X POST -H "$AUTH" "${SHOCK_SERVER_URL}/locations/${LOCATION_NAME}/missing" > ${WCOPY}
+curl -s -X POST -H "$AUTH" "${SHOCK_SERVER_URL}/location/${LOCATION_NAME}/missing" > ${WCOPY}
 if [ $? != 0 ] ; then 
   echo " [$(basename $0)] Can't connect to ${SHOCK_SERVER_URL} or disk full"
   exit 1

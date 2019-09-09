@@ -14,21 +14,43 @@ Types:
 - ID: "run-folder-archive-fastq"
   Description: "run-folder-archive-fastq"
   Priority: 9
+  Data-Types:
+    - fastq
 - ID: "run-folder-archive-raw"
   Description: "run-folder-archive-raw"
   Priority: 4
 - ID: "run-folder-archive-sav"
   Description: "run-folder-archive-sav"
   Priority: 9
+  Data-Types:
+    - sav
 - ID: "run-folder-archive-thumbnails"
   Description: "run-folder-archive-thumbnails"
   Priority: 1
+  Data-Types:
+    - 
 - ID: "inbox"
   Description: "MG-RAST inbox node"
   Priority: 1
 - ID: "metagenome"
   Description: "MG-RAST metagenome"
   Priority: 9
+  Data-Types:
+    - fa
+    - fasta
+    - fastq
+    - fq
+    - bam
+    - sam
+- ID: "image"
+  Description: "image file"
+  Priority: 1
+  Data-Types:
+    - jpeg
+    - jpg
+    - gif
+    - tif
+    - png
 - ID: "submission"
   Description: "MG-RAST submission"
   Priority: 9
@@ -47,9 +69,10 @@ Types:
 - ID: "mixs"
   Description: "GSC MIxS Metadata file XLS format"
   Priority: 9
-- ID: "mixs2"
-  Description: "GSC MIxS Metadata file JSON format"
-  Priority: 9
+  Data-Types:
+    - xls
+    - xlsx
+    - json
 - ID: "reference"
   Description: "reference database"
   Priority: 7
