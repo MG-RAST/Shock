@@ -1,5 +1,5 @@
 
-# Shock
+# Shock -- a data science platform
 
 -  is a storage platform designed from the ground up to be fast, scalable and fault tolerant.
 
