@@ -147,7 +147,95 @@ Description of resources available through this api
 <br>
 
 
+## Configuring locations
 
+
+### Example `Locations.yaml` file
+This is a copy of the contents of Example_Locations.yaml file from the repo. Please check that file as well for updates.
+~~~~
+Locations:
+ -  ID: "S3"
+    Type: "S3"
+    Description: "Example S3 Service "
+    URL: "https://s3.example.com"
+    AuthKey: "some_key"
+    SecretKey: "another_key"
+    Bucket: "mybucket1"
+    Persistent: true
+    Region: "us-east-1"
+    Priority: 0
+    Tier: 5
+    Cost: 0
+    MinPriority: 7
+ -  ID: "S3SSD"
+    Type: "S3"
+    Description: "Example_S3_SSD Service"
+    URL: "https://s3-ssd.example.com"
+    AuthKey: "yet_another_key"
+    SecretKey: "yet_another_nother_key"
+    Bucket: "ssd"
+    Persistent: true
+    Region: "us-east-1" Priority:
+    Priority: 0
+    Tier: 3
+    Cost: 0
+ -  ID: "shock"
+    Type: "shock"
+    Description: "shock service"
+    URL: "shock.example.org"
+    AuthKey: ""
+    SecretKey: ""
+    Prefix: ""
+    Priority: 0
+    Tier: 5
+    Cost: 0
+ -  ID: "tsm"
+    Type: "tsm_archive"  
+    Description: "archive service"
+    URL: ""
+    AuthKey: ""
+    SecretKey: ""
+    Prefix:  ""
+    Restorecommand: "dsmc restore %ID%  -latest"
+    Priority: 0
+    Tier: 10
+    Cost: 0
+~~~~
+
+
+### Complete config from the source code
+~~~~
+// Location set of storage locations
+type LocationConfig struct {
+	ID          string `bson:"ID" json:"ID" yaml:"ID" `                           // e.g. ANLs3 or local for local store
+	Description string `bson:"Description" json:"Description" yaml:"Description"` // e.g. ANL official S3 service
+	Type        string `bson:"type" json:"type" yaml:"Type" `                     // e.g. S3
+	URL         string `bson:"url" json:"url" yaml:"URL"`                         // e.g. http://s3api.invalid.org/download&id=
+	Token       string `bson:"token" json:"-" yaml:"Token" `                      // e.g.  Key or password
+	Prefix      string `bson:"prefix" json:"-" yaml:"Prefix"`                     // e.g. any prefix needed
+	AuthKey     string `bson:"AuthKey" json:"-" yaml:"AuthKey"`                   // e.g. AWS auth-key
+	Persistent  bool   `bson:"persistent" json:"persistent" yaml:"Persistent"`    // e.g. is this a valid long term storage location
+	Priority    int    `bson:"priority" json:"priority" yaml:"Priority"`          // e.g. location priority for pushing files upstream to this location, 0 is lowest, 100 highest
+	MinPriority int    `bson:"minpriority" json:"minpriority" yaml:"MinPriority"` // e.g. minimum node priority level for this location (e.g. some stores will only handle non temporary files or high value files)
+	Tier        int    `bson:"tier" json:"tier" yaml:"Tier"`                      // e.g. class or tier 0= cache, 3=ssd based backend, 5=disk based backend, 10=tape archive
+	Cost        int    `bson:"cost" json:"cost" yaml:"Cost"`                      // e.g. cost per GB for this store, default=0
+
+	S3Location  `bson:",inline" json:",inline" yaml:",inline"` // extensions specific to S3
+	TSMLocation `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to IBM TSM
+}
+
+// S3Location S3 specific fields
+type S3Location struct {
+	Bucket    string `bson:"bucket" json:"bucket" yaml:"Bucket" `
+	Region    string `bson:"region" json:"region" yaml:"Region" `
+	SecretKey string `bson:"SecretKey" json:"-" yaml:"SecretKey" ` // e.g.g AWS secret-key
+}
+
+// TSMLocation IBM TSM specific fields
+type TSMLocation struct {
+	Recoverycommand string `bson:"recoverycommand" json:"recoverycommand" yaml:"Recoverycommand" `
+}
+~~~~
 
 
 

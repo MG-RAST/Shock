@@ -386,7 +386,7 @@ func (node *Node) DeleteFiles() (err error) {
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
 // Delete the node from Mongo and Disk
-func (node *Node) Delete() (err error) {
+func (node *Node) Delete() (deleted bool, err error) {
 	// lock node
 	err = locker.NodeLockMgr.LockNode(node.Id)
 	if err != nil {
@@ -397,10 +397,11 @@ func (node *Node) Delete() (err error) {
 	// check to make sure this node isn't referenced by a vnode
 	virtualNodes := Nodes{}
 	if _, err = dbFind(bson.M{"file.virtual_parts": node.Id}, &virtualNodes, "", nil); err != nil {
-		return err
+		return
 	}
 	if len(virtualNodes) != 0 {
-		return errors.New(e.NodeReferenced)
+		err = errors.New(e.NodeReferenced)
+		return
 	}
 
 	// Check to see if this node has a data file and if it's referenced by another node.
@@ -413,7 +414,7 @@ func (node *Node) Delete() (err error) {
 	newDataFilePath := ""
 	copiedNodes := Nodes{}
 	if _, err = dbFind(bson.M{"file.path": dataFilePath}, &copiedNodes, "", nil); err != nil {
-		return err
+		return
 	}
 	if len(copiedNodes) != 0 && dataFileExists {
 		for index, copiedNode := range copiedNodes {
@@ -444,9 +445,15 @@ func (node *Node) Delete() (err error) {
 
 	err = dbDelete(bson.M{"id": node.Id})
 	if err != nil {
+		logger.Debug(2, "(Node->Delete) we failed to delete %s from Mongo database", node.Id, err.Error())
 		return
 	}
 	err = node.Rmdir()
+	if err != nil {
+		logger.Debug(2, "(Node->Delete) we failed to delete %s from disk", node.Id, err.Error())
+		return
+	}
+	deleted = true
 	return
 }
 

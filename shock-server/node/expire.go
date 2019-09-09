@@ -41,11 +41,17 @@ MainLoop:
 	NodeLoop:
 		// loop thru all nodes
 		for _, n := range nodes {
-			logger.Infof("Deleting expired node: %s", n.Id)
+			logger.Debug(6, "Checking for expired node: %s", n.Id)
+
 			// delete expired nodes
-			if err := n.Delete(); err != nil {
+			deleted, err := n.Delete()
+			if err != nil {
 				err_msg := "err:@node_delete: " + err.Error()
 				logger.Error(err_msg)
+			}
+			if deleted == true {
+				// node is gone
+				return
 			}
 
 			//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
