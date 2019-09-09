@@ -21,7 +21,23 @@ Shock is actively being developed at [github.com/MG-RAST/Shock](https://github.c
 Check out the notes  on [building and installing Shock](./building.md) and [configuration](./configuration.md).
 
 
+## Shock in 30 seconds
+This assumes that you have `docker` and `docker-compose` installed and `curl` is available locally.
+
+### Download the container
+`docker-compose up`
+
+Don't forget to later `docker-compose down` and do not forget, by default this configuration does not store data persistently.
+
+### Push a file into Shock
+`curl -H 'Authorization: basic dXNlcjE6c2VjcmV0' -X PUT -F 'file_name=@myfile' http://localhost:7445/node`
+
+
+### Download a file from Shock
+
+`curl -H 'Authorization: basic dXNlcjE6c2VjcmV0' http://localhost:7445/node`
+
 Documentation
 -------------
-For further information about Shock's functionality, please refer to our [github wiki](https://github.com/MG-RAST/Shock/docs/).
+For further information about Shock's functionality, please refer to our [Shock documentation](https://github.com/MG-RAST/Shock/docs/).
 

@@ -76,18 +76,6 @@ port 7445: Shock server API (default in config)<br>
 "--link" connects Shock server and mongodb (--link=$imagename:$alias) so you need to put the alias (in the example "mongodb") as the value of the hosts variable in the shock-server.cfg
 
 
-The parameters in the following determine the data migration and caching properties of the Shock server
-- Locations.yaml file
-
-- PATH_CACHE parameter
-
-If the `PATH_CACHE` parameter parameter is enabled, Shock will attempt to download nodes present in Mongo that are NOT present on local disk in `PATH_DATA` 
-from one of the Locations (see [Concepts]./Concepts.md) configured. The node will point to the correct location with the node data. Both index and file are 
-restored to the local system and stored in the `PATH_CACHE` directory.
-
-
-- Types.yaml file
-
 Documentation
 -------------
 For further information about Shock's functionality, please refer to our [github wiki](https://github.com/MG-RAST/Shock/docs/).
