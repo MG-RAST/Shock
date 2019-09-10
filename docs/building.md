@@ -78,7 +78,7 @@ port 7445: Shock server API (default in config)<br>
 
 Documentation
 -------------
-For further information about Shock's functionality, please refer to our [github wiki](https://github.com/MG-RAST/Shock/docs/).
+For further information about Shock's functionality, please refer to our [github](https://github.com/MG-RAST/Shock/docs/).
 
 Developer Notes
 ---------------

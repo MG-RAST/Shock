@@ -2,25 +2,6 @@
 
 Author: Folker Meyer (folker@anl.gov)
 
-## Concepts
-
-- Traditionally Shock combines an on disk storage hierarchy with a Mongo database for metadata.
-- As of version 1.0 a Shock server can download items present in its Mongo database from remote locations and cache them locally
-- The "Traditional" behavior is the default model. The system is backward compatible.
-- As of v1.0 Shock has become a hierarchical storage management system (HSM)
-- A Shock server is made aware of remote locations via a Locations.yaml file, see the example
-- Supported remote location types are: 
-    * Shock (Type: Shock)
-    * S3 (Type: S3)
-    * IBM Tivoli TSM (Type: TSM)
-- We hope to support the following in the future (pull requests welcome):
-    * DAOS
-    * Amazon Glacier
-    * Google Cloud Storage
-    * Microsoft Azure Data Storage
-- Shock nodes are migrated listed for migration by external scripts (check the /scripts folder in this repo) by the server according to the paramters provided
-- the new /location/<locname>/{missing|present|inflight} query lists the files that need to be backed up missing, the ones current being backed-up (inflight) and those stored already (present)
-
 
 ## Caching
 
