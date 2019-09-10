@@ -16,7 +16,7 @@
 
 - Permitted by everyone:
   - `/`  resource listing
-  - `/wiki/`  this documentation
+
 
 - Permitted by admin, node owner, users in read ACL, or everyone if node is publicly readable:
   - `/node`  list nodes, query
