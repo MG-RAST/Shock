@@ -13,6 +13,10 @@
 
 - supports HSM operations and caching
 
+![Overview of Shock v2](./Images/shock_v2_overview2.png "Overview of Shock v2")
+
+
+
 (see [Shock: Active Storage for Multicloud Streaming Data Analysis](http://ieeexplore.ieee.org/abstract/document/7406331/), Big Data Computing (BDC), 2015 IEEE/ACM 2nd International Symposium on, 2015)
 
 
