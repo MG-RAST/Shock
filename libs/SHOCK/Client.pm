@@ -305,7 +305,7 @@ sub delete_node {
 }
 
 # query attributes (!= node)
-sub query { # https://github.com/MG-RAST/Shock/wiki/API
+sub query { # https://github.com/MG-RAST/Shock/
 		
 	my ($self, %query) = @_;
 	
