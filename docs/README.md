@@ -64,8 +64,7 @@ Do not forget, by default this configuration does not store data persistently.
 - [API documentation](./API/README.md).
 - [Building shock](./building.md).
 - [Configuring Shock](./configuration.md).
-- [Shock clients](./Shock-Clients.md)
-- [Shock concepts](./Concepts.md).
+- [Shock concepts](./concepts.md).
 - [Caching and data migration](./caching_and_data_migration.md).
 - For further information about Shock's functionality, please refer to our [Shock documentation](https://github.com/MG-RAST/Shock/docs/).
 
