@@ -36,7 +36,7 @@ SHOCK_DATA_PATH="/dpool/mgrast/shock/data"
 # name of the location defined in locations.yaml
 LOCATION_NAME="anltsm"
 # name of the dump file for TSM data
-TSM_DUMP=${SHOCK_DATA_PATH/backends/${LOCATION_NAME}}
+TSM_DUMP="/var/tmp/backup_list_${LOCATION_NAME}.txt"
 # TSM servername
 TSM_SERVER=TSM_CELS
 # NOTE: we assume authentication bits to be contain in the AUTH env variable
@@ -55,7 +55,7 @@ function cleanup() {
 
 # clean up
 rm -f ${WCOPY} ${OUTCOPY} 
-rm -f ${LOCKF}
+rm -f ${LOCKF} ${TSM_DUMP}
 
 }
 
@@ -89,8 +89,8 @@ test $FILEAGE -lt $MAXAGE && {  # this is a very ugly hack and needs to return t
 ###  extract a list of all items in TSM backup once every day
 function update_TSM_dump () {
 
-filename=$1
-cachefiledate=$(fileage ${filename})
+local filename=$1
+local cachefiledate=$(fileage ${filename})
 
 # check if cace
 if [ -f $filename ] && [[ ${cachefiledate} -lt 24 ]]
@@ -192,7 +192,7 @@ if [ ! -f $1 ] ; then
 	exit 1	
 fi
 
-if ["${force}x" -eq "x" ] && [ -e ${LOCKF} ]; then 
+if ["${force}x" == "x" ] && [ -e ${LOCKF} ]; then 
   echo " [$(basename $0)] Lockfile ${LOCKF} exists; exiting"
   exit 1
 fi
@@ -270,7 +270,7 @@ while read line; do
 
       if echo ${JSON} |  grep -q locations.stored="false" ; then 
         # already requested skip to next ${id}
-      else {
+      else 
          # write names to request file
          echo "${DATAFILE}" >> ${OUTCOPY}
          echo "${INDEXFILE}" >> ${OUTCOPY}
@@ -295,11 +295,20 @@ fi
 
 # run the command to request archiving
 
- dsmc inc -se=$TSM_SERVER -filelist=${OUTCOPY} > /dev/null
- if [[ $verbose == "1" ]] ; then
+  if [[ $verbose == "1" ]] ; then
     echo "running dsmc inc -se=$SERV -filelist=${OUTCOPY} > /dev/null"
- fi
+  fi
+
+# capture the return value and report any errors
+ ret=$(dsmc inc -se=$TSM_SERVER -filelist=${OUTCOPY}) 
+ if [ $? != 0 ] ; then
+    echo "FAILED: dsmc inc -se=$SERV -filelist=${OUTCOPY} "
+    echo "OUTPUT: ${ret}"
+    cleanup
+    exit 1
+  fi
 
 # run cleanup function
 cleanup
+exit 0
 
