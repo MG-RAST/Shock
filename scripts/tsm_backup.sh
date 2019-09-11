@@ -11,14 +11,7 @@
 
 # send data items in Shock output to a TSM instance
 # the Shockoutput will be of the form
-  # ---snip---
-  # /dpool/mgrast/shock/data/00/01/a9/0001a988-f2a2-4c55-a42e-dd28d42d0344/0001a988-f2a2-4c55-a42e-dd28d42d0344.data
-  # /dpool/mgrast/shock/data/00/01/c1/0001c1ed-58a3-44ca-8be5-f05a5d37da5b/0001c1ed-58a3-44ca-8be5-f05a5d37da5b.data
-  # /dpool/mgrast/shock/data/00/01/c1/0001c1ed-58a3-44ca-8be5-f05a5d37da5b/0001c1ed-58a3-44ca-8be5-f05a5d37da5b.idx.zip
-  # /dpool/mgrast/shock/data/00/01/d2/0001d251-e1f2-4336-9088-ab7d91063260/0001d251-e1f2-4336-9088-ab7d91063260.data
-  # /dpool/mgrast/shock/data/00/01/d2/0001d251-e1f2-4336-9088-ab7d91063260/0001d251-e1f2-4336-9088-ab7d91063260.idx.zip
-  # /dpool/mgrast/shock/data/00/01/e0/0001e095-0c3e-42f7-bb79-f1bd65091df8/0001e095-0c3e-42f7-bb79-f1bd65091df8.data
-# ---snip---
+
 
 # config of TSM is via the run time environment (e.g. the dsmc utilities and the server side config)
 
@@ -45,6 +38,7 @@ OUTCOPY=${SHOCK_DATA_PATH}/$(basename $0)_output.$$.txt
 LOCKF=$${SHOCK_DATA_PATH}/$(basename $0).lock
 
 ### no more config
+# AUTH is set externally
 ### ################################################################################
 ### ################################################################################
 ### ################################################################################
@@ -197,6 +191,7 @@ if ["${force}x" == "x" ] && [ -e ${LOCKF} ]; then
   exit 1
 fi
 
+touch ${LOCKF}
 
 if [[ $verbose == "1" ]] ;then 
   echo "Settings:"
@@ -221,7 +216,7 @@ fi
  
 
 # download the file of nodes that require submission to DSMC from SHOCK
-curl -s -X POST -H "$AUTH" "${SHOCK_SERVER_URL}/location/${LOCATION_NAME}/missing" > ${WCOPY}
+curl -s -X POST -H "$AUTH" "${SHOCK_SERVER_URL}/location/${LOCATION_NAME}/missing" | jq .data[].id | tr -d \"  > ${WCOPY}
 if [ $? != 0 ] ; then 
   echo " [$(basename $0)] Can't connect to ${SHOCK_SERVER_URL} or disk full"
   exit 1
