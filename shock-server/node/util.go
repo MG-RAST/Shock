@@ -124,7 +124,7 @@ Loop:
 			}
 			break Loop
 		case "Azure":
-			err = AzureDwnload(uuid, nodeInstance, locationConfig)
+			err = AzureDownload(uuid, nodeInstance, locationConfig)
 			if err != nil {
 				// debug output
 				err = fmt.Errorf("(FMOpen) Azure returned: %s", err.Error())
