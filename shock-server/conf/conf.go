@@ -37,15 +37,17 @@ type LocationConfig struct {
 	Tier        int    `bson:"tier" json:"tier" yaml:"Tier"`                      // e.g. class or tier 0= cache, 3=ssd based backend, 5=disk based backend, 10=tape archive
 	Cost        int    `bson:"cost" json:"cost" yaml:"Cost"`                      // e.g.  cost per GB for this store, default=0
 	SecretKey   string `bson:"SecretKey" json:"-" yaml:"SecretKey" `              // e.g.g AWS secret-key
+	Bucket      string `bson:"bucket" json:"bucket" yaml:"Bucket" `               // for AWS and GCloud
 
-	S3Location    `bson:",inline" json:",inline" yaml:",inline"` // extensions specific to S3
-	AzureLocation `bson:",inline" json:",inline" yaml:",inline"` // extensions specific to Microsoft Azure
-	TSMLocation   `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to IBM TSM
+	S3Location     `bson:",inline" json:",inline" yaml:",inline"` // extensions specific to S3
+	AzureLocation  `bson:",inline" json:",inline" yaml:",inline"` // extensions specific to Microsoft Azure
+	TSMLocation    `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to IBM TSM
+	GCloudLocation `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to IBM TSM
+
 }
 
 // S3Location S3 specific fields
 type S3Location struct {
-	Bucket string `bson:"bucket" json:"bucket" yaml:"Bucket" `
 	Region string `bson:"region" json:"region" yaml:"Region" `
 }
 
@@ -53,6 +55,11 @@ type S3Location struct {
 type AzureLocation struct {
 	Account   string `bson:"Account" json:"-" yaml:"Account" `             // e.g.g Account name
 	Container string `bson:"Container" json:"Container" yaml:"Container" ` // e.g.g Azure ContainerName
+}
+
+// GCloudLocation specific fields
+type GCloudLocation struct {
+	Project string `bson:"Project" json:"-" yaml:"Project" `
 }
 
 // TSMLocation IBM TSM specific fields
