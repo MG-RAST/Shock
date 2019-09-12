@@ -362,7 +362,6 @@ func TSMDownload(uuid string, nodeInstance *Node) (err error) {
 
 // AzureDownload support for downloading off https://github.com/daos-stack
 func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error) {
-	logger.Infof("(AzureDownload) needs to be implemented !! \n")
 
 	// 4) Download the item from the bucket. If an error occurs, log it and exit. Otherwise, notify the user that the download succeeded.
 	// needs to create a full path
@@ -400,14 +399,18 @@ func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 		logger.Debug(3, "(AzureDownload) error authenticating account: %s [Err: %s]", location.Account, err.Error())
 	}
 
-	//
+	// Azure specific bits
 	pipeline := azblob.NewPipeline(credential, azblob.PipelineOptions{})
 	// create context
 	ctx := context.Background() // This example uses a never-expiring context
 
 	// From the Azure portal, get your storage account blob service URL endpoint.
-	myURL, _ := url.Parse(
+	myURL, err := url.Parse(
 		fmt.Sprintf("https://%s.blob.core.windows.net/%s/%s", location.Account, location.Container, itemkey))
+	if err != nil {
+		logger.Debug(3, "(AzureDownload) URL malformed: %s [Err: %s]", myURL, err.Error())
+		return
+	}
 
 	// Create a ServiceURL for our node
 	blobURL := azblob.NewBlobURL(*myURL, pipeline)
@@ -415,10 +418,12 @@ func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 	// download the file contents
 	err = azblob.DownloadBlobToFile(ctx, blobURL, 0, azblob.CountToEnd, file, azblob.DownloadFromBlobOptions{
 		BlockSize: 4 * 1024 * 1024, Parallelism: 16})
-
 	if err != nil {
 		logger.Debug(3, "(AzureDownload) error downloading blob: %s [Err: %s]", uuid, err.Error())
+		return
 	}
+
+	// end Azure specific bits
 
 	file.Close()
 
@@ -496,7 +501,6 @@ func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 
 // GCloudStoreDownload support for downloading off https://github.com/daos-stack
 func GCloudStoreDownload(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error) {
-	logger.Infof("(AzureDownload) needs to be implemented !! \n")
 
 	// 4) Download the item from the bucket. If an error occurs, log it and exit. Otherwise, notify the user that the download succeeded.
 	// needs to create a full path

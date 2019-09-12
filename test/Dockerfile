@@ -9,7 +9,7 @@
 # This allows the shock-server to bind to port 80 if desired.
 #setcap 'cap_net_bind_service=+ep' bin/shock-server
 
-FROM golang:1.7.6-alpine
+FROM golang:alpine
 
 RUN apk update && apk add \
     git \
@@ -30,8 +30,7 @@ RUN mkdir -p /data/db /var/log/shock /usr/local/shock/data ${DIR} && \
 
 # compile
 RUN cd ${DIR} && \
-    go get -d ./shock-client/  && \
-    CGO_ENABLED=0 go install -a -installsuffix cgo -v ./shock-client/
+      CGO_ENABLED=0 go install -a -installsuffix cgo -v ./shock-client/
 
 # run tests
 CMD ["/bin/ash"]
