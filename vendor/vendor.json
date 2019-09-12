@@ -3,6 +3,60 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "eF7ZK9bxff9i1tcFOBlDlY9gYpk=",
+			"path": "cloud.google.com/go/compute/metadata",
+			"revision": "6ae71063774771e05f238a29c1cc65ddf995bc6c",
+			"revisionTime": "2019-09-09T18:13:28Z"
+		},
+		{
+			"checksumSHA1": "+S/9jBntS1iHZwxkR64vsy97Gh8=",
+			"path": "cloud.google.com/go/iam",
+			"revision": "6ae71063774771e05f238a29c1cc65ddf995bc6c",
+			"revisionTime": "2019-09-09T18:13:28Z"
+		},
+		{
+			"checksumSHA1": "JfGXEtr79UaxukcL05IERkjYm/g=",
+			"path": "cloud.google.com/go/internal",
+			"revision": "6ae71063774771e05f238a29c1cc65ddf995bc6c",
+			"revisionTime": "2019-09-09T18:13:28Z"
+		},
+		{
+			"checksumSHA1": "wQ4uGuRwMb24vG16pPQDOOCPkFo=",
+			"path": "cloud.google.com/go/internal/optional",
+			"revision": "6ae71063774771e05f238a29c1cc65ddf995bc6c",
+			"revisionTime": "2019-09-09T18:13:28Z"
+		},
+		{
+			"checksumSHA1": "jHOn3QLqvr1luNqyOg24/BXLrsM=",
+			"path": "cloud.google.com/go/internal/trace",
+			"revision": "6ae71063774771e05f238a29c1cc65ddf995bc6c",
+			"revisionTime": "2019-09-09T18:13:28Z"
+		},
+		{
+			"checksumSHA1": "CRid/VCcJ3Vfwg/R/gbmzcHVOwQ=",
+			"path": "cloud.google.com/go/internal/version",
+			"revision": "6ae71063774771e05f238a29c1cc65ddf995bc6c",
+			"revisionTime": "2019-09-09T18:13:28Z"
+		},
+		{
+			"checksumSHA1": "10ifWjSotYTg0SjKk9QvvuZI18Q=",
+			"path": "cloud.google.com/go/storage",
+			"revision": "6ae71063774771e05f238a29c1cc65ddf995bc6c",
+			"revisionTime": "2019-09-09T18:13:28Z"
+		},
+		{
+			"checksumSHA1": "oKluEwtvvBjw/U7HuxJerq9zM6c=",
+			"path": "github.com/Azure/azure-pipeline-go/pipeline",
+			"revision": "232aee85e8e3a6223a11c0943f7df2ae0fac00e4",
+			"revisionTime": "2019-07-08T20:54:13Z"
+		},
+		{
+			"checksumSHA1": "eQX2ypLxFTKN6GduS+lhADwVwVM=",
+			"path": "github.com/Azure/azure-storage-blob-go/azblob",
+			"revision": "fc700035fe4a7020f50d49f420b3c088aed57e03",
+			"revisionTime": "2019-08-17T00:43:51Z"
+		},
+		{
 			"checksumSHA1": "O0OSwirUpvhHMgDB1LgPndz0bb4=",
 			"path": "github.com/aws/aws-sdk-go/aws",
 			"revision": "ed1c1dc0f009baf5bc8a278d785f8783afb08c49",
@@ -243,10 +297,22 @@
 			"revisionTime": "2018-08-30T19:11:22Z"
 		},
 		{
+			"checksumSHA1": "WZoHSeTnVjnPIX2+U1Otst5MUKw=",
+			"path": "github.com/googleapis/gax-go/v2",
+			"revision": "e188373134855d5f7f186c9e710cd7323eac1ebc",
+			"revisionTime": "2019-08-29T21:15:21Z"
+		},
+		{
 			"checksumSHA1": "blwbl9vPvRLtL5QlZgfpLvsFiZ4=",
 			"path": "github.com/jmespath/go-jmespath",
 			"revision": "c2b33e8439af944379acbdd9c3a5fe0bc44bd8a5",
 			"revisionTime": "2018-02-06T20:15:40Z"
+		},
+		{
+			"checksumSHA1": "2AyxThTPscWdy49fGsU2tg0Uyw8=",
+			"path": "google.golang.org/api/option",
+			"revision": "28eb3b1f27f6a4e7185acb5b5074a90b4cc04cc4",
+			"revisionTime": "2019-09-11T19:48:11Z"
 		},
 		{
 			"checksumSHA1": "Vbwc1If+/1nZdx8nRBFA7GxjZC4=",
