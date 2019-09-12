@@ -2,15 +2,19 @@ package node
 
 import (
 	"archive/zip"
+	"context"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/Azure/azure-storage-blob-go/azblob"
 
 	"github.com/MG-RAST/Shock/shock-server/cache"
 	"github.com/MG-RAST/Shock/shock-server/conf"
@@ -119,6 +123,15 @@ Loop:
 				return
 			}
 			break Loop
+		case "Azure":
+			err = AzureDwnload(uuid, nodeInstance, locationConfig)
+			if err != nil {
+				// debug output
+				err = fmt.Errorf("(FMOpen) Azure returned: %s", err.Error())
+				return
+			}
+			break Loop
+
 		case "Shock":
 			// this should be expanded to handle Shock servers sharing the same Mongo instance
 			err = ShockDownload(uuid, nodeInstance)
@@ -218,6 +231,11 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 	err = os.MkdirAll(cacheitempath, 0777)
 	if err != nil {
 		log.Fatalf("(S3Download) Unable to create cache path for item %s [%s], %s", cacheitemfile, cacheitempath, err.Error())
+		return
+	}
+	err = os.MkdirAll(itempath, 0777)
+	if err != nil {
+		log.Fatalf("(S3Download) Unable to create path for item %s [%s], %s", itemfile, itempath, err.Error())
 		return
 	}
 
@@ -329,6 +347,140 @@ func TSMDownload(uuid string, nodeInstance *Node) (err error) {
 	// add .data and .idx.zip files to the list of files to be downloaded from TSM
 
 	//
+
+	return
+}
+
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+
+// AzureDownload support for downloading off https://github.com/daos-stack
+func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error) {
+	logger.Infof("(AzureDownload) needs to be implemented !! \n")
+
+	// 4) Download the item from the bucket. If an error occurs, log it and exit. Otherwise, notify the user that the download succeeded.
+	// needs to create a full path
+	cacheitempath := uuid2CachePath(uuid)
+	cacheitemfile := fmt.Sprintf("%s/%s.data", cacheitempath, uuid)
+
+	itempath := uuid2Path(uuid)
+	itemkey := fmt.Sprintf("%s.data", uuid)
+	itemfile := fmt.Sprintf("%s/%s.data", itempath, uuid)
+
+	// create cache dir path
+	err = os.MkdirAll(cacheitempath, 0777)
+	if err != nil {
+		log.Fatalf("(AzureDownload) Unable to create cache path for item %s [%s], %s", cacheitemfile, cacheitempath, err.Error())
+		return
+	}
+	err = os.MkdirAll(itempath, 0777)
+	if err != nil {
+		log.Fatalf("(AzureDownload) Unable to create path for item %s [%s], %s", itemfile, itempath, err.Error())
+		return
+	}
+
+	// create a cache item here
+	file, err := os.Create(cacheitemfile)
+	defer file.Close()
+
+	if err != nil {
+		logger.Debug(3, "(AzureDownload) cannot create local file handle for: %s, itemkey: %s", cacheitemfile, uuid)
+		return
+	}
+
+	// Create a default request pipeline using your storage account name and account key.
+	credential, err := azblob.NewSharedKeyCredential(location.Account, location.SecretKey)
+	if err != nil {
+		logger.Debug(3, "(AzureDownload) error authenticating account: %s [Err: %s]", location.Account, err.Error())
+	}
+
+	//
+	pipeline := azblob.NewPipeline(credential, azblob.PipelineOptions{})
+	// create context
+	ctx := context.Background() // This example uses a never-expiring context
+
+	// From the Azure portal, get your storage account blob service URL endpoint.
+	myURL, _ := url.Parse(
+		fmt.Sprintf("https://%s.blob.core.windows.net/%s/%s", location.Account, location.Container, itemkey))
+
+	// Create a ServiceURL for our node
+	blobURL := azblob.NewBlobURL(*myURL, pipeline)
+
+	// download the file contents
+	err = azblob.DownloadBlobToFile(ctx, blobURL, 0, azblob.CountToEnd, file, azblob.DownloadFromBlobOptions{
+		BlockSize: 4 * 1024 * 1024, Parallelism: 16})
+
+	if err != nil {
+		logger.Debug(3, "(AzureDownload) error downloading blob: %s [Err: %s]", uuid, err.Error())
+	}
+
+	file.Close()
+
+	// add sym link from cacheItemPath to itemPath
+	err = os.Symlink(cacheitemfile, itemfile)
+	if err != nil {
+		log.Fatalf("(AzureDownload) Unable to download to create symlink from %s to %s, %s", cacheitemfile, itemfile, err.Error())
+		return
+	}
+
+	// download index files as well
+
+	// download the zipped archive with all the indexed
+	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
+	cacheindexpath := uuid2CachePath(uuid)
+	indexpath := uuid2Path(uuid)
+
+	indextemppath := fmt.Sprintf("%s/%s", conf.PATH_LOCAL, indexfile) // use the PATH_LOCAL to configure tmp dir
+
+	//	logger.Infof("(S3Download) attempting index download (indexfile: %s), cacheindexpath: %s\n", indexfile, cacheindexpath)
+
+	file, err = os.Create(indextemppath)
+	if err != nil {
+		logger.Infof("(AzureDownload) attempting create index temp dir: %s FAILED", indextemppath)
+
+		return
+	}
+	defer file.Close()
+
+	// From the Azure portal, get your storage account blob service URL endpoint.
+	myURL, _ = url.Parse(
+		fmt.Sprintf("https://%s.blob.core.windows.net/%s/%s", location.Account, location.Container, indexfile))
+
+	// Create a ServiceURL for our node
+	blobURL = azblob.NewBlobURL(*myURL, pipeline)
+
+	// download the file contents
+	err = azblob.DownloadBlobToFile(ctx, blobURL, 0, azblob.CountToEnd, file, azblob.DownloadFromBlobOptions{
+		BlockSize: 4 * 1024 * 1024, Parallelism: 16})
+
+	if err != nil {
+		logger.Debug(3, "(AzureDownload) error downloading blob: %s [Err: %s]", uuid, err.Error())
+	}
+
+	file.Close()
+
+	// unzip the index file
+	_, err = Unzip(indexfile, cacheindexpath) // unzip into idx folder
+	if err != nil {
+		// debug output
+		err = fmt.Errorf("(AzureDownload) error decompressing d: %s", err.Error())
+		return
+	}
+	// remove the zip file
+	err = os.Remove(indextemppath)
+	if err != nil {
+		// debug output
+		err = fmt.Errorf("(AzureDownload) error removing temp file d: %s", err.Error())
+		return
+	}
+
+	// add sym link from cacheItemPath to itemPath
+	err = os.Symlink(cacheindexpath+"/idx", indexpath+"/idx")
+	if err != nil {
+		log.Fatalf("(AzureDownload) Unable to download to create symlink from %s to %s, %s", cacheindexpath, indexpath, err.Error())
+		return
+	}
 
 	return
 }
