@@ -125,7 +125,13 @@ func (node *Node) SetFileFromSubset(subsetIndices file.FormFile) (err error) {
 	return
 }
 
+// SetFileFromPath _
 func (node *Node) SetFileFromPath(path string, action string) (err error) {
+	if action != "copy_file" && action != "move_file" && action != "keep_file" {
+		err = errors.New("setting file from path requires action field equal to copy_file, move_file or keep_file")
+		return
+	}
+
 	fileStat, err := os.Stat(path)
 	if err != nil {
 		return
@@ -134,36 +140,36 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 	node.File.Size = fileStat.Size()
 	node.File.CreatedOn = fileStat.ModTime()
 
+	// only for copy_file and move_file
 	tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
-
-	if action != "copy_file" && action != "move_file" && action != "keep_file" {
-		return errors.New("setting file from path requires action field equal to copy_file, move_file or keep_file")
-	}
 
 	if action == "move_file" {
 		// Determine if device ID of src and target are the same before proceeding.
 		var devID1 uint64
 		var f, _ = os.Open(path)
 		var fi, _ = f.Stat()
-		s := fi.Sys()
-		if s, ok := s.(*syscall.Stat_t); ok {
-			devID1 = uint64(s.Dev)
-		} else {
-			return errors.New("Could not determine device ID of data input file, try copy_file action instead.")
+		sIf := fi.Sys()
+		s, ok := sIf.(*syscall.Stat_t)
+		if !ok {
+			err = errors.New("Could not determine device ID of data input file, try copy_file action instead.")
+			return
 		}
+
+		devID1 = uint64(s.Dev)
 
 		var devID2 uint64
 		var f2, _ = os.Open(tmpPath)
 		var fi2, _ = f2.Stat()
-		s2 := fi2.Sys()
-		if s2, ok := s2.(*syscall.Stat_t); ok {
-			devID2 = uint64(s2.Dev)
-		} else {
+		s2If := fi2.Sys()
+		s2, ok := s2If.(*syscall.Stat_t)
+		if !ok {
 			return errors.New("Could not complete move_file action, try copy_file action instead.")
 		}
+		devID2 = uint64(s2.Dev)
 
 		if devID1 != devID2 {
-			return errors.New("Will not be able to rename file because data input file is on a different device than Shock data directory, try copy_file action instead.")
+			err = errors.New("Will not be able to rename file because data input file is on a different device than Shock data directory, try copy_file action instead.")
+			return
 		}
 	}
 
