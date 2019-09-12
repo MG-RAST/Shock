@@ -1,4 +1,28 @@
-# Building a data store for scientific data
+# Use cases for Shock
+
+Shock was created as a hybrid between a traditional file store and a database. It offers the best of both worlds. All files can be stored immediately with almost zero overhead. 
+But if desired, etadata can be added allowing for a head start on the required business logic.
+
+## Shock Origin story
+
+### Indexing and Expiration
+We designed Shock initially to work with our MG-RAST workflow. At that time implemented as a series of shell scripts and scheduled by Sun Grid engine or Slurm or something (I honestly do not remember).
+
+One of our most frequent problems was: I need to delete all temporary files for jobs X .... Y. 
+
+Two problems arise: Where are those jobs and which files are temporary. We note that our pipeline is and was constantly evolving, simply use a regular expression was (and is) not an option.
+
+Shock implements a FileReaper() function that expires nodes when their TTL is over. 
+
+### Firewalls and a bit of history
+Shock was initially created around the year 2009 and one of the main driving forces was our frustation with installing and maintaining large shared file systems. We operated a large NFS store, a GPFS store, A Lustre store. Each of them had good sides, but every one of them was not designed for the scale of our opertion (many hundreds of gigabytes at the time). In addition, we are experts at stealing computational cycles wherever they can be found (sound familiar in cloud times?), with traditional shared file systems the following dialogue got really old: "Ok, we need to mount X on Y and need to have a number of ports openend up on the firewall(s)." Response: "No we cannot do that, why don't you ...".
+
+Shock is our answer to this dilemma. All you need is port 80. Ah and btw. proxies work as does chaching. All we use is HTTP.
+
+
+## Some example use cases
+
+Examples are the workflows in MG-RAST, for each metagenome we run a multi-stage (as in ~20) step analytical pipeline. Each steps leaves a data trace of small and large files. We can store all the files, add a TTL (time to live, effectively a file expiration data) and never worry about them. We use this to keep intermediate files around for a few days in case something went wrong. 
 
 
 ## Example 1: MG-RAST
@@ -6,14 +30,17 @@
 - ~ 1PB of files
 - indexing
 - automated deletion of intermediary results (expiry) after set intervals
+- running on commodity hardware
+- support line speed or near line speed
 
 ### Our implementation:
 
 - set up a dedicated Server with initially 1PB of local storage on commodity hardware
+- the local storage is on a ZFS filesystem (ZFS on Linux)
 - added an S3 backend
 - added a TSM backend store
 - set up node removal from the main store IF a node is stored in two locations (S3 and TSM)
-
+- we achieve 6-7Gbit/s without optimization
 
 We created the following types:
 ~~~~
@@ -118,3 +145,4 @@ We implemented the following data types
 ### Requirements
 
 ### Our implementation:
+0

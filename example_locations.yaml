@@ -23,12 +23,32 @@ Locations:
     Priority: 0
     Tier: 3
     Cost: 0
- -  ID: "shock"
+ -  ID: "Backend_shock"
     Type: "shock"
-    Description: "shock service"
+    Description: "A Backend shock service of offload data to (slower disks)"
     URL: "shock.example.org"
     AuthKey: ""
     SecretKey: ""
+    Prefix: ""
+    Priority: 0
+    Tier: 5
+    Cost: 0
+-   ID: "MyAzure"
+    Type: "azure"
+    Description: "Joe User's Azure blob storage"
+    URL: "" 
+    AuthKey: "yet_another_key"
+    SecretKey: "yet_another_key"
+    Prefix: ""
+    Priority: 0
+    Tier: 5
+    Cost: 0
+-   ID: "MyGCS"
+    Type: "gcs"
+    Description: "Joe User's Google cloud storage"
+    URL: "" 
+    AuthKey: "yet_another_key"
+    SecretKey: "yet_another_key"
     Prefix: ""
     Priority: 0
     Tier: 5
