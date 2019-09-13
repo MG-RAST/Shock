@@ -88,12 +88,9 @@ func FMOpen(filepath string) (f *os.File, err error) {
 	filename := strings.TrimSuffix(filepath, ext) // find filename
 	uuid := path.Base(filename)                   // implement basename cmd
 
-	// check if we encounter an error AND if the file is cached (e.g. UUID.cache exists and UUID.data is a symlink)
-	if err == nil {
-		// update cache LRU info
-		cache.Touch(uuid)
-		return
-	}
+	// update cache LRU info
+	cache.Touch(uuid)
+	return
 
 	// WE NEED TO LOCK THIS NODE at this point
 
@@ -200,6 +197,7 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 	tmpfile, err := ioutil.TempFile(conf.PATH_CACHE, "")
 	if err != nil {
 		log.Fatalf("(GCloudStoreDownload)  cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		return
 	}
 	defer tmpfile.Close()
 	defer os.Remove(tmpfile.Name())
@@ -245,7 +243,7 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 		return
 	}
 
-	handleDataFile(tmpfile, uuid, "S3Download")
+	err = handleDataFile(tmpfile, uuid, "S3Download")
 	if err != nil {
 		logger.Debug(3, "(S3Download) error moving directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
 		return
@@ -256,6 +254,7 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 	tmpfile, err = ioutil.TempFile(conf.PATH_CACHE, "")
 	if err != nil {
 		log.Fatalf("(GCloudStoreDownload) cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		return
 	}
 	defer tmpfile.Close()
 	defer os.Remove(tmpfile.Name())
@@ -277,7 +276,7 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 		return err
 	}
 	//logger.Infof("Downloaded: %s (%d Bytes) \n", file.Name(), numBytes)
-	handleIdxZipFile(tmpfile, uuid, "S3Download")
+	err = handleIdxZipFile(tmpfile, uuid, "S3Download")
 	if err != nil {
 		logger.Debug(3, "(S3Download) error moving index directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
 		return
@@ -318,6 +317,7 @@ func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 	tmpfile, err := ioutil.TempFile(conf.PATH_CACHE, "")
 	if err != nil {
 		log.Fatalf("(GCloudStoreDownload)  cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		return
 	}
 	defer tmpfile.Close()
 	defer os.Remove(tmpfile.Name())
@@ -326,6 +326,7 @@ func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 	credential, err := azblob.NewSharedKeyCredential(location.Account, location.SecretKey)
 	if err != nil {
 		logger.Debug(3, "(AzureDownload) error authenticating account: %s [Err: %s]", location.Account, err.Error())
+		return
 	}
 
 	// Azure specific bits
@@ -352,7 +353,7 @@ func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 		return
 	}
 
-	handleDataFile(tmpfile, uuid, "AzureDownload")
+	err = handleDataFile(tmpfile, uuid, "AzureDownload")
 	if err != nil {
 		logger.Debug(3, "(AzureDownload) error moving directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
 		return
@@ -363,6 +364,7 @@ func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 	tmpfile, err = ioutil.TempFile(conf.PATH_CACHE, "")
 	if err != nil {
 		log.Fatalf("(GCloudStoreDownload) cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		return
 	}
 	defer tmpfile.Close()
 	defer os.Remove(tmpfile.Name())
@@ -380,9 +382,10 @@ func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 
 	if err != nil {
 		logger.Debug(3, "(AzureDownload) error downloading blob: %s [Err: %s]", uuid, err.Error())
+		return
 	}
 
-	handleDataFile(tmpfile, uuid, "AzureDownload")
+	err = handleDataFile(tmpfile, uuid, "AzureDownload")
 	if err != nil {
 		logger.Debug(3, "(AzureDownload) error moving index directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
 		return
@@ -404,6 +407,7 @@ func GCloudStoreDownload(uuid string, nodeInstance *Node, location *conf.Locatio
 	tmpfile, err := ioutil.TempFile(conf.PATH_CACHE, "")
 	if err != nil {
 		log.Fatalf("(GCloudStoreDownload)  cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		return
 	}
 	defer tmpfile.Close()
 	defer os.Remove(tmpfile.Name())
@@ -450,6 +454,7 @@ func GCloudStoreDownload(uuid string, nodeInstance *Node, location *conf.Locatio
 	tmpfile, err = ioutil.TempFile(conf.PATH_CACHE, "")
 	if err != nil {
 		log.Fatalf("(GCloudStoreDownload) cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		return
 	}
 	defer tmpfile.Close()
 	defer os.Remove(tmpfile.Name())
@@ -463,11 +468,13 @@ func GCloudStoreDownload(uuid string, nodeInstance *Node, location *conf.Locatio
 		log.Fatalf("(GCloudStoreDownload) blob not found: %s [Err: %s]", indexfile, err.Error())
 	}
 	defer reader.Close()
-	if _, err := io.Copy(tmpfile, reader); err != nil {
+	_, err = io.Copy(tmpfile, reader)
+	if err != nil {
 		logger.Debug(3, "(GCloudStoreDownload) error downloading blob: %s [Err: %s]", indexfile, err.Error())
+		return
 	}
 
-	handleIdxZipFile(tmpfile, uuid, "GCloudStoreDownload")
+	err = handleIdxZipFile(tmpfile, uuid, "GCloudStoreDownload")
 	if err != nil {
 		logger.Debug(3, "(GCloudStoreDownload) error moving index structures and symkink into place for : %s [Err: %s]", uuid, err.Error())
 		return
@@ -499,6 +506,7 @@ func ShockDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 	tmpfile, err := ioutil.TempFile(conf.PATH_CACHE, "")
 	if err != nil {
 		log.Fatalf("(GCloudStoreDownload)  cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		return
 	}
 	defer tmpfile.Close()
 	defer os.Remove(tmpfile.Name())
@@ -552,7 +560,7 @@ func ShockDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 		return
 	}
 
-	handleDataFile(tmpfile, uuid, "ShockDownload")
+	err = handleDataFile(tmpfile, uuid, "ShockDownload")
 	if err != nil {
 		logger.Debug(3, "(ShockDownload) error moving directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
 		return
@@ -565,6 +573,7 @@ func ShockDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 	tmpfile, err = ioutil.TempFile(conf.PATH_CACHE, "")
 	if err != nil {
 		log.Fatalf("(GCloudStoreDownload) cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		return
 	}
 	defer tmpfile.Close()
 	defer os.Remove(tmpfile.Name())
@@ -590,7 +599,7 @@ func ShockDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 		return
 	}
 	// unzip the index file
-	handleIdxZipFile(tmpfile, uuid, "ShockDownload")
+	err = handleIdxZipFile(tmpfile, uuid, "ShockDownload")
 	if err != nil {
 		logger.Debug(3, "(ShockDownload) error moving index directory structures and symkink into place for : %s [Err: %s]", uuid, err.Error())
 		return
@@ -733,6 +742,10 @@ func handleDataFile(fp *os.File, uuid string, funcName string) (err error) {
 
 	// create a handle for the cache item here
 	file, err := os.Create(cacheitemfile)
+	if err != nil {
+		logger.Infof("(%s) attempting cache item file: %s FAILED", funcName, cacheitemfile)
+		return
+	}
 	defer file.Close()
 
 	if _, err := io.Copy(file, fp); err != nil {
