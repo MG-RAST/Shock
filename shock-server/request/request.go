@@ -107,26 +107,25 @@ func DataUpload(r *http.Request) (params map[string]string, files file.FormFiles
 	return
 }
 
-// helper function for create & update
+// ParseMultipartForm helper function for create & update
 func ParseMultipartForm(r *http.Request) (params map[string]string, files file.FormFiles, err error) {
 	params = make(map[string]string)
 	files = make(file.FormFiles)
 	reader, err := r.MultipartReader()
 	if err != nil {
+		err = fmt.Errorf("(ParseMultipartForm) MultipartReader returned: %s", err.Error())
 		return
 	}
 
 	tmpPath := ""
-	for {
+	for { // read until EOF
 		var part *multipart.Part
 		part, err = reader.NextPart()
 		if err != nil {
-			if err.Error() != "EOF" {
-				return
-			} else {
-				break
+			if err.Error() == "EOF" {
+				err = nil
 			}
-
+			return
 		}
 
 		// params don't have a FileName()
