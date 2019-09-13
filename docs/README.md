@@ -9,7 +9,7 @@
 
 - is a data management system that supports in storage layer operations like quality-control, format conversion, filtering or subsetting.
 
-- is integrated with S3, IBM's Tivoli TSM storage managment system.
+- is integrated with S3, Microsoft Azure Storage, Google Cloud Storage and IBM's Tivoli TSM storage managment system.
 
 - supports HSM operations and caching
 
@@ -20,7 +20,7 @@ Shock is actively being developed at [github.com/MG-RAST/Shock](https://github.c
 Check out the notes  on [building and installing Shock](./building.md) and [configuration](./configuration.md).
 
 
-## Shock in 30 seconds (for Docker-compose)
+## Shock in 30 seconds (for Docker-compose) (or later for kubectl )
 This assumes that you have `docker` and `docker-compose` installed and `curl` is available locally.
 
 ### Download the container
@@ -36,29 +36,7 @@ Don't forget to later `docker-compose down` and do not forget, by default this c
 
 `curl -H 'Authorization: basic dXNlcjE6c2VjcmV0' http://localhost:7445/node`
 
-
-## Shock in 30 seconds (for Kubernetes)
-This assumes that you have `docker` and `docker-compose` installed and `curl` is available locally.
-
-### setup the namespace and create resources
-`kubectl create shock-setup.yaml`
-### set up the shock service 
-`kubectl create shock-service.yaml`
-### check
-`kubectl get -n shock get pods
-
-...
-
 Do not forget, by default this configuration does not store data persistently.
-
-### Push a file into Shock
-`curl -H 'Authorization: basic dXNlcjE6c2VjcmV0' -X PUT -F 'file_name=@myfile' http://<URL>/node`
-
-
-### Download a file from Shock
-
-`curl -H 'Authorization: basic dXNlcjE6c2VjcmV0' http://<URL>node`
-
 
 ## Documentation
 - [API documentation](./API/README.md).
