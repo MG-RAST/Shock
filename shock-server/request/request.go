@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 
@@ -142,16 +143,25 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files file.F
 			}
 			formValue := fmt.Sprintf("%s", buffer[0:n])
 			if part.FormName() == "upload_url" {
-				tmpPath = fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
-				files[part.FormName()] = file.FormFile{Name: "", Path: tmpPath, Checksum: make(map[string]string)}
-				// download from url
+				tempDir := path.Join(conf.PATH_DATA, "temp")
 				var tmpFile *os.File
-				tmpFile, err = os.Create(tmpPath)
+				tmpFile, err = ioutil.TempFile(tempDir, "")
 				if err != nil {
-					err = fmt.Errorf("(ParseMultipartForm) os.Create returned: %s", err.Error())
+					err = fmt.Errorf("(ParseMultipartForm) ioutil.TempFile returned: %s", err.Error())
 					return
 				}
 				defer tmpFile.Close()
+				tmpPath = tmpFile.Name()
+				//tmpPath = fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
+				files[part.FormName()] = file.FormFile{Name: "", Path: tmpPath, Checksum: make(map[string]string)}
+				// download from url
+				//var tmpFile *os.File
+				// tmpFile, err = os.Create(tmpPath)
+				// if err != nil {
+				// 	err = fmt.Errorf("(ParseMultipartForm) os.Create returned: %s", err.Error())
+				// 	return
+				// }
+
 				var tmpform = files[part.FormName()]
 				md5h := md5.New()
 				dst := io.MultiWriter(tmpFile, md5h)
@@ -187,15 +197,25 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files file.F
 				return nil, files, errors.New("invalid file param: " + part.FormName())
 			}
 			// download it
-			tmpPath = fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
-			files[part.FormName()] = file.FormFile{Name: part.FileName(), Path: tmpPath, Checksum: make(map[string]string)}
+			tempDir := path.Join(conf.PATH_DATA, "temp")
 			var tmpFile *os.File
-			tmpFile, err = os.Create(tmpPath)
+			tmpFile, err = ioutil.TempFile(tempDir, "")
 			if err != nil {
-				err = fmt.Errorf("(ParseMultipartForm) os.Create returned: %s", err.Error())
+				err = fmt.Errorf("(ParseMultipartForm) ioutil.TempFile returned: %s", err.Error())
 				return
 			}
 			defer tmpFile.Close()
+
+			tmpPath = tmpFile.Name()
+			//tmpPath = fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
+			files[part.FormName()] = file.FormFile{Name: part.FileName(), Path: tmpPath, Checksum: make(map[string]string)}
+			//var tmpFile *os.File
+			// tmpFile, err = os.Create(tmpPath)
+			// if err != nil {
+			// 	err = fmt.Errorf("(ParseMultipartForm) os.Create returned: %s", err.Error())
+			// 	return
+			// }
+
 			if util.IsValidUploadFile(part.FormName()) || isPartsFile || isSubsetFile {
 				// handle upload or parts files
 				var tmpform = files[part.FormName()]
