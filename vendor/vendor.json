@@ -309,6 +309,12 @@
 			"revisionTime": "2018-02-06T20:15:40Z"
 		},
 		{
+			"checksumSHA1": "DDotJqH7LNQlX1K6x6sGQteg80c=",
+			"path": "github.com/mattn/go-ieproxy",
+			"revision": "f9202b1cfdeb0c82ddd3dc1e8e9cd94b3c0c1b13",
+			"revisionTime": "2019-08-05T05:50:40Z"
+		},
+		{
 			"checksumSHA1": "2AyxThTPscWdy49fGsU2tg0Uyw8=",
 			"path": "google.golang.org/api/option",
 			"revision": "28eb3b1f27f6a4e7185acb5b5074a90b4cc04cc4",
