@@ -139,6 +139,7 @@ var (
 	SSL_KEY  string
 	SSL_CERT string
 
+	FORCE_YES    bool
 	PRINT_HELP   bool // full usage
 	SHOW_HELP    bool // simple usage
 	SHOW_VERSION bool
@@ -369,6 +370,7 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddString(&RELOAD, "", "Other", "reload", "path or url to shock data. WARNING this will drop all current data.", "")
 	gopath := os.Getenv("GOPATH")
 	c_store.AddString(&CONFIG_FILE, gopath+"/src/github.com/MG-RAST/Shock/shock-server.conf.template", "Other", "conf", "path to config file", "")
+	c_store.AddBool(&FORCE_YES, false, "Other", "force_yes", "show version", "")
 	c_store.AddBool(&SHOW_VERSION, false, "Other", "version", "show version", "")
 	c_store.AddBool(&PRINT_HELP, false, "Other", "fullhelp", "show detailed usage without \"--\"-prefixes", "")
 	c_store.AddBool(&SHOW_HELP, false, "Other", "help", "show usage", "")
