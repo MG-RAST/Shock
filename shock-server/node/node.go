@@ -122,7 +122,7 @@ func CreateNodeUpload(u *user.User, params map[string]string, files file.FormFil
 	if hasCheckSumMD5 {
 		matchingNodes := Nodes{}
 
-		_, err = dbFind(bson.M{"file.checksum.md5": checkSumMD5}, &matchingNodes, "", nil) // TODO search in public and owner nodes only
+		_, err = dbFind(bson.M{"file.checksum.md5": checkSumMD5, "type": "basic"}, &matchingNodes, "", nil) // TODO search in public and owner nodes only
 		if err != nil {
 			return nil, err
 		}
