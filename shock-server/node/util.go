@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"google.golang.org/api/option"
@@ -34,6 +35,12 @@ import (
 )
 
 type mappy map[string]bool
+
+// TransitMap store UUID and bool value if object is in transit
+var TransitMap map[string]bool
+
+// TransitMapLock lock write access to the CacheMap
+var TransitMapLock = sync.RWMutex{}
 
 func IsInMappy(item string, mp mappy) bool {
 	if _, ok := mp[item]; ok {
@@ -92,9 +99,19 @@ func FMOpen(filepath string) (f *os.File, err error) {
 	cache.Touch(uuid)
 	return
 
-	// WE NEED TO LOCK THIS NODE at this point
-
+	//	lockstate := fMOpenMap.value(uuid)
 	var nodeInstance, _ = Load(uuid)
+
+	// lock access to map
+	nodeInstance.TransitLock()
+
+	// assume the node might be locked and wait until it is free
+	// TODO add a maximum time wait
+	for !nodeInstance.CheckTransit() {
+		time.Sleep(5 * time.Second)
+	}
+
+	nodeInstance.TransitUnlock()	
 
 	// create the directory infrastructure for node and index
 	err = nodeInstance.Mkdir()
@@ -761,5 +778,27 @@ func handleDataFile(fp *os.File, uuid string, funcName string) (err error) {
 		return
 	}
 
+	return
+}
+
+// TransitLock set info that node is in flight
+func (node *Node) TransitLock() {
+	TransitMapLock.Lock()
+	defer TransitMapLock.Unlock()
+
+	TransitMap[node.Id] = true
+	return
+}
+
+func (node *Node) TransitUnlock() {
+	TransitMapLock.Lock()
+	defer TransitMapLock.Unlock()
+
+	delete(TransitMap, node.Id)
+	return
+}
+
+func (node *Node) CheckTransit() (locked bool) {
+	_, locked = TransitMap[node.Id]
 	return
 }
