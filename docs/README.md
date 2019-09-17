@@ -1,9 +1,9 @@
 
-# Shock -- a storage manager/broker for data science
+# Shock 2.0 -- a storage manager for scientific data
 
 -  is a storage platform designed from the ground up to be fast, scalable and fault tolerant.
 
-- is RESTful. Accessible from desktops, HPC systems, exotic hardware, the cloud and your smartphone.
+- is RESTful. The [API](./API/README.md) is accessible from desktops, HPC systems, exotic hardware, the cloud and your smartphone.
 
 - is designed for complex scientific data and allows storage and querying of complex user-defined metadata.   
 
