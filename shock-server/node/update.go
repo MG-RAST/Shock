@@ -198,24 +198,29 @@ func (node *Node) Update(params map[string]string, files file.FormFiles, hasLock
 		}
 		localpaths := strings.Split(conf.PATH_LOCAL, ",")
 		if len(localpaths) <= 0 {
-			err = errors.New("local files path uploads must be configured. Please contact your Shock administrator.")
+			err = errors.New("local files path uploads must be configured. Please contact your Shock administrator")
 			return
 		}
-		var success = false
+
+		legalPath := false
 		for _, p := range localpaths {
 			if strings.HasPrefix(params["path"], p) {
-				if err = node.SetFileFromPath(params["path"], params["action"]); err != nil {
-					err = fmt.Errorf("(node.SetFileFromPath) %s", err.Error())
-					return
-				} else {
-					success = true
-				}
+				legalPath = true
+				break
 			}
 		}
-		if !success {
-			err = errors.New("file not in local files path. Please contact your Shock administrator.")
+
+		if !legalPath {
+			err = errors.New("file not in local files path. Please contact your Shock administrator")
 			return
 		}
+
+		err = node.SetFileFromPath(params["path"], params["action"])
+		if err != nil {
+			err = fmt.Errorf("(node.SetFileFromPath) %s", err.Error())
+			return
+		}
+
 	} else if isCopyUpload {
 		var n *Node
 		n, err = Load(params["copy_data"])

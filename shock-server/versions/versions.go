@@ -4,15 +4,16 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/db"
 	"github.com/MG-RAST/Shock/shock-server/node"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"io/ioutil"
-	"os"
-	"strconv"
-	"time"
 )
 
 type Version struct {
@@ -86,7 +87,13 @@ func RunVersionUpdates() (err error) {
 	if (ok1 && confVersionACL >= 2) && (!ok2 || (ok2 && dbVersionACL < 2)) {
 		consoleReader := bufio.NewReader(os.Stdin)
 		fmt.Print("The ACL schema version in your database needs updating to version 2.  Would you like the update to run? (y/n): ")
-		text, _ := consoleReader.ReadString('\n')
+		//text, _ := consoleReader.ReadString('\n')
+		text := ""
+		if conf.FORCE_YES {
+			text = "y"
+		} else {
+			text, _ = consoleReader.ReadString('\n')
+		}
 		if text[0] == 'y' {
 			// Checking database to see if "public" already exists in a Node's ACL's somewhere.
 			session := db.Connection.Session.Copy()
@@ -120,8 +127,13 @@ func RunVersionUpdates() (err error) {
 				fmt.Println("Number of nodes with \"public\" in write ACL: " + strconv.Itoa(wCount))
 				fmt.Println("Number of nodes with \"public\" in delete ACL: " + strconv.Itoa(dCount))
 				fmt.Print("Your database may be in a mixed state, would you like to run the update anyway? (y/n): ")
-				text, _ = consoleReader.ReadString('\n')
+				if conf.FORCE_YES {
+					text = "y"
+				} else {
+					text, _ = consoleReader.ReadString('\n')
+				}
 			}
+
 			if text[0] == 'y' {
 				fmt.Println("Updating ACL's to version 2")
 				if _, err = c.UpdateAll(bson.M{"acl.owner": ""}, bson.M{"$set": bson.M{"acl.owner": "public"}}); err != nil {
@@ -161,7 +173,12 @@ func RunVersionUpdates() (err error) {
 	if (ok1 && confVersionNode >= 2) && (!ok2 || (ok2 && dbVersionNode < 2)) {
 		consoleReader := bufio.NewReader(os.Stdin)
 		fmt.Print("The Node schema version in your database needs updating to version 2.  Would you like the update to run? (y/n): ")
-		text, _ := consoleReader.ReadString('\n')
+		text := ""
+		if conf.FORCE_YES {
+			text = "y"
+		} else {
+			text, _ = consoleReader.ReadString('\n')
+		}
 		if text[0] == 'y' {
 			session := db.Connection.Session.Copy()
 			defer session.Close()
@@ -182,7 +199,12 @@ func RunVersionUpdates() (err error) {
 	if (ok1 && confVersionNode >= 3) && (!ok2 || (ok2 && dbVersionNode < 3)) {
 		consoleReader := bufio.NewReader(os.Stdin)
 		fmt.Print("The Node schema version in your database needs updating to version 3.  Would you like the update to run? (y/n): ")
-		text, _ := consoleReader.ReadString('\n')
+		text := ""
+		if conf.FORCE_YES {
+			text = "y"
+		} else {
+			text, _ = consoleReader.ReadString('\n')
+		}
 		if text[0] == 'y' {
 			// query for parts nodes with no md5sum
 			var n = new(node.Node)
@@ -223,10 +245,20 @@ func RunVersionUpdates() (err error) {
 	if (ok1 && confVersionNode >= 4) && (!ok2 || (ok2 && dbVersionNode < 4)) {
 		consoleReader := bufio.NewReader(os.Stdin)
 		fmt.Print("The Node schema version in your database needs updating to version 4.  Would you like the update to run? (y/n): ")
-		utext, _ := consoleReader.ReadString('\n')
+		utext := ""
+		if conf.FORCE_YES {
+			utext = "y"
+		} else {
+			utext, _ = consoleReader.ReadString('\n')
+		}
 		if utext[0] == 'y' {
 			fmt.Print("Would you like to update node info with timestamps from disk (otherwise current time is used)? (y/n): ")
-			ftext, _ := consoleReader.ReadString('\n')
+			ftext := ""
+			if conf.FORCE_YES {
+				ftext = "y"
+			} else {
+				ftext, _ = consoleReader.ReadString('\n')
+			}
 			// query for all nodes with a file md5sum
 			var n = new(node.Node)
 			updated := 0

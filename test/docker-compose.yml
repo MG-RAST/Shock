@@ -22,7 +22,8 @@ services:
           - /go/bin/shock-server 
           - --hosts=shock-mongo 
           - --basic=true 
-          - --users=admin   
+          - --users=admin
+          - --force_yes=true
           # docker exec -ti test_shock_1 /go/bin/shock-server --hosts=shock-mongo --basic=true --users=admin
         
           #- /go/bin/shock-server
