@@ -1,5 +1,5 @@
 
-# Shock 2.0 -- a storage manager for scientific data
+# Shock 2.0 -- An object store for scientific data
 
 -  is a storage platform designed from the ground up to be fast, scalable and fault tolerant.
 
