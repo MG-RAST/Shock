@@ -319,8 +319,8 @@ func Print() {
 	fmt.Printf("##### Expiration #####\nexpire_wait:\t%d minutes\n\n", EXPIRE_WAIT)
 	fmt.Printf("##### Minimum Replica Count in other Locations #####\nmin_replica_count:\t%d (before removing local files)\n\n", MIN_REPLICA_COUNT)
 	fmt.Printf("##### Max Revisions #####\nmax_revisions:\t%d\n\n", MAX_REVISIONS)
-	fmt.Printf("##### Node migration #####\nnode_migration::\t%b\n\n", NODE_MIGRATION)
-	fmt.Printf("##### Node file deletion (after migration) #####\nnode_data_removal::\t%b\n\n", NODE_DATA_REMOVAL)
+	fmt.Printf("##### Node migration #####\nnode_migration::\t%t\n\n", NODE_MIGRATION)
+	fmt.Printf("##### Node file deletion (after migration) #####\nnode_data_removal::\t%t\n\n", NODE_DATA_REMOVAL)
 	fmt.Printf("##### Cache file TTL #####\ncache_ttl::\t%b\n\n", CACHE_TTL)
 	fmt.Printf("API_PORT: %d\n", API_PORT)
 }
