@@ -1,6 +1,8 @@
 package node
 
 import (
+	"net/http"
+
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
@@ -10,7 +12,6 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	mgo "gopkg.in/mgo.v2"
-	"net/http"
 )
 
 // DELETE: /node/{id}
@@ -51,7 +52,7 @@ func (cr *NodeController) Delete(id string, ctx context.Context) error {
 		return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
 	}
 
-	if err := n.Delete(); err == nil {
+	if _, err := n.Delete(); err == nil {
 		return responder.RespondOK(ctx)
 	} else {
 		err_msg := "err@node_Delete: (node.Delete) " + err.Error()

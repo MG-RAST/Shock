@@ -12,7 +12,6 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
-	"github.com/davecgh/go-spew/spew"
 	mgo "gopkg.in/mgo.v2"
 )
 
@@ -30,7 +29,7 @@ func LocationsRequest(ctx context.Context) {
 	}
 
 	// public user (no auth) can be used in some cases
-	if u == nil {
+	if u == nil && conf.DEBUG_AUTH != true {
 		if (rmeth == "GET" && conf.ANON_READ) || (rmeth == "POST" && conf.ANON_WRITE) || (rmeth == "DELETE" && conf.ANON_WRITE) {
 			u = &user.User{Uuid: "public"}
 		} else {
@@ -55,13 +54,14 @@ func LocationsRequest(ctx context.Context) {
 		return
 	}
 
-	rights := n.Acl.Check(u.Uuid)
-	if n.Acl.Owner != u.Uuid && u.Admin == false && n.Acl.Owner != "public" && rights["read"] == false {
-		logger.Error("err@node_Acl: (Authenticate) id=" + nid + ": " + e.UnAuth)
-		responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
-		return
+	if conf.DEBUG_AUTH != true {
+		rights := n.Acl.Check(u.Uuid)
+		if n.Acl.Owner != u.Uuid && u.Admin == false && n.Acl.Owner != "public" && rights["read"] == false {
+			logger.Error("err@node_Acl: (Authenticate) id=" + nid + ": " + e.UnAuth)
+			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+			return
+		}
 	}
-
 	switch rmeth {
 
 	//case "PUT": //PUT is idempotent
@@ -82,7 +82,7 @@ func LocationsRequest(ctx context.Context) {
 
 		}
 	case "POST": // append
-		if !u.Admin {
+		if conf.DEBUG_AUTH != true && !u.Admin {
 			errmsg := e.UnAuth
 			if conf.DEBUG_AUTH {
 				errmsg = "admin required"
@@ -98,7 +98,7 @@ func LocationsRequest(ctx context.Context) {
 			responder.RespondWithError(ctx, http.StatusInternalServerError, err.Error())
 			return
 		}
-		spew.Dump(locationObjectIf)
+		//spew.Dump(locationObjectIf)
 
 		newLocation := Location{}
 

@@ -7,7 +7,7 @@
 # This allows the shock-server to bind to port 80 if desired.
 #setcap 'cap_net_bind_service=+ep' bin/shock-server
 
-FROM golang:1.7.6-alpine
+FROM golang:alpine
 
 RUN apk update && apk add git curl
 
@@ -25,8 +25,8 @@ RUN mkdir -p /var/log/shock /usr/local/shock/data ${DIR}
 
 # compile
 RUN cd ${DIR} && \
-    go get github.com/MG-RAST/go-shock-client && \
-    ./compile-server.sh
+     go get github.com/MG-RAST/go-shock-client  &&\
+     ./compile-server.sh
 
 
 CMD ["/go/bin/shock-server"]
