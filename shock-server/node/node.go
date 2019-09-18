@@ -43,6 +43,7 @@ type Node struct {
 	Locations    []Location        `bson:"locations" json:"locations"` // see below
 }
 
+// Location a data type to represent storage locations (defined in LocationConfig) and status of data in flight
 type Location struct {
 	ID            string     `bson:"id" json:"id"`                                           // name of the location, if present data is verified to exist in said location
 	Stored        bool       `bson:"stored,omitempty" json:"stored,omitempty"`               //
@@ -316,22 +317,20 @@ func (node *Node) DynamicIndex(name string) (idx index.Index, err error) {
 	return
 }
 
-func (node *Node) Delete() (err error) {
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+
+// DeleteFiles delete the files on disk while keeping information in Mongo
+// FMopen will stage back the files from external Locations if requested
+// data for nodes will subsequently be cached in PATH_CACHE not stored in PATH_DATA
+func (node *Node) DeleteFiles() (err error) {
 	// lock node
 	err = locker.NodeLockMgr.LockNode(node.Id)
 	if err != nil {
 		return
 	}
 	defer locker.NodeLockMgr.Remove(node.Id)
-
-	// check to make sure this node isn't referenced by a vnode
-	virtualNodes := Nodes{}
-	if _, err = dbFind(bson.M{"file.virtual_parts": node.Id}, &virtualNodes, "", nil); err != nil {
-		return err
-	}
-	if len(virtualNodes) != 0 {
-		return errors.New(e.NodeReferenced)
-	}
 
 	// Check to see if this node has a data file and if it's referenced by another node.
 	// If it is, we will move the data file to the first node we find, and point all other nodes to that node's path
@@ -372,13 +371,95 @@ func (node *Node) Delete() (err error) {
 		}
 	}
 
-	err = dbDelete(bson.M{"id": node.Id})
+	// we shoudl really delete the index files as well
+	logger.Debug(1, "(Node->DeleteFiles) we still need to delete the index files!")
+	// IndexFilePath := fmt.Sprintf("%s/%s.idx", node.IndexPath(), indextype)
+	// if err = os.Remove(IndexFilePath); err != nil {
+	// 	return
+	// }
+
+	return
+}
+
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+
+// Delete the node from Mongo and Disk
+func (node *Node) Delete() (deleted bool, err error) {
+	// lock node
+	err = locker.NodeLockMgr.LockNode(node.Id)
 	if err != nil {
 		return
 	}
+	defer locker.NodeLockMgr.Remove(node.Id)
+
+	// check to make sure this node isn't referenced by a vnode
+	virtualNodes := Nodes{}
+	if _, err = dbFind(bson.M{"file.virtual_parts": node.Id}, &virtualNodes, "", nil); err != nil {
+		return
+	}
+	if len(virtualNodes) != 0 {
+		err = errors.New(e.NodeReferenced)
+		return
+	}
+
+	// Check to see if this node has a data file and if it's referenced by another node.
+	// If it is, we will move the data file to the first node we find, and point all other nodes to that node's path
+	dataFilePath := fmt.Sprintf("%s/%s.data", getPath(node.Id), node.Id)
+	dataFileExists := true
+	if _, ferr := os.Stat(dataFilePath); os.IsNotExist(ferr) {
+		dataFileExists = false
+	}
+	newDataFilePath := ""
+	copiedNodes := Nodes{}
+	if _, err = dbFind(bson.M{"file.path": dataFilePath}, &copiedNodes, "", nil); err != nil {
+		return
+	}
+	if len(copiedNodes) != 0 && dataFileExists {
+		for index, copiedNode := range copiedNodes {
+			// lock copynode for save
+			err = locker.NodeLockMgr.LockNode(copiedNode.Id)
+			if err != nil {
+				err = errors.New("This node has a data file linked to another node which could not be locked during data file copy: " + err.Error())
+				return
+			}
+			defer locker.NodeLockMgr.UnlockNode(copiedNode.Id)
+
+			if index == 0 {
+				newDataFilePath = fmt.Sprintf("%s/%s.data", getPath(copiedNode.Id), copiedNode.Id)
+				if rerr := os.Rename(dataFilePath, newDataFilePath); rerr != nil {
+					if _, cerr := util.CopyFile(dataFilePath, newDataFilePath); cerr != nil {
+						err = errors.New("This node has a data file linked to another node and the data file could not be copied elsewhere to allow for node deletion.")
+						return
+					}
+				}
+				copiedNode.File.Path = ""
+				copiedNode.Save()
+			} else {
+				copiedNode.File.Path = newDataFilePath
+				copiedNode.Save()
+			}
+		}
+	}
+
+	err = dbDelete(bson.M{"id": node.Id})
+	if err != nil {
+		logger.Debug(2, "(Node->Delete) we failed to delete %s from Mongo database", node.Id, err.Error())
+		return
+	}
 	err = node.Rmdir()
+	if err != nil {
+		logger.Debug(2, "(Node->Delete) we failed to delete %s from disk", node.Id, err.Error())
+		return
+	}
+	deleted = true
 	return
 }
+
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
 func (node *Node) DeleteIndex(indextype string) (err error) {
 	// lock node

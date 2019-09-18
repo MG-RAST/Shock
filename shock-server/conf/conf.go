@@ -15,6 +15,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// types Config
+type TypeConfig struct {
+	ID          string `bson:"id" json:"id" yaml:"ID" `                           // e.g. default or Image or Backup
+	Description string `bson:"description" json:"description" yaml:"Description"` // e.g. some description
+	Priority    int    `bson:"priority" json:"priority" yaml:"Priority"`          // e.g. location priority for pushing files upstream to remote locations, 0 is lowest, 100 highest
+}
+
 // Location set of storage locations
 type LocationConfig struct {
 	ID          string `bson:"ID" json:"ID" yaml:"ID" `                           // e.g. ANLs3 or local for local store
@@ -25,19 +32,34 @@ type LocationConfig struct {
 	Prefix      string `bson:"prefix" json:"-" yaml:"Prefix"`                     // e.g. any prefix needed
 	AuthKey     string `bson:"AuthKey" json:"-" yaml:"AuthKey"`                   // e.g. AWS auth-key
 	Persistent  bool   `bson:"persistent" json:"persistent" yaml:"Persistent"`    // e.g. is this a valid long term storage location
-	Priority    int    `bson:"priority" json:"priority" yaml:"Priority"`          // e.g. prio for pushing files upstream to this location, 0 is lowest, 100 highest
+	Priority    int    `bson:"priority" json:"priority" yaml:"Priority"`          // e.g. f priority for pushing files upstream to this location, 0 is lowest, 100 highest
+	MinPriority int    `bson:"minpriority" json:"minpriority" yaml:"MinPriority"` // e.g. minimum node priority level for this location (e.g. some stores will only handle non temporary files or high value files)
 	Tier        int    `bson:"tier" json:"tier" yaml:"Tier"`                      // e.g. class or tier 0= cache, 3=ssd based backend, 5=disk based backend, 10=tape archive
-	Cost        int    `bson:"cost" json:"cost" yaml:"Cost"`                      // e.g. dollar cost per GB for this store, default=0
+	Cost        int    `bson:"cost" json:"cost" yaml:"Cost"`                      // e.g.  cost per GB for this store, default=0
+	SecretKey   string `bson:"SecretKey" json:"-" yaml:"SecretKey" `              // e.g.g AWS secret-key
+	Bucket      string `bson:"bucket" json:"bucket" yaml:"Bucket" `               // for AWS and GCloud
 
-	S3Location  `bson:",inline" json:",inline" yaml:",inline"` // extensions specific to S3
-	TSMLocation `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to IBM TSM
+	S3Location     `bson:",inline" json:",inline" yaml:",inline"` // extensions specific to S3
+	AzureLocation  `bson:",inline" json:",inline" yaml:",inline"` // extensions specific to Microsoft Azure
+	TSMLocation    `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to IBM TSM
+	GCloudLocation `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to IBM TSM
+
 }
 
 // S3Location S3 specific fields
 type S3Location struct {
-	Bucket    string `bson:"bucket" json:"bucket" yaml:"Bucket" `
-	Region    string `bson:"region" json:"region" yaml:"Region" `
-	SecretKey string `bson:"SecretKey" json:"-" yaml:"SecretKey" ` // e.g.g AWS secret-key
+	Region string `bson:"region" json:"region" yaml:"Region" `
+}
+
+// AzureLocation Microsoft Azure specific fields
+type AzureLocation struct {
+	Account   string `bson:"Account" json:"-" yaml:"Account" `             // e.g.g Account name
+	Container string `bson:"Container" json:"Container" yaml:"Container" ` // e.g.g Azure ContainerName
+}
+
+// GCloudLocation specific fields
+type GCloudLocation struct {
+	Project string `bson:"Project" json:"-" yaml:"Project" `
 }
 
 // TSMLocation IBM TSM specific fields
@@ -48,9 +70,17 @@ type TSMLocation struct {
 // LocationsMap allow access to Location objects via Locations("ID")
 var LocationsMap map[string]*LocationConfig
 
+// TypesMap allow access to all types via Types("ID")
+var TypesMap map[string]*TypeConfig
+
 // Config contains an array of Location objects
 type Config struct {
 	Locations []LocationConfig `bson:"Locations" json:"Locations" yaml:"Locations" `
+}
+
+// TypesConfig contains an array of Type objects
+type TConfig struct {
+	Types []TypeConfig `bson:"Types" json:"Types" yaml:"Types" `
 }
 
 type idxOpts struct {
@@ -113,7 +143,8 @@ var (
 	LOG_OUTPUT  string
 	LOG_TRACE   bool // enable trace logging
 	DEBUG_LEVEL int
-	DEBUG_AUTH  = false
+	DEBUG_AUTH  bool // set this to disable auth checking in most functions
+
 	// Mongo information
 	MONGODB_HOSTS             string
 	MONGODB_DATABASE          string
@@ -146,8 +177,11 @@ var (
 
 	// change behavior of system from cache to backend store
 	//IS_CACHE   bool   //
-	PATH_CACHE string //   path to cache directory, default is PATH_DATA
-	CACHE_TTL  int    // time in hours for cache items to be retained
+	PATH_CACHE        string //   path to cache directory, default is PATH_DATA
+	MIN_REPLICA_COUNT int    // minimum number of Locations required before enabling delete of local file in DATA_PATH
+	CACHE_TTL         int    // time in hours for cache items to be retained
+	NODE_MIGRATION    bool   // if true shock server will attempt to migrate data to remote Locations (see locations.yaml)
+	NODE_DATA_REMOVAL bool   // if true shock server will attempt to remove local if at least MIN_REPLICA_COUNT copies exist
 
 	// internal config control
 	FAKE_VAR = false
@@ -215,14 +249,28 @@ func Initialize() (err error) {
 
 	// we should check the YAML config file for correctness and schema compliance
 	// TOBEADDED --> https://github.com/santhosh-tekuri/jsonschema/issues/5
-
-	_, err = os.Stat(LocationsPath)
-	if err == nil {
-		err = readYAMLConfig(LocationsPath)
-		if err != nil {
-			return errors.New("error reading Locations file: " + err.Error())
+	err = readYAMLConfig(LocationsPath)
+	if err != nil {
+		// if we are trying to cache or migrate data we need a locations.yaml file
+		if (PATH_CACHE != "") || (NODE_MIGRATION == true) {
+			fmt.Printf("We need a Locations.yaml file to enable Caching and/or migrations")
+			return errors.New("error reading locations file: " + err.Error())
 		}
 	}
+
+	var typesPath = path.Dir(CONFIG_FILE)
+	typesPath = path.Join(typesPath, "Types.yaml")
+	// we should check the YAML config file for correctness and schema compliance
+	// TOBEADDED --> https://github.com/santhosh-tekuri/jsonschema/issues/5
+	err = readYAMLTypesConfig(typesPath)
+	if err != nil {
+		// if we are trying to cache or migrate data we need a types.yaml file
+		if (PATH_CACHE != "") || (NODE_MIGRATION != false) {
+			fmt.Printf("We need a types.yaml file to enable data migration and or chaching")
+			return errors.New("error reading types file: " + err.Error())
+		}
+	}
+
 	err = nil
 
 	return
@@ -269,7 +317,11 @@ func Print() {
 		fmt.Printf("##### Log rotation disabled #####\n\n")
 	}
 	fmt.Printf("##### Expiration #####\nexpire_wait:\t%d minutes\n\n", EXPIRE_WAIT)
+	fmt.Printf("##### Minimum Replica Count in other Locations #####\nmin_replica_count:\t%d (before removing local files)\n\n", MIN_REPLICA_COUNT)
 	fmt.Printf("##### Max Revisions #####\nmax_revisions:\t%d\n\n", MAX_REVISIONS)
+	fmt.Printf("##### Node migration #####\nnode_migration::\t%b\n\n", NODE_MIGRATION)
+	fmt.Printf("##### Node file deletion (after migration) #####\nnode_data_removal::\t%b\n\n", NODE_DATA_REMOVAL)
+	fmt.Printf("##### Cache file TTL #####\ncache_ttl::\t%b\n\n", CACHE_TTL)
 	fmt.Printf("API_PORT: %d\n", API_PORT)
 }
 
@@ -311,6 +363,7 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddString(&LOG_OUTPUT, "both", "Log", "logoutput", "console, file or both", "")
 	c_store.AddBool(&LOG_TRACE, false, "Log", "trace", "", "")
 	c_store.AddInt(&DEBUG_LEVEL, 0, "Log", "debuglevel", "debug level: 0-3", "")
+	c_store.AddBool(&DEBUG_AUTH, false, "Log", "debugauth", "", "enable debugging; remove auth requirements for most functions")
 
 	// Mongodb
 	c_store.AddString(&MONGODB_ATTRIBUTE_INDEXES, "", "Mongodb", "attribute_indexes", "", "")
@@ -358,8 +411,13 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddString(&PATH_PIDFILE, "", "Paths", "pidfile", "", "")
 
 	// cache
-	c_store.AddString(&PATH_CACHE, "", "Paths", "cache_path", "", "cache directory path, default is nil, if this is set the system will function as a cache")
+	c_store.AddString(&PATH_CACHE, "", "Cache", "cache_path", "", "cache directory path, default is nil, if this is set the system will function as a cache")
 	c_store.AddInt(&CACHE_TTL, 24.0, "Cache", "cache_ttl", "", "ttl in hours for cache items")
+
+	// migrate
+	c_store.AddInt(&MIN_REPLICA_COUNT, 2, "Migrate", "min_replica_count", "", "minimum number of locations required before enabling local Node file deletion")
+	c_store.AddBool(&NODE_MIGRATION, false, "Migrate", "node_migration", "", "migrate nodes to remote locations")
+	c_store.AddBool(&NODE_DATA_REMOVAL, false, "Migrate", "node_data_removal", "", "remove data for nodes with at least MIN_REPLICA_COUNT copies")
 
 	// SSL
 	c_store.AddBool(&SSL, false, "SSL", "enable", "", "")
@@ -452,6 +510,34 @@ func readYAMLConfig(filename string) (err error) {
 		loc := &conf.Locations[i]
 
 		LocationsMap[loc.ID] = loc
+	}
+
+	return
+}
+
+// readYAMLTypesConfig read a YAML style config file with Shock configuration
+// the file has to be a yaml file, currently for types only
+func readYAMLTypesConfig(filename string) (err error) {
+
+	var conf TConfig
+
+	source, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return (err)
+	}
+	err = yaml.Unmarshal(source, &conf)
+	if err != nil {
+		return (err)
+	}
+
+	// create a global
+	//var Locations Locations
+	TypesMap = make(map[string]*TypeConfig)
+
+	for i, _ := range conf.Types {
+		typeentry := &conf.Types[i]
+
+		TypesMap[typeentry.ID] = typeentry
 	}
 
 	return

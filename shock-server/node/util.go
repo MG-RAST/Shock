@@ -2,15 +2,26 @@ package node
 
 import (
 	"archive/zip"
+	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
+	"time"
+
+	"google.golang.org/api/option"
+
+	"cloud.google.com/go/storage"
+
+	"github.com/Azure/azure-storage-blob-go/azblob"
 
 	"github.com/MG-RAST/Shock/shock-server/cache"
 	"github.com/MG-RAST/Shock/shock-server/conf"
@@ -24,6 +35,12 @@ import (
 )
 
 type mappy map[string]bool
+
+// TransitMap store UUID and bool value if object is in transit
+var TransitMap map[string]bool
+
+// TransitMapLock lock write access to the CacheMap
+var TransitMapLock = sync.RWMutex{}
 
 func IsInMappy(item string, mp mappy) bool {
 	if _, ok := mp[item]; ok {
@@ -78,16 +95,23 @@ func FMOpen(filepath string) (f *os.File, err error) {
 	filename := strings.TrimSuffix(filepath, ext) // find filename
 	uuid := path.Base(filename)                   // implement basename cmd
 
-	// check if we encounter an error AND if the file is cached (e.g. UUID.cache exists and UUID.data is a symlink)
-	if err == nil {
-		// update cache LRU info
-		cache.Touch(uuid)
-		return
+	// update cache LRU info
+	cache.Touch(uuid)
+	return
+
+	//	lockstate := fMOpenMap.value(uuid)
+	var nodeInstance, _ = Load(uuid)
+
+	// lock access to map
+	nodeInstance.TransitLock()
+
+	// assume the node might be locked and wait until it is free
+	// TODO add a maximum time wait
+	for !nodeInstance.CheckTransit() {
+		time.Sleep(5 * time.Second)
 	}
 
-	// WE NEED TO LOCK THIS NODE at this point
-
-	var nodeInstance, _ = Load(uuid)
+	nodeInstance.TransitUnlock()	
 
 	// create the directory infrastructure for node and index
 	err = nodeInstance.Mkdir()
@@ -119,9 +143,18 @@ Loop:
 				return
 			}
 			break Loop
+		case "Azure":
+			err = AzureDownload(uuid, nodeInstance, locationConfig)
+			if err != nil {
+				// debug output
+				err = fmt.Errorf("(FMOpen) Azure returned: %s", err.Error())
+				return
+			}
+			break Loop
+
 		case "Shock":
 			// this should be expanded to handle Shock servers sharing the same Mongo instance
-			err = ShockDownload(uuid, nodeInstance)
+			err = ShockDownload(uuid, nodeInstance, locationConfig)
 			if err != nil {
 				// debug output
 				err = fmt.Errorf("(FMOpen) ShockDownload returned: %s", err.Error())
@@ -175,6 +208,17 @@ Loop:
 // S3Download download a file and its indices from an S3 source
 func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error) {
 
+	itemkey := fmt.Sprintf("%s.data", uuid)
+	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
+
+	tmpfile, err := ioutil.TempFile(conf.PATH_CACHE, "")
+	if err != nil {
+		log.Fatalf("(GCloudStoreDownload)  cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		return
+	}
+	defer tmpfile.Close()
+	defer os.Remove(tmpfile.Name())
+
 	// return error if file not found in S3bucket
 	//fmt.Printf("(S3Download) attempting download, UUID: %s, nodeID: %s from: %s\n", uuid, nodeInstance.Id, location.URL)
 
@@ -205,112 +249,253 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 	// 3) Create a new AWS S3 downloader
 	downloader := s3manager.NewDownloader(sess)
 
-	// 4) Download the item from the bucket. If an error occurs, log it and exit. Otherwise, notify the user that the download succeeded.
-	// needs to create a full path
-	cacheitempath := uuid2CachePath(uuid)
-	cacheitemfile := fmt.Sprintf("%s/%s.data", cacheitempath, uuid)
-
-	itempath := uuid2Path(uuid)
-	itemS3key := fmt.Sprintf("%s.data", uuid)
-	itemfile := fmt.Sprintf("%s/%s.data", itempath, uuid)
-
-	// create cache dir path
-	err = os.MkdirAll(cacheitempath, 0777)
-	if err != nil {
-		log.Fatalf("(S3Download) Unable to create cache path for item %s [%s], %s", cacheitemfile, cacheitempath, err.Error())
-		return
-	}
-
-	//logger.Infof("(S3Download) attempting download, UUID: %s, itemS3key: %s", uuid, itemS3key)
-	// create a cache item here
-	file, err := os.Create(cacheitemfile)
-	defer file.Close()
-
-	if err != nil {
-		return
-	}
-
-	_, err = downloader.Download(file,
+	_, err = downloader.Download(tmpfile,
 		&s3.GetObjectInput{
 			Bucket: aws.String(Bucket),
-			Key:    aws.String(itemS3key),
+			Key:    aws.String(itemkey),
 		})
 
 	if err != nil {
-		log.Fatalf("(S3Download) Unable to download item %q for %s, %s", itemS3key, itemfile, err.Error())
+		log.Fatalf("(S3Download) Unable to download item %q for %s, %s", itemkey, uuid, err.Error())
 		return
 	}
 
-	file.Close()
-
-	// add sym link from cacheItemPath to itemPath
-	err = os.Symlink(cacheitemfile, itemfile)
+	err = handleDataFile(tmpfile, uuid, "S3Download")
 	if err != nil {
-		log.Fatalf("(S3Download) Unable to download to create symlink from %s to %s, %s", cacheitemfile, itemfile, err.Error())
+		logger.Debug(3, "(S3Download) error moving directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
 		return
 	}
+	tmpfile.Close()
 
-	// download the zipped archive with all the indexed
-	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
-	cacheindexpath := uuid2CachePath(uuid)
-	indexpath := uuid2Path(uuid)
-
-	indextemppath := fmt.Sprintf("%s/%s", conf.PATH_LOCAL, indexfile) // use the PATH_LOCAL to configure tmp dir
-
-	//	logger.Infof("(S3Download) attempting index download (indexfile: %s), cacheindexpath: %s\n", indexfile, cacheindexpath)
-
-	file, err = os.Create(indextemppath)
+	//index bits now
+	tmpfile, err = ioutil.TempFile(conf.PATH_CACHE, "")
 	if err != nil {
-		logger.Infof("(S3Download) attempting create index temp dir: %s FAILED", indextemppath)
-
+		log.Fatalf("(GCloudStoreDownload) cannot create temporary file: %s [Err: %s]", uuid, err.Error())
 		return
 	}
-	defer file.Close()
+	defer tmpfile.Close()
+	defer os.Remove(tmpfile.Name())
 
-	_, err = downloader.Download(file,
+	_, err = downloader.Download(tmpfile,
 		&s3.GetObjectInput{
 			Bucket: aws.String(Bucket),
 			Key:    aws.String(indexfile),
 		})
 
-	file.Close()
-
 	if err != nil {
-
 		// check if S3 tells us there is no file
 		if strings.HasPrefix(err.Error(), "NoSuchKey") {
 			// we did not find an index
 			//	logger.Infof("no index for %s", uuid)
 			return nil // do not report an error
 		}
-		log.Fatalf("(S3Download) Unable to download item %q for %s, %s", itemS3key, itemfile, err.Error())
-
+		log.Fatalf("(S3Download) Unable to download item %q for %s, %s", indexfile, uuid, err.Error())
 		return err
 	}
 	//logger.Infof("Downloaded: %s (%d Bytes) \n", file.Name(), numBytes)
-
-	// unzip the index file
-	_, err = Unzip(indexfile, cacheindexpath) // unzip into idx folder
+	err = handleIdxZipFile(tmpfile, uuid, "S3Download")
 	if err != nil {
-		// debug output
-		err = fmt.Errorf("(S3Download) error decompressing d: %s", err.Error())
+		logger.Debug(3, "(S3Download) error moving index directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
 		return
 	}
-	// remove the zip file
-	err = os.Remove(indextemppath)
+	tmpfile.Close()
+	return
+}
+
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+
+// TSMDownload support for downloading files of an existing IBM Tivoli service
+func TSMDownload(uuid string, nodeInstance *Node) (err error) {
+	logger.Infof("(S3Download--> TSMDownload ) needs to be implemented !! \n")
+
+	// the turn around time here is ~12-24 hours
+	// check a dedicated TSMrestore directory in the temp area
+	// move file sform there
+
+	// add .data and .idx.zip files to the list of files to be downloaded from TSM
+
+	//
+
+	return
+}
+
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+
+// AzureDownload support for downloading off https://github.com/daos-stack
+func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error) {
+
+	itemkey := fmt.Sprintf("%s.data", uuid)
+	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
+
+	tmpfile, err := ioutil.TempFile(conf.PATH_CACHE, "")
 	if err != nil {
-		// debug output
-		err = fmt.Errorf("(S3Download) error removing temp file d: %s", err.Error())
+		log.Fatalf("(GCloudStoreDownload)  cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		return
+	}
+	defer tmpfile.Close()
+	defer os.Remove(tmpfile.Name())
+
+	// Create a default request pipeline using your storage account name and account key.
+	credential, err := azblob.NewSharedKeyCredential(location.Account, location.SecretKey)
+	if err != nil {
+		logger.Debug(3, "(AzureDownload) error authenticating account: %s [Err: %s]", location.Account, err.Error())
 		return
 	}
 
-	// add sym link from cacheItemPath to itemPath
-	err = os.Symlink(cacheindexpath+"/idx", indexpath+"/idx")
+	// Azure specific bits
+	pipeline := azblob.NewPipeline(credential, azblob.PipelineOptions{})
+	// create context
+	ctx := context.Background() // This example uses a never-expiring context
+
+	// From the Azure portal, get your storage account blob service URL endpoint.
+	myURL, err := url.Parse(
+		fmt.Sprintf("https://%s.blob.core.windows.net/%s/%s", location.Account, location.Container, itemkey))
 	if err != nil {
-		log.Fatalf("(S3Download) Unable to download to create symlink from %s to %s, %s", cacheindexpath, indexpath, err.Error())
+		logger.Debug(3, "(AzureDownload) URL malformed: %s [Err: %s]", myURL, err.Error())
 		return
 	}
 
+	// Create a ServiceURL for our node
+	blobURL := azblob.NewBlobURL(*myURL, pipeline)
+
+	// download the file contents
+	err = azblob.DownloadBlobToFile(ctx, blobURL, 0, azblob.CountToEnd, tmpfile, azblob.DownloadFromBlobOptions{
+		BlockSize: 4 * 1024 * 1024, Parallelism: 16})
+	if err != nil {
+		logger.Debug(3, "(AzureDownload) error downloading blob: %s [Err: %s]", uuid, err.Error())
+		return
+	}
+
+	err = handleDataFile(tmpfile, uuid, "AzureDownload")
+	if err != nil {
+		logger.Debug(3, "(AzureDownload) error moving directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
+		return
+	}
+	tmpfile.Close()
+
+	// index bits now
+	tmpfile, err = ioutil.TempFile(conf.PATH_CACHE, "")
+	if err != nil {
+		log.Fatalf("(GCloudStoreDownload) cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		return
+	}
+	defer tmpfile.Close()
+	defer os.Remove(tmpfile.Name())
+
+	// From the Azure portal, get your storage account blob service URL endpoint.
+	myURL, _ = url.Parse(
+		fmt.Sprintf("https://%s.blob.core.windows.net/%s/%s", location.Account, location.Container, indexfile))
+
+	// Create a ServiceURL for our node
+	blobURL = azblob.NewBlobURL(*myURL, pipeline)
+
+	// download the file contents
+	err = azblob.DownloadBlobToFile(ctx, blobURL, 0, azblob.CountToEnd, tmpfile, azblob.DownloadFromBlobOptions{
+		BlockSize: 4 * 1024 * 1024, Parallelism: 16})
+
+	if err != nil {
+		logger.Debug(3, "(AzureDownload) error downloading blob: %s [Err: %s]", uuid, err.Error())
+		return
+	}
+
+	err = handleDataFile(tmpfile, uuid, "AzureDownload")
+	if err != nil {
+		logger.Debug(3, "(AzureDownload) error moving index directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
+		return
+	}
+	tmpfile.Close()
+	return
+}
+
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+
+// GCloudStoreDownload support for downloading off https://github.com/daos-stack
+func GCloudStoreDownload(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error) {
+
+	itemkey := fmt.Sprintf("%s.data", uuid)
+	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
+
+	tmpfile, err := ioutil.TempFile(conf.PATH_CACHE, "")
+	if err != nil {
+		log.Fatalf("(GCloudStoreDownload)  cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		return
+	}
+	defer tmpfile.Close()
+	defer os.Remove(tmpfile.Name())
+
+	// GCS specific part
+	ctx := context.Background()
+	client, err := storage.NewClient(ctx, option.WithAPIKey(location.SecretKey))
+	if err != nil {
+		log.Fatalf("(GCloudStoreDownload)Failed to create GCloud client: %s", err)
+		return
+	}
+
+	//  a Bucket handle
+	bucket := client.Bucket(location.Bucket)
+
+	//	a handle for our file
+	obj := bucket.Object(itemkey)
+
+	// read an object
+	reader, err := obj.NewReader(ctx)
+	if err != nil {
+		log.Fatalf("(GCloudStoreDownload)  blob not found: %s [Err: %s]", uuid, err.Error())
+		return
+	}
+	defer reader.Close()
+
+	_, err = io.Copy(tmpfile, reader)
+	if err != nil {
+		logger.Debug(3, "(GCloudStoreDownload) error downloading blob: %s [Err: %s]", uuid, err.Error())
+		return
+	}
+	// end GCS specific
+
+	err = handleDataFile(tmpfile, uuid, "GCloudStoreDownload")
+	if err != nil {
+		logger.Debug(3, "(GCloudStoreDownload) error moving directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
+		return
+	}
+
+	tmpfile.Close()
+
+	// download index files as well
+
+	tmpfile, err = ioutil.TempFile(conf.PATH_CACHE, "")
+	if err != nil {
+		log.Fatalf("(GCloudStoreDownload) cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		return
+	}
+	defer tmpfile.Close()
+	defer os.Remove(tmpfile.Name())
+
+	//	a handle for our file
+	obj = bucket.Object(indexfile)
+
+	// read an object
+	reader, err = obj.NewReader(ctx)
+	if err != nil {
+		log.Fatalf("(GCloudStoreDownload) blob not found: %s [Err: %s]", indexfile, err.Error())
+	}
+	defer reader.Close()
+	_, err = io.Copy(tmpfile, reader)
+	if err != nil {
+		logger.Debug(3, "(GCloudStoreDownload) error downloading blob: %s [Err: %s]", indexfile, err.Error())
+		return
+	}
+
+	err = handleIdxZipFile(tmpfile, uuid, "GCloudStoreDownload")
+	if err != nil {
+		logger.Debug(3, "(GCloudStoreDownload) error moving index structures and symkink into place for : %s [Err: %s]", uuid, err.Error())
+		return
+	}
 	return
 }
 
@@ -330,34 +515,51 @@ func DaosDownload(uuid string, nodeInstance *Node) (err error) {
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
 // ShockDownload download a file from a Shock server
-func ShockDownload(uuid string, nodeInstance *Node) (err error) {
+func ShockDownload(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error) {
 
-	// return error if file not found in S3bucket
-	logger.Infof("(ShockDownload) attempting download, UUID: %s, nodeID: %s", uuid, nodeInstance.Id)
+	itemkey := fmt.Sprintf("%s.data", uuid)
+	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
 
-	// authkey
-	var authkey = "blah" // this needs to be read from the auth config file (YAML file)
-	var baseurl = "blah" // this needs to be read from the locations object, e.g. "http://shock.mg-rast.org/node/<UUID>?download"
-
-	// dfds
-	itempath := uuid2Path(uuid)
-	itemS3key := fmt.Sprintf("%s.data", uuid)
-	_ = itemS3key
-	itemfile := fmt.Sprintf("%s/%s.data", itempath, uuid)
-
-	url := fmt.Sprintf("%s/%s?download", baseurl, uuid)
-	options := fmt.Sprint("%s", authkey)
-	_ = options
-
-	// Create the file
-	out, err := os.Create(itemfile)
+	tmpfile, err := ioutil.TempFile(conf.PATH_CACHE, "")
 	if err != nil {
-		return err
+		log.Fatalf("(GCloudStoreDownload)  cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		return
 	}
-	defer out.Close()
+	defer tmpfile.Close()
+	defer os.Remove(tmpfile.Name())
+
+	// a transport helps with proxies, TLS configuration, keep-alives, compression, and other settings
+	transport := &http.Transport{
+		MaxIdleConns:       10,
+		IdleConnTimeout:    30 * time.Second,
+		DisableCompression: false,
+	}
+	client := &http.Client{Transport: transport}
+
+	// we expect the form "authorization: mgrast 12345678A123456789012345" the auth has to make sense for the remote Shock instance
+	authkey := fmt.Sprintf("%s", location.AuthKey)
+
+	url := fmt.Sprintf("%s/%s?download", location.URL, uuid)
+
+	// create a request to enable adding auth to header
+
+	request, err := http.NewRequest("GET", url, nil)
+	// ...
+	request.Header.Add("authorization", authkey)
+	resp, err := client.Do(request)
+
+	// For control over proxies, TLS configuration, keep-alives, compression, and other settings, create a Transport:
+
+	// tr := &http.Transport{
+	// 	MaxIdleConns:       10,
+	// 	IdleConnTimeout:    30 * time.Second,
+	// 	DisableCompression: true,
+	// }
+	// client := &http.Client{Transport: tr}
+	// resp, err := client.Get("https://example.com")
 
 	// Get the data
-	resp, err := http.Get(url)
+
 	if err != nil {
 		return err
 	}
@@ -369,72 +571,57 @@ func ShockDownload(uuid string, nodeInstance *Node) (err error) {
 	}
 
 	// Writer the body to file
-	_, err = io.Copy(out, resp.Body)
+	_, err = io.Copy(tmpfile, resp.Body)
 	if err != nil {
-		log.Fatalf("(ShockDownload) Unable to download item %q for %s, %v", itemfile, itemfile, err)
+		log.Fatalf("(ShockDownload) Unable to download item %q for %s, %v", itemkey, uuid, err)
 		return
 	}
 
-	// now download the indices
-	out.Close()
-
-	//	time.Sleep(time.Second * 3)
-
-	fmt.Printf("(ShockDownload) downloaded, UUID: %s, itemS3key: %s", uuid, itemfile)
-	logger.Infof("(ShockDownload)  downloaded, UUID: %s, itemS3key: %s", uuid, itemfile)
-
-	//this will download the indices via a new API feature in SHOCK
-	if false {
-		// download the zipped archive with all the indexed
-		indexfile := fmt.Sprintf("%s.idx", uuid) // the zipped contents of the idx directory in S3
-		indexpath := uuid2Path(uuid)
-		indextemppath := fmt.Sprintf("%s/idx.zip", indexpath)
-		indexdir := fmt.Sprintf("%s/idx", indexpath)
-
-		url = fmt.Sprintf("%s/%s.?download", baseurl, indexfile)
-		options = fmt.Sprint("%s", authkey)
-
-		// Create the file
-		out, err = os.Create(itemfile)
-		if err != nil {
-			return err
-		}
-		defer out.Close()
-
-		// Get the data
-		resp, err = http.Get(url)
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-
-		// Check server response
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("bad status: %s", resp.Status)
-		}
-
-		// Writer the body to file
-		_, err = io.Copy(out, resp.Body)
-		if err != nil {
-			log.Fatalf("(ShockDownload) Unable to download item %q for %s, %v", itemfile, itemfile, err)
-			return
-		}
-		// unzip the index file
-		_, err = Unzip(indexfile, indexdir) // unzip into idx folder
-		if err != nil {
-			// debug output
-			err = fmt.Errorf("(ShockDownload) error decompressing d: %s", err.Error())
-			return
-		}
-		// remove the zip file
-		err = os.Remove(indextemppath)
-		if err != nil {
-			// debug output
-			err = fmt.Errorf("(ShockDownload) error removing temp file d: %s", err.Error())
-			return
-		}
-
+	err = handleDataFile(tmpfile, uuid, "ShockDownload")
+	if err != nil {
+		logger.Debug(3, "(ShockDownload) error moving directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
+		return
 	}
+	// end of SHOCK specific part
+
+	// now download the indices
+	tmpfile.Close()
+
+	tmpfile, err = ioutil.TempFile(conf.PATH_CACHE, "")
+	if err != nil {
+		log.Fatalf("(GCloudStoreDownload) cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		return
+	}
+	defer tmpfile.Close()
+	defer os.Remove(tmpfile.Name())
+
+	url = fmt.Sprintf("%s/%s.?download", location.URL, indexfile)
+
+	// Get the data
+	resp, err = http.Get(url)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	// Check server response
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("bad status: %s", resp.Status)
+	}
+
+	// Writer the body to file
+	_, err = io.Copy(tmpfile, resp.Body)
+	if err != nil {
+		logger.Debug(1, "(ShockDownload) Unable to download item %q for %s, %v", indexfile, indexfile, err)
+		return
+	}
+	// unzip the index file
+	err = handleIdxZipFile(tmpfile, uuid, "ShockDownload")
+	if err != nil {
+		logger.Debug(3, "(ShockDownload) error moving index directory structures and symkink into place for : %s [Err: %s]", uuid, err.Error())
+		return
+	}
+
 	return
 }
 
@@ -494,4 +681,124 @@ func Unzip(src string, dest string) ([]string, error) {
 		}
 	}
 	return filenames, nil
+}
+
+// handleIdxZip handle <uuid>.idx.zip files
+// accept a file handle for the data file,
+// create the directory infrastructure in Cache and Data and create symlinks
+func handleIdxZipFile(fp *os.File, uuid string, funcName string) (err error) {
+
+	// download the zipped archive with all the indexed
+	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
+	cacheindexpath := uuid2CachePath(uuid)
+	indexpath := uuid2Path(uuid)
+
+	indextemppath := fmt.Sprintf("%s/%s", conf.PATH_LOCAL, indexfile) // use the PATH_LOCAL to configure tmp dir
+
+	file, err := os.Create(indextemppath)
+	if err != nil {
+		logger.Infof("(%s) attempting create index temp dir: %s FAILED", funcName, indextemppath)
+		return
+	}
+	defer file.Close()
+
+	if _, err := io.Copy(file, fp); err != nil {
+		logger.Debug(3, "(%s) error coipying file: %s [Err: %s]", funcName, indexfile, err.Error())
+	}
+	file.Close()
+
+	_, err = Unzip(indexfile, cacheindexpath) // unzip into idx folder
+	if err != nil {
+		// debug output
+		err = fmt.Errorf("(%s) error decompressing d: %s", err.Error())
+		return
+	}
+	// remove the zip file
+	err = os.Remove(indextemppath)
+	if err != nil {
+		// debug output
+		err = fmt.Errorf("(%s) error removing temp file d: %s", err.Error())
+		return
+	}
+
+	// add sym link from cacheItemPath to itemPath
+	err = os.Symlink(cacheindexpath+"/idx", indexpath+"/idx")
+	if err != nil {
+		log.Fatalf("(%s) Unable to create symlink from %s to %s, %s", funcName, cacheindexpath, indexpath, err.Error())
+		return
+	}
+
+	return
+}
+
+// handleDataFile handle <uuid>.data files
+// accept a file handle for the data file,
+// unpack it into the right cache location for uuid
+// create the directory infrastructure in Cache and Data and create symlinks
+func handleDataFile(fp *os.File, uuid string, funcName string) (err error) {
+
+	// 4) Download the item from the bucket. If an error occurs, log it and exit. Otherwise, notify the user that the download succeeded.
+	// needs to create a full path
+	cacheitempath := uuid2CachePath(uuid)
+	cacheitemfile := fmt.Sprintf("%s/%s.data", cacheitempath, uuid)
+
+	itempath := uuid2Path(uuid)
+	itemfile := fmt.Sprintf("%s/%s.data", itempath, uuid)
+
+	// create cache dir path
+	err = os.MkdirAll(cacheitempath, 0777)
+	if err != nil {
+		log.Fatalf("(%s) Unable to create cache path for item %s [%s], %s", funcName, cacheitemfile, cacheitempath, err.Error())
+		return
+	}
+	err = os.MkdirAll(itempath, 0777)
+	if err != nil {
+		log.Fatalf("(%s) Unable to create path for item %s [%s], %s", funcName, itemfile, itempath, err.Error())
+		return
+	}
+
+	// create a handle for the cache item here
+	file, err := os.Create(cacheitemfile)
+	if err != nil {
+		logger.Infof("(%s) attempting cache item file: %s FAILED", funcName, cacheitemfile)
+		return
+	}
+	defer file.Close()
+
+	if _, err := io.Copy(file, fp); err != nil {
+		logger.Debug(3, "(%s)  cannot create local Cache file for uuid: %s at Path: %s [Err: %s]", funcName, uuid, cacheitempath, err.Error())
+	}
+	// end GCS specific
+	file.Close()
+
+	// add sym link from cacheItemPath to itemPath
+	err = os.Symlink(cacheitemfile, itemfile)
+	if err != nil {
+		log.Fatalf("(%s) Unable to create symlink from %s to %s, %s", funcName, cacheitemfile, itemfile, err.Error())
+		return
+	}
+
+	return
+}
+
+// TransitLock set info that node is in flight
+func (node *Node) TransitLock() {
+	TransitMapLock.Lock()
+	defer TransitMapLock.Unlock()
+
+	TransitMap[node.Id] = true
+	return
+}
+
+func (node *Node) TransitUnlock() {
+	TransitMapLock.Lock()
+	defer TransitMapLock.Unlock()
+
+	delete(TransitMap, node.Id)
+	return
+}
+
+func (node *Node) CheckTransit() (locked bool) {
+	_, locked = TransitMap[node.Id]
+	return
 }
