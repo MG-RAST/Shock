@@ -21,7 +21,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-//Modification functions
+//Update has node Modification functions
 func (node *Node) Update(params map[string]string, files file.FormFiles, hasLock bool) (err error) {
 	// Exclusive conditions
 	// 1.1. has files[upload] (regular upload)
