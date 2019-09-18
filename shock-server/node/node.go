@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node/acl"
@@ -324,7 +325,7 @@ func (node *Node) DynamicIndex(name string) (idx index.Index, err error) {
 // DeleteFiles delete the files on disk while keeping information in Mongo
 // FMopen will stage back the files from external Locations if requested
 // data for nodes will subsequently be cached in PATH_CACHE not stored in PATH_DATA
-func (node *Node) DeleteFiles() (err error) {
+func (node *Node) deleteFiles() (err error) {
 	// lock node
 	err = locker.NodeLockMgr.LockNode(node.Id)
 	if err != nil {
@@ -385,8 +386,8 @@ func (node *Node) DeleteFiles() (err error) {
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
-// Delete the node from Mongo and Disk
-func (node *Node) Delete() (deleted bool, err error) {
+// ExpireNode -- delete the node from Mongo and Disk
+func (node *Node) ExpireNode() (deleted bool, err error) {
 	// lock node
 	err = locker.NodeLockMgr.LockNode(node.Id)
 	if err != nil {
@@ -460,7 +461,53 @@ func (node *Node) Delete() (deleted bool, err error) {
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+// ExpireNodeFiles -- remove files in DATA_PATH if present on >= conf.MIN_REPLICA_COUNT external Locations
+func (n *Node) ExpireNodeFiles() (deleted bool, err error) {
 
+	// lock node
+	err = locker.NodeLockMgr.LockNode(n.Id)
+	if err != nil {
+		return
+	}
+	defer locker.NodeLockMgr.Remove(n.Id)
+
+	// leave if we are not set up to remove NodeFiles
+	if conf.NODE_DATA_REMOVAL == false {
+		deleted = false
+		return
+	}
+
+LocationsLoop:
+	for _, loc := range n.Locations {
+		counter := 0 // we need at least N locations before we can erase data files on local disk
+		// delete only if other locations exist
+		locObj, ok := conf.LocationsMap[loc.ID]
+		if !ok {
+			logger.Errorf("(Reaper-->FileReaper) location %s is not defined in this server instance \n ", loc)
+			continue LocationsLoop
+		}
+		//fmt.Printf("(Reaper-->FileReaper) locObj.Persistent =  %b  \n ", locObj.Persistent)
+		if locObj.Persistent == true {
+			logger.Debug(2, "(Reaper-->FileReaper) has remote Location (%s) removing from Data: %s", loc.ID, n.Id)
+			counter++ // increment counter
+		}
+		if counter >= conf.MIN_REPLICA_COUNT {
+			err = n.deleteFiles() // delete all data files for node in PATH_DATA NOTE: this is different from PATH_CACHE
+			if err != nil {
+				logger.Errorf("(Reaper-->FileReaper) files for node %s could not be deleted (Err: %s) ", n.Id, err.Error())
+				continue
+			}
+			deleted = true
+			return
+		}
+	}
+	return
+}
+
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+// DeleteIndex for node
 func (node *Node) DeleteIndex(indextype string) (err error) {
 	// lock node
 	err = locker.NodeLockMgr.LockNode(node.Id)

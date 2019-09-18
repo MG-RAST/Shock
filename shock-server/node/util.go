@@ -3,6 +3,7 @@ package node
 import (
 	"archive/zip"
 	"context"
+	"crypto/md5"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -40,7 +41,7 @@ type mappy map[string]bool
 var TransitMap map[string]bool
 
 // TransitMapLock lock write access to the CacheMap
-var TransitMapLock = sync.RWMutex{}
+var TransitMapMutex = sync.RWMutex{}
 
 func IsInMappy(item string, mp mappy) bool {
 	if _, ok := mp[item]; ok {
@@ -103,15 +104,20 @@ func FMOpen(filepath string) (f *os.File, err error) {
 	var nodeInstance, _ = Load(uuid)
 
 	// lock access to map
-	nodeInstance.TransitLock()
-
-	// assume the node might be locked and wait until it is free
-	// TODO add a maximum time wait
-	for !nodeInstance.CheckTransit() {
-		time.Sleep(5 * time.Second)
+	for true {
+		TransitMapMutex.Lock()
+		if !nodeInstance.CheckTransit {
+			break
+		}
+		TransitMapMutex.Unlock()
+		time.Sleep(1 * time.Second)
 	}
+	nodeInstance.SetInTransit()
+	TransitMapMutex.Unlock()
 
-	nodeInstance.TransitUnlock()	
+	defer nodeInstance.UnSetInTransitLocked() // this is locked internally
+
+	// unlock access to map
 
 	// create the directory infrastructure for node and index
 	err = nodeInstance.Mkdir()
@@ -119,10 +125,8 @@ func FMOpen(filepath string) (f *os.File, err error) {
 		return
 	}
 
-	// ideally we should loop over all instances of remotes
-	//for _, locationStr := range nodeInstance.Locations {
-Loop:
-	//for _, locationStr := range []string{"anls3_anlseq"} {
+	success := false
+LocationLoop:
 	for _, location := range nodeInstance.Locations {
 
 		locationConfig, ok := conf.LocationsMap[location.ID]
@@ -130,65 +134,79 @@ Loop:
 			err = fmt.Errorf("(FMOpen) location unknown %s", location.ID)
 			return
 		}
-		// debug
-		//	spew.Dump(location)
+
+		var md5 string
+		begin := time.Now()
 
 		switch locationConfig.Type {
-		// we implement only S3 for now
 		case "S3":
-			err = S3Download(uuid, nodeInstance, locationConfig)
-			if err != nil {
-				// debug output
-				err = fmt.Errorf("(FMOpen) S3download returned: %s", err.Error())
-				return
-			}
-			break Loop
+			err, md5 = S3Download(uuid, nodeInstance, locationConfig)
+
 		case "Azure":
-			err = AzureDownload(uuid, nodeInstance, locationConfig)
-			if err != nil {
-				// debug output
-				err = fmt.Errorf("(FMOpen) Azure returned: %s", err.Error())
-				return
-			}
-			break Loop
+			err, md5 = AzureDownload(uuid, nodeInstance, locationConfig)
 
 		case "Shock":
 			// this should be expanded to handle Shock servers sharing the same Mongo instance
 			err = ShockDownload(uuid, nodeInstance, locationConfig)
-			if err != nil {
-				// debug output
-				err = fmt.Errorf("(FMOpen) ShockDownload returned: %s", err.Error())
-				return
-			}
-			break Loop
 
 		case "Daos":
 			// this should call a DAOS downloader
-			err = DaosDownload(uuid, nodeInstance)
-			if err != nil {
-				// debug output
-				err = fmt.Errorf("(FMOpen) DaosDownload returned: %s", err.Error())
-				return
-			}
-			break Loop
+			err, md5 = DaosDownload(uuid, nodeInstance)
 
 		default:
 			err = fmt.Errorf("(FMOpen) Location type %s not supported", locationConfig.Type)
+			logger.Errorf("(FMOpen) Location type %s not supported", locationConfig.Type)
+			err = nil
+			continue
+		}
+
+		// catch broken download
+		if err != nil {
+			err = fmt.Errorf("(FMOpen) %s download returned: %s", locationConfig.Type, err.Error())
+			logger.ErrorF("(FMOpen) %s download returned: %s", locationConfig.Type, err.Error())
+			err = nil
+			continue
+		}
+
+		nodeMd5, ok := node.Instance.File.Checksum["md5"]
+		if !ok { // if the node has no MD5 we cannot compare and no download will work, needs to be fixed
+			err = fmt.Errorf("(FMOpen) node %s has no MD5", nodeInstance.Id)
+			logger.ErrorF("%s", err.Error())
 			return
 		}
-		// if we are here we did not find what we needed
-		err = fmt.Errorf("(FMOpen) Object (%s) not found in any location", uuid)
+
+		if md5 != nodeMd5 {
+			logger.ErrorF("(FMOpen) %s download returned: %s", locationConfig.Type, err.Error())
+			continue LocationLoop
+		}
+
+		success = true
+		duration = time.Now().Sub(begin)
+		logger.Info("(FMOpen) %s downloaded, UUID: %s, duration: %s, size:%s", locationConfig.Type, uuid, duration.Seconds(), nodeInstance.File.Size)
+		// exit the loop
+		break LocationLoop
+
+	} // of for location loop
+
+	// error report in case of failure
+	if !success {
+
+		loclist := ""
+		for _, loc := range nodeInstance.Locations {
+			loclist += loc.ID + ","
+		}
+
+		err = fmt.Errorf("(FMOpen) Object (%s) not found in any location [%s]", uuid, loclist)
 
 		if err != nil {
 			// debug output
 			err = fmt.Errorf("(FMOpen) returned: %s", err.Error())
 			return
 		}
-
 	}
+
 	// notify the Cache of the new local file
 	cache.Add(uuid, nodeInstance.File.Size)
-	// WE NEED TO REMOE THE LOCK ON THE NODE...
 
 	// create file handle for newly downloaded file on local disk
 	f, err = os.Open(filepath)
@@ -206,14 +224,14 @@ Loop:
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
 // S3Download download a file and its indices from an S3 source
-func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error) {
+func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error, md5 string) {
 
 	itemkey := fmt.Sprintf("%s.data", uuid)
 	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
 
 	tmpfile, err := ioutil.TempFile(conf.PATH_CACHE, "")
 	if err != nil {
-		log.Fatalf("(GCloudStoreDownload)  cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		log.Fatalf("(S3Download)  cannot create temporary file: %s [Err: %s]", uuid, err.Error())
 		return
 	}
 	defer tmpfile.Close()
@@ -223,7 +241,7 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 	//fmt.Printf("(S3Download) attempting download, UUID: %s, nodeID: %s from: %s\n", uuid, nodeInstance.Id, location.URL)
 
 	Bucket := location.Bucket
-	logger.Infof("(S3Download) attempting download, UUID: %s, nodeID: %s, Bucket:%s", uuid, nodeInstance.Id, Bucket)
+	logger.Debug(4, "(S3Download) attempting download, UUID: %s, nodeID: %s, Bucket:%s", uuid, nodeInstance.Id, Bucket)
 
 	// 2) Create an AWS session
 	s3Config := &aws.Config{
@@ -249,7 +267,11 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 	// 3) Create a new AWS S3 downloader
 	downloader := s3manager.NewDownloader(sess)
 
-	_, err = downloader.Download(tmpfile,
+	var dst io.Writer
+	md5h := md5.New()
+	dst = io.MultiWriter(tmpfile, md5h)
+
+	_, err = downloader.Download(dst,
 		&s3.GetObjectInput{
 			Bucket: aws.String(Bucket),
 			Key:    aws.String(itemkey),
@@ -259,6 +281,7 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 		log.Fatalf("(S3Download) Unable to download item %q for %s, %s", itemkey, uuid, err.Error())
 		return
 	}
+	md5 = fmt.Sprintf("%x", md5h.Sum(nil))
 
 	err = handleDataFile(tmpfile, uuid, "S3Download")
 	if err != nil {
@@ -326,7 +349,7 @@ func TSMDownload(uuid string, nodeInstance *Node) (err error) {
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
 // AzureDownload support for downloading off https://github.com/daos-stack
-func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error) {
+func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error, md5 string) {
 
 	itemkey := fmt.Sprintf("%s.data", uuid)
 	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
@@ -362,13 +385,18 @@ func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 	// Create a ServiceURL for our node
 	blobURL := azblob.NewBlobURL(*myURL, pipeline)
 
+	var dst io.Writer
+	md5h := md5.New()
+	dst = io.MultiWriter(tmpfile, md5h)
+
 	// download the file contents
-	err = azblob.DownloadBlobToFile(ctx, blobURL, 0, azblob.CountToEnd, tmpfile, azblob.DownloadFromBlobOptions{
+	err = azblob.DownloadBlobToFile(ctx, blobURL, 0, azblob.CountToEnd, dst, azblob.DownloadFromBlobOptions{
 		BlockSize: 4 * 1024 * 1024, Parallelism: 16})
 	if err != nil {
 		logger.Debug(3, "(AzureDownload) error downloading blob: %s [Err: %s]", uuid, err.Error())
 		return
 	}
+	md5 = fmt.Sprintf("%x", md5h.Sum(nil))
 
 	err = handleDataFile(tmpfile, uuid, "AzureDownload")
 	if err != nil {
@@ -416,7 +444,7 @@ func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
 // GCloudStoreDownload support for downloading off https://github.com/daos-stack
-func GCloudStoreDownload(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error) {
+func GCloudStoreDownload(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error, md5 string) {
 
 	itemkey := fmt.Sprintf("%s.data", uuid)
 	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
@@ -451,12 +479,17 @@ func GCloudStoreDownload(uuid string, nodeInstance *Node, location *conf.Locatio
 	}
 	defer reader.Close()
 
-	_, err = io.Copy(tmpfile, reader)
+	var dst io.Writer
+	md5h := md5.New()
+	dst = io.MultiWriter(tmpfile, md5h)
+
+	_, err = io.Copy(dst, reader)
 	if err != nil {
 		logger.Debug(3, "(GCloudStoreDownload) error downloading blob: %s [Err: %s]", uuid, err.Error())
 		return
 	}
 	// end GCS specific
+	md5 = fmt.Sprintf("%x", md5h.Sum(nil))
 
 	err = handleDataFile(tmpfile, uuid, "GCloudStoreDownload")
 	if err != nil {
@@ -528,6 +561,10 @@ func ShockDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 	defer tmpfile.Close()
 	defer os.Remove(tmpfile.Name())
 
+	var dst io.Writer
+	md5h := md5.New()
+	dst = io.MultiWriter(tmpfile, md5h)
+
 	// a transport helps with proxies, TLS configuration, keep-alives, compression, and other settings
 	transport := &http.Transport{
 		MaxIdleConns:       10,
@@ -571,11 +608,13 @@ func ShockDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 	}
 
 	// Writer the body to file
-	_, err = io.Copy(tmpfile, resp.Body)
+	_, err = io.Copy(dst, resp.Body)
 	if err != nil {
 		log.Fatalf("(ShockDownload) Unable to download item %q for %s, %v", itemkey, uuid, err)
 		return
 	}
+
+	md5 = fmt.Sprintf("%x", md5h.Sum(nil))
 
 	err = handleDataFile(tmpfile, uuid, "ShockDownload")
 	if err != nil {
@@ -740,10 +779,10 @@ func handleDataFile(fp *os.File, uuid string, funcName string) (err error) {
 	// 4) Download the item from the bucket. If an error occurs, log it and exit. Otherwise, notify the user that the download succeeded.
 	// needs to create a full path
 	cacheitempath := uuid2CachePath(uuid)
-	cacheitemfile := fmt.Sprintf("%s/%s.data", cacheitempath, uuid)
+	cacheitemfile := path.Join(cacheitempath, uuid+".data")
 
 	itempath := uuid2Path(uuid)
-	itemfile := fmt.Sprintf("%s/%s.data", itempath, uuid)
+	itemfile := path.Join(itempath, uuid+".data")
 
 	// create cache dir path
 	err = os.MkdirAll(cacheitempath, 0777)
@@ -781,24 +820,41 @@ func handleDataFile(fp *os.File, uuid string, funcName string) (err error) {
 	return
 }
 
-// TransitLock set info that node is in flight
-func (node *Node) TransitLock() {
-	TransitMapLock.Lock()
-	defer TransitMapLock.Unlock()
+// // Transitlock - lock the mutex controlling access to the Transitlock
+// func (node *Node) TransitMapLock() {
+// 	TransitMapMutex.Lock()
+// 	defer TransitMapMutex.Unlock()
 
+// 	TransitMap[node.Id] = true
+// 	return
+// }
+
+// // TransitUnlock - unlock the mutex controlling access to the Transitlock
+// func (node *Node) TransitMapUnlock() {
+// 	TransitMapMutex.Lock()
+// 	defer TransitMapMutex.Unlock()
+
+// 	delete(TransitMap, node.Id)
+// 	return
+// }
+
+// CheckTransit - return true if Node is currently being uploaded to an external Location
+func (node *Node) CheckTransit() (locked bool) {
+	_, locked = TransitMap[node.Id]
+	return
+}
+
+// SetInTransit - return true if Node is currently being uploaded to an external Location
+func (node *Node) SetInTransit() {
 	TransitMap[node.Id] = true
 	return
 }
 
-func (node *Node) TransitUnlock() {
-	TransitMapLock.Lock()
-	defer TransitMapLock.Unlock()
+// UnSetInTransitLocked - return true if Node is currently being uploaded to an external Location
+func (node *Node) UnSetInTransitLocked() {
+	TransitMapMutex.Lock()
+	defer TransitMapMutex.Unlock()
 
 	delete(TransitMap, node.Id)
-	return
-}
-
-func (node *Node) CheckTransit() (locked bool) {
-	_, locked = TransitMap[node.Id]
 	return
 }
