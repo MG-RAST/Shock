@@ -98,15 +98,13 @@ func FMOpen(filepath string) (f *os.File, err error) {
 
 	// update cache LRU info
 	cache.Touch(uuid)
-	return
 
-	//	lockstate := fMOpenMap.value(uuid)
 	var nodeInstance, _ = Load(uuid)
 
 	// lock access to map
 	for true {
 		TransitMapMutex.Lock()
-		if !nodeInstance.CheckTransit {
+		if !nodeInstance.CheckTransit() {
 			break
 		}
 		TransitMapMutex.Unlock()
@@ -116,8 +114,6 @@ func FMOpen(filepath string) (f *os.File, err error) {
 	TransitMapMutex.Unlock()
 
 	defer nodeInstance.UnSetInTransitLocked() // this is locked internally
-
-	// unlock access to map
 
 	// create the directory infrastructure for node and index
 	err = nodeInstance.Mkdir()
@@ -135,23 +131,23 @@ LocationLoop:
 			return
 		}
 
-		var md5 string
+		var md5sum string
 		begin := time.Now()
 
 		switch locationConfig.Type {
 		case "S3":
-			err, md5 = S3Download(uuid, nodeInstance, locationConfig)
+			err, md5sum = S3Download(uuid, nodeInstance, locationConfig)
 
 		case "Azure":
-			err, md5 = AzureDownload(uuid, nodeInstance, locationConfig)
+			err, md5sum = AzureDownload(uuid, nodeInstance, locationConfig)
 
 		case "Shock":
 			// this should be expanded to handle Shock servers sharing the same Mongo instance
-			err = ShockDownload(uuid, nodeInstance, locationConfig)
+			err, md5sum = ShockDownload(uuid, nodeInstance, locationConfig)
 
 		case "Daos":
 			// this should call a DAOS downloader
-			err, md5 = DaosDownload(uuid, nodeInstance)
+			err, md5sum = DaosDownload(uuid, nodeInstance)
 
 		default:
 			err = fmt.Errorf("(FMOpen) Location type %s not supported", locationConfig.Type)
@@ -163,26 +159,26 @@ LocationLoop:
 		// catch broken download
 		if err != nil {
 			err = fmt.Errorf("(FMOpen) %s download returned: %s", locationConfig.Type, err.Error())
-			logger.ErrorF("(FMOpen) %s download returned: %s", locationConfig.Type, err.Error())
+			logger.Errorf("(FMOpen) %s download returned: %s", locationConfig.Type, err.Error())
 			err = nil
 			continue
 		}
 
-		nodeMd5, ok := node.Instance.File.Checksum["md5"]
+		nodeMd5, ok := nodeInstance.File.Checksum["md5"]
 		if !ok { // if the node has no MD5 we cannot compare and no download will work, needs to be fixed
 			err = fmt.Errorf("(FMOpen) node %s has no MD5", nodeInstance.Id)
-			logger.ErrorF("%s", err.Error())
+			logger.Errorf("%s", err.Error())
 			return
 		}
 
-		if md5 != nodeMd5 {
-			logger.ErrorF("(FMOpen) %s download returned: %s", locationConfig.Type, err.Error())
+		if md5sum != nodeMd5 {
+			logger.Errorf("(FMOpen) %s download returned: %s", locationConfig.Type, err.Error())
 			continue LocationLoop
 		}
 
 		success = true
-		duration = time.Now().Sub(begin)
-		logger.Info("(FMOpen) %s downloaded, UUID: %s, duration: %s, size:%s", locationConfig.Type, uuid, duration.Seconds(), nodeInstance.File.Size)
+		duration := time.Now().Sub(begin)
+		logger.Infof("(FMOpen) %s downloaded, UUID: %s, duration: %d, size:%d", locationConfig.Type, uuid, int(duration.Seconds()), int(nodeInstance.File.Size))
 		// exit the loop
 		break LocationLoop
 
@@ -209,6 +205,7 @@ LocationLoop:
 	cache.Add(uuid, nodeInstance.File.Size)
 
 	// create file handle for newly downloaded file on local disk
+	// we use the symlink we have created here
 	f, err = os.Open(filepath)
 
 	// check if we encounter an error
@@ -224,7 +221,7 @@ LocationLoop:
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
 // S3Download download a file and its indices from an S3 source
-func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error, md5 string) {
+func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error, md5sum string) {
 
 	itemkey := fmt.Sprintf("%s.data", uuid)
 	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
@@ -267,11 +264,7 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 	// 3) Create a new AWS S3 downloader
 	downloader := s3manager.NewDownloader(sess)
 
-	var dst io.Writer
-	md5h := md5.New()
-	dst = io.MultiWriter(tmpfile, md5h)
-
-	_, err = downloader.Download(dst,
+	_, err = downloader.Download(tmpfile,
 		&s3.GetObjectInput{
 			Bucket: aws.String(Bucket),
 			Key:    aws.String(itemkey),
@@ -281,7 +274,18 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 		log.Fatalf("(S3Download) Unable to download item %q for %s, %s", itemkey, uuid, err.Error())
 		return
 	}
-	md5 = fmt.Sprintf("%x", md5h.Sum(nil))
+
+	var dst io.Writer
+	md5h := md5.New()
+	dst = md5h
+
+	_, err = io.Copy(dst, tmpfile)
+	if err != nil {
+		// md5 checksum creation did not work
+		return
+	}
+
+	md5sum = fmt.Sprintf("%x", md5h.Sum(nil))
 
 	err = handleDataFile(tmpfile, uuid, "S3Download")
 	if err != nil {
@@ -310,10 +314,10 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 		if strings.HasPrefix(err.Error(), "NoSuchKey") {
 			// we did not find an index
 			//	logger.Infof("no index for %s", uuid)
-			return nil // do not report an error
+			return
 		}
 		log.Fatalf("(S3Download) Unable to download item %q for %s, %s", indexfile, uuid, err.Error())
-		return err
+		return
 	}
 	//logger.Infof("Downloaded: %s (%d Bytes) \n", file.Name(), numBytes)
 	err = handleIdxZipFile(tmpfile, uuid, "S3Download")
@@ -349,7 +353,7 @@ func TSMDownload(uuid string, nodeInstance *Node) (err error) {
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
 // AzureDownload support for downloading off https://github.com/daos-stack
-func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error, md5 string) {
+func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error, md5sum string) {
 
 	itemkey := fmt.Sprintf("%s.data", uuid)
 	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
@@ -385,18 +389,25 @@ func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 	// Create a ServiceURL for our node
 	blobURL := azblob.NewBlobURL(*myURL, pipeline)
 
-	var dst io.Writer
-	md5h := md5.New()
-	dst = io.MultiWriter(tmpfile, md5h)
-
 	// download the file contents
-	err = azblob.DownloadBlobToFile(ctx, blobURL, 0, azblob.CountToEnd, dst, azblob.DownloadFromBlobOptions{
+	err = azblob.DownloadBlobToFile(ctx, blobURL, 0, azblob.CountToEnd, tmpfile, azblob.DownloadFromBlobOptions{
 		BlockSize: 4 * 1024 * 1024, Parallelism: 16})
 	if err != nil {
 		logger.Debug(3, "(AzureDownload) error downloading blob: %s [Err: %s]", uuid, err.Error())
 		return
 	}
-	md5 = fmt.Sprintf("%x", md5h.Sum(nil))
+
+	var dst io.Writer
+	md5h := md5.New()
+	dst = md5h
+
+	_, err = io.Copy(dst, tmpfile)
+	if err != nil {
+		// md5 checksum creation did not work
+		return
+	}
+
+	md5sum = fmt.Sprintf("%x", md5h.Sum(nil))
 
 	err = handleDataFile(tmpfile, uuid, "AzureDownload")
 	if err != nil {
@@ -444,7 +455,7 @@ func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
 // GCloudStoreDownload support for downloading off https://github.com/daos-stack
-func GCloudStoreDownload(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error, md5 string) {
+func GCloudStoreDownload(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error, md5sum string) {
 
 	itemkey := fmt.Sprintf("%s.data", uuid)
 	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
@@ -489,7 +500,7 @@ func GCloudStoreDownload(uuid string, nodeInstance *Node, location *conf.Locatio
 		return
 	}
 	// end GCS specific
-	md5 = fmt.Sprintf("%x", md5h.Sum(nil))
+	md5sum = fmt.Sprintf("%x", md5h.Sum(nil))
 
 	err = handleDataFile(tmpfile, uuid, "GCloudStoreDownload")
 	if err != nil {
@@ -537,7 +548,7 @@ func GCloudStoreDownload(uuid string, nodeInstance *Node, location *conf.Locatio
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
 // DaosDownload support for downloading off https://github.com/daos-stack
-func DaosDownload(uuid string, nodeInstance *Node) (err error) {
+func DaosDownload(uuid string, nodeInstance *Node) (err error, md5sum string) {
 	logger.Infof("(S3Download--> DAOS ) needs to be implemented !! \n")
 
 	return
@@ -548,7 +559,7 @@ func DaosDownload(uuid string, nodeInstance *Node) (err error) {
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
 // ShockDownload download a file from a Shock server
-func ShockDownload(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error) {
+func ShockDownload(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error, md5sum string) {
 
 	itemkey := fmt.Sprintf("%s.data", uuid)
 	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
@@ -598,13 +609,14 @@ func ShockDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 	// Get the data
 
 	if err != nil {
-		return err
+		return
 	}
 	defer resp.Body.Close()
 
 	// Check server response
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad status: %s", resp.Status)
+		err = fmt.Errorf("bad status: %s", resp.Status)
+		return
 	}
 
 	// Writer the body to file
@@ -614,7 +626,7 @@ func ShockDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 		return
 	}
 
-	md5 = fmt.Sprintf("%x", md5h.Sum(nil))
+	md5sum = fmt.Sprintf("%x", md5h.Sum(nil))
 
 	err = handleDataFile(tmpfile, uuid, "ShockDownload")
 	if err != nil {
@@ -645,7 +657,8 @@ func ShockDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 
 	// Check server response
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad status: %s", resp.Status)
+		err = fmt.Errorf("bad status: %s", resp.Status)
+		return
 	}
 
 	// Writer the body to file
