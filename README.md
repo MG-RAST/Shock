@@ -32,10 +32,11 @@ docker build --force-rm --no-cache --rm -t mgrast/shock .
 
 If you only need the statically compiled binary, you can extract it from the Dockerimage:
 ```bash
+VERSION=$(docker run --rm mgrast/shock shock-server --version | grep version | grep -o v[0-9].* |tr -d '\n')
+echo $VERSION
 docker create --name shock mgrast/shock
 mkdir -p bin
-docker cp shock:/go/bin/shock-server ./bin/
-docker cp shock:/go/bin/shock-client ./bin/
+docker cp shock:/go/bin/shock-server ./bin/shock-server-${VERSION}
 docker rm shock
 ```
 
