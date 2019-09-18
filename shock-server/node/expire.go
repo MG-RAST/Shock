@@ -43,7 +43,7 @@ MainLoop:
 			logger.Debug(6, "Reaper->Checking for expired node: %s", n.Id)
 
 			// delete expired nodes
-			deleted, err := n.ExpireNode()
+			deleted, err := n.Delete()
 			if err != nil {
 				err_msg := "err:@node_ExpireNode: " + err.Error()
 				logger.Error(err_msg)

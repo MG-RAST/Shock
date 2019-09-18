@@ -387,7 +387,7 @@ func (node *Node) deleteFiles() (err error) {
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
 // ExpireNode -- delete the node from Mongo and Disk
-func (node *Node) ExpireNode() (deleted bool, err error) {
+func (node *Node) Delete() (deleted bool, err error) {
 	// lock node
 	err = locker.NodeLockMgr.LockNode(node.Id)
 	if err != nil {
