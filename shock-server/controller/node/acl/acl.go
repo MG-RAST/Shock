@@ -3,6 +3,9 @@ package acl
 
 import (
 	"errors"
+	"net/http"
+	"strings"
+
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/logger"
@@ -14,8 +17,6 @@ import (
 	"github.com/MG-RAST/golib/go-uuid/uuid"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	mgo "gopkg.in/mgo.v2"
-	"net/http"
-	"strings"
 )
 
 var (
@@ -295,7 +296,7 @@ func parseAclRequestTyped(ctx context.Context) (ids []string, err error) {
 	var users []string
 	query := ctx.HttpRequest().URL.Query()
 	params, _, err := request.ParseMultipartForm(ctx.HttpRequest())
-	if _, ok := query["users"]; ok && err != nil && err.Error() == "request Content-Type isn't multipart/form-data" {
+	if _, ok := query["users"]; ok && err != nil && strings.Contains(err.Error(), http.ErrNotMultipart.ErrorString) {
 		users = strings.Split(query.Get("users"), ",")
 	} else if params["users"] != "" {
 		users = strings.Split(params["users"], ",")
