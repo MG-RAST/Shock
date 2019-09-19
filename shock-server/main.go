@@ -49,7 +49,6 @@ type anonymous struct {
 type resource struct {
 	A []string  `json:"attribute_indexes"`
 	C string    `json:"contact"`
-	D string    `json:"documentation"`
 	I string    `json:"id"`
 	O []string  `json:"auth"`
 	P anonymous `json:"anonymous_permissions"`
@@ -256,8 +255,6 @@ func mapRoutes() {
 
 	nodeController := new(ncon.NodeController)
 	goweb.MapController(nodeController)
-
-
 
 	// Map the favicon
 	//goweb.MapStaticFile("/favicon.ico", "static-files/favicon.ico")

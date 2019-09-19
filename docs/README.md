@@ -13,7 +13,7 @@
 
 - supports HSM operations and caching
 
-- is part of our reproducible science platform (Skyport)[https://github.com/MG-RAST/Skyport2) combined to create [Researchobjects](http://www.researchobject.org/) when combined with [CWL](http://www.commonwl.org) and 
+- is part of our reproducible science platform [Skyport]([https://github.com/MG-RAST/Skyport2) combined to create [Researchobjects](http://www.researchobject.org/) when combined with [CWL](http://www.commonwl.org) and 
 [CWLprov](https://github.com/common-workflow-language/cwlprov)
 
 Shock is actively being developed at [github.com/MG-RAST/Shock](https://github.com/MG-RAST/Shock).
