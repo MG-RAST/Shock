@@ -42,37 +42,7 @@ func (cr *NodeController) Create(ctx context.Context) error {
 	// clean up temp dir !!
 	defer file.RemoveAllFormFiles(files)
 	if err != nil {
-		if strings.Contains(err.Error(), http.ErrNotMultipart.ErrorString) {
-			// If not multipart/form-data it will try to read the Body of the
-			// request. If the Body is not empty it will create a file from
-			// the Body contents. If the Body is empty it will create an empty
-			// node.
-			if ctx.HttpRequest().ContentLength != 0 {
-				params, files, err = request.DataUpload(ctx.HttpRequest())
-				if err != nil {
-					err_msg := "err@node_Create: (request.DataUpload) " + err.Error()
-					logger.Error(err_msg)
-					return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
-				}
-			}
-
-			n, cn_err := node.CreateNodeUpload(u, params, files)
-
-			if cn_err != nil {
-				err_msg := "err@node_Create: (node.CreateNodeUpload) " + cn_err.Error()
-				logger.Error(err_msg)
-				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
-			}
-			if n == nil {
-				// Not sure how you could get an empty node with no error
-				// Assume it's the user's fault
-				err_msg := "err@node_Create: could not create node"
-				logger.Error(err_msg)
-				return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
-			} else {
-				return responder.RespondWithData(ctx, n)
-			}
-		} else {
+		if !strings.Contains(err.Error(), http.ErrNotMultipart.ErrorString) {
 			// Some error other than request encoding. Theoretically
 			// could be a lost db connection between user lookup and parsing.
 			// Blame the user, Its probaby their fault anyway.
@@ -80,6 +50,37 @@ func (cr *NodeController) Create(ctx context.Context) error {
 			logger.Error(err_msg)
 			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
 		}
+
+		// If not multipart/form-data it will try to read the Body of the
+		// request. If the Body is not empty it will create a file from
+		// the Body contents. If the Body is empty it will create an empty
+		// node.
+		if ctx.HttpRequest().ContentLength != 0 {
+			params, files, err = request.DataUpload(ctx.HttpRequest())
+			if err != nil {
+				err_msg := "err@node_Create: (request.DataUpload) " + err.Error()
+				logger.Error(err_msg)
+				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+			}
+		}
+
+		n, cn_err := node.CreateNodeUpload(u, params, files)
+
+		if cn_err != nil {
+			err_msg := "err@node_Create: (node.CreateNodeUpload) " + cn_err.Error()
+			logger.Error(err_msg)
+			return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+		}
+		if n == nil {
+			// Not sure how you could get an empty node with no error
+			// Assume it's the user's fault
+			err_msg := "err@node_Create: could not create node"
+			logger.Error(err_msg)
+			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+		} else {
+			return responder.RespondWithData(ctx, n)
+		}
+
 	}
 
 	// special case, create preauth download url from list of ids

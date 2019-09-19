@@ -109,6 +109,7 @@ func DataUpload(r *http.Request) (params map[string]string, files file.FormFiles
 
 // ParseMultipartForm helper function for create & update
 func ParseMultipartForm(r *http.Request) (params map[string]string, files file.FormFiles, err error) {
+
 	params = make(map[string]string)
 	files = make(file.FormFiles)
 	reader, err := r.MultipartReader()
@@ -119,12 +120,19 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files file.F
 
 	tmpPath := ""
 	for { // read until EOF
+		logger.Error("ParseMultipartForm forloop")
 		var part *multipart.Part
 		part, err = reader.NextPart()
 		if err != nil {
-			if err.Error() == "EOF" {
+			//fmt.Printf("(ParseMultipartForm) NextPart returned: %s\n", err.Error())
+			//logger.Error("NextPart returned " + err.Error())
+			if err == io.EOF {
 				err = nil
+			} else {
+				params = nil
+				err = fmt.Errorf("(ParseMultipartForm) reader.NextPart returned: %s", err.Error())
 			}
+
 			return
 		}
 
@@ -137,8 +145,12 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files file.F
 			buffer := make([]byte, 32*1024)
 			var n int
 			n, err = part.Read(buffer)
-			if n == 0 || err != nil {
-				break
+			if err != nil {
+				err = nil
+				return
+			}
+			if n == 0 {
+				return
 			}
 			formValue := fmt.Sprintf("%s", buffer[0:n])
 			if part.FormName() == "upload_url" {
@@ -172,6 +184,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files file.F
 				}
 				defer body.Close()
 				if _, err = io.Copy(dst, body); err != nil {
+					err = fmt.Errorf("(ParseMultipartForm) io.Copy returned: %s", err.Error())
 					return nil, files, err
 				}
 				tmpform.Name = fileName
@@ -222,9 +235,11 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files file.F
 				dst := io.MultiWriter(tmpFile, md5h)
 				ucReader, ucErr := archive.UncompressReader(part.FormName(), part)
 				if ucErr != nil {
+					ucErr = fmt.Errorf("(ParseMultipartForm) archive.UncompressReader returned: %s", ucErr.Error())
 					return nil, files, ucErr
 				}
 				if _, err = io.Copy(dst, ucReader); err != nil {
+					err = fmt.Errorf("(ParseMultipartForm) io.Copy returned: %s", err.Error())
 					return nil, files, err
 				}
 				if archive.IsValidUncompress(part.FormName()) {
@@ -235,6 +250,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files file.F
 			} else {
 				// handle file where md5 not needed
 				if _, err = io.Copy(tmpFile, part); err != nil {
+					err = fmt.Errorf("(ParseMultipartForm) io.Copy returned: %s", err.Error())
 					return nil, files, err
 				}
 			}
