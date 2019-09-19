@@ -38,7 +38,7 @@ import (
 type mappy map[string]bool
 
 // TransitMap store UUID and bool value if object is in transit
-var TransitMap map[string]bool
+//var TransitMap map[string]bool
 
 // TransitMapLock lock write access to the CacheMap
 var TransitMapMutex = sync.RWMutex{}
@@ -87,7 +87,7 @@ func FMOpen(filepath string) (f *os.File, err error) {
 	// try to read file from disk
 	f, err = os.Open(filepath) // this will also open a sym link from the cache location
 
-	if err != nil {
+	if err == nil {
 		return
 	}
 
@@ -853,13 +853,15 @@ func handleDataFile(fp *os.File, uuid string, funcName string) (err error) {
 
 // CheckTransit - return true if Node is currently being uploaded to an external Location
 func (node *Node) CheckTransit() (locked bool) {
-	_, locked = TransitMap[node.Id]
+	_, locked = conf.TransitMap[node.Id]
 	return
 }
 
 // SetInTransit - return true if Node is currently being uploaded to an external Location
 func (node *Node) SetInTransit() {
-	TransitMap[node.Id] = true
+
+	conf.TransitMap[node.Id] = struct{}{}
+
 	return
 }
 
@@ -868,6 +870,6 @@ func (node *Node) UnSetInTransitLocked() {
 	TransitMapMutex.Lock()
 	defer TransitMapMutex.Unlock()
 
-	delete(TransitMap, node.Id)
+	delete(conf.TransitMap, node.Id)
 	return
 }
