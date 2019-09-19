@@ -25,10 +25,10 @@ type TypeConfig struct {
 // Location set of storage locations
 type LocationConfig struct {
 	ID          string `bson:"ID" json:"ID" yaml:"ID" `                           // e.g. ANLs3 or local for local store
-	Description string `bson:"Description" json:"Description" yaml:"Description"` // e.g. ANL official S3 service
 	Type        string `bson:"type" json:"type" yaml:"Type" `                     // e.g. S3
 	URL         string `bson:"url" json:"url" yaml:"URL"`                         // e.g. http://s3api.invalid.org/download&id=
 	Token       string `bson:"token" json:"-" yaml:"Token" `                      // e.g.  Key or password
+	Description string `bson:"Description" json:"Description" yaml:"Description"` // e.g. ANL official S3 service
 	Prefix      string `bson:"prefix" json:"-" yaml:"Prefix"`                     // e.g. any prefix needed
 	AuthKey     string `bson:"AuthKey" json:"-" yaml:"AuthKey"`                   // e.g. AWS auth-key
 	Persistent  bool   `bson:"persistent" json:"persistent" yaml:"Persistent"`    // e.g. is this a valid long term storage location
@@ -72,6 +72,9 @@ var LocationsMap map[string]*LocationConfig
 
 // TypesMap allow access to all types via Types("ID")
 var TypesMap map[string]*TypeConfig
+
+// TransitMap Map of UUIDs that are currently handled by FMOpen download
+var TransitMap map[string]struct{} //bool
 
 // Config contains an array of Location objects
 type Config struct {
@@ -270,6 +273,10 @@ func Initialize() (err error) {
 			return errors.New("error reading types file: " + err.Error())
 		}
 	}
+
+	TransitMap = make(map[string]struct{}) //bool)
+
+	//TransitMap["nil"] = false
 
 	err = nil
 
