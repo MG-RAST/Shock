@@ -120,7 +120,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files file.F
 
 	tmpPath := ""
 	for { // read until EOF
-		logger.Error("ParseMultipartForm forloop")
+		//logger.Error("ParseMultipartForm forloop")
 		var part *multipart.Part
 		part, err = reader.NextPart()
 		if err != nil {
