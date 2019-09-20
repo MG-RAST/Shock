@@ -1,6 +1,8 @@
 package user
 
 import (
+	"fmt"
+
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/db"
 	"github.com/MG-RAST/golib/go-uuid/uuid"
@@ -80,8 +82,12 @@ func FindByUsernamePassword(username string, password string) (u *User, err erro
 	defer session.Close()
 	c := session.DB(conf.MONGODB_DATABASE).C("Users")
 	u = &User{}
-	if err = c.Find(bson.M{"username": username, "password": password}).One(&u); err != nil {
-		return nil, err
+	err = c.Find(bson.M{"username": username, "password": password}).One(&u)
+	if err != nil {
+		if conf.DEBUG_AUTH {
+			err = fmt.Errorf("(FindByUsernamePassword) (username: %s) c.Find returned: %s", username, err.Error())
+		}
+		return
 	}
 	return
 }
