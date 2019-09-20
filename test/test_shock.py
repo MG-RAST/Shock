@@ -13,9 +13,13 @@ PORT = os.environ.get('SHOCK_PORT', "7445")
 URL  = os.environ.get('SHOCK_HOST', "http://localhost")
 SHOCK_URL = URL + ":" + PORT
 TOKEN = os.environ.get("MGRKEY")
+SHOCKAUTH = os.environ.get("SHOCKAUTH", None)
 if URL == "http://localhost":
-    TOKEN = "1234"
-    AUTH = "OAuth {}".format(TOKEN)
+    if SHOCKAUTH:
+        AUTH = "basic {}".format(SHOCKAUTH)
+    else:
+        TOKEN = "1234"
+        AUTH = "OAuth {}".format(TOKEN)
 else:
     AUTH = "mgrast {}".format(TOKEN)
 
@@ -58,7 +62,7 @@ def confirm_nodes_project(NODES, PROJECT):
     for NODEID in NODES:
         TESTURL = SHOCK_URL + "/node/{}".format(NODEID)
         if DEBUG:
-            print("curl '{}' -H 'Authorization: Oauth {}'".format(TESTURL, TOKEN))
+            print("curl '{}' -H 'Authorization: {}'".format(TESTURL, AUTH))
         response = requests.get(TESTURL, headers=TESTHEADERS)
         assert response.status_code == 200, response.content.decode("utf-8")
         data = json.loads(response.content.decode("utf-8"))
@@ -316,7 +320,7 @@ def test_download_url_zip_GET():
     # issue query for TESTPROJECT FILES downloaded as ZIP
     TESTURL = SHOCK_URL+"/node?query&download_url&archive=zip".format()
     if DEBUG:
-        print("curl '{}' -H 'Authorization: Oauth {}' -G -d {}".format(TESTURL, TOKEN, TESTDATA))
+        print("curl '{}' -H 'Authorization: {}' -G -d {}".format(TESTURL, AUTH, TESTDATA))
     response = requests.get(TESTURL, headers=TESTHEADERS, params=TESTDATA)
     print(" ".join([ "Debugging ZIP Download", str(response.status_code), str(response.content)]))
     data = json.loads(response.content.decode("utf-8"))
@@ -365,7 +369,7 @@ def test_download_url_tar_GET():
     # issue query for TESTPROJECT FILES downloaded as ZIP
     TESTURL = SHOCK_URL+"/node?query&download_url&archive=tar".format()
     if DEBUG:
-        print("curl '{}' -H 'Authorization: Oauth {}' -G -d {}".format(TESTURL, TOKEN, TESTDATA))
+        print("curl '{}' -H 'Authorization: {}' -G -d {}".format(TESTURL, AUTH, TESTDATA))
     response = requests.get(TESTURL, headers=TESTHEADERS, params=TESTDATA)
     data = json.loads(response.content.decode("utf-8"))
     # extract preauth uri from response
