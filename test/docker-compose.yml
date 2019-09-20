@@ -1,12 +1,11 @@
 
 version: '3.1'
 
-
-# *** required ***
-# set DATADIR for persistent data store , e.g. /var/tmp/Shock
+# hint: uses .env file
 
 
 # optional
+# set DATADIR for persistent data store , e.g. /var/tmp/Shock
 # set CONFIGDIR to path to config
 # set LOGDIR to path to local log dir
 
@@ -21,10 +20,11 @@ services:
         entrypoint: 
           - /go/bin/shock-server 
           - --hosts=shock-mongo 
-          - --basic=true 
+          - --basic=true               # enables basic auth
           - --users=admin
-          - --force_yes=true
-          # docker exec -ti test_shock_1 /go/bin/shock-server --hosts=shock-mongo --basic=true --users=admin
+          - --force_yes=true           # avoids having shock ask interactive questions regarding db table updates
+          - --debug_auth=true          # returns more detailed reasons for rejected auth
+          # docker exec -ti test_shock_1 /go/bin/shock-server --hosts=shock-mongo --basic=true --users=admin --debug_auth=true
         
           #- /go/bin/shock-server
           #- --hosts=shock-mongo
@@ -72,9 +72,10 @@ services:
               sleep 1;
             done;
             echo Connected!;
-            mongo mongodb://shock-mongo:27017/ShockDB --eval 'db.Users.updateOne({username: \"admin\"}, {$$set: { password: \"secret\" , shock_admin: true } } )';
-            mongo mongodb://shock-mongo:27017/ShockDB --eval 'db.Users.updateOne({username: \"user1\"}, {$$set: { password: \"secret\" , shock_admin: false } } )';
+            mongo mongodb://shock-mongo:27017/ShockDB --eval 'db.Users.updateOne({username: \"admin\"}, {$$setOnInsert: { uuid: UUID(), password: \"secret\" , shock_admin: true } } , {upsert : true})';
+            mongo mongodb://shock-mongo:27017/ShockDB --eval 'db.Users.updateOne({username: \"user1\"}, {$$setOnInsert: { uuid: UUID(), password: \"secret\" , shock_admin: false } } , {upsert : true})';
           "
+
 
 # create admin user manually           
 #
