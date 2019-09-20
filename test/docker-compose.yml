@@ -24,6 +24,7 @@ services:
           - --users=admin
           - --force_yes=true           # avoids having shock ask interactive questions regarding db table updates
           - --debug_auth=true          # returns more detailed reasons for rejected auth
+          - --api-url=http://shock:7445
           # docker exec -ti test_shock_1 /go/bin/shock-server --hosts=shock-mongo --basic=true --users=admin --debug_auth=true
         
           #- /go/bin/shock-server
