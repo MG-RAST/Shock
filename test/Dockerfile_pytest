@@ -4,6 +4,10 @@
 
 FROM golang:alpine
 
+ENV SHOCK_URL=http://shock:7445
+ENV SHOCK_AUTH="basic dXNlcjE6c2VjcmV0"
+
+
 RUN apk update && apk add \
     python3
 
@@ -16,3 +20,13 @@ RUN pip3 install \
 COPY testdata /testing/testdata/
 COPY test_shock.py /testing/
 WORKDIR /testing
+
+
+# example single test:
+# py.test -k test_querynode_name
+
+# example all tests:
+# py.test -k test_shock
+
+# 
+# curl -X POST -H "Authorization: ${SHOCK_AUTH}" -F 'attributes_str={test:"hello"}' ${SHOCK_URL}/node
