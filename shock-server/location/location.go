@@ -42,14 +42,14 @@ func LocRequest(ctx context.Context) {
 	}
 
 	// public user cannot use this
-	if (u == nil) && (!conf.DEBUG_AUTH) {
+	if (u == nil) && conf.USE_AUTH {
 		errMsg := "admin required"
 		//errMsg := e.UnAuth
 		responder.RespondWithError(ctx, http.StatusUnauthorized, errMsg)
 		return
 	}
 
-	if (u != nil) && (!u.Admin) && (!conf.DEBUG_AUTH) {
+	if (u != nil) && (!u.Admin) && conf.USE_AUTH {
 		errMsg := e.UnAuth
 		logger.Debug(2, "(LocRequest) attempt to use as non admin (user: %s)", u.Username)
 		responder.RespondWithError(ctx, http.StatusInternalServerError, errMsg)

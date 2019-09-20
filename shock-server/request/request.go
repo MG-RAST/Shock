@@ -135,7 +135,8 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files file.F
 
 			return
 		}
-
+		//fmt.Printf("(ParseMultipartForm) part.FormName(): %s\n", part.FormName())
+		//fmt.Printf("(ParseMultipartForm) part.FileName(): %s\n", part.FileName())
 		// params don't have a FileName()
 		// files must have FormName() of either "upload", "gzip", "bzip2", "attributes", "subset_indices", or an integer
 		if part.FileName() == "" {
@@ -145,14 +146,21 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files file.F
 			buffer := make([]byte, 32*1024)
 			var n int
 			n, err = part.Read(buffer)
+			if n == 0 { // first handle n !
+				return
+			}
 			if err != nil {
-				err = nil
-				return
+				//fmt.Printf("(ParseMultipartForm) part.Read n: %d\n", n)
+				//fmt.Printf("(ParseMultipartForm) part.Read: %s\n", err.Error())
+				if err != io.EOF {
+					// return errors other than EOF
+					return
+				}
+				// ignore EOF
 			}
-			if n == 0 {
-				return
-			}
+
 			formValue := fmt.Sprintf("%s", buffer[0:n])
+			//fmt.Printf("(ParseMultipartForm) part.FormName(): %s\n", part.FormName())
 			if part.FormName() == "upload_url" {
 				tempDir := path.Join(conf.PATH_DATA, "temp")
 				var tmpFile *os.File
@@ -205,8 +213,13 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files file.F
 			if _, er := strconv.Atoi(part.FormName()); er == nil {
 				isPartsFile = true
 			}
+
+			//if util.IsValidParamName(part.FormName()) {
+
+			//}
+
 			if !isPartsFile && !util.IsValidFileName(part.FormName()) {
-				return nil, files, errors.New("invalid file param: " + part.FormName())
+				return nil, files, fmt.Errorf("invalid file param (part.FileName()=%s): %s ", part.FileName(), part.FormName())
 			}
 			// download it
 			tempDir := path.Join(conf.PATH_DATA, "temp")

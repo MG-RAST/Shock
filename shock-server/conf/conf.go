@@ -128,6 +128,7 @@ var (
 	AUTH_CACHE_TIMEOUT      int
 	AUTH_OAUTH              = make(map[string]string)
 	OAUTH_DEFAULT           string // first value in AUTH_OAUTH_URL_STR
+	USE_AUTH                bool
 
 	// Default Chunksize for size virtual index
 	CHUNK_SIZE int64 = 1048576
@@ -358,6 +359,7 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddString(&AUTH_OAUTH_URL_STR, "", "Auth", "oauth_urls", "", "")
 	c_store.AddString(&AUTH_OAUTH_BEARER_STR, "", "Auth", "oauth_bearers", "", "")
 	c_store.AddInt(&AUTH_CACHE_TIMEOUT, 60, "Auth", "cache_timeout", "", "")
+	c_store.AddBool(&USE_AUTH, true, "Auth", "use_auth", "", "for debugging purposes, removes auth requirements for most functions")
 
 	// Runtime
 	c_store.AddInt(&EXPIRE_WAIT, 60, "Runtime", "expire_wait", "", "")
@@ -370,7 +372,7 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddString(&LOG_OUTPUT, "both", "Log", "logoutput", "console, file or both", "")
 	c_store.AddBool(&LOG_TRACE, false, "Log", "trace", "", "")
 	c_store.AddInt(&DEBUG_LEVEL, 0, "Log", "debuglevel", "debug level: 0-3", "")
-	c_store.AddBool(&DEBUG_AUTH, false, "Log", "debugauth", "", "enable debugging; remove auth requirements for most functions")
+	c_store.AddBool(&DEBUG_AUTH, false, "Log", "debug_auth", "", "for debugging purposes, returns more detailed reasons for rejected auth")
 
 	// Mongodb
 	c_store.AddString(&MONGODB_ATTRIBUTE_INDEXES, "", "Mongodb", "attribute_indexes", "", "")

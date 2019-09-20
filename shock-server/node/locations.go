@@ -29,7 +29,7 @@ func LocationsRequest(ctx context.Context) {
 	}
 
 	// public user (no auth) can be used in some cases
-	if u == nil && conf.DEBUG_AUTH != true {
+	if u == nil && conf.USE_AUTH {
 		if (rmeth == "GET" && conf.ANON_READ) || (rmeth == "POST" && conf.ANON_WRITE) || (rmeth == "DELETE" && conf.ANON_WRITE) {
 			u = &user.User{Uuid: "public"}
 		} else {
@@ -54,7 +54,7 @@ func LocationsRequest(ctx context.Context) {
 		return
 	}
 
-	if conf.DEBUG_AUTH != true {
+	if conf.USE_AUTH {
 		rights := n.Acl.Check(u.Uuid)
 		if n.Acl.Owner != u.Uuid && u.Admin == false && n.Acl.Owner != "public" && rights["read"] == false {
 			logger.Error("err@node_Acl: (Authenticate) id=" + nid + ": " + e.UnAuth)
@@ -82,7 +82,7 @@ func LocationsRequest(ctx context.Context) {
 
 		}
 	case "POST": // append
-		if conf.DEBUG_AUTH != true && !u.Admin {
+		if conf.USE_AUTH && !u.Admin {
 			errmsg := e.UnAuth
 			if conf.DEBUG_AUTH {
 				errmsg = "admin required"
