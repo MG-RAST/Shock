@@ -1,0 +1,18 @@
+
+#docker build -t mgrast/shock-pytest -f Dockerfile_pytest .
+#docker run -ti --rm --network=shock-test_default mgrast/shock-pytest
+
+FROM golang:alpine
+
+RUN apk update && apk add \
+    python3
+
+RUN pip3 install --upgrade pip
+
+RUN pip3 install \
+    pytest \
+    requests 
+
+COPY testdata /testing/testdata/
+COPY test_shock.py /testing/
+WORKDIR /testing
