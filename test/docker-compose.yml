@@ -20,11 +20,11 @@ services:
         entrypoint: 
           - /go/bin/shock-server 
           - --hosts=shock-mongo 
-          - --basic=true               # enables basic auth
-          - --users=admin
-          - --force_yes=true           # avoids having shock ask interactive questions regarding db table updates
-          - --debug_auth=true          # returns more detailed reasons for rejected auth
-          - --api-url=http://shock:7445
+          - --basic=true                   # enables basic auth
+          - --users=admin                  # spcifies that user with name "admin" is a admin
+          - --force_yes=true               # avoids having shock ask interactive questions regarding db table updates
+          - --debug_auth=true              # returns more detailed reasons for rejected auth
+          - --api-url=http://shock:7445    # Shock returns a "preauth url", which consists of the api url
           # docker exec -ti test_shock_1 /go/bin/shock-server --hosts=shock-mongo --basic=true --users=admin --debug_auth=true
         
           #- /go/bin/shock-server
