@@ -24,7 +24,7 @@ func Load(locID string) (loc *conf.LocationConfig, err error) {
 	return
 }
 
-// GET, /location/{loc}/{function}, specify -H "Content-Type: application/json"
+// LocRequest support GET for info|present|missing|inflight
 func LocRequest(ctx context.Context) {
 
 	locationID := ctx.PathValue("loc")
@@ -77,11 +77,11 @@ func LocRequest(ctx context.Context) {
 	// ensure we only list nodes with Priority higher or equal to the one defined for the location
 
 	MinPrio := locConf.MinPriority
-	MinPrio = 0 // for debugging only
+	//MinPrio = 0 // for debugging only
 
 	// find Node Types with Priority > MinPrio
 	nodes := node.Nodes{}
-	matchesminprioquery := bson.M{"priority": bson.M{"$ge": MinPrio}}
+	matchesminprioquery := bson.M{"priority": bson.M{"$ge": MinPrio}} // the node has a priority higher than the Locations minimum threshold
 
 	switch function {
 
@@ -108,6 +108,7 @@ func LocRequest(ctx context.Context) {
 
 		// nodes with no JSON priority but Attr.Type that has a priority
 		nodes.GetAll(missingNodesWithHighPriorityQuery)
+
 		//spew.Dump(nodes)
 		// list all nodes without Location set or marked as Location.stored==false  MongoDB
 		responder.RespondWithData(ctx, nodes)
@@ -115,7 +116,7 @@ func LocRequest(ctx context.Context) {
 
 	// 	list all nodes marked as stored==true in Location in MongoDB
 	case "present":
-		query := bson.M{"locations.stored": bson.M{"$ne": "true"}}
+		query := bson.M{"locations.stored": bson.M{"$eq": "true"}}
 		nodes.GetAll(query)
 		responder.RespondWithData(ctx, nodes)
 		return
