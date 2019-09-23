@@ -1,0 +1,41 @@
+
+version: '3.1'
+
+# hint: uses .env file
+
+
+# optional
+# set DATADIR for persistent data store , e.g. /var/tmp/Shock
+# set CONFIGDIR to path to config
+# set LOGDIR to path to local log dir
+
+services:
+
+    # the SHOCK object store
+    # to make SHOCK data persistent uncomment the lines here and in "mongo" below
+    shock:
+        image: mgrast/shock
+        depends_on:
+          - shock-mongo
+        entrypoint: 
+          - /go/bin/shock-server 
+          - --hosts=shock-mongo 
+          - --force_yes=true               # avoids having shock ask interactive questions regarding db table updates
+          - --api-url=http://localhost:7445    # Shock returns a "preauth url", which consists of the api url
+          
+        ports:
+          - 7445:7445
+          
+  
+  
+
+    # mongoDB for the SHOCK service, provides metadata storage
+    shock-mongo:
+        image: mongo:3.6
+        ports:
+          - 27017
+        #volumes:
+          # persistent data
+          #- ${DATADIR}/mongo/db:/data/db
+
+    
