@@ -3,6 +3,7 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/MG-RAST/Shock/shock-server/auth/basic"
 	"github.com/MG-RAST/Shock/shock-server/auth/globus"
@@ -43,6 +44,12 @@ func Authenticate(header string) (u *user.User, err error) {
 	for _, auth := range authMethods {
 		u, err = auth(header)
 		if err != nil {
+
+			if conf.DEBUG_AUTH && len(authMethods) == 1 {
+				err = fmt.Errorf("(Authenticate) authMethod returned: %s", err.Error())
+				return
+			}
+
 			// log actual error, return consistant invalid auth to user
 			logger.Error("Err@auth.Authenticate: " + err.Error())
 			continue
@@ -55,5 +62,9 @@ func Authenticate(header string) (u *user.User, err error) {
 
 	}
 
+	if conf.DEBUG_AUTH {
+		err = fmt.Errorf("(Authenticate) No authMethod matched (count: %d)", len(authMethods))
+		return
+	}
 	return nil, errors.New(e.InvalidAuth)
 }

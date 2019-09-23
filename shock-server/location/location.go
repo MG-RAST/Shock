@@ -42,14 +42,14 @@ func LocRequest(ctx context.Context) {
 	}
 
 	// public user cannot use this
-	if (u == nil) && (!conf.DEBUG_AUTH) {
+	if (u == nil) && conf.USE_AUTH {
 		errMsg := "admin required"
 		//errMsg := e.UnAuth
 		responder.RespondWithError(ctx, http.StatusUnauthorized, errMsg)
 		return
 	}
 
-	if (u != nil) && (!u.Admin) && (!conf.DEBUG_AUTH) {
+	if (u != nil) && (!u.Admin) && conf.USE_AUTH {
 		errMsg := e.UnAuth
 		logger.Debug(2, "(LocRequest) attempt to use as non admin (user: %s)", u.Username)
 		responder.RespondWithError(ctx, http.StatusInternalServerError, errMsg)
@@ -86,24 +86,29 @@ func LocRequest(ctx context.Context) {
 	switch function {
 
 	case "missing":
-		// we ensure we only list nodes with Priority higher or equal to the one defined for the location
-		nolocations := bson.D{"locations": bson.D{"$exists": "false"}}                // there is no locations key in mongo for the node
-		nolocationquery := bson.D{"locations.id": bson.D{"$ne": locationID}}          // the location key for this locationID is not set
-		locationquery := bson.D{
-						"locations": bson.D{ "id" : "$eq": locationID } , "stored" : false}}            // check locationID for stored == false
-						// path locations."locationID".stored==false
 
-		locationstoredfalsequery := bson.M{"locations.stored": bson.M{"$ne": "true"}} // the location key for this Location is set but the stored value is not true
+		// 1) find nodes that have specific locationID but are not stored
+		locationStoredFalseQuery := bson.M{"locations": bson.M{"id": "anltsm", "stored": false}}
 
-		// check either node priority or priority of the data type
-		// nodes with Priority encoded in JSON directly
-		aquery := bson.M{"$and": []bson.M{nolocationquery, matchesminprioquery}}
-		bquery := bson.M{"$and": []bson.M{locationquery, locationstoredfalsequery, matchesminprioquery}}
-		cquery := bson.M{"$and": []bson.M{nolocations, matchesminprioquery}}
-		query := bson.M{"$or": []bson.M{aquery, bquery, cquery}}
+		// 2) array with locations but without specific location
+		noLocationQuery := bson.M{"locations.id": bson.M{"$ne": locationID}}
+
+		// 3) array is missing completely
+		locationArrayMissing := bson.M{"locations": bson.M{"$exists": "false"}}
+
+		// combine 1-3) we ensure we only list nodes with Priority higher or equal to the one defined for the location
+		allNodesLocationMissingQuery := bson.M{"$or": []bson.M{locationStoredFalseQuery, noLocationQuery, locationArrayMissing}}
+
+		// add priority
+		missingNodesWithHighPriorityQuery := bson.M{"$and": []bson.M{allNodesLocationMissingQuery, matchesminprioquery}}
+
+		//aquery := bson.M{"$and": []bson.M{nolocationquery, matchesminprioquery}}
+		//bquery := bson.M{"$and": []bson.M{locationstoredfalsequery, matchesminprioquery}}
+		//query := bson.M{"$and": []bson.M{aquery, bquery}}
 
 		// nodes with no JSON priority but Attr.Type that has a priority
-		nodes.GetAllD(query)
+		nodes.GetAll(missingNodesWithHighPriorityQuery)
+
 		//spew.Dump(nodes)
 		// list all nodes without Location set or marked as Location.stored==false  MongoDB
 		responder.RespondWithData(ctx, nodes)

@@ -5,6 +5,7 @@ package basic
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/MG-RAST/Shock/shock-server/conf"
@@ -67,11 +68,19 @@ func Auth(header string) (u *user.User, err error) {
 	//fmt.Printf("auth: %s\n", header)
 	username, password, err := DecodeHeader(header)
 	if err != nil {
+		if conf.DEBUG_AUTH {
+			err = fmt.Errorf("(Basic/Auth) DecodeHeader returned: %s", err.Error())
+		}
 		return
 	}
 	//fmt.Printf("auth: %s %s\n", username, password)
 
 	u, err = user.FindByUsernamePassword(username, password)
-
+	if err != nil {
+		if conf.DEBUG_AUTH {
+			err = fmt.Errorf("(Basic/Auth) user.FindByUsernamePassword returned: %s", err.Error())
+		}
+		return
+	}
 	return
 }
