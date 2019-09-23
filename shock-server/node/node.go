@@ -215,18 +215,18 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files file.F
 	}
 
 	// get attributes
-	var atttributes interface{}
+	var attributes interface{}
 	if attrFile, ok := files["attributes"]; ok {
 		defer attrFile.Remove()
 		attr, err := ioutil.ReadFile(attrFile.Path)
 		if err != nil {
 			return nil, err
 		}
-		if err = json.Unmarshal(attr, &atttributes); err != nil {
+		if err = json.Unmarshal(attr, &attributes); err != nil {
 			return nil, err
 		}
 	} else if attrStr, ok := params["attributes_str"]; ok {
-		if err = json.Unmarshal([]byte(attrStr), &atttributes); err != nil {
+		if err = json.Unmarshal([]byte(attrStr), &attributes); err != nil {
 			return nil, err
 		}
 	}
@@ -250,7 +250,7 @@ func CreateNodesFromArchive(u *user.User, params map[string]string, files file.F
 		node := New("")
 		node.Type = "basic"
 		node.Linkages = append(node.Linkages, link)
-		node.Attributes = atttributes
+		node.Attributes = attributes
 
 		if preserveAcls {
 			// copy over acls from parent node
