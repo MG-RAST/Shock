@@ -24,7 +24,7 @@ func Load(locID string) (loc *conf.LocationConfig, err error) {
 	return
 }
 
-// GET, /location/{loc}/{function}, specify -H "Content-Type: application/json"
+// LocRequest support GET for info|present|missing|inflight
 func LocRequest(ctx context.Context) {
 
 	locationID := ctx.PathValue("loc")
@@ -77,27 +77,33 @@ func LocRequest(ctx context.Context) {
 	// ensure we only list nodes with Priority higher or equal to the one defined for the location
 
 	MinPrio := locConf.MinPriority
-	MinPrio = 0 // for debugging only
+	//MinPrio = 0 // for debugging only
 
 	// find Node Types with Priority > MinPrio
 	nodes := node.Nodes{}
-	matchesminprioquery := bson.M{"priority": bson.M{"$ge": MinPrio}}
+	matchesminprioquery := bson.M{"priority": bson.M{"$ge": MinPrio}} // the node has a priority higher than the Locations minimum threshold
 
 	switch function {
 
 	case "missing":
 		// we ensure we only list nodes with Priority higher or equal to the one defined for the location
-		nolocationquery := bson.M{"locations.id": bson.M{"$ne": locationID}}
-		locationstoredfalsequery := bson.M{"locations.stored": bson.M{"$ne": "true"}}
+		nolocations := bson.D{"locations": bson.D{"$exists": "false"}}                // there is no locations key in mongo for the node
+		nolocationquery := bson.D{"locations.id": bson.D{"$ne": locationID}}          // the location key for this locationID is not set
+		locationquery := bson.D{
+						"locations": bson.D{ "id" : "$eq": locationID } , "stored" : false}}            // check locationID for stored == false
+						// path locations."locationID".stored==false
+
+		locationstoredfalsequery := bson.M{"locations.stored": bson.M{"$ne": "true"}} // the location key for this Location is set but the stored value is not true
 
 		// check either node priority or priority of the data type
 		// nodes with Priority encoded in JSON directly
 		aquery := bson.M{"$and": []bson.M{nolocationquery, matchesminprioquery}}
-		bquery := bson.M{"$and": []bson.M{locationstoredfalsequery, matchesminprioquery}}
-		query := bson.M{"$and": []bson.M{aquery, bquery}}
+		bquery := bson.M{"$and": []bson.M{locationquery, locationstoredfalsequery, matchesminprioquery}}
+		cquery := bson.M{"$and": []bson.M{nolocations, matchesminprioquery}}
+		query := bson.M{"$or": []bson.M{aquery, bquery, cquery}}
 
 		// nodes with no JSON priority but Attr.Type that has a priority
-		nodes.GetAll(query)
+		nodes.GetAllD(query)
 		//spew.Dump(nodes)
 		// list all nodes without Location set or marked as Location.stored==false  MongoDB
 		responder.RespondWithData(ctx, nodes)
@@ -105,7 +111,7 @@ func LocRequest(ctx context.Context) {
 
 	// 	list all nodes marked as stored==true in Location in MongoDB
 	case "present":
-		query := bson.M{"locations.stored": bson.M{"$ne": "true"}}
+		query := bson.M{"locations.stored": bson.M{"$eq": "true"}}
 		nodes.GetAll(query)
 		responder.RespondWithData(ctx, nodes)
 		return
