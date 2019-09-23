@@ -2,13 +2,14 @@ package node
 
 import (
 	"errors"
+	"io/ioutil"
+	"path/filepath"
+	"strings"
+
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/db"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"io/ioutil"
-	"path/filepath"
-	"strings"
 )
 
 // mongodb has hard limit of 16 MB docuemnt size
@@ -67,6 +68,39 @@ func dbUpsert(n *Node) (err error) {
 }
 
 func dbFind(q bson.M, results *Nodes, order string, options map[string]int) (count int, err error) {
+	session := db.Connection.Session.Copy()
+	defer session.Close()
+	c := session.DB(conf.MONGODB_DATABASE).C("Nodes")
+	if order == "" {
+		order = "created_on"
+	}
+	if limit, has := options["limit"]; has {
+		if offset, has := options["offset"]; has {
+			query := c.Find(q).Sort(order)
+			count, err = query.Count()
+			if err != nil {
+				count = 0
+				return
+			}
+			err = query.Limit(limit).Skip(offset).All(results)
+			if err != nil {
+				return
+			}
+		} else {
+			err = errors.New("store.db.Find options limit and offset must be used together")
+			return
+		}
+	} else {
+		err = c.Find(q).Sort(order).All(results)
+		if err != nil {
+			return
+		}
+	}
+	results.DBInit()
+	return
+}
+
+func dbFindD(q bson.D, results *Nodes, order string, options map[string]int) (count int, err error) {
 	session := db.Connection.Session.Copy()
 	defer session.Close()
 	c := session.DB(conf.MONGODB_DATABASE).C("Nodes")

@@ -277,8 +277,6 @@ func Initialize() (err error) {
 
 	TransitMap = make(map[string]struct{}) //bool)
 
-	//TransitMap["nil"] = false
-
 	err = nil
 
 	return

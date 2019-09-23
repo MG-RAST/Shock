@@ -18,6 +18,11 @@ func (n *Nodes) GetAll(q bson.M) (err error) {
 	return
 }
 
+func (n *Nodes) GetAllD(q bson.D) (err error) {
+	_, err = dbFindD(q, n, "", nil)
+	return
+}
+
 func (n *Nodes) GetPaginated(q bson.M, limit int, offset int, order string) (count int, err error) {
 	count, err = dbFind(q, n, order, map[string]int{"limit": limit, "offset": offset})
 	return
