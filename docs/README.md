@@ -20,26 +20,124 @@ Shock is actively being developed at [github.com/MG-RAST/Shock](https://github.c
 
 (see [Shock: Active Storage for Multicloud Streaming Data Analysis](http://ieeexplore.ieee.org/abstract/document/7406331/), Big Data Computing (BDC), 2015 IEEE/ACM 2nd International Symposium on, 2015)
 
-Check out the notes  on [building and installing Shock](./building.md) and [configuration](./configuration.md).
+Check out the notes on [building and installing Shock](./building.md) and [configuration](./configuration.md).
 
 
 ## Shock in 30 seconds (for Docker-compose) (or later for kubectl )
-This assumes that you have `docker` and `docker-compose` installed and `curl` is available locally.
+This assumes that you have `docker` and `docker-compose` installed and `curl` is available locally. To improve readability of JSON output we recommend to use a JSON pretty printer such as [`jq`](https://stedolan.github.io/jq/download/) or `python -m json.tool` 
 
-### Download the container
-`docker-compose up`
+### Start Shock
+```bash
+docker-compose up
+```
+This will automatically download and start Shock and MongoDB Dockerimages. Note that in this demo-configuration Shock does not store data persistently.
 
-Don't forget to later `docker-compose down` and do not forget, by default this configuration does not store data persistently.
+### Test connection to Shock
+
+Open another terminal: 
+
+```bash
+curl http://localhost:7445/ | jq .
+```
+Should return a JSON object describing Shock, i.e. version number.
 
 ### Push a file into Shock
-`curl -H 'Authorization: basic dXNlcjE6c2VjcmV0' -X PUT -F 'file_name=@myfile' http://localhost:7445/node`
+
+```bash
+curl -X POST -F 'upload=@test/testdata/10kb.fna' http://localhost:7445/node | jq .
+```
+
+returns
+
+```text
+{
+  "status": 200,
+  "data": {
+    "id": "8eb28ad3-2561-4847-8034-6d5473fecfad",
+    "version": "88e3227e7ba47a8d595f243ef16f9c2b",
+    "file": {
+      "name": "10kb.fna",
+      "size": 11914,
+      "checksum": {
+        "md5": "730c276ea1510e2b7ef6b682094dd889"
+      },
+      "format": "",
+      "virtual": false,
+      "virtual_parts": null,
+      "created_on": "2019-09-23T20:22:52.506403Z",
+      "locked": null
+    },
+    "attributes": null,
+    "indexes": {
+      "size": {
+        "total_units": 1,
+        "average_unit_size": 1048576,
+        "created_on": "2019-09-23T20:22:52.5165769Z",
+        "locked": null
+      }
+    },
+    "version_parts": {
+      "acl_ver": "b46701cc24139e5cca2100e09ec48c19",
+      "attributes_ver": "2d7c3414972b950f3d6fa91b32e7920f",
+      "file_ver": "fcd9613da51b9b181ff94434a19add87",
+      "indexes_ver": "88455c093e82651aa042252dca2a37f8"
+    },
+    "tags": null,
+    "linkage": null,
+    "priority": 0,
+    "created_on": "2019-09-23T20:22:52.5193448Z",
+    "last_modified": "0001-01-01T00:00:00Z",
+    "expiration": "0001-01-01T00:00:00Z",
+    "type": "basic",
+    "parts": null,
+    "locations": null
+  },
+  "error": null
+}
+```
+
+The resulting JSON object contains an `id` field (line 4 in this example), in this example its value is `8eb28ad3-2561-4847-8034-6d5473fecfad`. This identifier is a [uuid](https://en.wikipedia.org/wiki/Universally_unique_identifier), which can be used to download the file. 
+
+Saving the node id in an environment variable allows to simply copy-and-paste the following examples:
+
+```bash
+NODE_ID=<uuid>
+```
 
 
-### Download a file from Shock
+### View Shock node
 
-`curl -H 'Authorization: basic dXNlcjE6c2VjcmV0' http://localhost:7445/node`
 
-Do not forget, by default this configuration does not store data persistently.
+```bash
+curl http://localhost:7445/node/${NODE_ID} | jq .
+```
+
+### Download a file
+
+
+```bash
+curl -OJ "http://localhost:7445/node/${NODE_ID}?download"
+```
+
+returns: `curl: Saved to filename '10kb.fna'`
+
+Option `-OJ` makes sure that curl saves the file using the correct filename.
+
+
+### Add metadata
+
+```bash
+curl -X PUT -F 'attributes_str={"project":"extraterrestrial_lifeforms", "sample-nr": 1}' http://localhost:7445/node/${NODE_ID} | jq .
+```
+
+### Search by metadata
+
+List all nodes in the project:
+
+```bash
+curl 'http://localhost:7445/node?query&project=extraterrestrial_lifeforms' | jq .
+```
+
 
 ## Documentation
 - [API documentation](./API/README.md).
