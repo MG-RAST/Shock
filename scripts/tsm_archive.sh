@@ -97,7 +97,7 @@ else
   if [ ${verbose} == "1" ] ; then
     echo "creating new DUMP file ($filename)"
   fi
-  dsmc q b "${SHOCK_DATA_PATH}/*/*/*/*/*" > $filename
+  dsmc query archive "${SHOCK_DATA_PATH}/*/*/*/*/*" > $filename
   chmod g+w ${filename} 2>/dev/null
 
 fi
@@ -291,7 +291,7 @@ fi
 # run the command to request archiving
 
   if [[ $verbose == "1" ]] ; then
-    echo "running dsmc inc -se=$SERV -filelist=${OUTCOPY} > /dev/null"
+    echo "running archive -se=$SERV -filelist=${OUTCOPY} > /dev/null"
   fi
 
 # capture the return value and report any errors
