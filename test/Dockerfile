@@ -2,7 +2,7 @@
 #docker build -t mgrast/shock-pytest -f Dockerfile_pytest .
 #docker run -ti --rm --network=shock-test_default mgrast/shock-pytest
 
-FROM golang:alpine
+FROM alpine
 
 ENV SHOCK_URL=http://shock:7445
 ENV SHOCK_AUTH="basic dXNlcjE6c2VjcmV0"
