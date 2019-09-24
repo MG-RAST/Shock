@@ -1,36 +1,32 @@
-##### This test container can be ran in skyport2 enviroment to test shock-server
-#
-# docker build -t mgrast/shock-test -f test/Dockerfile .
-# docker run --rm --name test -t -d mgrast/shock-test ash
-# docker exec test ash -c 'HOSTIP=`/sbin/ip route | head -1 | cut -f3 -d" "`; echo "$HOSTIP skyport.local" >> /etc/hosts'
-# docker exec test /shock-tester.sh -h http://skyport.local -p 7445
-#
-# Note the setcap Linux command will only succeed if run as root.
-# This allows the shock-server to bind to port 80 if desired.
-#setcap 'cap_net_bind_service=+ep' bin/shock-server
+
+#docker build -t mgrast/shock-pytest -f Dockerfile_pytest .
+#docker run -ti --rm --network=shock-test_default mgrast/shock-pytest
 
 FROM golang:alpine
 
+ENV SHOCK_URL=http://shock:7445
+ENV SHOCK_AUTH="basic dXNlcjE6c2VjcmV0"
+
+
 RUN apk update && apk add \
-    git \
     python3
+
+RUN pip3 install --upgrade pip
 
 RUN pip3 install \
     pytest \
     requests 
 
-ENV DIR=/go/src/github.com/MG-RAST/Shock
-WORKDIR /
+COPY testdata /testing/testdata/
+COPY test_shock.py /testing/
+WORKDIR /testing
 
-COPY . /go/src/github.com/MG-RAST/Shock
 
-RUN mkdir -p /data/db /var/log/shock /usr/local/shock/data ${DIR} && \
-    ln -s ${DIR}/test/testdata /testdata && \
-    ln -s ${DIR}/test/shock-tester.sh /shock-tester.sh
+# example single test:
+# py.test -k test_querynode_name
 
-# compile
-RUN cd ${DIR} && \
-      CGO_ENABLED=0 go install -a -installsuffix cgo -v ./shock-client/
+# example all tests:
+# py.test -k test_shock
 
-# run tests
-CMD ["/bin/ash"]
+# 
+# curl -X POST -H "Authorization: ${SHOCK_AUTH}" -F 'attributes_str={test:"hello"}' ${SHOCK_URL}/node
