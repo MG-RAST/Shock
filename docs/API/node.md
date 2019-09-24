@@ -2,49 +2,41 @@
 
 ### API Routes for /node (default port 7445):
 
-##### OPTIONS
 
-- Permitted by everyone:
-  - all options requests respond with CORS headers and 200 OK
+#### Nodes
 
-##### POST
+- `/node`
+    - `GET` list nodes
+- `/node?query`
+    - `GET` search query
+- `/node/<node_id>`
+    - `GET` view node, download file (full or partial)
+    - `PUT` modify node (e.g. update attributes of existing node)
+    - `DELETE` delete node
 
-- Permitted by everyone:
-  - /node  create node
+#### Node permission
 
-##### GET
+- ` /node/<node_id>/acl`  
+    - `GET` view node acls
+    - `PUT`  modify node acls
+- `/node/<node_id>/acl/<type>`  
+    - `GET` view node acls of type `<type>`
+    - `PUT` modify node acls of type `<type>`
 
-- Permitted by everyone:
-  - `/`  resource listing
+#### Node indices
+
+- `/node/<node_id>/index/<type>`  
+  - `PUT` create node indexes
+  - `DELETE` delete node index
+
+- `/node/<node_id>/index/<type>?upload` 
+  - `PUT` upload node index
+- `/node/<node_id>/acl/<type>?users=<user-ids_or_uuids>`
+    - `DELETE`
 
 
-- Permitted by admin, node owner, users in read ACL, or everyone if node is publicly readable:
-  - `/node`  list nodes, query
-  - `/node/<node_id>`  view node, download file (full or partial)
-  - `/node/<node_id>/acl`  view node acls
-  - `/node/<node_id>/acl/<type>`  view node acls of type `<type>`
 
-##### PUT
 
-- Permitted by: admin, node owner, users in write ACL, or everyone if node is publicly writable:
-  - `/node/<node_id>`  modify node (e.g. update attributes of existing node)
-  - `/node/<node_id>/acl`  modify node acls
-  - `/node/<node_id>/acl/<type>`  modify node acls of type `<type>`
-  - `/node/<node_id>/index/<type>`  create node indexes
-  - `/node/<node_id>/index/<type>?upload` upload node index
-
-##### DELETE
-
-- Permitted by: admin, node owner, users in delete ACL, or everyone if node is publicly deletable:
-  - `/node/<node_id>`  delete node
-
-- Permitted by: admin, node owner, users in write ACL, or everyone if node is publicly writable:
-  - `/node/<node_id>/inde/<type>`  delete node index
-
-- Permitted by: admin, node owner, users in write ACL, or everyone if node is publicly writable:
-  - `/node/<node_id>/acl/<type>?users=<user-ids_or_uuids>`  delete users from ACL
-<br>
-<br>
 
 NOTE: Although a node may be designated as publicly readable, writable, or deletable, user authentication may still be required  to perform the operation depending on the Shock server's configuration.
 <br>
