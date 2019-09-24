@@ -23,7 +23,6 @@ test.out
 build.out
 _obj
 .project
-*_folker*
 
 # bin 
 pkg
