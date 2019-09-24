@@ -78,7 +78,10 @@ for (i = 0; i < coll.length; i++) {
 #### Nodes
 
 - `/node`
-    - `GET` list nodes
+    - <button type="button" class="collapsible">`GET` list nodes</button>
+<div class="content">
+  <p>hello world</p>
+</div>
 - `/node?query`
     - `GET` search query
 - `/node/<node_id>`
