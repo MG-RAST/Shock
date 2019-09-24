@@ -69,6 +69,8 @@ for (i = 0; i < coll.length; i++) {
 }
 </script>
 
+</body>
+</html>
 
 ### API Routes for /node (default port 7445):
 
