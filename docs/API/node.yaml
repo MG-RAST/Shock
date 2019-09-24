@@ -1,0 +1,146 @@
+openapi: 3.0.0
+servers:
+  - url: shock.mg-rast.org
+info:
+  description: |
+    test
+  version: 1.0.0
+  title: Shock2
+  termsOfService: ''
+tags:
+  - name: node
+    description: Node resource
+  - name: nodeAcl
+    description: Node ACL subresource
+  - name: nodeIndex
+    description: Node index subresource
+paths:
+  '/node/{nodeId}':
+    get:
+      description: get node
+      responses:
+        '200':
+          description: OK
+      tags:
+        - node
+    parameters:
+      - in: path
+        name: nodeId
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: download
+        schema:
+          type: string
+        required: false
+        description: download file
+    put:
+      summary: ''
+      description: ''
+      operationId: ''
+      responses:
+        default:
+          description: Default error sample response
+      tags:
+        - node
+    delete:
+      summary: delete node
+      description: ''
+      operationId: ''
+      responses:
+        default:
+          description: Default error sample response
+      tags:
+        - node
+  /node:
+    get:
+      description: list nodes
+      responses:
+        '200':
+          description: OK
+      tags:
+        - node
+    parameters:
+      - in: query
+        name: query
+        schema:
+          type: string
+        required: true
+        description: search
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        required: false
+      - in: query
+        name: offset
+        schema:
+          type: integer
+        required: false
+  '/node/{nodeId}/acl':
+    get:
+      summary: view node acls of type
+      description: ''
+      operationId: ''
+      parameters:
+        - in: path
+          name: nodeId
+          schema:
+            type: string
+          required: true
+      responses:
+        default:
+          description: Default error sample response
+      tags:
+        - nodeAcl
+    put:
+      summary: 'modify node acls of type '
+      description: ''
+      operationId: ''
+      parameters:
+        - in: path
+          name: nodeId
+          schema:
+            type: string
+          required: true
+      responses:
+        default:
+          description: Default error sample response
+      tags:
+        - nodeAcl
+  /node/<node_id>/index/<type>:
+    put:
+      summary: create node indexes
+      description: ''
+      operationId: ''
+      responses:
+        default:
+          description: Default error sample response
+      parameters:
+        - in: query
+          name: upload
+          description: upload node index
+          schema:
+            type: string
+          required: false
+      tags:
+        - nodeIndex
+    delete:
+      summary: delete node index
+      description: ''
+      parameters:
+        - in: query
+          name: users
+          description: delete 
+          schema:
+            type: string
+          required: false
+          example: <user-ids_or_uuids>
+      operationId: ''
+      responses:
+        default:
+          description: Default error sample response
+      tags:
+        - nodeIndex
+security: []
