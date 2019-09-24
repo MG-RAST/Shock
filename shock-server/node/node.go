@@ -42,6 +42,7 @@ type Node struct {
 	Subset       Subset            `bson:"subset" json:"-"`
 	Parts        *PartsList        `bson:"parts" json:"parts"`
 	Locations    []Location        `bson:"locations" json:"locations"` // see below
+	Restore      bool              `bson:"restore" json:"restore"`     // has a restore request been observed
 }
 
 // Location a data type to represent storage locations (defined in LocationConfig) and status of data in flight
@@ -670,5 +671,26 @@ func (node *Node) DeleteLocation(locID string) (err error) {
 // DeleteLocations _
 func (node *Node) DeleteLocations() (err error) {
 	node.Locations = []Location{}
+	return
+}
+
+// GetRestore return true if node has been marked for restoring from external Location
+func (node *Node) GetRestore() (stat bool) {
+
+	stat = node.Restore
+
+	return
+}
+
+// SetRestore set Restore value to true to mark node for restoring from external Location
+func (node *Node) SetRestore() {
+	node.Restore = true
+	return
+}
+
+// UnsetRestore set Restore value to false, node restore has been requested e.g. via TSM client
+func (node *Node) UnSetRestore() {
+
+	node.Restore = false
 	return
 }
