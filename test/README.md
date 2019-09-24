@@ -2,6 +2,10 @@
 # testing
 
 ```bash
+
+#ensure latest container is built
+(cd ../; docker build -t mgrast/shock .)
+
 #build test image
 docker build -t mgrast/shock-pytest .
 
