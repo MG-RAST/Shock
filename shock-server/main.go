@@ -142,6 +142,22 @@ func mapRoutes() {
 		return nil
 	})
 
+	goweb.Map("/node/{nid}/restore/", func(ctx context.Context) error {
+		if ctx.HttpRequest().Method == "OPTIONS" {
+			return responder.RespondOK(ctx)
+		}
+		node.RestoreRequest(ctx)
+		return nil
+	})
+
+	goweb.Map("/node/{nid}/restore/{val}", func(ctx context.Context) error {
+		if ctx.HttpRequest().Method == "OPTIONS" {
+			return responder.RespondOK(ctx)
+		}
+		node.RestoreRequest(ctx)
+		return nil
+	})
+
 	// goweb.Map("/location/{loc}", func(ctx context.Context) error {
 	// 	if ctx.HttpRequest().Method == "OPTIONS" {
 	// 		return responder.RespondOK(ctx)

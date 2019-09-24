@@ -135,6 +135,7 @@ var (
 
 	// Config File
 	CONFIG_FILE string
+	NO_CONFIG   bool
 
 	// Runtime
 	EXPIRE_WAIT   int // wait time for reaper in minutes
@@ -196,7 +197,12 @@ var (
 // the conf variables.
 func Initialize() (err error) {
 
+	USE_CONFIG := true
 	for i, elem := range os.Args {
+
+		if elem == "-noconf" || elem == "--noconf" {
+			USE_CONFIG = false
+		}
 		if strings.HasPrefix(elem, "-conf") || strings.HasPrefix(elem, "--conf") {
 			parts := strings.SplitN(elem, "=", 2)
 			if len(parts) == 2 {
@@ -210,6 +216,9 @@ func Initialize() (err error) {
 	}
 
 	var c *config.Config = nil
+	if CONFIG_FILE == "" && USE_CONFIG { // use a default config file if none is specified
+		CONFIG_FILE = "/etc/shock.d/shock-server.conf"
+	}
 	if CONFIG_FILE != "" {
 		c, err = config.ReadDefault(CONFIG_FILE)
 		if err != nil {
@@ -433,8 +442,8 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 
 	// Other - thses option are CLI only
 	c_store.AddString(&RELOAD, "", "Other", "reload", "path or url to shock data. WARNING this will drop all current data.", "")
-	gopath := os.Getenv("GOPATH")
-	c_store.AddString(&CONFIG_FILE, gopath+"/src/github.com/MG-RAST/Shock/shock-server.conf.template", "Other", "conf", "path to config file", "")
+	c_store.AddString(&CONFIG_FILE, "", "Other", "conf", "path to config file", "")
+	c_store.AddBool(&NO_CONFIG, false, "Other", "conf", "do not use config file", "")
 	c_store.AddBool(&FORCE_YES, false, "Other", "force_yes", "show version", "")
 	c_store.AddBool(&SHOW_VERSION, false, "Other", "version", "show version", "")
 	c_store.AddBool(&PRINT_HELP, false, "Other", "fullhelp", "show detailed usage without \"--\"-prefixes", "")
