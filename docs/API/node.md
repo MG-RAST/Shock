@@ -1,6 +1,6 @@
 
 
-
+<html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
@@ -70,7 +70,7 @@ for (i = 0; i < coll.length; i++) {
 </script>
 
 </body>
-
+</html>
 
 ### API Routes for /node (default port 7445):
 
