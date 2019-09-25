@@ -41,3 +41,7 @@ locations.yaml
 lo
 shock.code-workspace
 types.yaml
+
+
+.swagger-codegen-ignore
+.swagger-codegen/VERSION
