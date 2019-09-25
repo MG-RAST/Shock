@@ -1,11 +1,12 @@
 #!/bin/sh
 
-# usage: ./tsm_restore [-v] node(s)
+# usage: ./tsm_restore [-v]
 # audience: Shock admin
-# purpose: restore file(s) from a TSM location into the data path of a shock server
+# purpose: restore file(s) from a TSM location marked as /node/<nID>/restore
+# query: /location/<locationID>/restore for a list
 
 # example:
-# "./tsm_restore -v 0001a988-f2a2-4c55-a42e-dd28d42d0344 0001c1ed-58a3-44ca-8be5-f05a5d37da5b"
+# "./tsm_restore -v 
 
 ### ################################################################################
 ### Config variables start here
@@ -19,8 +20,7 @@ SHOCK_DATA_PATH="/dpool/mgrast/shock/data"
 LOCATION_NAME="anltsm"
 # name of the dump file for TSM data
 TSM_DUMP="/var/tmp/restore_list_${LOCATION_NAME}.txt"
-# TSM servername
-TSM_SERVER=TSM_CELS
+
 # NOTE: we assume authentication bits to be contain in the AUTH env variable
 WCOPY=${SHOCK_DATA_PATH}/$(basename $0)_wcopy.$$.txt
 OUTCOPY=${SHOCK_DATA_PATH}/$(basename $0)_output.$$.txt
@@ -61,6 +61,39 @@ else
     return 1
 fi
 }
+
+### ################################################################################
+### ################################################################################
+
+###  extract a list of all items in TSM backup once every day
+function retrieve_restore_DUMP () {
+
+local filename=$1
+
+rm -f ${WCOPY}
+
+local cmd="curl -s -X POST -H \"$AUTH\" \"${SHOCK_SERVER_URL}/location/${LOCATION_NAME}/restore/\" |  jq .data[].id | tr -d \"  "
+
+  if [ ${verbose} == "1" ] ; then
+    echo "retrieving nodes file for restoring [${cmd} > $filename]"
+  fi
+
+  JSON=$(${cmd})
+
+  if echo ${JSON} |  grep -q 200 ; then
+      echo ${JSON} |  jq .data[].id | tr -d \"  > ${WCCOPY}
+  else
+      if [ ${verbose} == "1" ] ; then
+        echo "failed $?"
+        echo "${JSON}"
+      fi
+      return 1
+  fi
+
+  return 0
+}
+
+
 ### ################################################################################
 ### ################################################################################
 ### ################################################################################
@@ -68,7 +101,7 @@ fi
 
 #### write usage info
 function usage() {
-      echo "script usage: $(basename $0) [-v] [-h] node1 [node2 node3] ..." >&2
+      echo "script usage: $(basename $0) [-v] [-h] " >&2
       echo "connect with TSM to restore nodes to the correct data path" >&2
 }
 
@@ -101,13 +134,6 @@ done
 shift "$(($OPTIND -1))"
 
 
-
-# check if at least one argument is provided
-if [ $# -lt 1 ] ; then
-	usage
-	exit 1	
-fi
-
 if [ "${force}x" == "x" ] && [ -e ${LOCKF} ]; then 
   echo " [$(basename $0)] Lockfile ${LOCKF} exists; exiting"
   exit 1
@@ -133,21 +159,27 @@ fi
 
 # remove any remaining tmp files
 rm -f ${TSM_DUMP}
-### create correct paths in a temporary filelist NOTE: this requires the WILDCARDSareliteral Option to be set for DSMC
-for node in $@
-do
+
+
+### iterate over file to create correct paths in a temporary filelist 
+while read line; do 
+    id=$(echo $line)  
+    if [[ $verbose == "1" ]] ; then 
+	    echo "working on $id"
+    fi
+
     ret= check_node ${node} ${LOCATION_NAME}
     if [[ ${ret} -eq 0 ]] ; then 
         echo "${SHOCK_DATA_PATH}/*/*/*/*/${name}/*" >> ${TSM_DUMP}
     else
         if [[ $verbose == "1" ]] ; then
-        echo "[$(basename $0)] NODE ${name} not present in ${LOCATION_NAME}"
+            echo "[$(basename $0)] NODE ${name} not present in ${LOCATION_NAME}"
         fi
     fi
-done
+done <${WCOPY}
 
 # restore command to original location
-cmd="dsmc1 restore -filelist=${TSM_DUMP} -subdir=yes"
+cmd="dsmc retrieve -filelist=${TSM_DUMP} -subdir=yes"
 
 # run the command to request archiving
 if [[ $verbose == "1" ]] ; then
