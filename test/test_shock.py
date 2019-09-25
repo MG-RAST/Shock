@@ -49,13 +49,19 @@ class TestClass:
 
         # SHOCK_AUTH="bearer token"
         global SHOCK_AUTH
-        SHOCK_AUTH = os.environ.get("SHOCK_AUTH", None)
+        global SHOCK_ADMIN_AUTH
+        global SHOCK_USER_AUTH
+        #SHOCK_AUTH = os.environ.get("SHOCK_AUTH", None)
+        SHOCK_ADMIN_AUTH="basic YWRtaW46c2VjcmV0"
+        SHOCK_USER_AUTH="basic dXNlcjE6c2VjcmV0"
         global AUTH
-        AUTH=SHOCK_AUTH
+        AUTH=SHOCK_USER_AUTH
         global FILELIST
         FILELIST = ["AAA.txt", "BBB.txt", "CCC.txt"]
         global TESTHEADERS
-        TESTHEADERS = {"Authorization": SHOCK_AUTH}
+        TESTHEADERS = {"Authorization": SHOCK_USER_AUTH}
+        global TESTAHEADERS
+        TESTAHEADERS = {"Authorization": SHOCK_ADMIN_AUTH}
         #if URL == "https://sequencing.bio.anl.gov":
         #    TESTHEADERS= {"AUTH" : TOKEN}
         global DONTDELETE
@@ -626,3 +632,34 @@ class TestClass:
         assert "total_count" in data.keys(), data
         assert data["total_count"] > 0, data
         assert data["data"][0]["file"]["name"] == "AAA.txt"
+
+    
+    def test_location_get_info(self):
+        LOCATION = "S3" # this is defined in the Locations.yaml in {REPO}/test/config.d 
+        TESTURL = "/".join( [SHOCK_URL , "location" , LOCATION , "info"  ] )
+
+        response = requests.get( TESTURL, headers=TESTAHEADERS)
+        if DEBUG:
+            print ("URL", TESTURL)
+            print("DATA", response.text)
+        assert response.status_code == 200
+
+ 
+    def test_types_get_info(self):
+        LOCATION = "metadata"
+        TESTURL = "/".join( [SHOCK_URL , "types" , LOCATION , "info"  ] )
+
+        response = requests.get( TESTURL, headers=TESTAHEADERS)
+        if DEBUG:
+            print ("URL", TESTURL)
+            print("DATA", response.text)
+        assert response.status_code == 200
+    
+       
+       
+
+    def test_node_set_location(self) :
+        pass
+
+    def test_node_get_location(self) :
+        pass
