@@ -9,17 +9,38 @@ info:
 tags:
   - name: node
     description: Node resource
-  - name: nodeAcl
+  - name: node_acl
     description: Node ACL subresource
-  - name: nodeIndex
+  - name: node_index
     description: Node index subresource
+components:
+  schemas:
+    Node:
+      properties:
+        id:
+          type: string
+        file:
+          type: string
+        attributes:
+          type: object
+        indexes:
+          type: string
+        version:
+          type: string
+    # Both properties are required
+      required:  
+       - id
 paths:
   '/node/{nodeId}':
     get:
-      description: get node
+      #description: 'get node'
       responses:
-        '200':
+        200:
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Node'
       tags:
         - node
     parameters:
@@ -93,7 +114,7 @@ paths:
         default:
           description: Default error sample response
       tags:
-        - nodeAcl
+        - node_acl
     put:
       summary: 'modify node acls of type '
       description: ''
@@ -102,7 +123,7 @@ paths:
         default:
           description: Default error sample response
       tags:
-        - nodeAcl
+        - node_acl
   '/node/{nodeId}/acl/{type}':
     parameters:
       - in: path
@@ -123,7 +144,7 @@ paths:
         default:
           description: Default error sample response
       tags:
-        - nodeAcl
+        - node_acl
     put:
       summary: 'modify node acls of type '
       description: ''
@@ -138,7 +159,7 @@ paths:
         default:
           description: Default error sample response
       tags:
-        - nodeAcl
+        - node_acl
   '/node/{nodeId}/index/{type}':
     parameters:
       - in: path
@@ -161,7 +182,7 @@ paths:
           description: Default error sample response
       
       tags:
-        - nodeIndex
+        - node_index
     delete:
       summary: delete node index
       description: ''
