@@ -14,26 +14,31 @@ tags:
   - name: node_index
     description: Node index subresource
 components:
-  schemas:
-    Node:
-      properties:
-        id:
-          type: string
-        file:
-          type: string
-        attributes:
-          type: object
-        indexes:
-          type: string
-        version:
-          type: string
-    # Both properties are required
-      required:  
-       - id
+ schemas:
+   Node:
+     properties:
+       id:
+         type: string
+         description: unique identifier
+       file:
+         type: object
+         description:  name, size, checksum(s).
+       attributes:
+         type: object
+         description: arbitrary json. Queriable.
+       indexes:
+         type: string
+         description: A set of indexes to use
+       version:
+         type: string
+         description: a version stamp for this node
+   # Both properties are required
+     required:  
+      - id
 paths:
   '/node/{nodeId}':
     get:
-      #description: 'get node'
+      summary: view and download node
       responses:
         200:
           description: OK
@@ -41,6 +46,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Node'
+              example:
+                attributes: 
+                created_on: '2014-06-16T11:08:17.955-05:00'
+                file:
+                  checksum: {}
+                  format: ''
+                  name: ''
+                  size: 0
+                  virtual: false
+                  virtual_parts: []
+                id: 130cadb5-9435-4bd9-be13-715ec40b2bb5
+                indexes:
+                  size:
+                    total_units: 100
+                    average_unit_size: 1048576
+                last_modified: '2014-06-16T11:25:16.535-05:00'
+                linkages: []
+                tags: []
+                type: basic
+                version: aabfee3e4291a649c00984451e1ff891
       tags:
         - node
     parameters:
@@ -56,7 +81,7 @@ paths:
         required: false
         description: download file
     put:
-      summary: ''
+      summary: 'update node'
       description: ''
       operationId: ''
       responses:
@@ -75,19 +100,14 @@ paths:
         - node
   '/node':
     get:
-      description: list nodes
-      responses:
-        '200':
-          description: OK
-      tags:
-        - node
-    parameters:
+      summary: list nodes
+      parameters:
       - in: query
         name: query
         schema:
-          type: string
+          type: boolean
+          example: true
         required: false
-        description: search
       - in: query
         name: limit
         schema:
@@ -98,6 +118,34 @@ paths:
         schema:
           type: integer
         required: false
+      responses:
+        '200':
+          description: OK
+      tags:
+        - node
+    post:
+      summary: upload file
+      parameters:
+      - in: query
+        name: attributes
+        description: "specifies a file containing attributes in JSON format"
+        schema:
+          type: string
+        required: false
+        example: "attributes.json"
+      - in: query
+        name: attributes_str
+        description: "attributes in JSON format"
+        schema:
+          type: string
+          example: '{"project" : "human gut", "sample": "sample1"}'
+        required: false
+      responses:
+        '200':
+          description: OK
+      tags:
+        - node
+    
   '/node/{nodeId}/acl':
     parameters:
       - in: path
@@ -198,5 +246,5 @@ paths:
         default:
           description: Default error sample response
       tags:
-        - nodeIndex
+        - node_index
 security: []
