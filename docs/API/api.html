@@ -693,19 +693,24 @@
   "required" : [ "id" ],
   "properties" : {
     "id" : {
-      "type" : "string"
+      "type" : "string",
+      "description" : "unique identifier"
     },
     "file" : {
-      "type" : "string"
+      "type" : "object",
+      "description" : "name, size, checksum(s)."
     },
     "attributes" : {
-      "type" : "object"
+      "type" : "object",
+      "description" : "arbitrary json. Queriable."
     },
     "indexes" : {
-      "type" : "string"
+      "type" : "string",
+      "description" : "A set of indexes to use"
     },
     "version" : {
-      "type" : "string"
+      "type" : "string",
+      "description" : "a version stamp for this node"
     }
   }
 };
@@ -737,6 +742,9 @@
                     </li>
                     <li data-group="Node" data-name="nodeNodeIdPut" class="">
                       <a href="#api-Node-nodeNodeIdPut">nodeNodeIdPut</a>
+                    </li>
+                    <li data-group="Node" data-name="nodePost" class="">
+                      <a href="#api-Node-nodePost">nodePost</a>
                     </li>
                   <li class="nav-header" data-group="NodeAcl"><a href="#api-NodeAcl">API Methods - NodeAcl</a></li>
                     <li data-group="NodeAcl" data-name="nodeNodeIdAclGet" class="">
@@ -783,12 +791,12 @@
                       <article id="api-Node-nodeGet-0" data-group="User" data-name="nodeGet" data-version="0">
                         <div class="pull-left">
                           <h1>nodeGet</h1>
-                          <p></p>
+                          <p>list nodes</p>
                         </div>
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
                         <p></p>
-                        <p class="marked">list nodes</p>
+                        <p class="marked"></p>
                         <p></p>
                         <br />
                         <pre class="prettyprint language-html prettyprinted" data-type="get"><code><span class="pln">/node</span></code></pre>
@@ -827,7 +835,7 @@ public class NodeApiExample {
     public static void main(String[] args) {
         
         NodeApi apiInstance = new NodeApi();
-        String query = query_example; // String | search
+        Boolean query = true; // Boolean | 
         Integer limit = 56; // Integer | 
         Integer offset = 56; // Integer | 
         try {
@@ -847,7 +855,7 @@ public class NodeApiExample {
 
     public static void main(String[] args) {
         NodeApi apiInstance = new NodeApi();
-        String query = query_example; // String | search
+        Boolean query = true; // Boolean | 
         Integer limit = 56; // Integer | 
         Integer offset = 56; // Integer | 
         try {
@@ -864,12 +872,13 @@ public class NodeApiExample {
   <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
   </div> -->
                             <div class="tab-pane" id="examples-Node-nodeGet-0-objc">
-                              <pre class="prettyprint"><code class="language-cpp">String *query = query_example; // search (optional)
+                              <pre class="prettyprint"><code class="language-cpp">Boolean *query = true; //  (optional)
 Integer *limit = 56; //  (optional)
 Integer *offset = 56; //  (optional)
 
 NodeApi *apiInstance = [[NodeApi alloc] init];
 
+// list nodes
 [apiInstance nodeGetWith:query
     limit:limit
     offset:offset
@@ -886,7 +895,7 @@ NodeApi *apiInstance = [[NodeApi alloc] init];
 
 var api = new Shock2ApiSpecification.NodeApi()
 var opts = { 
-  'query': query_example, // {{String}} search
+  'query': true, // {{Boolean}} 
   'limit': 56, // {{Integer}} 
   'offset': 56 // {{Integer}} 
 };
@@ -919,12 +928,13 @@ namespace Example
         {
 
             var apiInstance = new NodeApi();
-            var query = query_example;  // String | search (optional) 
+            var query = true;  // Boolean |  (optional) 
             var limit = 56;  // Integer |  (optional) 
             var offset = 56;  // Integer |  (optional) 
 
             try
             {
+                // list nodes
                 apiInstance.nodeGet(query, limit, offset);
             }
             catch (Exception e)
@@ -942,7 +952,7 @@ namespace Example
 require_once(__DIR__ . '/vendor/autoload.php');
 
 $api_instance = new Swagger\Client\ApiNodeApi();
-$query = query_example; // String | search
+$query = true; // Boolean | 
 $limit = 56; // Integer | 
 $offset = 56; // Integer | 
 
@@ -960,7 +970,7 @@ use WWW::SwaggerClient::Configuration;
 use WWW::SwaggerClient::NodeApi;
 
 my $api_instance = WWW::SwaggerClient::NodeApi->new();
-my $query = query_example; # String | search
+my $query = true; # Boolean | 
 my $limit = 56; # Integer | 
 my $offset = 56; # Integer | 
 
@@ -981,11 +991,12 @@ from pprint import pprint
 
 # create an instance of the API class
 api_instance = swagger_client.NodeApi()
-query = query_example # String | search (optional)
+query = true # Boolean |  (optional)
 limit = 56 # Integer |  (optional)
 offset = 56 # Integer |  (optional)
 
 try: 
+    # list nodes
     api_instance.node_get(query=query, limit=limit, offset=offset)
 except ApiException as e:
     print("Exception when calling NodeApi->nodeGet: %s\n" % e)</code></pre>
@@ -1012,12 +1023,9 @@ except ApiException as e:
                                         <div class="json-schema-view">
                                             <div class="primitive">
                                                 <span class="type">
-                                                    String
+                                                    Boolean
                                                 </span>
                                 
-                                                    <div class="inner description">
-                                                        search
-                                                    </div>
                                             </div>
                                         </div>
                                     </div>
@@ -1351,7 +1359,7 @@ except ApiException as e:
                       <article id="api-Node-nodeNodeIdGet-0" data-group="User" data-name="nodeNodeIdGet" data-version="0">
                         <div class="pull-left">
                           <h1>nodeNodeIdGet</h1>
-                          <p></p>
+                          <p>view and download node</p>
                         </div>
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
@@ -1437,6 +1445,7 @@ String *download = download_example; // download file (optional)
 
 NodeApi *apiInstance = [[NodeApi alloc] init];
 
+// view and download node
 [apiInstance nodeNodeIdGetWith:nodeId
     download:download
               completionHandler: ^(Node output, NSError* error) {
@@ -1492,6 +1501,7 @@ namespace Example
 
             try
             {
+                // view and download node
                 Node result = apiInstance.nodeNodeIdGet(nodeId, download);
                 Debug.WriteLine(result);
             }
@@ -1553,6 +1563,7 @@ nodeId = nodeId_example # String |
 download = download_example # String | download file (optional)
 
 try: 
+    # view and download node
     api_response = api_instance.node_node_id_get(nodeId, download=download)
     pprint(api_response)
 except ApiException as e:
@@ -1640,6 +1651,30 @@ except ApiException as e:
     "application/json" : {
       "schema" : {
         "$ref" : "#/components/schemas/Node"
+      },
+      "example" : {
+        "attributes" : null,
+        "created_on" : "2014-06-16T11:08:17.955-05:00",
+        "file" : {
+          "checksum" : { },
+          "format" : "",
+          "name" : "",
+          "size" : 0,
+          "virtual" : false,
+          "virtual_parts" : [ ]
+        },
+        "id" : "130cadb5-9435-4bd9-be13-715ec40b2bb5",
+        "indexes" : {
+          "size" : {
+            "total_units" : 100,
+            "average_unit_size" : 1048576
+          }
+        },
+        "last_modified" : "2014-06-16T11:25:16.535-05:00",
+        "linkages" : [ ],
+        "tags" : [ ],
+        "type" : "basic",
+        "version" : "aabfee3e4291a649c00984451e1ff891"
       }
     }
   }
@@ -1675,7 +1710,7 @@ except ApiException as e:
                       <article id="api-Node-nodeNodeIdPut-0" data-group="User" data-name="nodeNodeIdPut" data-version="0">
                         <div class="pull-left">
                           <h1>nodeNodeIdPut</h1>
-                          <p></p>
+                          <p>update node</p>
                         </div>
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
@@ -1759,6 +1794,7 @@ String *download = download_example; // download file (optional)
 
 NodeApi *apiInstance = [[NodeApi alloc] init];
 
+// update node
 [apiInstance nodeNodeIdPutWith:nodeId
     download:download
               completionHandler: ^(NSError* error) {
@@ -1811,6 +1847,7 @@ namespace Example
 
             try
             {
+                // update node
                 apiInstance.nodeNodeIdPut(nodeId, download);
             }
             catch (Exception e)
@@ -1869,6 +1906,7 @@ nodeId = nodeId_example # String |
 download = download_example # String | download file (optional)
 
 try: 
+    # update node
     api_instance.node_node_id_put(nodeId, download=download)
 except ApiException as e:
     print("Exception when calling NodeApi->nodeNodeIdPut: %s\n" % e)</code></pre>
@@ -1936,6 +1974,277 @@ except ApiException as e:
 
                           <h2>Responses</h2>
                             <h3> Status: default - Default error sample response </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                            </div>
+
+                        </article>
+                      </div>
+                      <hr>
+                    <div id="api-Node-nodePost">
+                      <article id="api-Node-nodePost-0" data-group="User" data-name="nodePost" data-version="0">
+                        <div class="pull-left">
+                          <h1>nodePost</h1>
+                          <p>upload file</p>
+                        </div>
+                        <div class="pull-right"></div>
+                        <div class="clearfix"></div>
+                        <p></p>
+                        <p class="marked"></p>
+                        <p></p>
+                        <br />
+                        <pre class="prettyprint language-html prettyprinted" data-type="post"><code><span class="pln">/node</span></code></pre>
+                        <p>
+                          <h3>Usage and SDK Samples</h3>
+                        </p>
+                        <ul class="nav nav-tabs nav-tabs-examples">
+                          <li class="active"><a href="#examples-Node-nodePost-0-curl">Curl</a></li>
+                          <li class=""><a href="#examples-Node-nodePost-0-java">Java</a></li>
+                          <li class=""><a href="#examples-Node-nodePost-0-android">Android</a></li>
+                          <!--<li class=""><a href="#examples-Node-nodePost-0-groovy">Groovy</a></li>-->
+                          <li class=""><a href="#examples-Node-nodePost-0-objc">Obj-C</a></li>
+                          <li class=""><a href="#examples-Node-nodePost-0-javascript">JavaScript</a></li>
+                          <!--<li class=""><a href="#examples-Node-nodePost-0-angular">Angular</a></li>-->
+                          <li class=""><a href="#examples-Node-nodePost-0-csharp">C#</a></li>
+                          <li class=""><a href="#examples-Node-nodePost-0-php">PHP</a></li>
+                          <li class=""><a href="#examples-Node-nodePost-0-perl">Perl</a></li>
+                          <li class=""><a href="#examples-Node-nodePost-0-python">Python</a></li>
+                        </ul>
+
+                        <div class="tab-content">
+                          <div class="tab-pane active" id="examples-Node-nodePost-0-curl">
+                            <pre class="prettyprint"><code class="language-bsh">curl -X POST "shock.mg-rast.org/node?attributes=&attributes_str="</code></pre>
+                          </div>
+                          <div class="tab-pane" id="examples-Node-nodePost-0-java">
+                            <pre class="prettyprint"><code class="language-java">import io.swagger.client.*;
+import io.swagger.client.auth.*;
+import io.swagger.client.model.*;
+import io.swagger.client.api.NodeApi;
+
+import java.io.File;
+import java.util.*;
+
+public class NodeApiExample {
+
+    public static void main(String[] args) {
+        
+        NodeApi apiInstance = new NodeApi();
+        String attributes = attributes_example; // String | specifies a file containing attributes in JSON format
+        String attributesStr = attributesStr_example; // String | attributes in JSON format
+        try {
+            apiInstance.nodePost(attributes, attributesStr);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling NodeApi#nodePost");
+            e.printStackTrace();
+        }
+    }
+}</code></pre>
+                          </div>
+
+                          <div class="tab-pane" id="examples-Node-nodePost-0-android">
+                            <pre class="prettyprint"><code class="language-java">import io.swagger.client.api.NodeApi;
+
+public class NodeApiExample {
+
+    public static void main(String[] args) {
+        NodeApi apiInstance = new NodeApi();
+        String attributes = attributes_example; // String | specifies a file containing attributes in JSON format
+        String attributesStr = attributesStr_example; // String | attributes in JSON format
+        try {
+            apiInstance.nodePost(attributes, attributesStr);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling NodeApi#nodePost");
+            e.printStackTrace();
+        }
+    }
+}</code></pre>
+                          </div>
+  <!--
+  <div class="tab-pane" id="examples-Node-nodePost-0-groovy">
+  <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
+  </div> -->
+                            <div class="tab-pane" id="examples-Node-nodePost-0-objc">
+                              <pre class="prettyprint"><code class="language-cpp">String *attributes = attributes_example; // specifies a file containing attributes in JSON format (optional)
+String *attributesStr = attributesStr_example; // attributes in JSON format (optional)
+
+NodeApi *apiInstance = [[NodeApi alloc] init];
+
+// upload file
+[apiInstance nodePostWith:attributes
+    attributesStr:attributesStr
+              completionHandler: ^(NSError* error) {
+                            if (error) {
+                                NSLog(@"Error: %@", error);
+                            }
+                        }];
+</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-Node-nodePost-0-javascript">
+                              <pre class="prettyprint"><code class="language-js">var Shock2ApiSpecification = require('shock2_api_specification');
+
+var api = new Shock2ApiSpecification.NodeApi()
+var opts = { 
+  'attributes': attributes_example, // {{String}} specifies a file containing attributes in JSON format
+  'attributesStr': attributesStr_example // {{String}} attributes in JSON format
+};
+var callback = function(error, data, response) {
+  if (error) {
+    console.error(error);
+  } else {
+    console.log('API called successfully.');
+  }
+};
+api.nodePost(opts, callback);
+</code></pre>
+                            </div>
+
+                            <!--<div class="tab-pane" id="examples-Node-nodePost-0-angular">
+              <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
+            </div>-->
+                            <div class="tab-pane" id="examples-Node-nodePost-0-csharp">
+                              <pre class="prettyprint"><code class="language-cs">using System;
+using System.Diagnostics;
+using IO.Swagger.Api;
+using IO.Swagger.Client;
+using IO.Swagger.Model;
+
+namespace Example
+{
+    public class nodePostExample
+    {
+        public void main()
+        {
+
+            var apiInstance = new NodeApi();
+            var attributes = attributes_example;  // String | specifies a file containing attributes in JSON format (optional) 
+            var attributesStr = attributesStr_example;  // String | attributes in JSON format (optional) 
+
+            try
+            {
+                // upload file
+                apiInstance.nodePost(attributes, attributesStr);
+            }
+            catch (Exception e)
+            {
+                Debug.Print("Exception when calling NodeApi.nodePost: " + e.Message );
+            }
+        }
+    }
+}
+</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-Node-nodePost-0-php">
+                              <pre class="prettyprint"><code class="language-php"><&#63;php
+require_once(__DIR__ . '/vendor/autoload.php');
+
+$api_instance = new Swagger\Client\ApiNodeApi();
+$attributes = attributes_example; // String | specifies a file containing attributes in JSON format
+$attributesStr = attributesStr_example; // String | attributes in JSON format
+
+try {
+    $api_instance->nodePost($attributes, $attributesStr);
+} catch (Exception $e) {
+    echo 'Exception when calling NodeApi->nodePost: ', $e->getMessage(), PHP_EOL;
+}
+?></code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-Node-nodePost-0-perl">
+                              <pre class="prettyprint"><code class="language-perl">use Data::Dumper;
+use WWW::SwaggerClient::Configuration;
+use WWW::SwaggerClient::NodeApi;
+
+my $api_instance = WWW::SwaggerClient::NodeApi->new();
+my $attributes = attributes_example; # String | specifies a file containing attributes in JSON format
+my $attributesStr = attributesStr_example; # String | attributes in JSON format
+
+eval { 
+    $api_instance->nodePost(attributes => $attributes, attributesStr => $attributesStr);
+};
+if ($@) {
+    warn "Exception when calling NodeApi->nodePost: $@\n";
+}</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-Node-nodePost-0-python">
+                              <pre class="prettyprint"><code class="language-python">from __future__ import print_statement
+import time
+import swagger_client
+from swagger_client.rest import ApiException
+from pprint import pprint
+
+# create an instance of the API class
+api_instance = swagger_client.NodeApi()
+attributes = attributes_example # String | specifies a file containing attributes in JSON format (optional)
+attributesStr = attributesStr_example # String | attributes in JSON format (optional)
+
+try: 
+    # upload file
+    api_instance.node_post(attributes=attributes, attributesStr=attributesStr)
+except ApiException as e:
+    print("Exception when calling NodeApi->nodePost: %s\n" % e)</code></pre>
+                            </div>
+                          </div>
+
+                          <h2>Parameters</h2>
+
+
+
+
+
+                            <div class="methodsubtabletitle">Query parameters</div>
+                            <table id="methodsubtable">
+                              <tr>
+                                <th width="150px">Name</th>
+                                <th>Description</th>
+                              </tr>
+                                <tr><td style="width:150px;">attributes</td>
+                                <td>
+                                
+                                
+                                    <div id="d2e199_nodePost_attributes">
+                                        <div class="json-schema-view">
+                                            <div class="primitive">
+                                                <span class="type">
+                                                    String
+                                                </span>
+                                
+                                                    <div class="inner description">
+                                                        specifies a file containing attributes in JSON format
+                                                    </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                </tr>
+                                <tr><td style="width:150px;">attributes_str</td>
+                                <td>
+                                
+                                
+                                    <div id="d2e199_nodePost_attributesStr">
+                                        <div class="json-schema-view">
+                                            <div class="primitive">
+                                                <span class="type">
+                                                    String
+                                                </span>
+                                
+                                                    <div class="inner description">
+                                                        attributes in JSON format
+                                                    </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                </tr>
+                            </table>
+
+                          <h2>Responses</h2>
+                            <h3> Status: 200 - OK </h3>
 
                             <ul class="nav nav-tabs nav-tabs-examples" >
                             </ul>
