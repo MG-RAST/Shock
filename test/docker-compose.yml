@@ -19,30 +19,7 @@ services:
           - shock-mongo
         entrypoint: 
           - /go/bin/shock-server 
-          - --hosts=shock-mongo 
-          - --basic=true                   # enables basic auth
-          - --users=admin                  # spcifies that user with name "admin" is a admin
-          - --force_yes=true               # avoids having shock ask interactive questions regarding db table updates
-          - --debug_auth=true              # returns more detailed reasons for rejected auth
-          - --api-url=http://shock:7445    # Shock returns a "preauth url", which consists of the api url
-          # docker exec -ti test_shock_1 /go/bin/shock-server --hosts=shock-mongo --basic=true --users=admin --debug_auth=true
-        
-          #- /go/bin/shock-server
-          #- --hosts=shock-mongo
-          # - --conf
-          # - /shock-config/shock-server.cfg
-        #volumes:
-          # persistent data
-          #- ${DATADIR}/shock/data:/usr/local/shock
-          
-          # mount local source code
-          #- $HOME/go/src/github.com/MG-RAST/Shock:/go/src/github.com/MG-RAST/Shock
-          
-          # mount config file 
-          #- ${CONFIGDIR}/Shock/shock-server.container.cfg:/shock-config/shock-server.cfg
-          
-          # mount log directory
-          #   - ${LOGDIR}/shock:/var/log/shock
+          - --conf=/go/src/github.com/MG-RAST/Shock/test/config.d/shock-server.conf  
           
         ports:
           - 7445:7445
