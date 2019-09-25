@@ -725,12 +725,18 @@
                     <li data-group="NodeAcl" data-name="nodeNodeIdAclPut" class="">
                       <a href="#api-NodeAcl-nodeNodeIdAclPut">nodeNodeIdAclPut</a>
                     </li>
-                  <li class="nav-header" data-group="NodeIndex"><a href="#api-NodeIndex">API Methods - NodeIndex</a></li>
-                    <li data-group="NodeIndex" data-name="nodenodeIdIndextypeDelete" class="">
-                      <a href="#api-NodeIndex-nodenodeIdIndextypeDelete">nodenodeIdIndextypeDelete</a>
+                    <li data-group="NodeAcl" data-name="nodeNodeIdAclTypeGet" class="">
+                      <a href="#api-NodeAcl-nodeNodeIdAclTypeGet">nodeNodeIdAclTypeGet</a>
                     </li>
-                    <li data-group="NodeIndex" data-name="nodenodeIdIndextypePut" class="">
-                      <a href="#api-NodeIndex-nodenodeIdIndextypePut">nodenodeIdIndextypePut</a>
+                    <li data-group="NodeAcl" data-name="nodeNodeIdAclTypePut" class="">
+                      <a href="#api-NodeAcl-nodeNodeIdAclTypePut">nodeNodeIdAclTypePut</a>
+                    </li>
+                  <li class="nav-header" data-group="NodeIndex"><a href="#api-NodeIndex">API Methods - NodeIndex</a></li>
+                    <li data-group="NodeIndex" data-name="nodeNodeIdIndexTypeDelete" class="">
+                      <a href="#api-NodeIndex-nodeNodeIdIndexTypeDelete">nodeNodeIdIndexTypeDelete</a>
+                    </li>
+                    <li data-group="NodeIndex" data-name="nodeNodeIdIndexTypePut" class="">
+                      <a href="#api-NodeIndex-nodeNodeIdIndexTypePut">nodeNodeIdIndexTypePut</a>
                     </li>
           </ul>
         </nav>
@@ -838,7 +844,7 @@ public class NodeApiExample {
   <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
   </div> -->
                             <div class="tab-pane" id="examples-Node-nodeGet-0-objc">
-                              <pre class="prettyprint"><code class="language-cpp">String *query = query_example; // search
+                              <pre class="prettyprint"><code class="language-cpp">String *query = query_example; // search (optional)
 Integer *limit = 56; //  (optional)
 Integer *offset = 56; //  (optional)
 
@@ -859,8 +865,8 @@ NodeApi *apiInstance = [[NodeApi alloc] init];
                               <pre class="prettyprint"><code class="language-js">var Shock2ApiSpecification = require('shock2_api_specification');
 
 var api = new Shock2ApiSpecification.NodeApi()
-var query = query_example; // {{String}} search
 var opts = { 
+  'query': query_example, // {{String}} search
   'limit': 56, // {{Integer}} 
   'offset': 56 // {{Integer}} 
 };
@@ -871,7 +877,7 @@ var callback = function(error, data, response) {
     console.log('API called successfully.');
   }
 };
-api.nodeGet(query, opts, callback);
+api.nodeGet(opts, callback);
 </code></pre>
                             </div>
 
@@ -893,7 +899,7 @@ namespace Example
         {
 
             var apiInstance = new NodeApi();
-            var query = query_example;  // String | search
+            var query = query_example;  // String | search (optional) 
             var limit = 56;  // Integer |  (optional) 
             var offset = 56;  // Integer |  (optional) 
 
@@ -955,12 +961,12 @@ from pprint import pprint
 
 # create an instance of the API class
 api_instance = swagger_client.NodeApi()
-query = query_example # String | search
+query = query_example # String | search (optional)
 limit = 56 # Integer |  (optional)
 offset = 56 # Integer |  (optional)
 
 try: 
-    api_instance.node_get(query, limit=limit, offset=offset)
+    api_instance.node_get(query=query, limit=limit, offset=offset)
 except ApiException as e:
     print("Exception when calling NodeApi->nodeGet: %s\n" % e)</code></pre>
                             </div>
@@ -978,7 +984,7 @@ except ApiException as e:
                                 <th width="150px">Name</th>
                                 <th>Description</th>
                               </tr>
-                                <tr><td style="width:150px;">query*</td>
+                                <tr><td style="width:150px;">query</td>
                                 <td>
                                 
                                 
@@ -993,9 +999,6 @@ except ApiException as e:
                                                         search
                                                     </div>
                                             </div>
-                                                <div class="inner required">
-                                                    Required
-                                                </div>
                                         </div>
                                     </div>
                                 </td>
@@ -2361,13 +2364,553 @@ except ApiException as e:
                         </article>
                       </div>
                       <hr>
+                    <div id="api-NodeAcl-nodeNodeIdAclTypeGet">
+                      <article id="api-NodeAcl-nodeNodeIdAclTypeGet-0" data-group="User" data-name="nodeNodeIdAclTypeGet" data-version="0">
+                        <div class="pull-left">
+                          <h1>nodeNodeIdAclTypeGet</h1>
+                          <p>view node acls of type</p>
+                        </div>
+                        <div class="pull-right"></div>
+                        <div class="clearfix"></div>
+                        <p></p>
+                        <p class="marked"></p>
+                        <p></p>
+                        <br />
+                        <pre class="prettyprint language-html prettyprinted" data-type="get"><code><span class="pln">/node/{nodeId}/acl/{type}</span></code></pre>
+                        <p>
+                          <h3>Usage and SDK Samples</h3>
+                        </p>
+                        <ul class="nav nav-tabs nav-tabs-examples">
+                          <li class="active"><a href="#examples-NodeAcl-nodeNodeIdAclTypeGet-0-curl">Curl</a></li>
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclTypeGet-0-java">Java</a></li>
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclTypeGet-0-android">Android</a></li>
+                          <!--<li class=""><a href="#examples-NodeAcl-nodeNodeIdAclTypeGet-0-groovy">Groovy</a></li>-->
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclTypeGet-0-objc">Obj-C</a></li>
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclTypeGet-0-javascript">JavaScript</a></li>
+                          <!--<li class=""><a href="#examples-NodeAcl-nodeNodeIdAclTypeGet-0-angular">Angular</a></li>-->
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclTypeGet-0-csharp">C#</a></li>
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclTypeGet-0-php">PHP</a></li>
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclTypeGet-0-perl">Perl</a></li>
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclTypeGet-0-python">Python</a></li>
+                        </ul>
+
+                        <div class="tab-content">
+                          <div class="tab-pane active" id="examples-NodeAcl-nodeNodeIdAclTypeGet-0-curl">
+                            <pre class="prettyprint"><code class="language-bsh">curl -X GET "shock.mg-rast.org/node/{nodeId}/acl/{type}"</code></pre>
+                          </div>
+                          <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclTypeGet-0-java">
+                            <pre class="prettyprint"><code class="language-java">import io.swagger.client.*;
+import io.swagger.client.auth.*;
+import io.swagger.client.model.*;
+import io.swagger.client.api.NodeAclApi;
+
+import java.io.File;
+import java.util.*;
+
+public class NodeAclApiExample {
+
+    public static void main(String[] args) {
+        
+        NodeAclApi apiInstance = new NodeAclApi();
+        String nodeId = nodeId_example; // String | 
+        String type = type_example; // String | 
+        try {
+            apiInstance.nodeNodeIdAclTypeGet(nodeId, type);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling NodeAclApi#nodeNodeIdAclTypeGet");
+            e.printStackTrace();
+        }
+    }
+}</code></pre>
+                          </div>
+
+                          <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclTypeGet-0-android">
+                            <pre class="prettyprint"><code class="language-java">import io.swagger.client.api.NodeAclApi;
+
+public class NodeAclApiExample {
+
+    public static void main(String[] args) {
+        NodeAclApi apiInstance = new NodeAclApi();
+        String nodeId = nodeId_example; // String | 
+        String type = type_example; // String | 
+        try {
+            apiInstance.nodeNodeIdAclTypeGet(nodeId, type);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling NodeAclApi#nodeNodeIdAclTypeGet");
+            e.printStackTrace();
+        }
+    }
+}</code></pre>
+                          </div>
+  <!--
+  <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclTypeGet-0-groovy">
+  <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
+  </div> -->
+                            <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclTypeGet-0-objc">
+                              <pre class="prettyprint"><code class="language-cpp">String *nodeId = nodeId_example; // 
+String *type = type_example; // 
+
+NodeAclApi *apiInstance = [[NodeAclApi alloc] init];
+
+// view node acls of type
+[apiInstance nodeNodeIdAclTypeGetWith:nodeId
+    type:type
+              completionHandler: ^(NSError* error) {
+                            if (error) {
+                                NSLog(@"Error: %@", error);
+                            }
+                        }];
+</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclTypeGet-0-javascript">
+                              <pre class="prettyprint"><code class="language-js">var Shock2ApiSpecification = require('shock2_api_specification');
+
+var api = new Shock2ApiSpecification.NodeAclApi()
+var nodeId = nodeId_example; // {{String}} 
+var type = type_example; // {{String}} 
+
+var callback = function(error, data, response) {
+  if (error) {
+    console.error(error);
+  } else {
+    console.log('API called successfully.');
+  }
+};
+api.nodeNodeIdAclTypeGet(nodeId, type, callback);
+</code></pre>
+                            </div>
+
+                            <!--<div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclTypeGet-0-angular">
+              <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
+            </div>-->
+                            <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclTypeGet-0-csharp">
+                              <pre class="prettyprint"><code class="language-cs">using System;
+using System.Diagnostics;
+using IO.Swagger.Api;
+using IO.Swagger.Client;
+using IO.Swagger.Model;
+
+namespace Example
+{
+    public class nodeNodeIdAclTypeGetExample
+    {
+        public void main()
+        {
+
+            var apiInstance = new NodeAclApi();
+            var nodeId = nodeId_example;  // String | 
+            var type = type_example;  // String | 
+
+            try
+            {
+                // view node acls of type
+                apiInstance.nodeNodeIdAclTypeGet(nodeId, type);
+            }
+            catch (Exception e)
+            {
+                Debug.Print("Exception when calling NodeAclApi.nodeNodeIdAclTypeGet: " + e.Message );
+            }
+        }
+    }
+}
+</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclTypeGet-0-php">
+                              <pre class="prettyprint"><code class="language-php"><&#63;php
+require_once(__DIR__ . '/vendor/autoload.php');
+
+$api_instance = new Swagger\Client\ApiNodeAclApi();
+$nodeId = nodeId_example; // String | 
+$type = type_example; // String | 
+
+try {
+    $api_instance->nodeNodeIdAclTypeGet($nodeId, $type);
+} catch (Exception $e) {
+    echo 'Exception when calling NodeAclApi->nodeNodeIdAclTypeGet: ', $e->getMessage(), PHP_EOL;
+}
+?></code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclTypeGet-0-perl">
+                              <pre class="prettyprint"><code class="language-perl">use Data::Dumper;
+use WWW::SwaggerClient::Configuration;
+use WWW::SwaggerClient::NodeAclApi;
+
+my $api_instance = WWW::SwaggerClient::NodeAclApi->new();
+my $nodeId = nodeId_example; # String | 
+my $type = type_example; # String | 
+
+eval { 
+    $api_instance->nodeNodeIdAclTypeGet(nodeId => $nodeId, type => $type);
+};
+if ($@) {
+    warn "Exception when calling NodeAclApi->nodeNodeIdAclTypeGet: $@\n";
+}</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclTypeGet-0-python">
+                              <pre class="prettyprint"><code class="language-python">from __future__ import print_statement
+import time
+import swagger_client
+from swagger_client.rest import ApiException
+from pprint import pprint
+
+# create an instance of the API class
+api_instance = swagger_client.NodeAclApi()
+nodeId = nodeId_example # String | 
+type = type_example # String | 
+
+try: 
+    # view node acls of type
+    api_instance.node_node_id_acl_type_get(nodeId, type)
+except ApiException as e:
+    print("Exception when calling NodeAclApi->nodeNodeIdAclTypeGet: %s\n" % e)</code></pre>
+                            </div>
+                          </div>
+
+                          <h2>Parameters</h2>
+
+                            <div class="methodsubtabletitle">Path parameters</div>
+                            <table id="methodsubtable">
+                                <tr>
+                                  <th width="150px">Name</th>
+                                  <th>Description</th>
+                                </tr>
+                                  <tr><td style="width:150px;">nodeId*</td>
+                                  <td>
+                                  
+                                  
+                                      <div id="d2e199_nodeNodeIdAclTypeGet_nodeId">
+                                          <div class="json-schema-view">
+                                              <div class="primitive">
+                                                  <span class="type">
+                                                      String
+                                                  </span>
+                                  
+                                              </div>
+                                                  <div class="inner required">
+                                                      Required
+                                                  </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  </tr>
+                                  <tr><td style="width:150px;">type*</td>
+                                  <td>
+                                  
+                                  
+                                      <div id="d2e199_nodeNodeIdAclTypeGet_type">
+                                          <div class="json-schema-view">
+                                              <div class="primitive">
+                                                  <span class="type">
+                                                      String
+                                                  </span>
+                                  
+                                              </div>
+                                                  <div class="inner required">
+                                                      Required
+                                                  </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  </tr>
+                            </table>
+
+
+
+
+
+                          <h2>Responses</h2>
+                            <h3> Status: default - Default error sample response </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                            </div>
+
+                        </article>
+                      </div>
+                      <hr>
+                    <div id="api-NodeAcl-nodeNodeIdAclTypePut">
+                      <article id="api-NodeAcl-nodeNodeIdAclTypePut-0" data-group="User" data-name="nodeNodeIdAclTypePut" data-version="0">
+                        <div class="pull-left">
+                          <h1>nodeNodeIdAclTypePut</h1>
+                          <p>modify node acls of type </p>
+                        </div>
+                        <div class="pull-right"></div>
+                        <div class="clearfix"></div>
+                        <p></p>
+                        <p class="marked"></p>
+                        <p></p>
+                        <br />
+                        <pre class="prettyprint language-html prettyprinted" data-type="put"><code><span class="pln">/node/{nodeId}/acl/{type}</span></code></pre>
+                        <p>
+                          <h3>Usage and SDK Samples</h3>
+                        </p>
+                        <ul class="nav nav-tabs nav-tabs-examples">
+                          <li class="active"><a href="#examples-NodeAcl-nodeNodeIdAclTypePut-0-curl">Curl</a></li>
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclTypePut-0-java">Java</a></li>
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclTypePut-0-android">Android</a></li>
+                          <!--<li class=""><a href="#examples-NodeAcl-nodeNodeIdAclTypePut-0-groovy">Groovy</a></li>-->
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclTypePut-0-objc">Obj-C</a></li>
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclTypePut-0-javascript">JavaScript</a></li>
+                          <!--<li class=""><a href="#examples-NodeAcl-nodeNodeIdAclTypePut-0-angular">Angular</a></li>-->
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclTypePut-0-csharp">C#</a></li>
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclTypePut-0-php">PHP</a></li>
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclTypePut-0-perl">Perl</a></li>
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclTypePut-0-python">Python</a></li>
+                        </ul>
+
+                        <div class="tab-content">
+                          <div class="tab-pane active" id="examples-NodeAcl-nodeNodeIdAclTypePut-0-curl">
+                            <pre class="prettyprint"><code class="language-bsh">curl -X PUT "shock.mg-rast.org/node/{nodeId}/acl/{type}"</code></pre>
+                          </div>
+                          <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclTypePut-0-java">
+                            <pre class="prettyprint"><code class="language-java">import io.swagger.client.*;
+import io.swagger.client.auth.*;
+import io.swagger.client.model.*;
+import io.swagger.client.api.NodeAclApi;
+
+import java.io.File;
+import java.util.*;
+
+public class NodeAclApiExample {
+
+    public static void main(String[] args) {
+        
+        NodeAclApi apiInstance = new NodeAclApi();
+        String type = type_example; // String | 
+        String nodeId = nodeId_example; // String | 
+        try {
+            apiInstance.nodeNodeIdAclTypePut(type, nodeId);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling NodeAclApi#nodeNodeIdAclTypePut");
+            e.printStackTrace();
+        }
+    }
+}</code></pre>
+                          </div>
+
+                          <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclTypePut-0-android">
+                            <pre class="prettyprint"><code class="language-java">import io.swagger.client.api.NodeAclApi;
+
+public class NodeAclApiExample {
+
+    public static void main(String[] args) {
+        NodeAclApi apiInstance = new NodeAclApi();
+        String type = type_example; // String | 
+        String nodeId = nodeId_example; // String | 
+        try {
+            apiInstance.nodeNodeIdAclTypePut(type, nodeId);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling NodeAclApi#nodeNodeIdAclTypePut");
+            e.printStackTrace();
+        }
+    }
+}</code></pre>
+                          </div>
+  <!--
+  <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclTypePut-0-groovy">
+  <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
+  </div> -->
+                            <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclTypePut-0-objc">
+                              <pre class="prettyprint"><code class="language-cpp">String *type = type_example; // 
+String *nodeId = nodeId_example; // 
+
+NodeAclApi *apiInstance = [[NodeAclApi alloc] init];
+
+// modify node acls of type 
+[apiInstance nodeNodeIdAclTypePutWith:type
+    nodeId:nodeId
+              completionHandler: ^(NSError* error) {
+                            if (error) {
+                                NSLog(@"Error: %@", error);
+                            }
+                        }];
+</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclTypePut-0-javascript">
+                              <pre class="prettyprint"><code class="language-js">var Shock2ApiSpecification = require('shock2_api_specification');
+
+var api = new Shock2ApiSpecification.NodeAclApi()
+var type = type_example; // {{String}} 
+var nodeId = nodeId_example; // {{String}} 
+
+var callback = function(error, data, response) {
+  if (error) {
+    console.error(error);
+  } else {
+    console.log('API called successfully.');
+  }
+};
+api.nodeNodeIdAclTypePut(type, nodeId, callback);
+</code></pre>
+                            </div>
+
+                            <!--<div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclTypePut-0-angular">
+              <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
+            </div>-->
+                            <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclTypePut-0-csharp">
+                              <pre class="prettyprint"><code class="language-cs">using System;
+using System.Diagnostics;
+using IO.Swagger.Api;
+using IO.Swagger.Client;
+using IO.Swagger.Model;
+
+namespace Example
+{
+    public class nodeNodeIdAclTypePutExample
+    {
+        public void main()
+        {
+
+            var apiInstance = new NodeAclApi();
+            var type = type_example;  // String | 
+            var nodeId = nodeId_example;  // String | 
+
+            try
+            {
+                // modify node acls of type 
+                apiInstance.nodeNodeIdAclTypePut(type, nodeId);
+            }
+            catch (Exception e)
+            {
+                Debug.Print("Exception when calling NodeAclApi.nodeNodeIdAclTypePut: " + e.Message );
+            }
+        }
+    }
+}
+</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclTypePut-0-php">
+                              <pre class="prettyprint"><code class="language-php"><&#63;php
+require_once(__DIR__ . '/vendor/autoload.php');
+
+$api_instance = new Swagger\Client\ApiNodeAclApi();
+$type = type_example; // String | 
+$nodeId = nodeId_example; // String | 
+
+try {
+    $api_instance->nodeNodeIdAclTypePut($type, $nodeId);
+} catch (Exception $e) {
+    echo 'Exception when calling NodeAclApi->nodeNodeIdAclTypePut: ', $e->getMessage(), PHP_EOL;
+}
+?></code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclTypePut-0-perl">
+                              <pre class="prettyprint"><code class="language-perl">use Data::Dumper;
+use WWW::SwaggerClient::Configuration;
+use WWW::SwaggerClient::NodeAclApi;
+
+my $api_instance = WWW::SwaggerClient::NodeAclApi->new();
+my $type = type_example; # String | 
+my $nodeId = nodeId_example; # String | 
+
+eval { 
+    $api_instance->nodeNodeIdAclTypePut(type => $type, nodeId => $nodeId);
+};
+if ($@) {
+    warn "Exception when calling NodeAclApi->nodeNodeIdAclTypePut: $@\n";
+}</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclTypePut-0-python">
+                              <pre class="prettyprint"><code class="language-python">from __future__ import print_statement
+import time
+import swagger_client
+from swagger_client.rest import ApiException
+from pprint import pprint
+
+# create an instance of the API class
+api_instance = swagger_client.NodeAclApi()
+type = type_example # String | 
+nodeId = nodeId_example # String | 
+
+try: 
+    # modify node acls of type 
+    api_instance.node_node_id_acl_type_put(type, nodeId)
+except ApiException as e:
+    print("Exception when calling NodeAclApi->nodeNodeIdAclTypePut: %s\n" % e)</code></pre>
+                            </div>
+                          </div>
+
+                          <h2>Parameters</h2>
+
+                            <div class="methodsubtabletitle">Path parameters</div>
+                            <table id="methodsubtable">
+                                <tr>
+                                  <th width="150px">Name</th>
+                                  <th>Description</th>
+                                </tr>
+                                  <tr><td style="width:150px;">type*</td>
+                                  <td>
+                                  
+                                  
+                                      <div id="d2e199_nodeNodeIdAclTypePut_type">
+                                          <div class="json-schema-view">
+                                              <div class="primitive">
+                                                  <span class="type">
+                                                      String
+                                                  </span>
+                                  
+                                              </div>
+                                                  <div class="inner required">
+                                                      Required
+                                                  </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  </tr>
+                                  <tr><td style="width:150px;">nodeId*</td>
+                                  <td>
+                                  
+                                  
+                                      <div id="d2e199_nodeNodeIdAclTypePut_nodeId">
+                                          <div class="json-schema-view">
+                                              <div class="primitive">
+                                                  <span class="type">
+                                                      String
+                                                  </span>
+                                  
+                                              </div>
+                                                  <div class="inner required">
+                                                      Required
+                                                  </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  </tr>
+                            </table>
+
+
+
+
+
+                          <h2>Responses</h2>
+                            <h3> Status: default - Default error sample response </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                            </div>
+
+                        </article>
+                      </div>
+                      <hr>
                   </section>
                 <section id="api-NodeIndex">
                   <h1>NodeIndex</h1>
-                    <div id="api-NodeIndex-nodenodeIdIndextypeDelete">
-                      <article id="api-NodeIndex-nodenodeIdIndextypeDelete-0" data-group="User" data-name="nodenodeIdIndextypeDelete" data-version="0">
+                    <div id="api-NodeIndex-nodeNodeIdIndexTypeDelete">
+                      <article id="api-NodeIndex-nodeNodeIdIndexTypeDelete-0" data-group="User" data-name="nodeNodeIdIndexTypeDelete" data-version="0">
                         <div class="pull-left">
-                          <h1>nodenodeIdIndextypeDelete</h1>
+                          <h1>nodeNodeIdIndexTypeDelete</h1>
                           <p>delete node index</p>
                         </div>
                         <div class="pull-right"></div>
@@ -2376,29 +2919,29 @@ except ApiException as e:
                         <p class="marked"></p>
                         <p></p>
                         <br />
-                        <pre class="prettyprint language-html prettyprinted" data-type="delete"><code><span class="pln">/node/&lt;node_id&gt;/index/&lt;type&gt;</span></code></pre>
+                        <pre class="prettyprint language-html prettyprinted" data-type="delete"><code><span class="pln">/node/{nodeId}/index/{type}</span></code></pre>
                         <p>
                           <h3>Usage and SDK Samples</h3>
                         </p>
                         <ul class="nav nav-tabs nav-tabs-examples">
-                          <li class="active"><a href="#examples-NodeIndex-nodenodeIdIndextypeDelete-0-curl">Curl</a></li>
-                          <li class=""><a href="#examples-NodeIndex-nodenodeIdIndextypeDelete-0-java">Java</a></li>
-                          <li class=""><a href="#examples-NodeIndex-nodenodeIdIndextypeDelete-0-android">Android</a></li>
-                          <!--<li class=""><a href="#examples-NodeIndex-nodenodeIdIndextypeDelete-0-groovy">Groovy</a></li>-->
-                          <li class=""><a href="#examples-NodeIndex-nodenodeIdIndextypeDelete-0-objc">Obj-C</a></li>
-                          <li class=""><a href="#examples-NodeIndex-nodenodeIdIndextypeDelete-0-javascript">JavaScript</a></li>
-                          <!--<li class=""><a href="#examples-NodeIndex-nodenodeIdIndextypeDelete-0-angular">Angular</a></li>-->
-                          <li class=""><a href="#examples-NodeIndex-nodenodeIdIndextypeDelete-0-csharp">C#</a></li>
-                          <li class=""><a href="#examples-NodeIndex-nodenodeIdIndextypeDelete-0-php">PHP</a></li>
-                          <li class=""><a href="#examples-NodeIndex-nodenodeIdIndextypeDelete-0-perl">Perl</a></li>
-                          <li class=""><a href="#examples-NodeIndex-nodenodeIdIndextypeDelete-0-python">Python</a></li>
+                          <li class="active"><a href="#examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-curl">Curl</a></li>
+                          <li class=""><a href="#examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-java">Java</a></li>
+                          <li class=""><a href="#examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-android">Android</a></li>
+                          <!--<li class=""><a href="#examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-groovy">Groovy</a></li>-->
+                          <li class=""><a href="#examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-objc">Obj-C</a></li>
+                          <li class=""><a href="#examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-javascript">JavaScript</a></li>
+                          <!--<li class=""><a href="#examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-angular">Angular</a></li>-->
+                          <li class=""><a href="#examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-csharp">C#</a></li>
+                          <li class=""><a href="#examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-php">PHP</a></li>
+                          <li class=""><a href="#examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-perl">Perl</a></li>
+                          <li class=""><a href="#examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-python">Python</a></li>
                         </ul>
 
                         <div class="tab-content">
-                          <div class="tab-pane active" id="examples-NodeIndex-nodenodeIdIndextypeDelete-0-curl">
-                            <pre class="prettyprint"><code class="language-bsh">curl -X DELETE "shock.mg-rast.org/node/&lt;node_id&gt;/index/&lt;type&gt;?users="</code></pre>
+                          <div class="tab-pane active" id="examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-curl">
+                            <pre class="prettyprint"><code class="language-bsh">curl -X DELETE "shock.mg-rast.org/node/{nodeId}/index/{type}?users="</code></pre>
                           </div>
-                          <div class="tab-pane" id="examples-NodeIndex-nodenodeIdIndextypeDelete-0-java">
+                          <div class="tab-pane" id="examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-java">
                             <pre class="prettyprint"><code class="language-java">import io.swagger.client.*;
 import io.swagger.client.auth.*;
 import io.swagger.client.model.*;
@@ -2412,45 +2955,53 @@ public class NodeIndexApiExample {
     public static void main(String[] args) {
         
         NodeIndexApi apiInstance = new NodeIndexApi();
+        String nodeId = nodeId_example; // String | 
+        String type = type_example; // String | upload node index
         String users = users_example; // String | delete
         try {
-            apiInstance.nodenodeIdIndextypeDelete(users);
+            apiInstance.nodeNodeIdIndexTypeDelete(nodeId, type, users);
         } catch (ApiException e) {
-            System.err.println("Exception when calling NodeIndexApi#nodenodeIdIndextypeDelete");
+            System.err.println("Exception when calling NodeIndexApi#nodeNodeIdIndexTypeDelete");
             e.printStackTrace();
         }
     }
 }</code></pre>
                           </div>
 
-                          <div class="tab-pane" id="examples-NodeIndex-nodenodeIdIndextypeDelete-0-android">
+                          <div class="tab-pane" id="examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-android">
                             <pre class="prettyprint"><code class="language-java">import io.swagger.client.api.NodeIndexApi;
 
 public class NodeIndexApiExample {
 
     public static void main(String[] args) {
         NodeIndexApi apiInstance = new NodeIndexApi();
+        String nodeId = nodeId_example; // String | 
+        String type = type_example; // String | upload node index
         String users = users_example; // String | delete
         try {
-            apiInstance.nodenodeIdIndextypeDelete(users);
+            apiInstance.nodeNodeIdIndexTypeDelete(nodeId, type, users);
         } catch (ApiException e) {
-            System.err.println("Exception when calling NodeIndexApi#nodenodeIdIndextypeDelete");
+            System.err.println("Exception when calling NodeIndexApi#nodeNodeIdIndexTypeDelete");
             e.printStackTrace();
         }
     }
 }</code></pre>
                           </div>
   <!--
-  <div class="tab-pane" id="examples-NodeIndex-nodenodeIdIndextypeDelete-0-groovy">
+  <div class="tab-pane" id="examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-groovy">
   <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
   </div> -->
-                            <div class="tab-pane" id="examples-NodeIndex-nodenodeIdIndextypeDelete-0-objc">
-                              <pre class="prettyprint"><code class="language-cpp">String *users = users_example; // delete (optional)
+                            <div class="tab-pane" id="examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-objc">
+                              <pre class="prettyprint"><code class="language-cpp">String *nodeId = nodeId_example; // 
+String *type = type_example; // upload node index
+String *users = users_example; // delete (optional)
 
 NodeIndexApi *apiInstance = [[NodeIndexApi alloc] init];
 
 // delete node index
-[apiInstance nodenodeIdIndextypeDeleteWith:users
+[apiInstance nodeNodeIdIndexTypeDeleteWith:nodeId
+    type:type
+    users:users
               completionHandler: ^(NSError* error) {
                             if (error) {
                                 NSLog(@"Error: %@", error);
@@ -2459,10 +3010,12 @@ NodeIndexApi *apiInstance = [[NodeIndexApi alloc] init];
 </code></pre>
                             </div>
 
-                            <div class="tab-pane" id="examples-NodeIndex-nodenodeIdIndextypeDelete-0-javascript">
+                            <div class="tab-pane" id="examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-javascript">
                               <pre class="prettyprint"><code class="language-js">var Shock2ApiSpecification = require('shock2_api_specification');
 
 var api = new Shock2ApiSpecification.NodeIndexApi()
+var nodeId = nodeId_example; // {{String}} 
+var type = type_example; // {{String}} upload node index
 var opts = { 
   'users': users_example // {{String}} delete
 };
@@ -2473,14 +3026,14 @@ var callback = function(error, data, response) {
     console.log('API called successfully.');
   }
 };
-api.nodenodeIdIndextypeDelete(opts, callback);
+api.nodeNodeIdIndexTypeDelete(nodeId, type, opts, callback);
 </code></pre>
                             </div>
 
-                            <!--<div class="tab-pane" id="examples-NodeIndex-nodenodeIdIndextypeDelete-0-angular">
+                            <!--<div class="tab-pane" id="examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-angular">
               <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
             </div>-->
-                            <div class="tab-pane" id="examples-NodeIndex-nodenodeIdIndextypeDelete-0-csharp">
+                            <div class="tab-pane" id="examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-csharp">
                               <pre class="prettyprint"><code class="language-cs">using System;
 using System.Diagnostics;
 using IO.Swagger.Api;
@@ -2489,22 +3042,24 @@ using IO.Swagger.Model;
 
 namespace Example
 {
-    public class nodenodeIdIndextypeDeleteExample
+    public class nodeNodeIdIndexTypeDeleteExample
     {
         public void main()
         {
 
             var apiInstance = new NodeIndexApi();
+            var nodeId = nodeId_example;  // String | 
+            var type = type_example;  // String | upload node index
             var users = users_example;  // String | delete (optional) 
 
             try
             {
                 // delete node index
-                apiInstance.nodenodeIdIndextypeDelete(users);
+                apiInstance.nodeNodeIdIndexTypeDelete(nodeId, type, users);
             }
             catch (Exception e)
             {
-                Debug.Print("Exception when calling NodeIndexApi.nodenodeIdIndextypeDelete: " + e.Message );
+                Debug.Print("Exception when calling NodeIndexApi.nodeNodeIdIndexTypeDelete: " + e.Message );
             }
         }
     }
@@ -2512,38 +3067,42 @@ namespace Example
 </code></pre>
                             </div>
 
-                            <div class="tab-pane" id="examples-NodeIndex-nodenodeIdIndextypeDelete-0-php">
+                            <div class="tab-pane" id="examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-php">
                               <pre class="prettyprint"><code class="language-php"><&#63;php
 require_once(__DIR__ . '/vendor/autoload.php');
 
 $api_instance = new Swagger\Client\ApiNodeIndexApi();
+$nodeId = nodeId_example; // String | 
+$type = type_example; // String | upload node index
 $users = users_example; // String | delete
 
 try {
-    $api_instance->nodenodeIdIndextypeDelete($users);
+    $api_instance->nodeNodeIdIndexTypeDelete($nodeId, $type, $users);
 } catch (Exception $e) {
-    echo 'Exception when calling NodeIndexApi->nodenodeIdIndextypeDelete: ', $e->getMessage(), PHP_EOL;
+    echo 'Exception when calling NodeIndexApi->nodeNodeIdIndexTypeDelete: ', $e->getMessage(), PHP_EOL;
 }
 ?></code></pre>
                             </div>
 
-                            <div class="tab-pane" id="examples-NodeIndex-nodenodeIdIndextypeDelete-0-perl">
+                            <div class="tab-pane" id="examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-perl">
                               <pre class="prettyprint"><code class="language-perl">use Data::Dumper;
 use WWW::SwaggerClient::Configuration;
 use WWW::SwaggerClient::NodeIndexApi;
 
 my $api_instance = WWW::SwaggerClient::NodeIndexApi->new();
+my $nodeId = nodeId_example; # String | 
+my $type = type_example; # String | upload node index
 my $users = users_example; # String | delete
 
 eval { 
-    $api_instance->nodenodeIdIndextypeDelete(users => $users);
+    $api_instance->nodeNodeIdIndexTypeDelete(nodeId => $nodeId, type => $type, users => $users);
 };
 if ($@) {
-    warn "Exception when calling NodeIndexApi->nodenodeIdIndextypeDelete: $@\n";
+    warn "Exception when calling NodeIndexApi->nodeNodeIdIndexTypeDelete: $@\n";
 }</code></pre>
                             </div>
 
-                            <div class="tab-pane" id="examples-NodeIndex-nodenodeIdIndextypeDelete-0-python">
+                            <div class="tab-pane" id="examples-NodeIndex-nodeNodeIdIndexTypeDelete-0-python">
                               <pre class="prettyprint"><code class="language-python">from __future__ import print_statement
 import time
 import swagger_client
@@ -2552,18 +3111,68 @@ from pprint import pprint
 
 # create an instance of the API class
 api_instance = swagger_client.NodeIndexApi()
+nodeId = nodeId_example # String | 
+type = type_example # String | upload node index
 users = users_example # String | delete (optional)
 
 try: 
     # delete node index
-    api_instance.nodenode_id_indextype_delete(users=users)
+    api_instance.node_node_id_index_type_delete(nodeId, type, users=users)
 except ApiException as e:
-    print("Exception when calling NodeIndexApi->nodenodeIdIndextypeDelete: %s\n" % e)</code></pre>
+    print("Exception when calling NodeIndexApi->nodeNodeIdIndexTypeDelete: %s\n" % e)</code></pre>
                             </div>
                           </div>
 
                           <h2>Parameters</h2>
 
+                            <div class="methodsubtabletitle">Path parameters</div>
+                            <table id="methodsubtable">
+                                <tr>
+                                  <th width="150px">Name</th>
+                                  <th>Description</th>
+                                </tr>
+                                  <tr><td style="width:150px;">nodeId*</td>
+                                  <td>
+                                  
+                                  
+                                      <div id="d2e199_nodeNodeIdIndexTypeDelete_nodeId">
+                                          <div class="json-schema-view">
+                                              <div class="primitive">
+                                                  <span class="type">
+                                                      String
+                                                  </span>
+                                  
+                                              </div>
+                                                  <div class="inner required">
+                                                      Required
+                                                  </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  </tr>
+                                  <tr><td style="width:150px;">type*</td>
+                                  <td>
+                                  
+                                  
+                                      <div id="d2e199_nodeNodeIdIndexTypeDelete_type">
+                                          <div class="json-schema-view">
+                                              <div class="primitive">
+                                                  <span class="type">
+                                                      String
+                                                  </span>
+                                  
+                                                      <div class="inner description">
+                                                          upload node index
+                                                      </div>
+                                              </div>
+                                                  <div class="inner required">
+                                                      Required
+                                                  </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  </tr>
+                            </table>
 
 
 
@@ -2578,7 +3187,7 @@ except ApiException as e:
                                 <td>
                                 
                                 
-                                    <div id="d2e199_nodenodeIdIndextypeDelete_users">
+                                    <div id="d2e199_nodeNodeIdIndexTypeDelete_users">
                                         <div class="json-schema-view">
                                             <div class="primitive">
                                                 <span class="type">
@@ -2607,10 +3216,10 @@ except ApiException as e:
                         </article>
                       </div>
                       <hr>
-                    <div id="api-NodeIndex-nodenodeIdIndextypePut">
-                      <article id="api-NodeIndex-nodenodeIdIndextypePut-0" data-group="User" data-name="nodenodeIdIndextypePut" data-version="0">
+                    <div id="api-NodeIndex-nodeNodeIdIndexTypePut">
+                      <article id="api-NodeIndex-nodeNodeIdIndexTypePut-0" data-group="User" data-name="nodeNodeIdIndexTypePut" data-version="0">
                         <div class="pull-left">
-                          <h1>nodenodeIdIndextypePut</h1>
+                          <h1>nodeNodeIdIndexTypePut</h1>
                           <p>create node indexes</p>
                         </div>
                         <div class="pull-right"></div>
@@ -2619,29 +3228,29 @@ except ApiException as e:
                         <p class="marked"></p>
                         <p></p>
                         <br />
-                        <pre class="prettyprint language-html prettyprinted" data-type="put"><code><span class="pln">/node/&lt;node_id&gt;/index/&lt;type&gt;</span></code></pre>
+                        <pre class="prettyprint language-html prettyprinted" data-type="put"><code><span class="pln">/node/{nodeId}/index/{type}</span></code></pre>
                         <p>
                           <h3>Usage and SDK Samples</h3>
                         </p>
                         <ul class="nav nav-tabs nav-tabs-examples">
-                          <li class="active"><a href="#examples-NodeIndex-nodenodeIdIndextypePut-0-curl">Curl</a></li>
-                          <li class=""><a href="#examples-NodeIndex-nodenodeIdIndextypePut-0-java">Java</a></li>
-                          <li class=""><a href="#examples-NodeIndex-nodenodeIdIndextypePut-0-android">Android</a></li>
-                          <!--<li class=""><a href="#examples-NodeIndex-nodenodeIdIndextypePut-0-groovy">Groovy</a></li>-->
-                          <li class=""><a href="#examples-NodeIndex-nodenodeIdIndextypePut-0-objc">Obj-C</a></li>
-                          <li class=""><a href="#examples-NodeIndex-nodenodeIdIndextypePut-0-javascript">JavaScript</a></li>
-                          <!--<li class=""><a href="#examples-NodeIndex-nodenodeIdIndextypePut-0-angular">Angular</a></li>-->
-                          <li class=""><a href="#examples-NodeIndex-nodenodeIdIndextypePut-0-csharp">C#</a></li>
-                          <li class=""><a href="#examples-NodeIndex-nodenodeIdIndextypePut-0-php">PHP</a></li>
-                          <li class=""><a href="#examples-NodeIndex-nodenodeIdIndextypePut-0-perl">Perl</a></li>
-                          <li class=""><a href="#examples-NodeIndex-nodenodeIdIndextypePut-0-python">Python</a></li>
+                          <li class="active"><a href="#examples-NodeIndex-nodeNodeIdIndexTypePut-0-curl">Curl</a></li>
+                          <li class=""><a href="#examples-NodeIndex-nodeNodeIdIndexTypePut-0-java">Java</a></li>
+                          <li class=""><a href="#examples-NodeIndex-nodeNodeIdIndexTypePut-0-android">Android</a></li>
+                          <!--<li class=""><a href="#examples-NodeIndex-nodeNodeIdIndexTypePut-0-groovy">Groovy</a></li>-->
+                          <li class=""><a href="#examples-NodeIndex-nodeNodeIdIndexTypePut-0-objc">Obj-C</a></li>
+                          <li class=""><a href="#examples-NodeIndex-nodeNodeIdIndexTypePut-0-javascript">JavaScript</a></li>
+                          <!--<li class=""><a href="#examples-NodeIndex-nodeNodeIdIndexTypePut-0-angular">Angular</a></li>-->
+                          <li class=""><a href="#examples-NodeIndex-nodeNodeIdIndexTypePut-0-csharp">C#</a></li>
+                          <li class=""><a href="#examples-NodeIndex-nodeNodeIdIndexTypePut-0-php">PHP</a></li>
+                          <li class=""><a href="#examples-NodeIndex-nodeNodeIdIndexTypePut-0-perl">Perl</a></li>
+                          <li class=""><a href="#examples-NodeIndex-nodeNodeIdIndexTypePut-0-python">Python</a></li>
                         </ul>
 
                         <div class="tab-content">
-                          <div class="tab-pane active" id="examples-NodeIndex-nodenodeIdIndextypePut-0-curl">
-                            <pre class="prettyprint"><code class="language-bsh">curl -X PUT "shock.mg-rast.org/node/&lt;node_id&gt;/index/&lt;type&gt;?upload="</code></pre>
+                          <div class="tab-pane active" id="examples-NodeIndex-nodeNodeIdIndexTypePut-0-curl">
+                            <pre class="prettyprint"><code class="language-bsh">curl -X PUT "shock.mg-rast.org/node/{nodeId}/index/{type}"</code></pre>
                           </div>
-                          <div class="tab-pane" id="examples-NodeIndex-nodenodeIdIndextypePut-0-java">
+                          <div class="tab-pane" id="examples-NodeIndex-nodeNodeIdIndexTypePut-0-java">
                             <pre class="prettyprint"><code class="language-java">import io.swagger.client.*;
 import io.swagger.client.auth.*;
 import io.swagger.client.model.*;
@@ -2655,45 +3264,49 @@ public class NodeIndexApiExample {
     public static void main(String[] args) {
         
         NodeIndexApi apiInstance = new NodeIndexApi();
-        String upload = upload_example; // String | upload node index
+        String nodeId = nodeId_example; // String | 
+        String type = type_example; // String | upload node index
         try {
-            apiInstance.nodenodeIdIndextypePut(upload);
+            apiInstance.nodeNodeIdIndexTypePut(nodeId, type);
         } catch (ApiException e) {
-            System.err.println("Exception when calling NodeIndexApi#nodenodeIdIndextypePut");
+            System.err.println("Exception when calling NodeIndexApi#nodeNodeIdIndexTypePut");
             e.printStackTrace();
         }
     }
 }</code></pre>
                           </div>
 
-                          <div class="tab-pane" id="examples-NodeIndex-nodenodeIdIndextypePut-0-android">
+                          <div class="tab-pane" id="examples-NodeIndex-nodeNodeIdIndexTypePut-0-android">
                             <pre class="prettyprint"><code class="language-java">import io.swagger.client.api.NodeIndexApi;
 
 public class NodeIndexApiExample {
 
     public static void main(String[] args) {
         NodeIndexApi apiInstance = new NodeIndexApi();
-        String upload = upload_example; // String | upload node index
+        String nodeId = nodeId_example; // String | 
+        String type = type_example; // String | upload node index
         try {
-            apiInstance.nodenodeIdIndextypePut(upload);
+            apiInstance.nodeNodeIdIndexTypePut(nodeId, type);
         } catch (ApiException e) {
-            System.err.println("Exception when calling NodeIndexApi#nodenodeIdIndextypePut");
+            System.err.println("Exception when calling NodeIndexApi#nodeNodeIdIndexTypePut");
             e.printStackTrace();
         }
     }
 }</code></pre>
                           </div>
   <!--
-  <div class="tab-pane" id="examples-NodeIndex-nodenodeIdIndextypePut-0-groovy">
+  <div class="tab-pane" id="examples-NodeIndex-nodeNodeIdIndexTypePut-0-groovy">
   <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
   </div> -->
-                            <div class="tab-pane" id="examples-NodeIndex-nodenodeIdIndextypePut-0-objc">
-                              <pre class="prettyprint"><code class="language-cpp">String *upload = upload_example; // upload node index (optional)
+                            <div class="tab-pane" id="examples-NodeIndex-nodeNodeIdIndexTypePut-0-objc">
+                              <pre class="prettyprint"><code class="language-cpp">String *nodeId = nodeId_example; // 
+String *type = type_example; // upload node index
 
 NodeIndexApi *apiInstance = [[NodeIndexApi alloc] init];
 
 // create node indexes
-[apiInstance nodenodeIdIndextypePutWith:upload
+[apiInstance nodeNodeIdIndexTypePutWith:nodeId
+    type:type
               completionHandler: ^(NSError* error) {
                             if (error) {
                                 NSLog(@"Error: %@", error);
@@ -2702,13 +3315,13 @@ NodeIndexApi *apiInstance = [[NodeIndexApi alloc] init];
 </code></pre>
                             </div>
 
-                            <div class="tab-pane" id="examples-NodeIndex-nodenodeIdIndextypePut-0-javascript">
+                            <div class="tab-pane" id="examples-NodeIndex-nodeNodeIdIndexTypePut-0-javascript">
                               <pre class="prettyprint"><code class="language-js">var Shock2ApiSpecification = require('shock2_api_specification');
 
 var api = new Shock2ApiSpecification.NodeIndexApi()
-var opts = { 
-  'upload': upload_example // {{String}} upload node index
-};
+var nodeId = nodeId_example; // {{String}} 
+var type = type_example; // {{String}} upload node index
+
 var callback = function(error, data, response) {
   if (error) {
     console.error(error);
@@ -2716,14 +3329,14 @@ var callback = function(error, data, response) {
     console.log('API called successfully.');
   }
 };
-api.nodenodeIdIndextypePut(opts, callback);
+api.nodeNodeIdIndexTypePut(nodeId, type, callback);
 </code></pre>
                             </div>
 
-                            <!--<div class="tab-pane" id="examples-NodeIndex-nodenodeIdIndextypePut-0-angular">
+                            <!--<div class="tab-pane" id="examples-NodeIndex-nodeNodeIdIndexTypePut-0-angular">
               <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
             </div>-->
-                            <div class="tab-pane" id="examples-NodeIndex-nodenodeIdIndextypePut-0-csharp">
+                            <div class="tab-pane" id="examples-NodeIndex-nodeNodeIdIndexTypePut-0-csharp">
                               <pre class="prettyprint"><code class="language-cs">using System;
 using System.Diagnostics;
 using IO.Swagger.Api;
@@ -2732,22 +3345,23 @@ using IO.Swagger.Model;
 
 namespace Example
 {
-    public class nodenodeIdIndextypePutExample
+    public class nodeNodeIdIndexTypePutExample
     {
         public void main()
         {
 
             var apiInstance = new NodeIndexApi();
-            var upload = upload_example;  // String | upload node index (optional) 
+            var nodeId = nodeId_example;  // String | 
+            var type = type_example;  // String | upload node index
 
             try
             {
                 // create node indexes
-                apiInstance.nodenodeIdIndextypePut(upload);
+                apiInstance.nodeNodeIdIndexTypePut(nodeId, type);
             }
             catch (Exception e)
             {
-                Debug.Print("Exception when calling NodeIndexApi.nodenodeIdIndextypePut: " + e.Message );
+                Debug.Print("Exception when calling NodeIndexApi.nodeNodeIdIndexTypePut: " + e.Message );
             }
         }
     }
@@ -2755,38 +3369,40 @@ namespace Example
 </code></pre>
                             </div>
 
-                            <div class="tab-pane" id="examples-NodeIndex-nodenodeIdIndextypePut-0-php">
+                            <div class="tab-pane" id="examples-NodeIndex-nodeNodeIdIndexTypePut-0-php">
                               <pre class="prettyprint"><code class="language-php"><&#63;php
 require_once(__DIR__ . '/vendor/autoload.php');
 
 $api_instance = new Swagger\Client\ApiNodeIndexApi();
-$upload = upload_example; // String | upload node index
+$nodeId = nodeId_example; // String | 
+$type = type_example; // String | upload node index
 
 try {
-    $api_instance->nodenodeIdIndextypePut($upload);
+    $api_instance->nodeNodeIdIndexTypePut($nodeId, $type);
 } catch (Exception $e) {
-    echo 'Exception when calling NodeIndexApi->nodenodeIdIndextypePut: ', $e->getMessage(), PHP_EOL;
+    echo 'Exception when calling NodeIndexApi->nodeNodeIdIndexTypePut: ', $e->getMessage(), PHP_EOL;
 }
 ?></code></pre>
                             </div>
 
-                            <div class="tab-pane" id="examples-NodeIndex-nodenodeIdIndextypePut-0-perl">
+                            <div class="tab-pane" id="examples-NodeIndex-nodeNodeIdIndexTypePut-0-perl">
                               <pre class="prettyprint"><code class="language-perl">use Data::Dumper;
 use WWW::SwaggerClient::Configuration;
 use WWW::SwaggerClient::NodeIndexApi;
 
 my $api_instance = WWW::SwaggerClient::NodeIndexApi->new();
-my $upload = upload_example; # String | upload node index
+my $nodeId = nodeId_example; # String | 
+my $type = type_example; # String | upload node index
 
 eval { 
-    $api_instance->nodenodeIdIndextypePut(upload => $upload);
+    $api_instance->nodeNodeIdIndexTypePut(nodeId => $nodeId, type => $type);
 };
 if ($@) {
-    warn "Exception when calling NodeIndexApi->nodenodeIdIndextypePut: $@\n";
+    warn "Exception when calling NodeIndexApi->nodeNodeIdIndexTypePut: $@\n";
 }</code></pre>
                             </div>
 
-                            <div class="tab-pane" id="examples-NodeIndex-nodenodeIdIndextypePut-0-python">
+                            <div class="tab-pane" id="examples-NodeIndex-nodeNodeIdIndexTypePut-0-python">
                               <pre class="prettyprint"><code class="language-python">from __future__ import print_statement
 import time
 import swagger_client
@@ -2795,48 +3411,71 @@ from pprint import pprint
 
 # create an instance of the API class
 api_instance = swagger_client.NodeIndexApi()
-upload = upload_example # String | upload node index (optional)
+nodeId = nodeId_example # String | 
+type = type_example # String | upload node index
 
 try: 
     # create node indexes
-    api_instance.nodenode_id_indextype_put(upload=upload)
+    api_instance.node_node_id_index_type_put(nodeId, type)
 except ApiException as e:
-    print("Exception when calling NodeIndexApi->nodenodeIdIndextypePut: %s\n" % e)</code></pre>
+    print("Exception when calling NodeIndexApi->nodeNodeIdIndexTypePut: %s\n" % e)</code></pre>
                             </div>
                           </div>
 
                           <h2>Parameters</h2>
 
-
-
-
-
-                            <div class="methodsubtabletitle">Query parameters</div>
+                            <div class="methodsubtabletitle">Path parameters</div>
                             <table id="methodsubtable">
-                              <tr>
-                                <th width="150px">Name</th>
-                                <th>Description</th>
-                              </tr>
-                                <tr><td style="width:150px;">upload</td>
-                                <td>
-                                
-                                
-                                    <div id="d2e199_nodenodeIdIndextypePut_upload">
-                                        <div class="json-schema-view">
-                                            <div class="primitive">
-                                                <span class="type">
-                                                    String
-                                                </span>
-                                
-                                                    <div class="inner description">
-                                                        upload node index
-                                                    </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </td>
+                                <tr>
+                                  <th width="150px">Name</th>
+                                  <th>Description</th>
                                 </tr>
+                                  <tr><td style="width:150px;">nodeId*</td>
+                                  <td>
+                                  
+                                  
+                                      <div id="d2e199_nodeNodeIdIndexTypePut_nodeId">
+                                          <div class="json-schema-view">
+                                              <div class="primitive">
+                                                  <span class="type">
+                                                      String
+                                                  </span>
+                                  
+                                              </div>
+                                                  <div class="inner required">
+                                                      Required
+                                                  </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  </tr>
+                                  <tr><td style="width:150px;">type*</td>
+                                  <td>
+                                  
+                                  
+                                      <div id="d2e199_nodeNodeIdIndexTypePut_type">
+                                          <div class="json-schema-view">
+                                              <div class="primitive">
+                                                  <span class="type">
+                                                      String
+                                                  </span>
+                                  
+                                                      <div class="inner description">
+                                                          upload node index
+                                                      </div>
+                                              </div>
+                                                  <div class="inner required">
+                                                      Required
+                                                  </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  </tr>
                             </table>
+
+
+
+
 
                           <h2>Responses</h2>
                             <h3> Status: default - Default error sample response </h3>

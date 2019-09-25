@@ -44,4 +44,4 @@ types.yaml
 
 
 .swagger-codegen-ignore
-.swagger-codegen/VERSION
+.swagger-codegen/
