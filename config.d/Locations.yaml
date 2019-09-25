@@ -60,7 +60,6 @@ Locations:
     AuthKey: ""
     SecretKey: ""
     Prefix:  ""
-    Restorecommand: "dsmc restore %ID%  -latest"
     Priority: 0
     Tier: 10
     Cost: 0

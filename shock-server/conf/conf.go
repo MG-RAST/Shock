@@ -41,7 +41,6 @@ type LocationConfig struct {
 
 	S3Location     `bson:",inline" json:",inline" yaml:",inline"` // extensions specific to S3
 	AzureLocation  `bson:",inline" json:",inline" yaml:",inline"` // extensions specific to Microsoft Azure
-	TSMLocation    `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to IBM TSM
 	GCloudLocation `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to IBM TSM
 
 }
@@ -60,11 +59,6 @@ type AzureLocation struct {
 // GCloudLocation specific fields
 type GCloudLocation struct {
 	Project string `bson:"Project" json:"-" yaml:"Project" `
-}
-
-// TSMLocation IBM TSM specific fields
-type TSMLocation struct {
-	Recoverycommand string `bson:"recoverycommand" json:"recoverycommand" yaml:"Recoverycommand" `
 }
 
 // LocationsMap allow access to Location objects via Locations("ID")
