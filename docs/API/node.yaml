@@ -39,6 +39,13 @@ paths:
   '/node/{nodeId}':
     get:
       summary: view and download node
+      description: |
+        View node, download file (full or partial)
+
+        - optionally takes user/password via Basic Auth
+        - `?download` - complete file download
+        - `?download&index=size&part=1\[&part=2...\]\[chunksize=inbytes\]` - download portion of the file via the size virtual index. Chunksize defaults to 1MB (1048576 bytes).
+
       responses:
         200:
           description: OK
@@ -82,7 +89,31 @@ paths:
         description: download file
     put:
       summary: 'update node'
-      description: ''
+      description: |
+        **Modify:** 
+
+        - **Once the file of a node is set, it is immutable.**
+        - node attributes can be over-written
+        - accepts multipart/form-data encoded 
+        - to set attributes include file field named "attributes" containing a json file of attributes
+        - to set file include file field named "upload" containing any file **or** include field named "path" containing the file system path to the file accessible from the Shock server
+        
+        ```
+        # update attributes
+        curl -X PUT -F "attributes=@<path_to_json>" http://<host>[:<port>]/node/<node_id>
+        
+        # add file
+        curl -X PUT ( -F "upload=@<path_to_data_file>" || -F "path=<path_to_file>") http://<host>[:<port>]/node/<node_id>
+        
+        # change filename
+        curl -X PUT -F "file_name=<new_file_name>" http://<host>[:<port>]/node/<node_id>
+        
+        # add / update expiration
+        curl -X PUT -F "expiration=<\d+[MHD]>" http://<host>[:<port>]/node/<node_id>
+        
+        # remove expiration
+        curl -X PUT -F "remove_expiration=true" http://<host>[:<port>]/node/<node_id>
+        ```
       operationId: ''
       responses:
         default:
@@ -101,6 +132,15 @@ paths:
   '/node':
     get:
       summary: list nodes
+      description: |
+        All attributes are queriable. For example if a node has in it's attributes `"about" : "metagenome"` the url 
+        `/node/?query&about=metagenome`
+        would return it and all other nodes with that attribute. Address of nested attributes like `"metadata": { "env_biome": "ENVO:human-associated habitat", ... } `is done via a dot notation 
+        `/node/?query&metadata.env_biome=ENVO:human-associated%20habitat`
+        Multiple attributes can be selected in a single query and are treated as AND operations
+        `/node/?query&metadata.env_biome=ENVO:human-associated%20habitat&about=metagenome`
+  
+        **Note:** all special characters like a space must be url encoded.
       parameters:
       - in: query
         name: query
@@ -108,6 +148,7 @@ paths:
           type: boolean
           example: true
         required: false
+        
       - in: query
         name: limit
         schema:
@@ -119,12 +160,39 @@ paths:
           type: integer
         required: false
       responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              example:
+                resources:  ["node"]
+                url: "http://localhost:7445/"
+                documentation: "http://localhost:7445/documentation.html"
+                contact: "admin@host.com"
+                id: "Shock"
+                type: "Shock"
         '200':
           description: OK
+          content:
+            application/json:
+              example:
+                data: array of nodes
+                error: string or null error message
+                status: int, http status code
+                limit: limit
+                offset: offset
+                total_count: count
       tags:
         - node
     post:
       summary: upload file
+      description: | 
+                      - optionally takes user/password via Basic Auth. If set only that user with have access to the node
+                      - accepts multipart/form-data encoded 
+                      - to set attributes include file field named "attributes" containing a json file of attributes
+                      - to set file include file field named "upload" containing any file **or** include field named "path" containing the file system path to the file accessible from the Shock server
+                      
+                      `curl -X POST [ see Authentication ] [ -F "attributes=@<path_to_json>" ( -F "upload=@<path_to_data_file>" || -F "path=<path_to_file>") ] http://<host>[:<port>]/node`
       parameters:
       - in: query
         name: attributes
@@ -209,6 +277,9 @@ paths:
       tags:
         - node_acl
   '/node/{nodeId}/index/{type}':
+   
+      
+##### returns
     parameters:
       - in: path
         name: nodeId
@@ -223,7 +294,26 @@ paths:
         required: true    
     put:
       summary: create node indexes
-      description: ''
+      description: |
+        **Create index:**
+        
+        - Currently available index types include: size (virtual, does not require index creation), line, column (for tabbed files), chunkrecord and record (for sequence file types), bai (bam index), and subset (based on an existing index)
+        
+        Examples
+        ```
+        curl -X PUT [ see Authentication ] http://<host>[:<port>]/node/<node_id>/index/<type>
+        curl -X PUT [ see Authentication ] http://<host>[:<port>]/node/<node_id>/index/column?number=<int>
+        curl -X PUT [ see Authentication ] -F "index_name=<string>" -F "parent_index=<type>" -F "subset_indices=@<path_to_file>" http://<host>[:<port>]/node/<node_id>/index/subset
+        curl -X PUT [ see Authentication ] http://<host>[:<port>]/node/<node_id>?index=<type> (deprecated)
+        ```
+        If an index already exists, you should receive an error message telling you that.  To overwrite the existing index, add the parameter `?force_rebuild=1` to your PUT request.
+        
+        To upload an index, query field `?upload` and form field `upload=` both have to be used.
+        
+        ```
+        curl -X PUT [ see Authentication ] -F "upload=@<path_to_index_file>" http://<host>[:<port>]/node/<node_id>/index/<type>?upload
+        curl -X PUT [ see Authentication ] -F "upload=@<path_to_index_file>" http://<host>[:<port>]/node/<node_id>/index/<type>?upload&indexFormat=<string>&avgUnitSize=<int64>&totalUnits=<int64>
+        ```
       operationId: ''
       responses:
         default:

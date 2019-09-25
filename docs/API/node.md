@@ -1,112 +1,25 @@
 
 
-### API Routes for /node (default port 7445):
-
-
-#### Nodes
-
-- `/node`
-    - `GET` list nodes
-- `/node?query`
-    - `GET` search query
-- `/node/<node_id>`
-    - `GET` view node, download file (full or partial)
-    - `PUT` modify node (e.g. update attributes of existing node)
-    - `DELETE` delete node
-
-#### Node permission
-
-- ` /node/<node_id>/acl`  
-    - `GET` view node acls
-    - `PUT`  modify node acls
-- `/node/<node_id>/acl/<type>`  
-    - `GET` view node acls of type `<type>`
-    - `PUT` modify node acls of type `<type>`
-
-#### Node indices
-
-- `/node/<node_id>/index/<type>`  
-  - `PUT` create node indexes
-  - `DELETE` delete node index
-
-- `/node/<node_id>/index/<type>?upload` 
-  - `PUT` upload node index
-- `/node/<node_id>/acl/<type>?users=<user-ids_or_uuids>`
-    - `DELETE`
-
-
-
-
-
-NOTE: Although a node may be designated as publicly readable, writable, or deletable, user authentication may still be required  to perform the operation depending on the Shock server's configuration.
-<br>
-<br>
-
-
-Node object description
-----------
-
-### Node main fields:
-
-- id: unique identifier
-- file: name, size, checksum(s).
-- attributes: arbitrary json. Queriable.
-- indexes: A set of indexes to use.
-- version: a version stamp for this node.
-
-##### Node example:
-    
-    {
-        "data": {
-            "attributes": null,
-            "created_on" : "2014-06-16T11:08:17.955-05:00",
-            "file": {
-                "checksum": {},
-                "format": "",
-                "name": "",
-                "size": 0,
-                "virtual": false,
-                "virtual_parts": []
-            },
-            "id": "130cadb5-9435-4bd9-be13-715ec40b2bb5",
-            "indexes" : {
-                "size" : {
-                    "total_units" : 100,
-                    "average_unit_size" : 1048576
-                }
-            }
-            "last_modified" : "2014-06-16T11:25:16.535-05:00",
-            "linkages" : [],
-            "tags" : [],
-            "type": basic,
-            "version": "aabfee3e4291a649c00984451e1ff891"
-        },
-        "error": null,
-        "status": 200
-    }
-
-<br>
-
-### Index:
+### Index types
 
 Currently available index types include: size (virtual, does not require index creation), line, column (for tabbed files), chunkrecord and record (for sequence file types), bai (bam index), and subset (based on an existing index)
 
-##### virtual index:
+##### virtual index
 
 A virtual index is one that can be generated on the fly without support of precalculated data. The current working example of this 
 is the size virtual index. Based on the file size and desired chunksize the partitions become individually addressable. 
 
-##### column index:
+##### column index
 
 A column index is one that is generated on tabbed files which are sorted by the chosen column number.  Each record represents the lines (delimitated by returns) that contain all the same value for the inputted column number.
 
-##### bam index (bai):
+##### bam index (bai)
 
 To use the bam index feature, the <a href="http://samtools.sourceforge.net/">SAMtools</a> package must be installed on the machine that is running the Shock server with the samtools executable in the path of the user that is running the Shock server.
 
 Also, in order to use this feature, you must sort your .bam file using the 'samtools sort' command before uploading the file into Shock.
 
-##### subset index:
+##### subset index
 
 Create a named index based on a list of sorted record numbers that are a subset of an existing index.
 
@@ -302,104 +215,10 @@ All responses from Shock currently are in the following encoding.
 
 <br>
 
-### GET /
 
-Description of resources available through this api
 
-##### example
-	
-    curl -X GET http://<host>[:<port>]/
-	
-##### returns
 
-    {"resources":["node"],"url":"http://localhost:7445/","documentation":"http://localhost:7445/documentation.html","contact":"admin@host.com","id":"Shock","type":"Shock"}
 
-<br>
-
-### POST /node
-
-Create node
-
- - optionally takes user/password via Basic Auth. If set only that user with have access to the node
- - accepts multipart/form-data encoded 
- - to set attributes include file field named "attributes" containing a json file of attributes
- - to set file include file field named "upload" containing any file **or** include field named "path" containing the file system path to the file accessible from the Shock server
-
-##### example
-	
-	curl -X POST [ see Authentication ] [ -F "attributes=@<path_to_json>" ( -F "upload=@<path_to_data_file>" || -F "path=<path_to_file>") ] http://<host>[:<port>]/node
-	
-##### returns
-
-    {
-        "data": {<node>},
-        "error": <error message or null>, 
-        "status": <http status of response (also set in headers)>
-    } 
-
-<br>
-
-### GET /node
-
-List nodes
-
- - optionally takes user/password via Basic Auth. Grants access to non-public data
- - by adding ?offset=N you get the nodes starting at N+1 
- - by adding ?limit=N you get a maximum of N nodes returned 
-
-##### querying
-All attributes are queriable. For example if a node has in it's attributes "about" : "metagenome" the url 
-
-    /node/?query&about=metagenome
-    
-would return it and all other nodes with that attribute. Address of nested attributes like "metadata": { "env_biome": "ENVO:human-associated habitat", ... } is done via a dot notation 
-
-    /node/?query&metadata.env_biome=ENVO:human-associated%20habitat
-
-Multiple attributes can be selected in a single query and are treated as AND operations
-
-    /node/?query&metadata.env_biome=ENVO:human-associated%20habitat&about=metagenome
-    
-**Note:** all special characters like a space must be url encoded.
-
-##### example
-	
-	curl -X GET [ see Authentication ] http://<host>[:<port>]/node/[?offset=<offset>&limit=<count>][&query&<tag>=<value>]
-		
-##### returns
-
-    {
-      "data": {[<array of nodes>]},
-      "error": <string or null: error message>,
-      "status": <int: http status code>,
-      "limit": <limit>, 
-      "offset": <offset>,
-      "total_count": <count>
-    }
-
-<br>
-
-### GET /node/<node_id>
-
-View node, download file (full or partial)
-
- - optionally takes user/password via Basic Auth
- - ?download - complete file download
- - ?download&index=size&part=1\[&part=2...\]\[chunksize=inbytes\] - download portion of the file via the size virtual index. Chunksize defaults to 1MB (1048576 bytes).
-
-##### example	
-
-	curl -X GET [ see Authentication ] http://<host>[:<port>]/node/<node_id>
-
-##### returns
-
-    {
-        "data": {<node>},
-        "error": <error message or null>, 
-        "status": <http status of request>
-    }
-
-<br>
 
 ### PUT /node/<node_id>
 

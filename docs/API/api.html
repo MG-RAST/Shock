@@ -796,7 +796,15 @@
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
                         <p></p>
-                        <p class="marked"></p>
+                        <p class="marked">All attributes are queriable. For example if a node has in it&#x27;s attributes &#x60;&quot;about&quot; : &quot;metagenome&quot;&#x60; the url 
+&#x60;/node/?query&amp;about&#x3D;metagenome&#x60;
+would return it and all other nodes with that attribute. Address of nested attributes like &#x60;&quot;metadata&quot;: { &quot;env_biome&quot;: &quot;ENVO:human-associated habitat&quot;, ... } &#x60;is done via a dot notation 
+&#x60;/node/?query&amp;metadata.env_biome&#x3D;ENVO:human-associated%20habitat&#x60;
+Multiple attributes can be selected in a single query and are treated as AND operations
+&#x60;/node/?query&amp;metadata.env_biome&#x3D;ENVO:human-associated%20habitat&amp;about&#x3D;metagenome&#x60;
+
+**Note:** all special characters like a space must be url encoded.
+</p>
                         <p></p>
                         <br />
                         <pre class="prettyprint language-html prettyprinted" data-type="get"><code><span class="pln">/node</span></code></pre>
@@ -1066,6 +1074,14 @@ except ApiException as e:
                             </table>
 
                           <h2>Responses</h2>
+                            <h3> Status: 201 - OK </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                            </div>
+
                             <h3> Status: 200 - OK </h3>
 
                             <ul class="nav nav-tabs nav-tabs-examples" >
@@ -1364,7 +1380,12 @@ except ApiException as e:
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
                         <p></p>
-                        <p class="marked"></p>
+                        <p class="marked">View node, download file (full or partial)
+
+- optionally takes user/password via Basic Auth
+- &#x60;?download&#x60; - complete file download
+- &#x60;?download&amp;index&#x3D;size&amp;part&#x3D;1\[&amp;part&#x3D;2...\]\[chunksize&#x3D;inbytes\]&#x60; - download portion of the file via the size virtual index. Chunksize defaults to 1MB (1048576 bytes).
+</p>
                         <p></p>
                         <br />
                         <pre class="prettyprint language-html prettyprinted" data-type="get"><code><span class="pln">/node/{nodeId}</span></code></pre>
@@ -1715,7 +1736,31 @@ except ApiException as e:
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
                         <p></p>
-                        <p class="marked"></p>
+                        <p class="marked">**Modify:** 
+
+- **Once the file of a node is set, it is immutable.**
+- node attributes can be over-written
+- accepts multipart/form-data encoded 
+- to set attributes include file field named &quot;attributes&quot; containing a json file of attributes
+- to set file include file field named &quot;upload&quot; containing any file **or** include field named &quot;path&quot; containing the file system path to the file accessible from the Shock server
+
+&#x60;&#x60;&#x60;
+# update attributes
+curl -X PUT -F &quot;attributes&#x3D;@&lt;path_to_json&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;
+
+# add file
+curl -X PUT ( -F &quot;upload&#x3D;@&lt;path_to_data_file&gt;&quot; || -F &quot;path&#x3D;&lt;path_to_file&gt;&quot;) http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;
+
+# change filename
+curl -X PUT -F &quot;file_name&#x3D;&lt;new_file_name&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;
+
+# add / update expiration
+curl -X PUT -F &quot;expiration&#x3D;&lt;\d+[MHD]&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;
+
+# remove expiration
+curl -X PUT -F &quot;remove_expiration&#x3D;true&quot; http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;
+&#x60;&#x60;&#x60;
+</p>
                         <p></p>
                         <br />
                         <pre class="prettyprint language-html prettyprinted" data-type="put"><code><span class="pln">/node/{nodeId}</span></code></pre>
@@ -1993,7 +2038,13 @@ except ApiException as e:
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
                         <p></p>
-                        <p class="marked"></p>
+                        <p class="marked">- optionally takes user/password via Basic Auth. If set only that user with have access to the node
+- accepts multipart/form-data encoded 
+- to set attributes include file field named &quot;attributes&quot; containing a json file of attributes
+- to set file include file field named &quot;upload&quot; containing any file **or** include field named &quot;path&quot; containing the file system path to the file accessible from the Shock server
+
+&#x60;curl -X POST [ see Authentication ] [ -F &quot;attributes&#x3D;@&lt;path_to_json&gt;&quot; ( -F &quot;upload&#x3D;@&lt;path_to_data_file&gt;&quot; || -F &quot;path&#x3D;&lt;path_to_file&gt;&quot;) ] http://&lt;host&gt;[:&lt;port&gt;]/node&#x60;
+</p>
                         <p></p>
                         <br />
                         <pre class="prettyprint language-html prettyprinted" data-type="post"><code><span class="pln">/node</span></code></pre>
@@ -3603,7 +3654,26 @@ except ApiException as e:
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
                         <p></p>
-                        <p class="marked"></p>
+                        <p class="marked">**Create index:**
+
+- Currently available index types include: size (virtual, does not require index creation), line, column (for tabbed files), chunkrecord and record (for sequence file types), bai (bam index), and subset (based on an existing index)
+
+Examples
+&#x60;&#x60;&#x60;
+curl -X PUT [ see Authentication ] http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;/index/&lt;type&gt;
+curl -X PUT [ see Authentication ] http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;/index/column?number&#x3D;&lt;int&gt;
+curl -X PUT [ see Authentication ] -F &quot;index_name&#x3D;&lt;string&gt;&quot; -F &quot;parent_index&#x3D;&lt;type&gt;&quot; -F &quot;subset_indices&#x3D;@&lt;path_to_file&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;/index/subset
+curl -X PUT [ see Authentication ] http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;?index&#x3D;&lt;type&gt; (deprecated)
+&#x60;&#x60;&#x60;
+If an index already exists, you should receive an error message telling you that.  To overwrite the existing index, add the parameter &#x60;?force_rebuild&#x3D;1&#x60; to your PUT request.
+
+To upload an index, query field &#x60;?upload&#x60; and form field &#x60;upload&#x3D;&#x60; both have to be used.
+
+&#x60;&#x60;&#x60;
+curl -X PUT [ see Authentication ] -F &quot;upload&#x3D;@&lt;path_to_index_file&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;/index/&lt;type&gt;?upload
+curl -X PUT [ see Authentication ] -F &quot;upload&#x3D;@&lt;path_to_index_file&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;/index/&lt;type&gt;?upload&amp;indexFormat&#x3D;&lt;string&gt;&amp;avgUnitSize&#x3D;&lt;int64&gt;&amp;totalUnits&#x3D;&lt;int64&gt;
+&#x60;&#x60;&#x60;
+</p>
                         <p></p>
                         <br />
                         <pre class="prettyprint language-html prettyprinted" data-type="put"><code><span class="pln">/node/{nodeId}/index/{type}</span></code></pre>
