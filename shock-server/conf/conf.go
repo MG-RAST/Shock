@@ -379,7 +379,6 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddString(&LOG_OUTPUT, "both", "Log", "logoutput", "console, file or both", "")
 	c_store.AddBool(&LOG_TRACE, false, "Log", "trace", "", "")
 	c_store.AddInt(&DEBUG_LEVEL, 0, "Log", "debuglevel", "debug level: 0-3", "")
-	c_store.AddBool(&DEBUG_AUTH, false, "Log", "debug_auth", "", "for debugging purposes, returns more detailed reasons for rejected auth")
 
 	// Mongodb
 	c_store.AddString(&MONGODB_ATTRIBUTE_INDEXES, "", "Mongodb", "attribute_indexes", "", "")
@@ -442,12 +441,13 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 
 	// Other - thses option are CLI only
 	c_store.AddString(&RELOAD, "", "Other", "reload", "path or url to shock data. WARNING this will drop all current data.", "")
-	c_store.AddString(&CONFIG_FILE, "", "Other", "conf", "path to config file", "")
-	c_store.AddBool(&NO_CONFIG, false, "Other", "conf", "do not use config file", "")
+	c_store.AddString(&CONFIG_FILE, "shock-server.conf", "Other", "conf", "path to config file", "")
+	c_store.AddBool(&NO_CONFIG, false, "Other", "no_config", "do not use config file", "")
 	c_store.AddBool(&FORCE_YES, false, "Other", "force_yes", "show version", "")
 	c_store.AddBool(&SHOW_VERSION, false, "Other", "version", "show version", "")
 	c_store.AddBool(&PRINT_HELP, false, "Other", "fullhelp", "show detailed usage without \"--\"-prefixes", "")
 	c_store.AddBool(&SHOW_HELP, false, "Other", "help", "show usage", "")
+	c_store.AddBool(&DEBUG_AUTH, false, "Other", "debug_auth", "", "for debugging purposes, returns more detailed reasons for rejected auth")
 
 	c_store.Parse()
 	return
