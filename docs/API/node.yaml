@@ -3,9 +3,8 @@ servers:
   - url: shock.mg-rast.org
 info:
   description: |
-    test
   version: 1.0.0
-  title: Shock2
+  title: Shock2 API specification
   termsOfService: ''
 tags:
   - name: node
@@ -53,7 +52,7 @@ paths:
           description: Default error sample response
       tags:
         - node
-  /node:
+  '/node':
     get:
       description: list nodes
       responses:
@@ -66,7 +65,7 @@ paths:
         name: query
         schema:
           type: string
-        required: true
+        required: false
         description: search
       - in: query
         name: limit
@@ -79,16 +78,47 @@ paths:
           type: integer
         required: false
   '/node/{nodeId}/acl':
+    parameters:
+      - in: path
+        name: nodeId
+        schema:
+          type: string
+        required: true
     get:
       summary: view node acls of type
       description: ''
       operationId: ''
-      parameters:
-        - in: path
-          name: nodeId
-          schema:
-            type: string
-          required: true
+      
+      responses:
+        default:
+          description: Default error sample response
+      tags:
+        - nodeAcl
+    put:
+      summary: 'modify node acls of type '
+      description: ''
+      operationId: ''
+      responses:
+        default:
+          description: Default error sample response
+      tags:
+        - nodeAcl
+  '/node/{nodeId}/acl/{type}':
+    parameters:
+      - in: path
+        name: nodeId
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: type
+        schema:
+          type: string
+        required: true
+    get:
+      summary: view node acls of type
+      description: ''
+      operationId: ''
       responses:
         default:
           description: Default error sample response
@@ -109,7 +139,19 @@ paths:
           description: Default error sample response
       tags:
         - nodeAcl
-  /node/<node_id>/index/<type>:
+  '/node/{nodeId}/index/{type}':
+    parameters:
+      - in: path
+        name: nodeId
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: type
+        description: upload node index
+        schema:
+          type: string
+        required: true    
     put:
       summary: create node indexes
       description: ''
@@ -117,13 +159,7 @@ paths:
       responses:
         default:
           description: Default error sample response
-      parameters:
-        - in: query
-          name: upload
-          description: upload node index
-          schema:
-            type: string
-          required: false
+      
       tags:
         - nodeIndex
     delete:
@@ -136,7 +172,6 @@ paths:
           schema:
             type: string
           required: false
-          example: <user-ids_or_uuids>
       operationId: ''
       responses:
         default:

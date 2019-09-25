@@ -43,10 +43,10 @@ NOTE: Although a node may be designated as publicly readable, writable, or delet
 <br>
 
 
-Data Types
+Node object description
 ----------
 
-### Node:
+### Node main fields:
 
 - id: unique identifier
 - file: name, size, checksum(s).
@@ -54,7 +54,7 @@ Data Types
 - indexes: A set of indexes to use.
 - version: a version stamp for this node.
 
-##### node example:
+##### Node example:
     
     {
         "data": {
