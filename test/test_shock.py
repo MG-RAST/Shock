@@ -15,7 +15,9 @@ from pprint import pprint
 DATADIR = "testdata"
 DEBUG = 0
 SHOCK_URL = ""
-SHOCK_AUTH = ""
+SHOCK_USER1_AUTH = ""
+SHOCK_ADMIN_AUTH = ""
+
 AUTH = ""
 FILELIST = []
 TESTHEADERS = {}
@@ -47,15 +49,16 @@ class TestClass:
 
         #TOKEN = os.environ.get("MGRKEY")
 
-        # SHOCK_AUTH="bearer token"
-        global SHOCK_AUTH
-        SHOCK_AUTH = os.environ.get("SHOCK_AUTH", None)
+        # SHOCK_USER1_AUTH="bearer token"
+        global SHOCK_USER1_AUTH
+        SHOCK_USER1_AUTH = os.environ.get("SHOCK_USER1_AUTH", None)
+        SHOCK_ADMIN_AUTH = os.environ.get("SHOCK_ADMIN_AUTH", None)
         global AUTH
-        AUTH=SHOCK_AUTH
+        AUTH=SHOCK_USER1_AUTH
         global FILELIST
         FILELIST = ["AAA.txt", "BBB.txt", "CCC.txt"]
         global TESTHEADERS
-        TESTHEADERS = {"Authorization": SHOCK_AUTH}
+        TESTHEADERS = {"Authorization": SHOCK_USER1_AUTH}
         #if URL == "https://sequencing.bio.anl.gov":
         #    TESTHEADERS= {"AUTH" : TOKEN}
         global DONTDELETE
