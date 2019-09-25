@@ -689,6 +689,26 @@
   <script>
     // Script section to load models into a JS Var
     var defs = {}
+            defs.Node = {
+  "required" : [ "id" ],
+  "properties" : {
+    "id" : {
+      "type" : "string"
+    },
+    "file" : {
+      "type" : "string"
+    },
+    "attributes" : {
+      "type" : "object"
+    },
+    "indexes" : {
+      "type" : "string"
+    },
+    "version" : {
+      "type" : "string"
+    }
+  }
+};
   </script>
 
   <div class="container-fluid">
@@ -1336,7 +1356,7 @@ except ApiException as e:
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
                         <p></p>
-                        <p class="marked">get node</p>
+                        <p class="marked"></p>
                         <p></p>
                         <br />
                         <pre class="prettyprint language-html prettyprinted" data-type="get"><code><span class="pln">/node/{nodeId}</span></code></pre>
@@ -1378,7 +1398,8 @@ public class NodeApiExample {
         String nodeId = nodeId_example; // String | 
         String download = download_example; // String | download file
         try {
-            apiInstance.nodeNodeIdGet(nodeId, download);
+            Node result = apiInstance.nodeNodeIdGet(nodeId, download);
+            System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling NodeApi#nodeNodeIdGet");
             e.printStackTrace();
@@ -1397,7 +1418,8 @@ public class NodeApiExample {
         String nodeId = nodeId_example; // String | 
         String download = download_example; // String | download file
         try {
-            apiInstance.nodeNodeIdGet(nodeId, download);
+            Node result = apiInstance.nodeNodeIdGet(nodeId, download);
+            System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling NodeApi#nodeNodeIdGet");
             e.printStackTrace();
@@ -1417,7 +1439,10 @@ NodeApi *apiInstance = [[NodeApi alloc] init];
 
 [apiInstance nodeNodeIdGetWith:nodeId
     download:download
-              completionHandler: ^(NSError* error) {
+              completionHandler: ^(Node output, NSError* error) {
+                            if (output) {
+                                NSLog(@"%@", output);
+                            }
                             if (error) {
                                 NSLog(@"Error: %@", error);
                             }
@@ -1437,7 +1462,7 @@ var callback = function(error, data, response) {
   if (error) {
     console.error(error);
   } else {
-    console.log('API called successfully.');
+    console.log('API called successfully. Returned data: ' + data);
   }
 };
 api.nodeNodeIdGet(nodeId, opts, callback);
@@ -1467,7 +1492,8 @@ namespace Example
 
             try
             {
-                apiInstance.nodeNodeIdGet(nodeId, download);
+                Node result = apiInstance.nodeNodeIdGet(nodeId, download);
+                Debug.WriteLine(result);
             }
             catch (Exception e)
             {
@@ -1488,7 +1514,8 @@ $nodeId = nodeId_example; // String |
 $download = download_example; // String | download file
 
 try {
-    $api_instance->nodeNodeIdGet($nodeId, $download);
+    $result = $api_instance->nodeNodeIdGet($nodeId, $download);
+    print_r($result);
 } catch (Exception $e) {
     echo 'Exception when calling NodeApi->nodeNodeIdGet: ', $e->getMessage(), PHP_EOL;
 }
@@ -1505,7 +1532,8 @@ my $nodeId = nodeId_example; # String |
 my $download = download_example; # String | download file
 
 eval { 
-    $api_instance->nodeNodeIdGet(nodeId => $nodeId, download => $download);
+    my $result = $api_instance->nodeNodeIdGet(nodeId => $nodeId, download => $download);
+    print Dumper($result);
 };
 if ($@) {
     warn "Exception when calling NodeApi->nodeNodeIdGet: $@\n";
@@ -1525,7 +1553,8 @@ nodeId = nodeId_example # String |
 download = download_example # String | download file (optional)
 
 try: 
-    api_instance.node_node_id_get(nodeId, download=download)
+    api_response = api_instance.node_node_id_get(nodeId, download=download)
+    pprint(api_response)
 except ApiException as e:
     print("Exception when calling NodeApi->nodeNodeIdGet: %s\n" % e)</code></pre>
                             </div>
@@ -1594,9 +1623,49 @@ except ApiException as e:
                             <h3> Status: 200 - OK </h3>
 
                             <ul class="nav nav-tabs nav-tabs-examples" >
+                                <li class="active">
+                                  <a data-toggle="tab" href="#responses-nodeNodeIdGet-200-schema">Schema</a>
+                                </li>
+
                             </ul>
 
                             <div class="tab-content" style='margin-bottom: 10px;'>
+                                <div class="tab-pane active" id="responses-nodeNodeIdGet-200-schema">
+                                  <div id='responses-nodeNodeIdGet-200-schema-200' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+                                    <script>
+                                      $(document).ready(function() {
+                                        var schemaWrapper = {
+  "description" : "OK",
+  "content" : {
+    "application/json" : {
+      "schema" : {
+        "$ref" : "#/components/schemas/Node"
+      }
+    }
+  }
+};
+                                        var schema = schemaWrapper.content["application/json"].schema;
+                                        if (schema.$ref != null) {
+                                          schema = defsParser.$refs.get(schema.$ref);
+                                        } else {
+                                          schemaWrapper.components = {};
+                                          schemaWrapper.components.schemas = Object.assign({}, defs);
+                                          $RefParser.dereference(schemaWrapper).catch(function(err) {
+                                            console.log(err);
+                                          });
+                                        }
+
+                                        //console.log(JSON.stringify(schema));
+                                        var view = new JSONSchemaView(schema, 3);
+                                        $('#responses-nodeNodeIdGet-200-schema-data').val(stringify(schema));
+                                        var result = $('#responses-nodeNodeIdGet-200-schema-200');
+                                        result.empty();
+                                        result.append(view.render());
+                                      });
+                                    </script>
+                                  </div>
+                                  <input id='responses-nodeNodeIdGet-200-schema-data' type='hidden' value=''></input>
+                                </div>
                             </div>
 
                         </article>
