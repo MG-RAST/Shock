@@ -17,6 +17,7 @@ services:
         image: mgrast/shock
         depends_on:
           - shock-mongo
+          - shock-mongo-seed
         entrypoint: 
           - /go/bin/shock-server 
           - --conf=/go/src/github.com/MG-RAST/Shock/test/config.d/shock-server.conf  
