@@ -5,7 +5,8 @@
 FROM golang:alpine
 
 ENV SHOCK_URL=http://shock:7445
-ENV SHOCK_AUTH="basic dXNlcjE6c2VjcmV0"
+ENV SHOCK_ADMIN_AUTH="basic dXNlcjE6c2VjcmV0"
+ENV SHOCK_USER1_AUTH="basic YWRtaW46c2VjcmV0"
 
 
 RUN apk update && apk add \
