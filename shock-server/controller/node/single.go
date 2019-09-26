@@ -98,6 +98,15 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		}
 	}
 
+	// read restore request
+	if _, ok := query["restore"]; ok {
+
+		var data bool
+		data = n.GetRestore()
+		// this shoudl return true/false
+		return responder.RespondWithData(ctx, data)
+	}
+
 	if _, ok := query["download_idx"]; ok {
 
 		// create a zip file from the idx_directory

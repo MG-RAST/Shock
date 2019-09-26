@@ -1,0 +1,65 @@
+Locations:
+ -  ID: "S3"
+    Type: "S3"
+    Description: "Example S3 Service "
+    URL: "https://s3.example.com"
+    AuthKey: "some_key"
+    SecretKey: "another_key"
+    Bucket: "mybucket1"
+    Persistent: true
+    Region: "us-east-1"
+    Priority: 0
+    Tier: 5
+    Cost: 0
+ -  ID: "S3SSD"
+    Type: "S3"
+    Description: "Example_S3_SSD Service"
+    URL: "https://s3-ssd.example.com"
+    AuthKey: "yet_another_key"
+    SecretKey: "yet_another_nother_key"
+    Bucket: "ssd"
+    Persistent: true
+    Region: "us-east-1" Priority:
+    Priority: 0
+    Tier: 3
+    Cost: 0
+ -  ID: "Backend_shock"
+    Type: "shock"
+    Description: "A Backend shock service of offload data to (slower disks)"
+    URL: "shock.example.org"
+    AuthKey: ""
+    SecretKey: ""
+    Prefix: ""
+    Priority: 0
+    Tier: 5
+    Cost: 0
+-   ID: "MyAzure"
+    Type: "azure"
+    Description: "Joe User's Azure blob storage"
+    URL: "" 
+    AuthKey: "yet_another_key"
+    SecretKey: "yet_another_key"
+    Prefix: ""
+    Priority: 0
+    Tier: 5
+    Cost: 0
+-   ID: "MyGCS"
+    Type: "gcs"
+    Description: "Joe User's Google cloud storage"
+    URL: "" 
+    AuthKey: "yet_another_key"
+    SecretKey: "yet_another_key"
+    Prefix: ""
+    Priority: 0
+    Tier: 5
+    Cost: 0
+ -  ID: "tsm"
+    Type: "tsm_archive"  
+    Description: "archive service"
+    URL: ""
+    AuthKey: ""
+    SecretKey: ""
+    Prefix:  ""
+    Priority: 0
+    Tier: 10
+    Cost: 0

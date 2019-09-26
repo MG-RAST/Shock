@@ -90,7 +90,7 @@ func LocRequest(ctx context.Context) {
 		// 1) find nodes that have specific locationID but are not stored
 		locationStoredFalseQuery := bson.M{"locations": bson.M{"id": "anltsm", "stored": false}}
 
-		// 2) array with locations but without specific location
+		// 2) array with locations but specific location
 		noLocationQuery := bson.M{"locations.id": bson.M{"$ne": locationID}}
 
 		// 3) array is missing completely
@@ -127,6 +127,12 @@ func LocRequest(ctx context.Context) {
 		query := bson.M{"$and": []bson.M{locationstoredfalsequery, matchesminprioquery}}
 		nodes.GetAll(query)
 		responder.RespondWithData(ctx, nodes)
+		return
+
+		// list all nodes that need to be restored from tape
+	case "restore":
+		query := bson.M{"locations.restore": bson.M{"$eq": "true"}}
+		nodes.GetAll(query)
 		responder.RespondWithData(ctx, nodes)
 		return
 

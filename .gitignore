@@ -4,6 +4,9 @@
 common
 common/**/*
 
+prod/*.yaml
+prod/*.conf
+
 # ignore files with # and ~
 *\#*
 *\~*
@@ -20,7 +23,6 @@ test.out
 build.out
 _obj
 .project
-*_folker
 
 # bin 
 pkg
@@ -37,10 +39,8 @@ bin
 38603502-c1dd-4a4a-b4df-53769bf0180e.data
 shock-server/ff922507-7046-4a12-8490-89578695c1fd.data
 shock-server/lo
-locations.yaml
 lo
 shock.code-workspace
-types.yaml
 
 
 .swagger-codegen-ignore
