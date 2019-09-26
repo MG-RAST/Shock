@@ -15,7 +15,7 @@ from pprint import pprint
 DATADIR = "testdata"
 DEBUG = 0
 SHOCK_URL = ""
-SHOCK_USER1_AUTH = ""
+SHOCK_USER_AUTH = ""
 SHOCK_ADMIN_AUTH = ""
 
 AUTH = ""
@@ -54,12 +54,14 @@ class TestClass:
 
 	# default AUTH is USER AUTH
         global AUTH
+        global SHOCK_USER_AUTH
+
         AUTH=SHOCK_USER_AUTH
         global FILELIST
         FILELIST = ["AAA.txt", "BBB.txt", "CCC.txt"]
 
         # SHOCK_USER_AUTH="bearer token"
-        global SHOCK_USER_AUTH
+        
         SHOCK_USER_AUTH = os.environ.get("SHOCK_USER_AUTH", "basic dXNlcjE6c2VjcmV0")
         SHOCK_ADMIN_AUTH = os.environ.get("SHOCK_ADMIN_AUTH", "basic YWRtaW46c2VjcmV0")
 
