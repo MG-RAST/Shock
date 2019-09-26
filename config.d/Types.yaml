@@ -5,32 +5,8 @@ Types:
 - ID: "temp"
   Description: "temporary file"
   Priority: 0
-- ID: "EBI Submission Receipt"
-  Description: "EBI Submission Receipt"
-  Priority: 7
 - ID: "VM"
   Description: "Virtual Machine"
-  Priority: 1
-- ID: "run-folder-archive-fastq"
-  Description: "run-folder-archive-fastq"
-  Priority: 9
-  Data-Types:
-    - fastq
-- ID: "run-folder-archive-raw"
-  Description: "run-folder-archive-raw"
-  Priority: 4
-- ID: "run-folder-archive-sav"
-  Description: "run-folder-archive-sav"
-  Priority: 9
-  Data-Types:
-    - sav
-- ID: "run-folder-archive-thumbnails"
-  Description: "run-folder-archive-thumbnails"
-  Priority: 1
-  Data-Types:
-    - 
-- ID: "inbox"
-  Description: "MG-RAST inbox node"
   Priority: 1
 - ID: "metagenome"
   Description: "MG-RAST metagenome"
@@ -51,10 +27,6 @@ Types:
     - gif
     - tif
     - png
-- ID: "submission"
-  Description: "MG-RAST submission"
-  Priority: 9
-- ID: "cv"
   Description: "Controlled Vocabulary"
   Priority: 7
 - ID: "ontology"
@@ -76,12 +48,3 @@ Types:
 - ID: "reference"
   Description: "reference database"
   Priority: 7
-- ID: "analysisObject"
-  Description: "MG-RAST analysisObject"
-  Priority: 1
-- ID: "analysisRecipe"
-  Description: "MG-RAST analysisRecipe"
-  Priority: 1
-- ID: "preference"
-  Description: "MG-RAST user preference"
-  Priority: 1

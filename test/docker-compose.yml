@@ -18,32 +18,11 @@ services:
         depends_on:
           - shock-mongo
           - shock-mongo-seed
+          - shock-minio
+          - shock-irods
         entrypoint: 
           - /go/bin/shock-server 
-          - --hosts=shock-mongo 
-          - --basic=true                   # enables basic auth
-          - --users=admin                  # spcifies that user with name "admin" is a admin
-          - --force_yes=true               # avoids having shock ask interactive questions regarding db table updates
-          - --debug_auth=true              # returns more detailed reasons for rejected auth
-          - --api-url=http://shock:7445    # Shock returns a "preauth url", which consists of the api url
-          # docker exec -ti test_shock_1 /go/bin/shock-server --hosts=shock-mongo --basic=true --users=admin --debug_auth=true
-        
-          #- /go/bin/shock-server
-          #- --hosts=shock-mongo
-          # - --conf
-          # - /shock-config/shock-server.cfg
-        #volumes:
-          # persistent data
-          #- ${DATADIR}/shock/data:/usr/local/shock
-          
-          # mount local source code
-          #- $HOME/go/src/github.com/MG-RAST/Shock:/go/src/github.com/MG-RAST/Shock
-          
-          # mount config file 
-          #- ${CONFIGDIR}/Shock/shock-server.container.cfg:/shock-config/shock-server.cfg
-          
-          # mount log directory
-          #   - ${LOGDIR}/shock:/var/log/shock
+          - --conf=/go/src/github.com/MG-RAST/Shock/test/config.d/shock-server.conf  
           
         ports:
           - 7445:7445
@@ -60,6 +39,33 @@ services:
           # persistent data
           #- ${DATADIR}/mongo/db:/data/db
 
+
+    # Minio to serve as local S3 backend
+    shock-minio:
+        image: minio/minio
+      volumes:
+        - dataMINIO-1:/data
+      ports:
+        - "9001:9000"
+      environment:
+        MINIO_ACCESS_KEY: minio
+        MINIO_SECRET_KEY: minio123
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+        interval: 30s
+        timeout: 20s
+        retries: 3
+
+   # Minio to serve as local S3 backend
+    shock-irods:
+      image: irods/icat:4.0.3
+      # volumes:
+      #   - dataMINIO-1:/data
+      ports:
+        - "1247:1247"
+      # start irods with admin password
+      command: ["/opt/irods/bootstrap.sh", "irods123"]
+      
     # create admin account
     shock-mongo-seed:
         image: mongo:3.6
@@ -78,6 +84,9 @@ services:
             mongo mongodb://shock-mongo:27017/ShockDB --eval 'db.Users.updateOne({username: \"user1\"}, {$$setOnInsert: { uuid: UUID(), password: \"secret\" , shock_admin: false } } , {upsert : true})';
           "
 
+volumes:
+      dataIRODS-1:
+  #   dataMINIO-1:
 
 # create admin user manually           
 #

@@ -45,20 +45,30 @@ class TestClass:
         #URL  = os.environ.get('SHOCK_HOST', "http://localhost")
         #SHOCK_URL = URL + ":" + PORT
         global SHOCK_URL
-        SHOCK_URL  = os.environ.get('SHOCK_URL', "http://localhost:7445")
+        SHOCK_URL  = os.environ.get('SHOCK_URL', "http://shock:7445")
 
         #TOKEN = os.environ.get("MGRKEY")
 
-        # SHOCK_USER1_AUTH="bearer token"
-        global SHOCK_USER1_AUTH
-        SHOCK_USER1_AUTH = os.environ.get("SHOCK_USER1_AUTH", None)
-        SHOCK_ADMIN_AUTH = os.environ.get("SHOCK_ADMIN_AUTH", None)
+        # SHOCK_AUTH="bearer token"
+        global SHOCK_AUTH
+
+	# default AUTH is USER AUTH
         global AUTH
-        AUTH=SHOCK_USER1_AUTH
+        AUTH=SHOCK_USER_AUTH
         global FILELIST
         FILELIST = ["AAA.txt", "BBB.txt", "CCC.txt"]
+
+        # SHOCK_USER_AUTH="bearer token"
+        global SHOCK_USER_AUTH
+        SHOCK_USER_AUTH = os.environ.get("SHOCK_USER_AUTH", "basic dXNlcjE6c2VjcmV0")
+        SHOCK_ADMIN_AUTH = os.environ.get("SHOCK_ADMIN_AUTH", "basic YWRtaW46c2VjcmV0")
+
         global TESTHEADERS
-        TESTHEADERS = {"Authorization": SHOCK_USER1_AUTH}
+        TESTHEADERS = {"Authorization": SHOCK_USER_AUTH}
+        global TESTAHEADERS
+        TESTAHEADERS = {"Authorization": SHOCK_ADMIN_AUTH}
+
+
         #if URL == "https://sequencing.bio.anl.gov":
         #    TESTHEADERS= {"AUTH" : TOKEN}
         global DONTDELETE
@@ -629,3 +639,34 @@ class TestClass:
         assert "total_count" in data.keys(), data
         assert data["total_count"] > 0, data
         assert data["data"][0]["file"]["name"] == "AAA.txt"
+
+    
+    def test_location_get_info(self):
+        LOCATION = "S3" # this is defined in the Locations.yaml in {REPO}/test/config.d 
+        TESTURL = "/".join( [SHOCK_URL , "location" , LOCATION , "info"  ] )
+
+        response = requests.get( TESTURL, headers=TESTAHEADERS)
+        if DEBUG:
+            print ("URL", TESTURL)
+            print("DATA", response.text)
+        assert response.status_code == 200
+
+ 
+    def test_types_get_info(self):
+        LOCATION = "metadata"
+        TESTURL = "/".join( [SHOCK_URL , "types" , LOCATION , "info"  ] )
+
+        response = requests.get( TESTURL, headers=TESTAHEADERS)
+        if DEBUG:
+            print ("URL", TESTURL)
+            print("DATA", response.text)
+        assert response.status_code == 200
+    
+       
+       
+
+    def test_node_set_location(self) :
+        pass
+
+    def test_node_get_location(self) :
+        pass

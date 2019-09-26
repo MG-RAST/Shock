@@ -508,7 +508,7 @@ func (node *Node) Save() (err error) {
 	node.UpdateVersion()
 	// only add to revisions if not new and has changed and allow revisions
 	if (previousVersion != "") && (previousVersion != node.Version) && (conf.MAX_REVISIONS != 0) {
-		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.Priority, node.CreatedOn, node.LastModified, node.Expiration, node.Type, node.Subset, node.Parts, node.Locations}
+		n := Node{node.Id, node.Version, node.File, node.Attributes, node.Indexes, node.Acl, node.VersionParts, node.Tags, nil, node.Linkages, node.Priority, node.CreatedOn, node.LastModified, node.Expiration, node.Type, node.Subset, node.Parts, node.Locations, node.Restore}
 		newRevisions := []Node{n}
 		if len(node.Revisions) > 0 {
 			newRevisions = append(newRevisions, node.Revisions...) // prepend, latest revisions in front

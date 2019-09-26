@@ -41,7 +41,6 @@ type LocationConfig struct {
 
 	S3Location     `bson:",inline" json:",inline" yaml:",inline"` // extensions specific to S3
 	AzureLocation  `bson:",inline" json:",inline" yaml:",inline"` // extensions specific to Microsoft Azure
-	TSMLocation    `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to IBM TSM
 	GCloudLocation `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to IBM TSM
 
 }
@@ -60,11 +59,6 @@ type AzureLocation struct {
 // GCloudLocation specific fields
 type GCloudLocation struct {
 	Project string `bson:"Project" json:"-" yaml:"Project" `
-}
-
-// TSMLocation IBM TSM specific fields
-type TSMLocation struct {
-	Recoverycommand string `bson:"recoverycommand" json:"recoverycommand" yaml:"Recoverycommand" `
 }
 
 // LocationsMap allow access to Location objects via Locations("ID")
@@ -135,6 +129,7 @@ var (
 
 	// Config File
 	CONFIG_FILE string
+	NO_CONFIG   bool
 
 	// Runtime
 	EXPIRE_WAIT   int // wait time for reaper in minutes
@@ -196,7 +191,12 @@ var (
 // the conf variables.
 func Initialize() (err error) {
 
+	USE_CONFIG := true
 	for i, elem := range os.Args {
+
+		if elem == "-noconf" || elem == "--noconf" {
+			USE_CONFIG = false
+		}
 		if strings.HasPrefix(elem, "-conf") || strings.HasPrefix(elem, "--conf") {
 			parts := strings.SplitN(elem, "=", 2)
 			if len(parts) == 2 {
@@ -210,6 +210,9 @@ func Initialize() (err error) {
 	}
 
 	var c *config.Config = nil
+	if CONFIG_FILE == "" && USE_CONFIG { // use a default config file if none is specified
+		CONFIG_FILE = "/etc/shock.d/shock-server.conf"
+	}
 	if CONFIG_FILE != "" {
 		c, err = config.ReadDefault(CONFIG_FILE)
 		if err != nil {
@@ -370,7 +373,6 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store.AddString(&LOG_OUTPUT, "both", "Log", "logoutput", "console, file or both", "")
 	c_store.AddBool(&LOG_TRACE, false, "Log", "trace", "", "")
 	c_store.AddInt(&DEBUG_LEVEL, 0, "Log", "debuglevel", "debug level: 0-3", "")
-	c_store.AddBool(&DEBUG_AUTH, false, "Log", "debug_auth", "", "for debugging purposes, returns more detailed reasons for rejected auth")
 
 	// Mongodb
 	c_store.AddString(&MONGODB_ATTRIBUTE_INDEXES, "", "Mongodb", "attribute_indexes", "", "")
@@ -433,12 +435,13 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 
 	// Other - thses option are CLI only
 	c_store.AddString(&RELOAD, "", "Other", "reload", "path or url to shock data. WARNING this will drop all current data.", "")
-	gopath := os.Getenv("GOPATH")
-	c_store.AddString(&CONFIG_FILE, gopath+"/src/github.com/MG-RAST/Shock/shock-server.conf.template", "Other", "conf", "path to config file", "")
+	c_store.AddString(&CONFIG_FILE, "shock-server.conf", "Other", "conf", "path to config file", "")
+	c_store.AddBool(&NO_CONFIG, false, "Other", "no_config", "do not use config file", "")
 	c_store.AddBool(&FORCE_YES, false, "Other", "force_yes", "show version", "")
 	c_store.AddBool(&SHOW_VERSION, false, "Other", "version", "show version", "")
 	c_store.AddBool(&PRINT_HELP, false, "Other", "fullhelp", "show detailed usage without \"--\"-prefixes", "")
 	c_store.AddBool(&SHOW_HELP, false, "Other", "help", "show usage", "")
+	c_store.AddBool(&DEBUG_AUTH, false, "Other", "debug_auth", "", "for debugging purposes, returns more detailed reasons for rejected auth")
 
 	c_store.Parse()
 	return
