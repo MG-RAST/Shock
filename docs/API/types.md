@@ -2,6 +2,9 @@
 
 ### API Routes for /types (default port 7445):
 
+(TODO: move this into openapi) 
+
+
 ##### OPTIONS
 
 - Permitted by everyone:
