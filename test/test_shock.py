@@ -45,7 +45,7 @@ class TestClass:
         #URL  = os.environ.get('SHOCK_HOST', "http://localhost")
         #SHOCK_URL = URL + ":" + PORT
         global SHOCK_URL
-        SHOCK_URL  = os.environ.get('SHOCK_URL', "http://localhost:7445")
+        SHOCK_URL  = os.environ.get('SHOCK_URL', "http://shock:7445")
 
         #TOKEN = os.environ.get("MGRKEY")
 
@@ -59,7 +59,7 @@ class TestClass:
         FILELIST = ["AAA.txt", "BBB.txt", "CCC.txt"]
 
         # SHOCK_USER_AUTH="bearer token"
-        global SHOCK_USER1_AUTH
+        global SHOCK_USER_AUTH
         SHOCK_USER_AUTH = os.environ.get("SHOCK_USER_AUTH", "basic dXNlcjE6c2VjcmV0")
         SHOCK_ADMIN_AUTH = os.environ.get("SHOCK_ADMIN_AUTH", "basic YWRtaW46c2VjcmV0")
 
