@@ -180,6 +180,8 @@ Create a named index based on a list of sorted record numbers that are a subset 
 
 ##### bam index (bai) argument mapping from URL to samtools
 
+Table
+
 <table border=1>
     <tr>
         <td><b>URL argument</b></td>
