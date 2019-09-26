@@ -30,6 +30,10 @@ API by example
 All examples use curl but can be easily modified for any http client / library. 
 __Note__: Authentication is required for most of these commands
 <br>
+
+
+[Examples for node creation](api.html#api-Node-nodeGet)
+
 #### Node Creation ([details](#post_node)):
 
     # without file or attributes
@@ -62,7 +66,7 @@ __Note__: Authentication is required for most of these commands
     # with bzip2 compressed file, to be uncompressed in node
     curl -X POST -F "bzip2=@<path_to_data_file>" http://<host>[:<port>]/node
 
-    # create node by copying data file from another node, optionally specify copy_indexes=1 to additionally copy indexes from parent node
+    # create node by copying data file from another node (the original file will referenced, not copied), optionally specify copy_indexes=1 to additionally copy indexes from parent node
     curl -X POST -F "copy_data=<copy_node_id>" http://<host>[:<port>]/node
 
     # create a "subset" node which is a node where the data source is composed of a subset of indices from a parent node
@@ -219,69 +223,6 @@ All responses from Shock currently are in the following encoding.
 
 
 
-
-### PUT /node/<node_id>
-
-Modify node, create index
-
- - optionally takes user/password via Basic Auth
- 
-**Modify:** 
-
- - **Once the file of a node is set, it is immutable.**
- - node attributes can be over-written
- - accepts multipart/form-data encoded 
- - to set attributes include file field named "attributes" containing a json file of attributes
- - to set file include file field named "upload" containing any file **or** include field named "path" containing the file system path to the file accessible from the Shock server
-   
-##### example	
-  
-	# update attributes
-	curl -X PUT -F "attributes=@<path_to_json>" http://<host>[:<port>]/node/<node_id>
-	
-	# add file
-	curl -X PUT ( -F "upload=@<path_to_data_file>" || -F "path=<path_to_file>") http://<host>[:<port>]/node/<node_id>
-        
-	# change filename
-	curl -X PUT -F "file_name=<new_file_name>" http://<host>[:<port>]/node/<node_id>
-	
-	# add / update expiration
-	curl -X PUT -F "expiration=<\d+[MHD]>" http://<host>[:<port>]/node/<node_id>
-
-	# remove expiration
-	curl -X PUT -F "remove_expiration=true" http://<host>[:<port>]/node/<node_id>
-
-  
-##### returns
-
-    {
-        "data": {<node>},
-        "error": <error message or null>, 
-        "status": <http status of request>
-    }
-
-<br>
-
-**Create index:**
-
- - Currently available index types include: size (virtual, does not require index creation), line, column (for tabbed files), chunkrecord and record (for sequence file types), bai (bam index), and subset (based on an existing index)
-
-##### example	
-    
-	curl -X PUT [ see Authentication ] http://<host>[:<port>]/node/<node_id>/index/<type>
-	curl -X PUT [ see Authentication ] http://<host>[:<port>]/node/<node_id>/index/column?number=<int>
-	curl -X PUT [ see Authentication ] -F "index_name=<string>" -F "parent_index=<type>" -F "subset_indices=@<path_to_file>" http://<host>[:<port>]/node/<node_id>/index/subset
-	curl -X PUT [ see Authentication ] http://<host>[:<port>]/node/<node_id>?index=<type> (deprecated)
-
-	If an index already exists, you should receive an error message telling you that.  To overwrite the existing index, add the parameter '?force_rebuild=1' to your PUT request.
-
-##### returns
-
-    {
-        "data": null,
-        "error": <error message or null>, 
-        "status": <http status of request>
-    }
 
 ##### bam index (bai) argument mapping from URL to samtools
 
