@@ -4,10 +4,6 @@
 
 FROM alpine
 
-ENV SHOCK_URL=http://shock:7445
-ENV SHOCK_AUTH="basic YWRtaW46c2VjcmV0"
-
-
 RUN apk update && apk add \
     python3
 
