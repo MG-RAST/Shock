@@ -1,17 +1,72 @@
-
-## Shock API 
+## Shock API specification
 
 The Shock API provides the following resources
 
-- [/node ](./node.md)
+- [/node](api.html#api-Node)
 - [/location](./location.md)
 - [/types](./types.md)
+
+
+
+[Shock API specification](api.html)
+
+
 
 Info on Authentication and Authentication is [here](./Authorization.md). 
 
 Follow the links above for more details.
 
 ## Basic Examples for interacting with Shock
+
+
+
+[Examples for node creation / file upload](api.html#api-Node-nodePost)
+
+
+[Examples for node retrival / file download](api.html#api-Node-api-Node-nodeNodeIdGet)
+
+
+[Examples for node search](api.html#api-Node-nodeGET)
+    
+
+#### Node acls: 
+
+[Examples view permissions](api.html#api-Node-nodeNodeidAclGet)
+
+[Examples to set permissions](api.html#api-Node-nodeNodeidAclPUT)
+
+
+#### Node incides: 
+
+[Examples to create indices](api.html#api-Node-nodeNodeidIndexTypePut)
+
+
+
+## API repsonse
+
+
+### Response wrapper:
+
+All responses from Shock currently are in the following encoding. 
+
+  {
+    "data": <JSON or null>,
+    "error": <string or null: error message>,
+    "status": <int: http status code>,
+    "limit": <int: paginated requests only>, 
+    "offset": <int: paginated requests only>,
+    "total_count": <int: paginated requests only>
+  }
+
+<br>
+
+
+
+
+
+## TODO move into api spec
+
+
 Files in Shock are stored as Nodes with a file and a metadata set. An example metadata set is shown below:
 
 A command like the following:
@@ -90,3 +145,95 @@ or return a limited number of entries
     curl -X GET http://<host>[:<port>]/node?query&<key>=<value>&limit=10
 
 Please NOTE: The links at the top of the page provide A LOT more detail.
+
+
+
+
+
+### Available index types
+
+Currently available index types include: size (virtual, does not require index creation), line, column (for tabbed files), chunkrecord and record (for sequence file types), bai (bam index), and subset (based on an existing index)
+
+##### virtual index
+
+A virtual index is one that can be generated on the fly without support of precalculated data. The current working example of this 
+is the size virtual index. Based on the file size and desired chunksize the partitions become individually addressable. 
+
+##### column index
+
+A column index is one that is generated on tabbed files which are sorted by the chosen column number.  Each record represents the lines (delimitated by returns) that contain all the same value for the inputted column number.
+
+##### bam index (bai)
+
+To use the bam index feature, the <a href="http://samtools.sourceforge.net/">SAMtools</a> package must be installed on the machine that is running the Shock server with the samtools executable in the path of the user that is running the Shock server.
+
+Also, in order to use this feature, you must sort your .bam file using the 'samtools sort' command before uploading the file into Shock.
+
+##### subset index
+
+Create a named index based on a list of sorted record numbers that are a subset of an existing index.
+
+<br><br>
+
+
+
+
+##### bam index (bai) argument mapping from URL to samtools
+
+<table border=1>
+    <tr>
+        <td><b>URL argument</b></td>
+        <td><b>value type</b></td>
+        <td><b>samtools argument</b></td>
+        <td><b>operation</b></td>
+    </tr>
+    <tr>
+        <td>head</td>
+        <td>no value</td>
+        <td>-h</td>
+        <td>Include the header in the output</td>
+    </tr>
+    <tr>
+        <td>headonly</td>
+        <td>no value</td>
+        <td>-H</td>
+        <td>Output the header only.</td>
+    </tr>
+    <tr>
+        <td>count</td>
+        <td>no value</td>
+        <td>-c</td>
+        <td>Instead of printing the alignments, only count them and print the total number.</td>
+    </tr>
+    <tr>
+        <td>flag</td>
+        <td>INT</td>
+        <td>-f</td>
+        <td>Only output alignments with all bits in INT present in the FLAG field.</td>
+    </tr>
+    <tr>
+        <td>lib</td>
+        <td>STR</td>
+        <td>-l</td>
+        <td>Only output reads in library STR</td>
+    </tr>
+    <tr>
+        <td>mapq</td>
+        <td>INT</td>
+        <td>-q</td>
+        <td>Skip alignments with MAPQ smaller than INT</td>
+    </tr>
+    <tr>
+        <td>readgroup</td>
+        <td>STR</td>
+        <td>-r</td>
+        <td>Only output reads in read group STR</td>
+    </tr>
+</table>
+
+<br>
+
+
+
+  
+

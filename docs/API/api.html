@@ -689,6 +689,31 @@
   <script>
     // Script section to load models into a JS Var
     var defs = {}
+            defs.Node = {
+  "required" : [ "id" ],
+  "properties" : {
+    "id" : {
+      "type" : "string",
+      "description" : "unique identifier"
+    },
+    "file" : {
+      "type" : "object",
+      "description" : "name, size, checksum(s)."
+    },
+    "attributes" : {
+      "type" : "object",
+      "description" : "arbitrary json. Queriable."
+    },
+    "indexes" : {
+      "type" : "string",
+      "description" : "A set of indexes to use"
+    },
+    "version" : {
+      "type" : "string",
+      "description" : "a version stamp for this node"
+    }
+  }
+};
   </script>
 
   <div class="container-fluid">
@@ -718,7 +743,13 @@
                     <li data-group="Node" data-name="nodeNodeIdPut" class="">
                       <a href="#api-Node-nodeNodeIdPut">nodeNodeIdPut</a>
                     </li>
+                    <li data-group="Node" data-name="nodePost" class="">
+                      <a href="#api-Node-nodePost">nodePost</a>
+                    </li>
                   <li class="nav-header" data-group="NodeAcl"><a href="#api-NodeAcl">API Methods - NodeAcl</a></li>
+                    <li data-group="NodeAcl" data-name="nodeNodeIdAclDelete" class="">
+                      <a href="#api-NodeAcl-nodeNodeIdAclDelete">nodeNodeIdAclDelete</a>
+                    </li>
                     <li data-group="NodeAcl" data-name="nodeNodeIdAclGet" class="">
                       <a href="#api-NodeAcl-nodeNodeIdAclGet">nodeNodeIdAclGet</a>
                     </li>
@@ -763,12 +794,45 @@
                       <article id="api-Node-nodeGet-0" data-group="User" data-name="nodeGet" data-version="0">
                         <div class="pull-left">
                           <h1>nodeGet</h1>
-                          <p></p>
+                          <p>list nodes</p>
                         </div>
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
                         <p></p>
-                        <p class="marked">list nodes</p>
+                        <p class="marked">All attributes are queriable. For example if a node has in it&#x27;s attributes &#x60;&quot;about&quot; : &quot;metagenome&quot;&#x60; the url 
+&#x60;/node/?query&amp;about&#x3D;metagenome&#x60;
+would return it and all other nodes with that attribute. Address of nested attributes like &#x60;&quot;metadata&quot;: { &quot;env_biome&quot;: &quot;ENVO:human-associated habitat&quot;, ... } &#x60;is done via a dot notation 
+&#x60;/node/?query&amp;metadata.env_biome&#x3D;ENVO:human-associated%20habitat&#x60;
+Multiple attributes can be selected in a single query and are treated as AND operations
+&#x60;/node/?query&amp;metadata.env_biome&#x3D;ENVO:human-associated%20habitat&amp;about&#x3D;metagenome&#x60;
+  
+**Note:** all special characters like a space must be url encoded.
+
+**Search nodes by user metadata (field attributes)**
+&#x60;&#x60;&#x60;
+# by attribute key value
+curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node?query&amp;&lt;key&gt;&#x3D;&lt;value&gt;
+
+# by attribute key value, limit 10
+curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node?query&amp;&lt;key&gt;&#x3D;&lt;value&gt;&amp;limit&#x3D;10
+
+# by attribute key value, limit 10, offset 10
+curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node?query&amp;&lt;key&gt;&#x3D;&lt;value&gt;&amp;limit&#x3D;10&amp;offset&#x3D;10
+&#x60;&#x60;&#x60;
+
+**Search nodes by node native fields**
+&#x60;&#x60;&#x60;
+# by any key value (this allows querying of fields outside of attributes section)
+curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node?querynode&amp;&lt;key&gt;&#x3D;&lt;value&gt;
+
+# by ACL&#x27;s (enter users-ids or uuids as comma-separated list, this works for query or querynode)
+curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node?querynode&amp;[ owner | read | write | delete ]&#x3D;&lt;user-ids_or_uuids&gt;
+(note: resultant set is a subset of the nodes that are viewable to the authenticated user)
+
+# by public ACL&#x27;s (returns nodes that have a public setting for the given ACL)
+curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node?querynode&amp;[ public_owner | public_read | public_write | public_delete ]&#x3D;1
+&#x60;&#x60;&#x60;
+</p>
                         <p></p>
                         <br />
                         <pre class="prettyprint language-html prettyprinted" data-type="get"><code><span class="pln">/node</span></code></pre>
@@ -807,7 +871,7 @@ public class NodeApiExample {
     public static void main(String[] args) {
         
         NodeApi apiInstance = new NodeApi();
-        String query = query_example; // String | search
+        Boolean query = true; // Boolean | 
         Integer limit = 56; // Integer | 
         Integer offset = 56; // Integer | 
         try {
@@ -827,7 +891,7 @@ public class NodeApiExample {
 
     public static void main(String[] args) {
         NodeApi apiInstance = new NodeApi();
-        String query = query_example; // String | search
+        Boolean query = true; // Boolean | 
         Integer limit = 56; // Integer | 
         Integer offset = 56; // Integer | 
         try {
@@ -844,12 +908,13 @@ public class NodeApiExample {
   <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
   </div> -->
                             <div class="tab-pane" id="examples-Node-nodeGet-0-objc">
-                              <pre class="prettyprint"><code class="language-cpp">String *query = query_example; // search (optional)
+                              <pre class="prettyprint"><code class="language-cpp">Boolean *query = true; //  (optional)
 Integer *limit = 56; //  (optional)
 Integer *offset = 56; //  (optional)
 
 NodeApi *apiInstance = [[NodeApi alloc] init];
 
+// list nodes
 [apiInstance nodeGetWith:query
     limit:limit
     offset:offset
@@ -866,7 +931,7 @@ NodeApi *apiInstance = [[NodeApi alloc] init];
 
 var api = new Shock2ApiSpecification.NodeApi()
 var opts = { 
-  'query': query_example, // {{String}} search
+  'query': true, // {{Boolean}} 
   'limit': 56, // {{Integer}} 
   'offset': 56 // {{Integer}} 
 };
@@ -899,12 +964,13 @@ namespace Example
         {
 
             var apiInstance = new NodeApi();
-            var query = query_example;  // String | search (optional) 
+            var query = true;  // Boolean |  (optional) 
             var limit = 56;  // Integer |  (optional) 
             var offset = 56;  // Integer |  (optional) 
 
             try
             {
+                // list nodes
                 apiInstance.nodeGet(query, limit, offset);
             }
             catch (Exception e)
@@ -922,7 +988,7 @@ namespace Example
 require_once(__DIR__ . '/vendor/autoload.php');
 
 $api_instance = new Swagger\Client\ApiNodeApi();
-$query = query_example; // String | search
+$query = true; // Boolean | 
 $limit = 56; // Integer | 
 $offset = 56; // Integer | 
 
@@ -940,7 +1006,7 @@ use WWW::SwaggerClient::Configuration;
 use WWW::SwaggerClient::NodeApi;
 
 my $api_instance = WWW::SwaggerClient::NodeApi->new();
-my $query = query_example; # String | search
+my $query = true; # Boolean | 
 my $limit = 56; # Integer | 
 my $offset = 56; # Integer | 
 
@@ -961,11 +1027,12 @@ from pprint import pprint
 
 # create an instance of the API class
 api_instance = swagger_client.NodeApi()
-query = query_example # String | search (optional)
+query = true # Boolean |  (optional)
 limit = 56 # Integer |  (optional)
 offset = 56 # Integer |  (optional)
 
 try: 
+    # list nodes
     api_instance.node_get(query=query, limit=limit, offset=offset)
 except ApiException as e:
     print("Exception when calling NodeApi->nodeGet: %s\n" % e)</code></pre>
@@ -992,12 +1059,9 @@ except ApiException as e:
                                         <div class="json-schema-view">
                                             <div class="primitive">
                                                 <span class="type">
-                                                    String
+                                                    Boolean
                                                 </span>
                                 
-                                                    <div class="inner description">
-                                                        search
-                                                    </div>
                                             </div>
                                         </div>
                                     </div>
@@ -1038,6 +1102,14 @@ except ApiException as e:
                             </table>
 
                           <h2>Responses</h2>
+                            <h3> Status: 201 - OK </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                            </div>
+
                             <h3> Status: 200 - OK </h3>
 
                             <ul class="nav nav-tabs nav-tabs-examples" >
@@ -1331,12 +1403,71 @@ except ApiException as e:
                       <article id="api-Node-nodeNodeIdGet-0" data-group="User" data-name="nodeNodeIdGet" data-version="0">
                         <div class="pull-left">
                           <h1>nodeNodeIdGet</h1>
-                          <p></p>
+                          <p>view and download node</p>
                         </div>
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
                         <p></p>
-                        <p class="marked">get node</p>
+                        <p class="marked">View node, download file (full or partial)
+
+- optionally takes user/password via Basic Auth
+- &#x60;?download&#x60; - complete file download
+- &#x60;?download&amp;index&#x3D;size&amp;part&#x3D;1\[&amp;part&#x3D;2...\]\[chunksize&#x3D;inbytes\]&#x60; - download portion of the file via the size virtual index. Chunksize defaults to 1MB (1048576 bytes).
+
+
+&#x60;&#x60;&#x60;
+# node information
+curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;
+
+# download file
+curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;?download
+
+# download file as data stream (not as a file attachment)
+curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;?download_raw
+
+# download first 1mb of file
+curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;?download&amp;index&#x3D;size&amp;part&#x3D;1
+
+# download first 10mb of file
+curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;?download&amp;index&#x3D;size&amp;chunk_size&#x3D;10485760&amp;part&#x3D;1
+
+# download Nth 10mb of file
+curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;?download&amp;index&#x3D;size&amp;chunk_size&#x3D;10485760&amp;part&#x3D;N
+    
+# download portion of file given seek and length positions (in bytes)
+#curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;?download&amp;seek&#x3D;&lt;seek&gt;&amp;length&#x3D;&lt;length&gt;
+#(note: exluding seek position defaults to an offset of zero bytes, exluding length position defaults to remainder of file being returned)
+
+# download fastq sequence file in fasta format
+#curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;?download&amp;filter&#x3D;fq2fa
+
+# download sequence file (fasta or fastq) with anonymous unique header IDs
+#curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;?download&amp;filter&#x3D;anonymize
+
+# download file in compressed format, works with all the above options
+#curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;?download&amp;compression&#x3D;&lt;zip|gzip&gt;
+
+# retrieve pre-authorized download url (returns 1-time use download url that does not require auth and is valid for 24 hours)
+#curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;?download_url
+
+# download multiple files in a single archive format (zip or tar), returns 1-time use download url for archive
+# use download_url with a standard query
+#curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node?query&amp;download_url&amp;archive&#x3D;zip&amp;&lt;key&gt;&#x3D;&lt;value&gt;
+# use download_url with a POST and list of node ids
+#curl -X POST -F &quot;download_url&#x3D;1&quot; -F &quot;archive_format&#x3D;zip&quot; -F &quot;ids&#x3D;&lt;node_id_1&gt;,&lt;node_id_2&gt;,&lt;...&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node
+
+# download entire bam file in human readable sam alignments
+#curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;?download&amp;index&#x3D;bai
+
+# download bam alignments overlapped with specified region (ref_id:start_pos-end_pos)
+#curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;?download&amp;index&#x3D;bai&amp;region&#x3D;chr1:1-20000
+
+# download bam alignments with selected arguments supported by &quot;samtools view&quot;
+#curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;?download&amp;index&#x3D;bai&amp;head&amp;headonly&amp;count&amp;flag&#x3D;[INT]&amp;lib&#x3D;[STR]&amp;mapq&#x3D;[INT]&amp;readgroup&#x3D;[STR]
+#(note: All the arguments are optional and can be used with or without the region, but the index&#x3D;bai is required)
+
+&#x60;&#x60;&#x60;
+</p>
                         <p></p>
                         <br />
                         <pre class="prettyprint language-html prettyprinted" data-type="get"><code><span class="pln">/node/{nodeId}</span></code></pre>
@@ -1378,7 +1509,8 @@ public class NodeApiExample {
         String nodeId = nodeId_example; // String | 
         String download = download_example; // String | download file
         try {
-            apiInstance.nodeNodeIdGet(nodeId, download);
+            Node result = apiInstance.nodeNodeIdGet(nodeId, download);
+            System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling NodeApi#nodeNodeIdGet");
             e.printStackTrace();
@@ -1397,7 +1529,8 @@ public class NodeApiExample {
         String nodeId = nodeId_example; // String | 
         String download = download_example; // String | download file
         try {
-            apiInstance.nodeNodeIdGet(nodeId, download);
+            Node result = apiInstance.nodeNodeIdGet(nodeId, download);
+            System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling NodeApi#nodeNodeIdGet");
             e.printStackTrace();
@@ -1415,9 +1548,13 @@ String *download = download_example; // download file (optional)
 
 NodeApi *apiInstance = [[NodeApi alloc] init];
 
+// view and download node
 [apiInstance nodeNodeIdGetWith:nodeId
     download:download
-              completionHandler: ^(NSError* error) {
+              completionHandler: ^(Node output, NSError* error) {
+                            if (output) {
+                                NSLog(@"%@", output);
+                            }
                             if (error) {
                                 NSLog(@"Error: %@", error);
                             }
@@ -1437,7 +1574,7 @@ var callback = function(error, data, response) {
   if (error) {
     console.error(error);
   } else {
-    console.log('API called successfully.');
+    console.log('API called successfully. Returned data: ' + data);
   }
 };
 api.nodeNodeIdGet(nodeId, opts, callback);
@@ -1467,7 +1604,9 @@ namespace Example
 
             try
             {
-                apiInstance.nodeNodeIdGet(nodeId, download);
+                // view and download node
+                Node result = apiInstance.nodeNodeIdGet(nodeId, download);
+                Debug.WriteLine(result);
             }
             catch (Exception e)
             {
@@ -1488,7 +1627,8 @@ $nodeId = nodeId_example; // String |
 $download = download_example; // String | download file
 
 try {
-    $api_instance->nodeNodeIdGet($nodeId, $download);
+    $result = $api_instance->nodeNodeIdGet($nodeId, $download);
+    print_r($result);
 } catch (Exception $e) {
     echo 'Exception when calling NodeApi->nodeNodeIdGet: ', $e->getMessage(), PHP_EOL;
 }
@@ -1505,7 +1645,8 @@ my $nodeId = nodeId_example; # String |
 my $download = download_example; # String | download file
 
 eval { 
-    $api_instance->nodeNodeIdGet(nodeId => $nodeId, download => $download);
+    my $result = $api_instance->nodeNodeIdGet(nodeId => $nodeId, download => $download);
+    print Dumper($result);
 };
 if ($@) {
     warn "Exception when calling NodeApi->nodeNodeIdGet: $@\n";
@@ -1525,7 +1666,9 @@ nodeId = nodeId_example # String |
 download = download_example # String | download file (optional)
 
 try: 
-    api_instance.node_node_id_get(nodeId, download=download)
+    # view and download node
+    api_response = api_instance.node_node_id_get(nodeId, download=download)
+    pprint(api_response)
 except ApiException as e:
     print("Exception when calling NodeApi->nodeNodeIdGet: %s\n" % e)</code></pre>
                             </div>
@@ -1594,9 +1737,73 @@ except ApiException as e:
                             <h3> Status: 200 - OK </h3>
 
                             <ul class="nav nav-tabs nav-tabs-examples" >
+                                <li class="active">
+                                  <a data-toggle="tab" href="#responses-nodeNodeIdGet-200-schema">Schema</a>
+                                </li>
+
                             </ul>
 
                             <div class="tab-content" style='margin-bottom: 10px;'>
+                                <div class="tab-pane active" id="responses-nodeNodeIdGet-200-schema">
+                                  <div id='responses-nodeNodeIdGet-200-schema-200' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+                                    <script>
+                                      $(document).ready(function() {
+                                        var schemaWrapper = {
+  "description" : "OK",
+  "content" : {
+    "application/json" : {
+      "schema" : {
+        "$ref" : "#/components/schemas/Node"
+      },
+      "example" : {
+        "attributes" : null,
+        "created_on" : "2014-06-16T11:08:17.955-05:00",
+        "file" : {
+          "checksum" : { },
+          "format" : "",
+          "name" : "",
+          "size" : 0,
+          "virtual" : false,
+          "virtual_parts" : [ ]
+        },
+        "id" : "130cadb5-9435-4bd9-be13-715ec40b2bb5",
+        "indexes" : {
+          "size" : {
+            "total_units" : 100,
+            "average_unit_size" : 1048576
+          }
+        },
+        "last_modified" : "2014-06-16T11:25:16.535-05:00",
+        "linkages" : [ ],
+        "tags" : [ ],
+        "type" : "basic",
+        "version" : "aabfee3e4291a649c00984451e1ff891"
+      }
+    }
+  }
+};
+                                        var schema = schemaWrapper.content["application/json"].schema;
+                                        if (schema.$ref != null) {
+                                          schema = defsParser.$refs.get(schema.$ref);
+                                        } else {
+                                          schemaWrapper.components = {};
+                                          schemaWrapper.components.schemas = Object.assign({}, defs);
+                                          $RefParser.dereference(schemaWrapper).catch(function(err) {
+                                            console.log(err);
+                                          });
+                                        }
+
+                                        //console.log(JSON.stringify(schema));
+                                        var view = new JSONSchemaView(schema, 3);
+                                        $('#responses-nodeNodeIdGet-200-schema-data').val(stringify(schema));
+                                        var result = $('#responses-nodeNodeIdGet-200-schema-200');
+                                        result.empty();
+                                        result.append(view.render());
+                                      });
+                                    </script>
+                                  </div>
+                                  <input id='responses-nodeNodeIdGet-200-schema-data' type='hidden' value=''></input>
+                                </div>
                             </div>
 
                         </article>
@@ -1606,12 +1813,46 @@ except ApiException as e:
                       <article id="api-Node-nodeNodeIdPut-0" data-group="User" data-name="nodeNodeIdPut" data-version="0">
                         <div class="pull-left">
                           <h1>nodeNodeIdPut</h1>
-                          <p></p>
+                          <p>update node</p>
                         </div>
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
                         <p></p>
-                        <p class="marked"></p>
+                        <p class="marked">**Modify:** 
+
+- **Once the file of a node is set, it is immutable.**
+- node attributes can be over-written
+- accepts multipart/form-data encoded 
+- to set attributes include file field named &quot;attributes&quot; containing a json file of attributes
+- to set file include file field named &quot;upload&quot; containing any file **or** include field named &quot;path&quot; containing the file system path to the file accessible from the Shock server
+
+
+ #upload parts into a part node (part node has to be created with a POST call)
+curl -X PUT -F &quot;1&#x3D;@&lt;file_part_1&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;
+curl -X PUT -F &quot;2&#x3D;@&lt;file_part_2&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;
+
+curl -X PUT -F &quot;N&#x3D;@&lt;file_part_N&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;
+
+# finalize parts node
+curl -X PUT -F &quot;parts&#x3D;close&quot; http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;
+
+&#x60;&#x60;&#x60;
+# update attributes
+curl -X PUT -F &quot;attributes&#x3D;@&lt;path_to_json&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;
+
+# add file
+curl -X PUT ( -F &quot;upload&#x3D;@&lt;path_to_data_file&gt;&quot; || -F &quot;path&#x3D;&lt;path_to_file&gt;&quot;) http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;
+
+# change filename
+curl -X PUT -F &quot;file_name&#x3D;&lt;new_file_name&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;
+
+# add / update expiration
+curl -X PUT -F &quot;expiration&#x3D;&lt;\d+[MHD]&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;
+
+# remove expiration
+curl -X PUT -F &quot;remove_expiration&#x3D;true&quot; http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;
+&#x60;&#x60;&#x60;
+</p>
                         <p></p>
                         <br />
                         <pre class="prettyprint language-html prettyprinted" data-type="put"><code><span class="pln">/node/{nodeId}</span></code></pre>
@@ -1690,6 +1931,7 @@ String *download = download_example; // download file (optional)
 
 NodeApi *apiInstance = [[NodeApi alloc] init];
 
+// update node
 [apiInstance nodeNodeIdPutWith:nodeId
     download:download
               completionHandler: ^(NSError* error) {
@@ -1742,6 +1984,7 @@ namespace Example
 
             try
             {
+                // update node
                 apiInstance.nodeNodeIdPut(nodeId, download);
             }
             catch (Exception e)
@@ -1800,6 +2043,7 @@ nodeId = nodeId_example # String |
 download = download_example # String | download file (optional)
 
 try: 
+    # update node
     api_instance.node_node_id_put(nodeId, download=download)
 except ApiException as e:
     print("Exception when calling NodeApi->nodeNodeIdPut: %s\n" % e)</code></pre>
@@ -1877,9 +2121,595 @@ except ApiException as e:
                         </article>
                       </div>
                       <hr>
+                    <div id="api-Node-nodePost">
+                      <article id="api-Node-nodePost-0" data-group="User" data-name="nodePost" data-version="0">
+                        <div class="pull-left">
+                          <h1>nodePost</h1>
+                          <p>create node / upload file</p>
+                        </div>
+                        <div class="pull-right"></div>
+                        <div class="clearfix"></div>
+                        <p></p>
+                        <p class="marked">- optionally takes user/password via Basic Auth. If set only that user with have access to the node
+- accepts multipart/form-data encoded 
+- to set attributes include file field named &quot;attributes&quot; containing a json file of attributes
+- to set file include file field named &quot;upload&quot; containing any file **or** include field named &quot;path&quot; containing the file system path to the file accessible from the Shock server
+              
+&#x60;curl -X POST [ see Authentication ] [ -F &quot;attributes&#x3D;@&lt;path_to_json&gt;&quot; ( -F &quot;upload&#x3D;@&lt;path_to_data_file&gt;&quot; || -F &quot;path&#x3D;&lt;path_to_file&gt;&quot;) ] http://&lt;host&gt;[:&lt;port&gt;]/node&#x60;
+
+**Examples for node creation**
+&#x60;&#x60;&#x60;
+# without file or attributes
+curl -X POST http://&lt;host&gt;[:&lt;port&gt;]/node
+
+# with attributes file
+curl -X POST -F &quot;attributes&#x3D;@&lt;path_to_json_file&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node
+
+# with attributes string
+curl -X PUT -F &#x27;attributes_str&#x3D;{ &quot;id&quot;: 10 }&#x27; http://&lt;host&gt;[:&lt;port&gt;]/node
+
+# with file, using multipart form
+curl -X POST -F &quot;upload&#x3D;@&lt;path_to_data_file&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node
+
+# with file, without using multipart form (not recommended for use with curl!)
+curl -X POST --data-binary @&lt;path_to_data_file&gt; http://&lt;host&gt;[:&lt;port&gt;]/node
+    (note: This request format is not recommended for use with curl because curl will read the entire file into memory before sending it. Conversely, other programming languages and applications have the opposite issue, reading the entire file into memory for a form POST but not this POST format.)
+    (also note: Posting an empty file in this way will result in an empty node with no file rather than an empty node with an empty file)
+
+# setting location tag
+curl -X POST -H &#x27;Authorization: &lt;secret&gt;&#x27;  -H &quot;Content-Type: application/json&quot;  http://&lt;host&gt;[:&lt;port&gt;]/node/${id}/locations -d &#x27;{&quot;id&quot;:&quot;Location1&quot; }&#x27;
+(note: this sets a location id Location1 for the node ${id}; Locations are defined in the locations.yaml config file)
+
+# example with optional requested boolean and requestedDate for node 96576d58-6e2d-4bf5-8edf-8224cf29291c
+curl -X POST -H &#x27;Authorization: &lt;secret&gt;&#x27;  -H &quot;Content-Type: application/json&quot;  &quot;localhost:7445/node/96576d58-6e2d-4bf5-8edf-8224cf29291c/locations/&quot; -d &#x27;{&quot;id&quot;:&quot;test1&quot; ,  &quot;stored&quot;: true, &quot;requestedDate&quot;: &quot;2018-09-22T12:42:31+07:00&quot; }&#x27; ,  &quot;requested&quot;: true, &quot;requestedDate&quot;: &quot;2018-09-22T12:42:31+07:00&quot; }&#x27;
+
+# with gzip compressed file, to be uncompressed in node
+curl -X POST -F &quot;gzip&#x3D;@&lt;path_to_data_file&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node
+
+# with bzip2 compressed file, to be uncompressed in node
+curl -X POST -F &quot;bzip2&#x3D;@&lt;path_to_data_file&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node
+
+# create node by copying data file from another node (the original file will referenced, not copied), optionally specify copy_indexes&#x3D;1 to additionally copy indexes from parent node
+curl -X POST -F &quot;copy_data&#x3D;&lt;copy_node_id&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node
+
+# create a &quot;subset&quot; node which is a node where the data source is composed of a subset of indices from a parent node
+curl -X POST -F &quot;parent_node&#x3D;&lt;parent_node_id&gt;&quot; -F &quot;parent_index&#x3D;&lt;index&gt;&quot; -F &quot;subset_indices&#x3D;@&lt;path_to_file&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node
+
+# copying node from one shock server to another shock server, by default this copies data and attributes - add &amp;post_data&#x3D;0 and/or &amp;post_attr&#x3D;0 to the url to disable either
+(note: if the destination shock server requires authentication, you must provide authentication in your GET request and the credentials will be passed along to the destination shock server.)
+curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;?download_post&amp;post_url&#x3D;http://&lt;destination_host&gt;[:&lt;destination_port&gt;]/node
+
+# with file local to the shock server
+curl -X POST -F &quot;path&#x3D;&lt;path_to_data_file&gt;&quot; -F &quot;action&#x3D;&lt;action_type&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node
+(note: The action_type is one of keep_file (node points to file path given), copy_file (file is copied to shock data directory), or move_file (file is moved to shock data directory).  The move_file action only works if user running Shock has permissions to move the file.)
+
+# create (empty) parts nodes for N parts (part uploads may be done in parallel and out of order)
+# note: file_name is an optional parameter for files uploaded in parts. The file name will default to the node id if it is not set.
+# use PUT to upload part
+curl -X POST -F &quot;parts&#x3D;N&quot; -F &quot;file_name&#x3D;&lt;file_name&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node
+  
+# create (empty) parts nodes for unknown numer of parts (part uploads may be done in parallel and out of order)
+curl -X POST -F &quot;parts&#x3D;unknown&quot; -F &quot;file_name&#x3D;&lt;file_name&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node
+
+# with compressed file in N parts (unknown or given), to be uncompressed in node when parts completed
+curl -X POST -F &quot;parts&#x3D;N&quot; -F &quot;compression&#x3D;gzip&quot; http://&lt;host&gt;[:&lt;port&gt;]/node
+curl -X POST -F &quot;parts&#x3D;unknown&quot; -F &quot;compression&#x3D;bzip2&quot; http://&lt;host&gt;[:&lt;port&gt;]/node
+
+# create multiple nodes from a node with an archive file, supports: zip, tar, tar.gz, tar.bz2
+# if an attributes file is included it will be applied to all the created nodes
+curl -X POST -F &quot;unpack_node&#x3D;&lt;archive_node_id&gt;&quot; -F &quot;archive_format&#x3D;&lt;format&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node
+
+&#x60;&#x60;&#x60;
+</p>
+                        <p></p>
+                        <br />
+                        <pre class="prettyprint language-html prettyprinted" data-type="post"><code><span class="pln">/node</span></code></pre>
+                        <p>
+                          <h3>Usage and SDK Samples</h3>
+                        </p>
+                        <ul class="nav nav-tabs nav-tabs-examples">
+                          <li class="active"><a href="#examples-Node-nodePost-0-curl">Curl</a></li>
+                          <li class=""><a href="#examples-Node-nodePost-0-java">Java</a></li>
+                          <li class=""><a href="#examples-Node-nodePost-0-android">Android</a></li>
+                          <!--<li class=""><a href="#examples-Node-nodePost-0-groovy">Groovy</a></li>-->
+                          <li class=""><a href="#examples-Node-nodePost-0-objc">Obj-C</a></li>
+                          <li class=""><a href="#examples-Node-nodePost-0-javascript">JavaScript</a></li>
+                          <!--<li class=""><a href="#examples-Node-nodePost-0-angular">Angular</a></li>-->
+                          <li class=""><a href="#examples-Node-nodePost-0-csharp">C#</a></li>
+                          <li class=""><a href="#examples-Node-nodePost-0-php">PHP</a></li>
+                          <li class=""><a href="#examples-Node-nodePost-0-perl">Perl</a></li>
+                          <li class=""><a href="#examples-Node-nodePost-0-python">Python</a></li>
+                        </ul>
+
+                        <div class="tab-content">
+                          <div class="tab-pane active" id="examples-Node-nodePost-0-curl">
+                            <pre class="prettyprint"><code class="language-bsh">curl -X POST "shock.mg-rast.org/node?attributes=&attributes_str="</code></pre>
+                          </div>
+                          <div class="tab-pane" id="examples-Node-nodePost-0-java">
+                            <pre class="prettyprint"><code class="language-java">import io.swagger.client.*;
+import io.swagger.client.auth.*;
+import io.swagger.client.model.*;
+import io.swagger.client.api.NodeApi;
+
+import java.io.File;
+import java.util.*;
+
+public class NodeApiExample {
+
+    public static void main(String[] args) {
+        
+        NodeApi apiInstance = new NodeApi();
+        String attributes = attributes_example; // String | specifies a file containing attributes in JSON format
+        String attributesStr = attributesStr_example; // String | attributes in JSON format
+        try {
+            apiInstance.nodePost(attributes, attributesStr);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling NodeApi#nodePost");
+            e.printStackTrace();
+        }
+    }
+}</code></pre>
+                          </div>
+
+                          <div class="tab-pane" id="examples-Node-nodePost-0-android">
+                            <pre class="prettyprint"><code class="language-java">import io.swagger.client.api.NodeApi;
+
+public class NodeApiExample {
+
+    public static void main(String[] args) {
+        NodeApi apiInstance = new NodeApi();
+        String attributes = attributes_example; // String | specifies a file containing attributes in JSON format
+        String attributesStr = attributesStr_example; // String | attributes in JSON format
+        try {
+            apiInstance.nodePost(attributes, attributesStr);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling NodeApi#nodePost");
+            e.printStackTrace();
+        }
+    }
+}</code></pre>
+                          </div>
+  <!--
+  <div class="tab-pane" id="examples-Node-nodePost-0-groovy">
+  <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
+  </div> -->
+                            <div class="tab-pane" id="examples-Node-nodePost-0-objc">
+                              <pre class="prettyprint"><code class="language-cpp">String *attributes = attributes_example; // specifies a file containing attributes in JSON format (optional)
+String *attributesStr = attributesStr_example; // attributes in JSON format (optional)
+
+NodeApi *apiInstance = [[NodeApi alloc] init];
+
+// create node / upload file
+[apiInstance nodePostWith:attributes
+    attributesStr:attributesStr
+              completionHandler: ^(NSError* error) {
+                            if (error) {
+                                NSLog(@"Error: %@", error);
+                            }
+                        }];
+</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-Node-nodePost-0-javascript">
+                              <pre class="prettyprint"><code class="language-js">var Shock2ApiSpecification = require('shock2_api_specification');
+
+var api = new Shock2ApiSpecification.NodeApi()
+var opts = { 
+  'attributes': attributes_example, // {{String}} specifies a file containing attributes in JSON format
+  'attributesStr': attributesStr_example // {{String}} attributes in JSON format
+};
+var callback = function(error, data, response) {
+  if (error) {
+    console.error(error);
+  } else {
+    console.log('API called successfully.');
+  }
+};
+api.nodePost(opts, callback);
+</code></pre>
+                            </div>
+
+                            <!--<div class="tab-pane" id="examples-Node-nodePost-0-angular">
+              <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
+            </div>-->
+                            <div class="tab-pane" id="examples-Node-nodePost-0-csharp">
+                              <pre class="prettyprint"><code class="language-cs">using System;
+using System.Diagnostics;
+using IO.Swagger.Api;
+using IO.Swagger.Client;
+using IO.Swagger.Model;
+
+namespace Example
+{
+    public class nodePostExample
+    {
+        public void main()
+        {
+
+            var apiInstance = new NodeApi();
+            var attributes = attributes_example;  // String | specifies a file containing attributes in JSON format (optional) 
+            var attributesStr = attributesStr_example;  // String | attributes in JSON format (optional) 
+
+            try
+            {
+                // create node / upload file
+                apiInstance.nodePost(attributes, attributesStr);
+            }
+            catch (Exception e)
+            {
+                Debug.Print("Exception when calling NodeApi.nodePost: " + e.Message );
+            }
+        }
+    }
+}
+</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-Node-nodePost-0-php">
+                              <pre class="prettyprint"><code class="language-php"><&#63;php
+require_once(__DIR__ . '/vendor/autoload.php');
+
+$api_instance = new Swagger\Client\ApiNodeApi();
+$attributes = attributes_example; // String | specifies a file containing attributes in JSON format
+$attributesStr = attributesStr_example; // String | attributes in JSON format
+
+try {
+    $api_instance->nodePost($attributes, $attributesStr);
+} catch (Exception $e) {
+    echo 'Exception when calling NodeApi->nodePost: ', $e->getMessage(), PHP_EOL;
+}
+?></code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-Node-nodePost-0-perl">
+                              <pre class="prettyprint"><code class="language-perl">use Data::Dumper;
+use WWW::SwaggerClient::Configuration;
+use WWW::SwaggerClient::NodeApi;
+
+my $api_instance = WWW::SwaggerClient::NodeApi->new();
+my $attributes = attributes_example; # String | specifies a file containing attributes in JSON format
+my $attributesStr = attributesStr_example; # String | attributes in JSON format
+
+eval { 
+    $api_instance->nodePost(attributes => $attributes, attributesStr => $attributesStr);
+};
+if ($@) {
+    warn "Exception when calling NodeApi->nodePost: $@\n";
+}</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-Node-nodePost-0-python">
+                              <pre class="prettyprint"><code class="language-python">from __future__ import print_statement
+import time
+import swagger_client
+from swagger_client.rest import ApiException
+from pprint import pprint
+
+# create an instance of the API class
+api_instance = swagger_client.NodeApi()
+attributes = attributes_example # String | specifies a file containing attributes in JSON format (optional)
+attributesStr = attributesStr_example # String | attributes in JSON format (optional)
+
+try: 
+    # create node / upload file
+    api_instance.node_post(attributes=attributes, attributesStr=attributesStr)
+except ApiException as e:
+    print("Exception when calling NodeApi->nodePost: %s\n" % e)</code></pre>
+                            </div>
+                          </div>
+
+                          <h2>Parameters</h2>
+
+
+
+
+
+                            <div class="methodsubtabletitle">Query parameters</div>
+                            <table id="methodsubtable">
+                              <tr>
+                                <th width="150px">Name</th>
+                                <th>Description</th>
+                              </tr>
+                                <tr><td style="width:150px;">attributes</td>
+                                <td>
+                                
+                                
+                                    <div id="d2e199_nodePost_attributes">
+                                        <div class="json-schema-view">
+                                            <div class="primitive">
+                                                <span class="type">
+                                                    String
+                                                </span>
+                                
+                                                    <div class="inner description">
+                                                        specifies a file containing attributes in JSON format
+                                                    </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                </tr>
+                                <tr><td style="width:150px;">attributes_str</td>
+                                <td>
+                                
+                                
+                                    <div id="d2e199_nodePost_attributesStr">
+                                        <div class="json-schema-view">
+                                            <div class="primitive">
+                                                <span class="type">
+                                                    String
+                                                </span>
+                                
+                                                    <div class="inner description">
+                                                        attributes in JSON format
+                                                    </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                </tr>
+                            </table>
+
+                          <h2>Responses</h2>
+                            <h3> Status: 200 - OK </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                            </div>
+
+                        </article>
+                      </div>
+                      <hr>
                   </section>
                 <section id="api-NodeAcl">
                   <h1>NodeAcl</h1>
+                    <div id="api-NodeAcl-nodeNodeIdAclDelete">
+                      <article id="api-NodeAcl-nodeNodeIdAclDelete-0" data-group="User" data-name="nodeNodeIdAclDelete" data-version="0">
+                        <div class="pull-left">
+                          <h1>nodeNodeIdAclDelete</h1>
+                          <p>delete acls of type </p>
+                        </div>
+                        <div class="pull-right"></div>
+                        <div class="clearfix"></div>
+                        <p></p>
+                        <p class="marked">deleting user to acls
+
+&#x60;curl -X DELETE http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;/acl/[ all | read | write | delete ]?users&#x3D;&lt;user-ids_or_uuids&gt;&#x60;
+</p>
+                        <p></p>
+                        <br />
+                        <pre class="prettyprint language-html prettyprinted" data-type="delete"><code><span class="pln">/node/{nodeId}/acl</span></code></pre>
+                        <p>
+                          <h3>Usage and SDK Samples</h3>
+                        </p>
+                        <ul class="nav nav-tabs nav-tabs-examples">
+                          <li class="active"><a href="#examples-NodeAcl-nodeNodeIdAclDelete-0-curl">Curl</a></li>
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclDelete-0-java">Java</a></li>
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclDelete-0-android">Android</a></li>
+                          <!--<li class=""><a href="#examples-NodeAcl-nodeNodeIdAclDelete-0-groovy">Groovy</a></li>-->
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclDelete-0-objc">Obj-C</a></li>
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclDelete-0-javascript">JavaScript</a></li>
+                          <!--<li class=""><a href="#examples-NodeAcl-nodeNodeIdAclDelete-0-angular">Angular</a></li>-->
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclDelete-0-csharp">C#</a></li>
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclDelete-0-php">PHP</a></li>
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclDelete-0-perl">Perl</a></li>
+                          <li class=""><a href="#examples-NodeAcl-nodeNodeIdAclDelete-0-python">Python</a></li>
+                        </ul>
+
+                        <div class="tab-content">
+                          <div class="tab-pane active" id="examples-NodeAcl-nodeNodeIdAclDelete-0-curl">
+                            <pre class="prettyprint"><code class="language-bsh">curl -X DELETE "shock.mg-rast.org/node/{nodeId}/acl"</code></pre>
+                          </div>
+                          <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclDelete-0-java">
+                            <pre class="prettyprint"><code class="language-java">import io.swagger.client.*;
+import io.swagger.client.auth.*;
+import io.swagger.client.model.*;
+import io.swagger.client.api.NodeAclApi;
+
+import java.io.File;
+import java.util.*;
+
+public class NodeAclApiExample {
+
+    public static void main(String[] args) {
+        
+        NodeAclApi apiInstance = new NodeAclApi();
+        String nodeId = nodeId_example; // String | 
+        try {
+            apiInstance.nodeNodeIdAclDelete(nodeId);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling NodeAclApi#nodeNodeIdAclDelete");
+            e.printStackTrace();
+        }
+    }
+}</code></pre>
+                          </div>
+
+                          <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclDelete-0-android">
+                            <pre class="prettyprint"><code class="language-java">import io.swagger.client.api.NodeAclApi;
+
+public class NodeAclApiExample {
+
+    public static void main(String[] args) {
+        NodeAclApi apiInstance = new NodeAclApi();
+        String nodeId = nodeId_example; // String | 
+        try {
+            apiInstance.nodeNodeIdAclDelete(nodeId);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling NodeAclApi#nodeNodeIdAclDelete");
+            e.printStackTrace();
+        }
+    }
+}</code></pre>
+                          </div>
+  <!--
+  <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclDelete-0-groovy">
+  <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
+  </div> -->
+                            <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclDelete-0-objc">
+                              <pre class="prettyprint"><code class="language-cpp">String *nodeId = nodeId_example; // 
+
+NodeAclApi *apiInstance = [[NodeAclApi alloc] init];
+
+// delete acls of type 
+[apiInstance nodeNodeIdAclDeleteWith:nodeId
+              completionHandler: ^(NSError* error) {
+                            if (error) {
+                                NSLog(@"Error: %@", error);
+                            }
+                        }];
+</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclDelete-0-javascript">
+                              <pre class="prettyprint"><code class="language-js">var Shock2ApiSpecification = require('shock2_api_specification');
+
+var api = new Shock2ApiSpecification.NodeAclApi()
+var nodeId = nodeId_example; // {{String}} 
+
+var callback = function(error, data, response) {
+  if (error) {
+    console.error(error);
+  } else {
+    console.log('API called successfully.');
+  }
+};
+api.nodeNodeIdAclDelete(nodeId, callback);
+</code></pre>
+                            </div>
+
+                            <!--<div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclDelete-0-angular">
+              <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
+            </div>-->
+                            <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclDelete-0-csharp">
+                              <pre class="prettyprint"><code class="language-cs">using System;
+using System.Diagnostics;
+using IO.Swagger.Api;
+using IO.Swagger.Client;
+using IO.Swagger.Model;
+
+namespace Example
+{
+    public class nodeNodeIdAclDeleteExample
+    {
+        public void main()
+        {
+
+            var apiInstance = new NodeAclApi();
+            var nodeId = nodeId_example;  // String | 
+
+            try
+            {
+                // delete acls of type 
+                apiInstance.nodeNodeIdAclDelete(nodeId);
+            }
+            catch (Exception e)
+            {
+                Debug.Print("Exception when calling NodeAclApi.nodeNodeIdAclDelete: " + e.Message );
+            }
+        }
+    }
+}
+</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclDelete-0-php">
+                              <pre class="prettyprint"><code class="language-php"><&#63;php
+require_once(__DIR__ . '/vendor/autoload.php');
+
+$api_instance = new Swagger\Client\ApiNodeAclApi();
+$nodeId = nodeId_example; // String | 
+
+try {
+    $api_instance->nodeNodeIdAclDelete($nodeId);
+} catch (Exception $e) {
+    echo 'Exception when calling NodeAclApi->nodeNodeIdAclDelete: ', $e->getMessage(), PHP_EOL;
+}
+?></code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclDelete-0-perl">
+                              <pre class="prettyprint"><code class="language-perl">use Data::Dumper;
+use WWW::SwaggerClient::Configuration;
+use WWW::SwaggerClient::NodeAclApi;
+
+my $api_instance = WWW::SwaggerClient::NodeAclApi->new();
+my $nodeId = nodeId_example; # String | 
+
+eval { 
+    $api_instance->nodeNodeIdAclDelete(nodeId => $nodeId);
+};
+if ($@) {
+    warn "Exception when calling NodeAclApi->nodeNodeIdAclDelete: $@\n";
+}</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-NodeAcl-nodeNodeIdAclDelete-0-python">
+                              <pre class="prettyprint"><code class="language-python">from __future__ import print_statement
+import time
+import swagger_client
+from swagger_client.rest import ApiException
+from pprint import pprint
+
+# create an instance of the API class
+api_instance = swagger_client.NodeAclApi()
+nodeId = nodeId_example # String | 
+
+try: 
+    # delete acls of type 
+    api_instance.node_node_id_acl_delete(nodeId)
+except ApiException as e:
+    print("Exception when calling NodeAclApi->nodeNodeIdAclDelete: %s\n" % e)</code></pre>
+                            </div>
+                          </div>
+
+                          <h2>Parameters</h2>
+
+                            <div class="methodsubtabletitle">Path parameters</div>
+                            <table id="methodsubtable">
+                                <tr>
+                                  <th width="150px">Name</th>
+                                  <th>Description</th>
+                                </tr>
+                                  <tr><td style="width:150px;">nodeId*</td>
+                                  <td>
+                                  
+                                  
+                                      <div id="d2e199_nodeNodeIdAclDelete_nodeId">
+                                          <div class="json-schema-view">
+                                              <div class="primitive">
+                                                  <span class="type">
+                                                      String
+                                                  </span>
+                                  
+                                              </div>
+                                                  <div class="inner required">
+                                                      Required
+                                                  </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  </tr>
+                            </table>
+
+
+
+
+
+                          <h2>Responses</h2>
+                            <h3> Status: default - Default error sample response </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                            </div>
+
+                        </article>
+                      </div>
+                      <hr>
                     <div id="api-NodeAcl-nodeNodeIdAclGet">
                       <article id="api-NodeAcl-nodeNodeIdAclGet-0" data-group="User" data-name="nodeNodeIdAclGet" data-version="0">
                         <div class="pull-left">
@@ -1889,7 +2719,14 @@ except ApiException as e:
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
                         <p></p>
-                        <p class="marked"></p>
+                        <p class="marked">view all acls
+
+&#x60;curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;/acl/&#x60;
+
+view specific acls
+
+&#x60;curl -X GET http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;/acl/[ all | read | write | delete | owner ]&#x60;
+</p>
                         <p></p>
                         <br />
                         <pre class="prettyprint language-html prettyprinted" data-type="get"><code><span class="pln">/node/{nodeId}/acl</span></code></pre>
@@ -2131,7 +2968,14 @@ except ApiException as e:
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
                         <p></p>
-                        <p class="marked"></p>
+                        <p class="marked">changing owner (chown)
+
+&#x60;curl -X PUT http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;/acl/owner?users&#x3D;&lt;user-id_or_uuid&gt;&#x60;
+
+adding user to acls
+
+&#x60;curl -X PUT http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;/acl/[ all | read | write | delete ]?users&#x3D;&lt;user-ids_or_uuids&gt;&#x60;
+</p>
                         <p></p>
                         <br />
                         <pre class="prettyprint language-html prettyprinted" data-type="put"><code><span class="pln">/node/{nodeId}/acl</span></code></pre>
@@ -3225,7 +4069,26 @@ except ApiException as e:
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
                         <p></p>
-                        <p class="marked"></p>
+                        <p class="marked">**Create index:**
+
+- Currently available index types include: size (virtual, does not require index creation), line, column (for tabbed files), chunkrecord and record (for sequence file types), bai (bam index), and subset (based on an existing index)
+
+Examples
+&#x60;&#x60;&#x60;
+curl -X PUT [ see Authentication ] http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;/index/&lt;type&gt;
+curl -X PUT [ see Authentication ] http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;/index/column?number&#x3D;&lt;int&gt;
+curl -X PUT [ see Authentication ] -F &quot;index_name&#x3D;&lt;string&gt;&quot; -F &quot;parent_index&#x3D;&lt;type&gt;&quot; -F &quot;subset_indices&#x3D;@&lt;path_to_file&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;/index/subset
+curl -X PUT [ see Authentication ] http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;?index&#x3D;&lt;type&gt; (deprecated)
+&#x60;&#x60;&#x60;
+If an index already exists, you should receive an error message telling you that.  To overwrite the existing index, add the parameter &#x60;?force_rebuild&#x3D;1&#x60; to your PUT request.
+
+To upload an index, query field &#x60;?upload&#x60; and form field &#x60;upload&#x3D;&#x60; both have to be used.
+
+&#x60;&#x60;&#x60;
+curl -X PUT [ see Authentication ] -F &quot;upload&#x3D;@&lt;path_to_index_file&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;/index/&lt;type&gt;?upload
+curl -X PUT [ see Authentication ] -F &quot;upload&#x3D;@&lt;path_to_index_file&gt;&quot; http://&lt;host&gt;[:&lt;port&gt;]/node/&lt;node_id&gt;/index/&lt;type&gt;?upload&amp;indexFormat&#x3D;&lt;string&gt;&amp;avgUnitSize&#x3D;&lt;int64&gt;&amp;totalUnits&#x3D;&lt;int64&gt;
+&#x60;&#x60;&#x60;
+</p>
                         <p></p>
                         <br />
                         <pre class="prettyprint language-html prettyprinted" data-type="put"><code><span class="pln">/node/{nodeId}/index/{type}</span></code></pre>
