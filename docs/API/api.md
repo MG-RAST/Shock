@@ -2,7 +2,7 @@
 
 The Shock API provides the following resources
 
-- [/node] (api.html#api-Node)
+- [/node](api.html#api-Node)
 - [/location](./location.md)
 - [/types](./types.md)
 
