@@ -173,14 +173,11 @@ Also, in order to use this feature, you must sort your .bam file using the 'samt
 
 Create a named index based on a list of sorted record numbers that are a subset of an existing index.
 
-<br><br>
-
-
-
-
 ##### bam index (bai) argument mapping from URL to samtools
 
-<table border=1>
+Table 
+
+<table>
     <tr>
         <td><b>URL argument</b></td>
         <td><b>value type</b></td>
