@@ -1,4 +1,3 @@
-
 ## Shock API specification
 
 The Shock API provides the following resources
@@ -6,6 +5,7 @@ The Shock API provides the following resources
 - /node 
 - [/location](./location.md)
 - [/types](./types.md)
+
 
 
 [Shock API specification](api.html)
@@ -64,7 +64,7 @@ All responses from Shock currently are in the following encoding.
 
 
 
-#### TODO move into api spec
+## TODO move into api spec
 
 
 Files in Shock are stored as Nodes with a file and a metadata set. An example metadata set is shown below:
