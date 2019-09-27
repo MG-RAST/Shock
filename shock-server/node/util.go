@@ -23,6 +23,7 @@ import (
 	"cloud.google.com/go/storage"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
+	
 
 	"github.com/MG-RAST/Shock/shock-server/cache"
 	"github.com/MG-RAST/Shock/shock-server/conf"
@@ -144,6 +145,9 @@ LocationLoop:
 		case "Shock":
 			// this should be expanded to handle Shock servers sharing the same Mongo instance
 			err, md5sum = ShockDownload(uuid, nodeInstance, locationConfig)
+
+		// case "IRods"
+		// 	err, md5sum = IRodsDownload(uuid, nodeInstance, locationConfig)
 
 		case "Daos":
 			// this should call a DAOS downloader
@@ -542,6 +546,150 @@ func GCloudStoreDownload(uuid string, nodeInstance *Node, location *conf.Locatio
 	}
 	return
 }
+
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
+
+// // IRodsDownload download from IRods
+//  // https://github.com/jjacquay712/GoRODS/blob/master/HOWTO.md
+// func IRodsDownload(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error, md5sum string) {
+
+// 	itemkey := fmt.Sprintf("%s.data", uuid)
+// 	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
+
+// 	tmpfile, err := ioutil.TempFile(conf.PATH_CACHE, "")
+// 	if err != nil {
+// 		log.Fatalf("(IRodsDownload)  cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+// 		return
+// 	}
+// 	defer tmpfile.Close()
+// 	defer os.Remove(tmpfile.Name())
+
+	
+
+// 	// irods connection init
+// 	client, err := gorods.New(gorods.ConnectionOptions{
+// 		Type: gorods.UserDefined,
+
+// 		Host: location.Hostname,
+// 		Port: location.Port,
+// 		Zone: location.Zone,
+
+// 		Username: location.User,
+// 		Password: location.Password,
+// 	})
+
+// 	// Ensure the client initialized successfully and connected to the iCAT server
+// 	if err != nil {
+// 		log.Fatalf("(IRodsDownload) cannot init connection: %s [Err: %s]", uuid, err.Error())
+// 		return 
+// 	}
+
+// 	// the paths for the objects in iRods include the Zone
+// 	itempath := filepath.Join(location.Zone, itemkey)
+// 	indexpath := filepath.Join(location.Zone, indexfile)
+
+// 	//irods file retrieval
+// 	// Open a data object reference 
+// 	err = client.OpenDataObject(itempath, func(myFile *gorods.DataObj, con *gorods.Connection) 
+
+// 	if err != nil {
+// 		log.Fatalf("(IRodsDownload) cannot find iRODs object: %s [Err: %s]", uuid, err.Error())
+// 		return 
+// 	}
+	
+// 	var dst io.Writer
+// 	md5h := md5.New()
+// 	dst = io.MultiWriter(tmpfile, md5h)
+	
+// 	//
+// 	outBuff := make(chan *ByteArr, 100)
+
+// 	go func() {
+// 		err := obj.ReadChunkFree(10240000, func(chunk *ByteArr) {outBuff <- chunk } )
+		
+// 		if err != nil {
+// 			log.Fatalf("(IRodsDownload) cannot find iRODs object: %s [Err: %s]", uuid, err.Error())
+// 			return 
+// 		}
+
+// 		close(outBuff)
+// 	}()
+
+// 	// write the contents of the buffer
+// 	for b := range outBuff {
+// 		dst.Write(b.Contents)
+// 		b.Free()
+// 	}
+
+// 	// end iRODS specific
+// 	md5sum = fmt.Sprintf("%x", md5h.Sum(nil))
+
+// 	err = handleDataFile(tmpfile, uuid, "IRodsDownload")
+// 	if err != nil {
+// 		logger.Debug(3, "(IRodsDownload) error moving directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
+// 		return
+// 	}
+
+// 	tmpfile.Close()
+
+// 	// download index files as well
+
+// 	tmpfile, err = ioutil.TempFile(conf.PATH_CACHE, "")
+// 	if err != nil {
+// 		log.Fatalf("(IRodsDownload) cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+// 		return
+// 	}
+// 	defer tmpfile.Close()
+// 	defer os.Remove(tmpfile.Name())
+
+// 	//irods file retrieval
+// 	// Open a data object reference 
+// 	err = client.OpenDataObject(indexpath, func(myFile *gorods.DataObj, con *gorods.Connection) 
+
+// 	if err != nil {
+// 		log.Fatalf("(IRodsDownload) cannot find iRODs object: %s [Err: %s]", uuid, err.Error())
+// 		return 
+// 	}
+	
+// 	var dst io.Writer
+// 	md5h := md5.New()
+// 	dst = io.MultiWriter(tmpfile, md5h)
+	
+// 	//
+// 	outBuff := make(chan *ByteArr, 100)
+
+// 	go func() {
+// 		err := obj.ReadChunkFree(10240000, func(chunk *ByteArr) {outBuff <- chunk } )
+		
+// 		if err != nil {
+// 			log.Fatalf("(IRodsDownload) cannot find iRODs object: %s [Err: %s]", uuid, err.Error())
+// 			return 
+// 		}
+
+// 		close(outBuff)
+// 	}()
+
+// 	// write the contents of the buffer
+// 	for b := range outBuff {
+// 		dst.Write(b.Contents)
+// 		b.Free()
+// 	}
+
+// 	}
+
+// 	err = handleIdxZipFile(tmpfile, uuid, "IRodsDownload")
+// 	if err != nil {
+// 		logger.Debug(3, "(IRodsDownload) error moving index structures and symkink into place for : %s [Err: %s]", uuid, err.Error())
+// 		return
+// 	}
+// 	return
+// }
 
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
