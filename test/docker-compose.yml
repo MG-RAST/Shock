@@ -46,7 +46,7 @@ services:
 
     # Minio to serve as local S3 backend
     shock-minio:
-        image: minio/minio
+      image: minio/minio
       volumes:
         - dataMINIO-1:/data
       ports:
@@ -89,8 +89,8 @@ services:
           "
 
 volumes:
-      dataIRODS-1:
-  #   dataMINIO-1:
+      #dataIRODS-1:
+  dataMINIO-1:
 
 # create admin user manually           
 #
