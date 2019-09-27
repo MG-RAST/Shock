@@ -203,7 +203,7 @@ func Initialize() (err error) {
 	USE_CONFIG := true
 	for i, elem := range os.Args {
 
-		if elem == "-noconf" || elem == "--noconf" {
+		if elem == "-no_config" || elem == "--no_config" {
 			USE_CONFIG = false
 		}
 		if strings.HasPrefix(elem, "-conf") || strings.HasPrefix(elem, "--conf") {
@@ -221,7 +221,7 @@ func Initialize() (err error) {
 	var c *config.Config = nil
 	if CONFIG_FILE == "" && USE_CONFIG { // use a default config file if none is specified
 		CONFIG_FILE = "/etc/shock.d/shock-server.conf"
-		fmt.Printf("Using default file: [%s].\n",CONFIG_FILE)
+		fmt.Printf("Using default file: [%s].\n", CONFIG_FILE)
 	}
 	if CONFIG_FILE != "" {
 		c, err = config.ReadDefault(CONFIG_FILE)
@@ -229,16 +229,15 @@ func Initialize() (err error) {
 			return errors.New("error reading conf file: " + err.Error())
 		}
 		fmt.Printf("read %s\n", CONFIG_FILE)
-		
+
 	} else {
 		fmt.Printf("No config file specified.\n")
 		c = config.NewDefault()
 	}
-	
+
 	CONFIG_PATH := path.Dir(CONFIG_FILE)
 	fmt.Printf("CONFIG_PATH %s\n", CONFIG_PATH)
 
-	
 	c_store, err := getConfiguration(c) // from config file and command line arguments
 	if err != nil {
 		return errors.New("error reading conf file: " + err.Error())
@@ -266,7 +265,6 @@ func Initialize() (err error) {
 	// read Locations.yaml file from same directory as config file
 	LocationsPath := path.Join(CONFIG_PATH, "Locations.yaml")
 
-
 	// we should check the YAML config file for correctness and schema compliance
 	// TOBEADDED --> https://github.com/santhosh-tekuri/jsonschema/issues/5
 	err = readYAMLConfig(LocationsPath)
@@ -278,7 +276,6 @@ func Initialize() (err error) {
 		}
 	}
 	fmt.Printf("read %s\n", LocationsPath)
-
 
 	typesPath := path.Join(CONFIG_PATH, "Types.yaml")
 	// we should check the YAML config file for correctness and schema compliance
@@ -292,8 +289,6 @@ func Initialize() (err error) {
 		}
 	}
 	fmt.Printf("read %s\n", typesPath)
-
-
 
 	TransitMap = make(map[string]struct{}) //bool)
 
