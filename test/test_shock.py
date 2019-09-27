@@ -643,7 +643,7 @@ class TestClass:
         assert data["data"][0]["file"]["name"] == "AAA.txt"
 
     
-    def test_location_get_info(self):
+    def test_get_location_info(self):
         LOCATION = "S3" # this is defined in the Locations.yaml in {REPO}/test/config.d 
         TESTURL = "/".join( [SHOCK_URL , "location" , LOCATION , "info"  ] )
 
@@ -652,7 +652,19 @@ class TestClass:
             print ("URL", TESTURL)
             print("DATA", response.text)
         assert response.status_code == 200
+    
+    def test_get_location_missing(self):
+        NODE = self.create_nodes([os.path.join(DATADIR, "AAA.txt")])[0]
+        NODEURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
 
+        LOCATION = "S3" # this is defined in the Locations.yaml in {REPO}/test/config.d 
+        TESTURL = "/".join( [SHOCK_URL , "location" , LOCATION ,  "missing"  ] )
+
+        response = requests.get( TESTURL, headers=TESTAHEADERS)
+        if DEBUG:
+            print ("URL", TESTURL)
+            print("DATA", response.text)
+        assert response.status_code == 200
  
     def test_types_get_info(self):
         LOCATION = "metadata"
@@ -664,8 +676,55 @@ class TestClass:
             print("DATA", response.text)
         assert response.status_code == 200
     
-       
-       
+    def test_get_location_info(self):
+        LOCATION = "S3" # this is defined in the Locations.yaml in {REPO}/test/config.d 
+        TESTURL = "/".join( [SHOCK_URL , "location" , LOCATION , "info"  ] )
+
+        response = requests.get( TESTURL, headers=TESTAHEADERS)
+        if DEBUG:
+            print ("URL", TESTURL)
+            print("DATA", response.text)
+        assert response.status_code == 200
+
+
+    def test_get_location_missing1(self):
+        NODE = self.create_nodes([os.path.join(DATADIR, "AAA.txt")])[0]
+        NODEURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
+
+        LOCATION = "S3" # this is defined in the Locations.yaml in {REPO}/test/config.d 
+        TESTURL = "/".join( [SHOCK_URL , "location" , LOCATION ,  "missing"  ] )
+
+        response = requests.get( TESTURL, headers=TESTAHEADERS)
+        if DEBUG:
+            print ("URL", TESTURL)
+            print("DATA", response.text)
+        assert response.status_code == 200
+
+    def test_NODE_set_location(self):
+        NODE = self.create_nodes([os.path.join(DATADIR, "AAA.txt")])[0]
+             
+        PARAMS = {"id": "S3", "stored": "true"}
+        TESTURL = "/".join( [SHOCK_URL , "node", NODE, "locations" ] )
+
+        response = requests.post(TESTURL, headers=TESTAHEADERS, params=PARAMS)
+        
+        if DEBUG:
+            print ("URL", TESTURL)
+            print("DATA", response.text)
+        assert response.status_code == 200
+ 
+    def test_get_location_missing2(self):
+        NODE = self.create_nodes([os.path.join(DATADIR, "AAA.txt")])[0]
+        NODEURL = "{SHOCK_URL}/node".format(SHOCK_URL=SHOCK_URL)
+
+        LOCATION = "S3" # this is defined in the Locations.yaml in {REPO}/test/config.d 
+        TESTURL = "/".join( [SHOCK_URL , "location" , LOCATION ,  "missing"  ] )
+
+        response = requests.get( TESTURL, headers=TESTAHEADERS)
+        if DEBUG:
+            print ("URL", TESTURL)
+            print("DATA", response.text)
+        assert response.status_code == 200
 
     def test_node_set_location(self) :
         pass
