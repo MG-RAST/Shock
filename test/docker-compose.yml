@@ -19,12 +19,12 @@ services:
           - shock-mongo
           - shock-mongo-seed
           - shock-minio
-          - shock-irods
+   #       - shock-irods
         entrypoint: 
           - /go/bin/shock-server 
           - --expire_wait=1
           - --cache_path=/usr/local/shock/cache 
-          - -—debugauth=true
+          # parameters are in the config file mostly (see below shock.d dir)
         volumes:
         # mount config dir in correct location
           -   $HOME/go/src/github.com/MG-RAST/Shock/test/config.d:/etc/shock.d
@@ -54,6 +54,7 @@ services:
       environment:
         MINIO_ACCESS_KEY: minio
         MINIO_SECRET_KEY: minio123
+      command: server  /data
       healthcheck:
         test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
         interval: 30s
@@ -61,14 +62,14 @@ services:
         retries: 3
 
    # Minio to serve as local S3 backend
-    shock-irods:
-      image: irods/icat:4.0.3
-      # volumes:
-      #   - dataMINIO-1:/data
-      ports:
-        - "1247:1247"
-      # start irods with admin password
-      command: ["/opt/irods/bootstrap.sh", "irods123"]
+    # shock-irods:
+    #   image: irods/icat:4.0.3
+    #   # volumes:
+    #   #   - dataMINIO-1:/data
+    #   ports:
+    #     - "1247:1247"
+    #   # start irods with admin password
+    #   command: ["/opt/irods/bootstrap.sh", "irods123"]
       
     # create admin account
     shock-mongo-seed:
