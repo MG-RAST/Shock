@@ -9,6 +9,10 @@ version: '3.1'
 # optional
 # set CONFIGDIR to path to config
 # set LOGDIR to path to local log dir
+volumes:
+  dataIRODS-1:
+  dataMINIO-1:
+    driver: local
 
 services:
 
@@ -18,6 +22,8 @@ services:
         image: mgrast/shock
         depends_on:
           - shock-mongo
+          - shock-minio
+      #    - shock-irods
         entrypoint: 
           - /bin/sleep 
           - 999d 
@@ -33,7 +39,8 @@ services:
           
           # mount local source code
           - $HOME/go/src/github.com/MG-RAST/Shock:/go/src/github.com/MG-RAST/Shock
-          
+          # mount config dir in correct location
+          - $HOME/go/src/github.com/MG-RAST/Shock/devel/config.d:/etc/shock.d
           # mount config file 
           #- ${CONFIGDIR}/Shock/shock-server.container.cfg:/shock-config/shock-server.cfg
           
@@ -44,7 +51,33 @@ services:
           - 7445:7445
           
   
-  
+    # Minio to serve as local S3 backend
+    shock-minio:
+      image: minio/minio
+      volumes:
+         - dataMINIO-1:/data
+      ports:
+        - "9000:9000"
+      environment:
+        MINIO_ACCESS_KEY: minio
+        MINIO_SECRET_KEY: minio123
+      command: server  /data
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+        interval: 30s
+        timeout: 20s
+        retries: 3
+
+  #  # Minio to serve as local S3 backend
+  #   shock-irods:
+  #     image: irods/icat:4.0.3
+  #     volumes:
+  #       - dataIRODS-1:/data
+  #     ports:
+  #       - "1247:1247"
+  #     # start irods with admin password
+  #     command: ["/opt/irods/bootstrap.sh", "irods123"]
+      
 
     # mongoDB for the SHOCK service, provides metadata storage
     shock-mongo:
