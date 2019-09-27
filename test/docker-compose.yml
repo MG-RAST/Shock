@@ -22,8 +22,12 @@ services:
           - shock-irods
         entrypoint: 
           - /go/bin/shock-server 
-          - --conf=/go/src/github.com/MG-RAST/Shock/test/config.d/shock-server.conf  
-          
+          - --expire_wait=1
+          - --cache_path=/usr/local/shock/cache 
+          - -—debugauth=true
+        volumes:
+        # mount config dir in correct location
+          -   $HOME/go/src/github.com/MG-RAST/Shock/test/config.d:/etc/shock.d
         ports:
           - 7445:7445
           

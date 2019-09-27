@@ -42,7 +42,7 @@ type LocationConfig struct {
 	S3Location     `bson:",inline" json:",inline" yaml:",inline"` // extensions specific to S3
 	AzureLocation  `bson:",inline" json:",inline" yaml:",inline"` // extensions specific to Microsoft Azure
 	GCloudLocation `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to IBM TSM
-
+	IRodsLocation  `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to IRods
 }
 
 // S3Location S3 specific fields
@@ -59,6 +59,15 @@ type AzureLocation struct {
 // GCloudLocation specific fields
 type GCloudLocation struct {
 	Project string `bson:"Project" json:"-" yaml:"Project" `
+}
+
+// IRodsLocation specific fields
+type IRodsLocation struct {
+	Zone     string `bson:"Zone" json:"-" yaml:"Zone" `
+	User     string `bson:"User" json:"-" yaml:"User" `
+	Password string `bson:"Password" json:"-" yaml:"Password" `
+	Hostname string `bson:"Hostname" json:"-" yaml:"Hostname" `
+	Port     int    `bson:"Port" json:"-" yaml:"Port" `
 }
 
 // LocationsMap allow access to Location objects via Locations("ID")
@@ -212,6 +221,7 @@ func Initialize() (err error) {
 	var c *config.Config = nil
 	if CONFIG_FILE == "" && USE_CONFIG { // use a default config file if none is specified
 		CONFIG_FILE = "/etc/shock.d/shock-server.conf"
+		fmt.Printf("Using default file: [%s].\n",CONFIG_FILE)
 	}
 	if CONFIG_FILE != "" {
 		c, err = config.ReadDefault(CONFIG_FILE)
@@ -219,11 +229,16 @@ func Initialize() (err error) {
 			return errors.New("error reading conf file: " + err.Error())
 		}
 		fmt.Printf("read %s\n", CONFIG_FILE)
+		
 	} else {
 		fmt.Printf("No config file specified.\n")
 		c = config.NewDefault()
 	}
+	
+	CONFIG_PATH := path.Dir(CONFIG_FILE)
+	fmt.Printf("CONFIG_PATH %s\n", CONFIG_PATH)
 
+	
 	c_store, err := getConfiguration(c) // from config file and command line arguments
 	if err != nil {
 		return errors.New("error reading conf file: " + err.Error())
@@ -249,10 +264,8 @@ func Initialize() (err error) {
 	}
 
 	// read Locations.yaml file from same directory as config file
-	var LocationsPath = path.Dir(CONFIG_FILE)
-	LocationsPath = path.Join(LocationsPath, "Locations.yaml")
+	LocationsPath := path.Join(CONFIG_PATH, "Locations.yaml")
 
-	fmt.Printf("read Locations file: %s\n", LocationsPath)
 
 	// we should check the YAML config file for correctness and schema compliance
 	// TOBEADDED --> https://github.com/santhosh-tekuri/jsonschema/issues/5
@@ -260,13 +273,14 @@ func Initialize() (err error) {
 	if err != nil {
 		// if we are trying to cache or migrate data we need a locations.yaml file
 		if (PATH_CACHE != "") || (NODE_MIGRATION == true) {
-			fmt.Printf("We need a Locations.yaml file to enable Caching and/or migrations")
+			fmt.Printf("trying to read Locations file: %s\n[CONFIG_FILE:%s]", LocationsPath, CONFIG_FILE)
 			return errors.New("error reading locations file: " + err.Error())
 		}
 	}
+	fmt.Printf("read %s\n", LocationsPath)
 
-	var typesPath = path.Dir(CONFIG_FILE)
-	typesPath = path.Join(typesPath, "Types.yaml")
+
+	typesPath := path.Join(CONFIG_PATH, "Types.yaml")
 	// we should check the YAML config file for correctness and schema compliance
 	// TOBEADDED --> https://github.com/santhosh-tekuri/jsonschema/issues/5
 	err = readYAMLTypesConfig(typesPath)
@@ -277,6 +291,9 @@ func Initialize() (err error) {
 			return errors.New("error reading types file: " + err.Error())
 		}
 	}
+	fmt.Printf("read %s\n", typesPath)
+
+
 
 	TransitMap = make(map[string]struct{}) //bool)
 
