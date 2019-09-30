@@ -223,7 +223,7 @@ func Initialize() (err error) {
 		CONFIG_FILE = "/etc/shock.d/shock-server.conf"
 		fmt.Printf("Using default file: [%s].\n", CONFIG_FILE)
 	}
-	if CONFIG_FILE != "" {
+	if CONFIG_FILE != "" && USE_CONFIG {
 		c, err = config.ReadDefault(CONFIG_FILE)
 		if err != nil {
 			return errors.New("error reading conf file: " + err.Error())
