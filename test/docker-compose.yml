@@ -27,7 +27,7 @@ services:
           # parameters are in the config file mostly (see below shock.d dir)
         volumes:
         # mount config dir in correct location
-          -   $HOME/go/src/github.com/MG-RAST/Shock/test/config.d:/etc/shock.d
+          -   ./config.d:/etc/shock.d
         ports:
           - 7445:7445
           
