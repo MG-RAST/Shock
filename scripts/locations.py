@@ -80,12 +80,12 @@ def get_nodes(config=None , location=None , action=None ) :
                                                     ]
                                                 )  
                         }
-    # location_url    = "/".join( [ config['shock']['host'] , "location"  , location , action ] )
-    location_url    = "/".join( [ config['shock']['host'] , "node?limit=100" ] )
+    location_url    = "/".join( [ config['shock']['host'] , "location"  , location , action ] )
+    # location_url    = "/".join( [ config['shock']['host'] , "node?limit=100" ] )
     
     print(location_url)
     # make request and parse json 
-    with requests.get(location_url , headers=headers, stream=True) as response :
+    with requests.get(location_url , headers=headers, stream=False) as response :
         if response :
             try:
                 data = response.json()
@@ -120,8 +120,8 @@ def get_location(config=None , location=None , action=None ):
                                                     ]
                                                 )  
                         }
-    # location_url    = "/".join( [ config['shock']['host'] , "location"  , location , action ] )
-    location_url    = "/".join( [ config['shock']['host'] , "node?limit=100" ] )
+    location_url    = "/".join( [ config['shock']['host'] , "location"  , location , action ] )
+    # location_url    = "/".join( [ config['shock']['host'] , "node?limit=100" ] )
     
     print(location_url)
     # make request and parse json 
@@ -149,17 +149,20 @@ def main(config) :
     ofile   = None
 
     print(args.location , args.status)
-    if  args.location and len(args.location) > 0 and args.status != 'info' :
+    if  args.location and len(args.location) > 0 and args.status == 'info' :
         info = get_location(config=config , location=args.location[0] , action='info')
-    if args.status and len(args.status) > 0 :
+        print(info['data'])
+    elif args.status and len(args.status) > 0 and args.status != 'info':
         results = info = get_location(config=config , location=args.location[0] , action=args.status)
 
+        print(results)
         if args.output and os.path.isfile( args.output ) :
             ofile = open( args.output , 'w')
         if results :
 
             if 'data' in results :
                 for node in results['data'] :
+                    print(results)
                     if node['file']['size'] > 0 :
                         print(node['id'], node['locations'])
                         if ofile :
