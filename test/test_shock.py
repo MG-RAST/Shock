@@ -710,7 +710,7 @@ class TestClass:
 
         TESTURL = "/".join( [SHOCK_URL , "node", NODE, "locations" ] )
 
-        response = requests.post(TESTURL, headers=NEWHEADER, data=json.dumps(PARAMS))
+        response = requests.post(TESTURL, headers=NEWHEADER, data=json.dumps(PARAMS))   
         
         if DEBUG:
             print ("URL", TESTURL)
