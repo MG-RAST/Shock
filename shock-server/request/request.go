@@ -85,11 +85,17 @@ func AuthError(err error, ctx context.Context) error {
 	return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
 }
 
-// helper function to create a node from an http data post
+// DataUpload helper function to create a node from an http data post (not multi-part)
 func DataUpload(r *http.Request) (params map[string]string, files file.FormFiles, err error) {
 	params = make(map[string]string)
 	files = make(file.FormFiles)
 	tmpPath := fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
+
+	// tmpPath, err := ioutil.TempFile(conf.PATH_CACHE+"/temp/", "")
+	// if err != nil {
+	// 	log.Fatalf("(DataUpload)  cannot create temporary file: %s [Err: %s]", tmpPath, err.Error())
+	// 	return
+	// }
 
 	files["upload"] = file.FormFile{Name: "filename", Path: tmpPath, Checksum: make(map[string]string)}
 	if tmpFile, err := os.Create(tmpPath); err == nil {

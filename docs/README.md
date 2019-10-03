@@ -1,19 +1,21 @@
 
-# Shock 2.0 -- An object store for scientific data
+# Shock 2.0
 
--  is a storage platform designed from the ground up to be fast, scalable and fault tolerant.
+An object store for scientific data that is:
 
-- is RESTful. The [API](./API/README.md) is accessible from desktops, HPC systems, exotic hardware, the cloud and your smartphone.
+-  a storage platform designed from the ground up to be fast, scalable and fault tolerant.
 
-- is designed for complex scientific data and allows storage and querying of complex user-defined metadata.   
+-  fully RESTful. The [API](./API/README.md) is accessible from desktops, HPC systems, exotic hardware, the cloud and your smartphone.
 
-- is a data management system that supports in storage layer operations like quality-control, format conversion, filtering or subsetting.
+-  designed from scratch for complex scientific data and allows the storage and querying of complex user-defined metadata.   
 
-- is integrated with S3, Microsoft Azure Storage, Google Cloud Storage and IBM's Tivoli TSM storage managment system.
+- a full data management system that supports in storage layer operations like quality-control, format conversion, filtering or subsetting.
 
-- supports HSM operations and caching
+- integrated with S3, Microsoft Azure Storage, Google Cloud Storage and IBM's Tivoli TSM storage managment system.
 
-- is part of our reproducible science platform [Skyport]([https://github.com/MG-RAST/Skyport2) combined to create [Researchobjects](http://www.researchobject.org/) when combined with [CWL](http://www.commonwl.org) and 
+- integrated with HSM operations and caching
+
+-  part of our reproducible science platform [Skyport]([https://github.com/MG-RAST/Skyport2) combined to create [Researchobjects](http://www.researchobject.org/) when combined with [CWL](http://www.commonwl.org) and 
 [CWLprov](https://github.com/common-workflow-language/cwlprov)
 
 Shock is actively being developed at [github.com/MG-RAST/Shock](https://github.com/MG-RAST/Shock).
@@ -24,7 +26,7 @@ Check out the notes on [building and installing Shock](./building.md) and [confi
 
 
 ## Shock in 30 seconds (for Docker-compose) (or later for kubectl )
-This assumes that you have `docker` and `docker-compose` installed and `curl` is available locally. To improve readability of JSON output we recommend to use a JSON pretty printer such as [`jq`](https://stedolan.github.io/jq/download/) or `python -m json.tool` 
+We know that you already have `docker` and `docker-compose` installed and `curl` is available locally. To improve readability of JSON output we recommend using a JSON pretty printer such as [`jq`](https://stedolan.github.io/jq/download/) or `python -m json.tool` 
 
 ### Start Shock
 ```bash
