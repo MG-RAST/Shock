@@ -56,7 +56,7 @@ class TestClass:
         global AUTH
         global SHOCK_USER_AUTH
 
-        AUTH=SHOCK_USER_AUTH
+        
         global FILELIST
         FILELIST = ["AAA.txt", "BBB.txt", "CCC.txt"]
 
@@ -64,6 +64,8 @@ class TestClass:
         
         SHOCK_USER_AUTH = os.environ.get("SHOCK_USER_AUTH", "basic dXNlcjE6c2VjcmV0")
         SHOCK_ADMIN_AUTH = os.environ.get("SHOCK_ADMIN_AUTH", "basic YWRtaW46c2VjcmV0")
+
+        AUTH=SHOCK_USER_AUTH
 
         global TESTHEADERS
         TESTHEADERS = {"Authorization": SHOCK_USER_AUTH}
@@ -376,6 +378,7 @@ class TestClass:
         if DEBUG:
             print("RESPONSE", response.content)
         data = json.loads(response.content.decode("utf-8"))
+        assert "total_count" in data
         assert data["total_count"] >= 3, "Missing or incorrect total_count" + " ".join([str(response.status_code), str(response.content)])
         assert NODES[0] in response.content.decode("utf-8"), NODES[0] + " not in " + response.content.decode("utf-8")
         # issue query for TESTPROJECT FILES downloaded as ZIP
@@ -386,6 +389,7 @@ class TestClass:
         print(" ".join([ "Debugging ZIP Download", str(response.status_code), str(response.content)]))
         data = json.loads(response.content.decode("utf-8"))
         # extract preauth uri from response
+        assert "data" in data
         PREAUTH_URL = data["data"]["url"] # example: http://localhost/preauth/TbqTUadG42vVf72LkWRg 
 
         TESTURL=PREAUTH_URL
@@ -425,8 +429,11 @@ class TestClass:
         if DEBUG:
             print("GET", TESTURL, TESTDATA)
         response = requests.get(TESTURL, headers=TESTHEADERS, params=TESTDATA)
+        if DEBUG:
+            print("RESPONSE 1 :", response.content)
     #    if DEBUG: print("RESPONSE", response.content)
         data = json.loads(response.content.decode("utf-8"))
+        assert "total_count" in data
         assert data["total_count"] >= 3
         assert NODES[0] in response.content.decode("utf-8")
         # issue query for TESTPROJECT FILES downloaded as ZIP
@@ -434,12 +441,18 @@ class TestClass:
         if DEBUG:
             print("curl '{}' -H 'Authorization: {}' -G -d {}".format(TESTURL, AUTH, TESTDATA))
         response = requests.get(TESTURL, headers=TESTHEADERS, params=TESTDATA)
+        if DEBUG:
+            print("RESPONSE 2 :", response.content)
         data = json.loads(response.content.decode("utf-8"))
         # extract preauth uri from response
+        assert "data" in data
+        assert "url" in data["data"]
         PREAUTH = data["data"]["url"]
         if DEBUG:
             print("GET", PREAUTH, TESTHEADERS)
         response = requests.get(PREAUTH, headers=TESTHEADERS)
+        if DEBUG:
+            print("RESPONSE 3 :", response.content)
         # write it to file and test ZIP
         with open("TEST.tar", "wb") as f:
             f.write(response.content)
@@ -464,14 +477,17 @@ class TestClass:
         if DEBUG:
             print("POST", TESTURL, FORMDATA)
         response = requests.post(TESTURL, headers=TESTHEADERS, files=FORMDATA)
+        if DEBUG:
+            print("RESPONSE 1 :", response.content)
         data = json.loads(response.content.decode("utf-8"))
         # extract preauth uri from response
-        if DEBUG:
-            print("RESPONSE", response)
+       
         PREAUTH = data["data"]["url"]
         if DEBUG:
             print("GET", PREAUTH, TESTHEADERS)
         response = requests.get(PREAUTH, headers=TESTHEADERS)
+        if DEBUG:
+            print("RESPONSE 2 :", response.content)
         # write it to file and test ZIP
         with open("TESTP.tar", "wb") as f:
             f.write(response.content)
