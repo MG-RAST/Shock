@@ -23,7 +23,7 @@ You can get the Shock Dockerimage with:
 docker pull mgrast/shock
 ```
 
-Or, to build the Docker image on you own:
+Or, to build the Docker image on your own:
 ```bash
 git clone --recursive https://github.com/MG-RAST/Shock.git
 cd Shock
