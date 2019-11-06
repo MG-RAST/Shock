@@ -1,7 +1,6 @@
 package node
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -18,7 +17,6 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
 	"github.com/MG-RAST/golib/stretchr/goweb/context"
-	"github.com/davecgh/go-spew/spew"
 	mgo "gopkg.in/mgo.v2"
 )
 
@@ -41,8 +39,8 @@ func (cr *NodeController) Create(ctx context.Context) error {
 	// Parse uploaded form
 	// all POSTed files writen to temp dir
 	params, files, err := request.ParseMultipartForm(ctx.HttpRequest())
-	fmt.Println("params:")
-	spew.Dump(params)
+	//fmt.Println("params:")
+	//spew.Dump(params)
 	// clean up temp dir !!
 	defer file.RemoveAllFormFiles(files)
 	if err != nil {

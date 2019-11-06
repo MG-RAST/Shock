@@ -38,16 +38,17 @@ type LocationConfig struct {
 	Cost        int    `bson:"cost" json:"cost" yaml:"Cost"`                      // e.g.  cost per GB for this store, default=0
 	SecretKey   string `bson:"SecretKey" json:"-" yaml:"SecretKey" `              // e.g.g AWS secret-key
 	Bucket      string `bson:"bucket" json:"bucket" yaml:"Bucket" `               // for AWS and GCloud
+	Region      string `bson:"region" json:"region" yaml:"Region" `
 
-	S3Location     `bson:",inline" json:",inline" yaml:",inline"` // extensions specific to S3
-	AzureLocation  `bson:",inline" json:",inline" yaml:",inline"` // extensions specific to Microsoft Azure
-	GCloudLocation `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to IBM TSM
-	IRodsLocation  `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to IRods
+	AzureLocation   `bson:",inline" json:",inline" yaml:",inline"` // extensions specific to Microsoft Azure
+	GCloudLocation  `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to IBM TSM
+	IRodsLocation   `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to IRods
+	GlacierLocation `bson:",inline" json:",inline" yaml:",inline"` // extension sspecific to Glacier
 }
 
-// S3Location S3 specific fields
-type S3Location struct {
-	Region string `bson:"region" json:"region" yaml:"Region" `
+// GlacierLocation specific fields
+type GlacierLocation struct {
+	Vault string `bson:"vault" json:"vault" yaml:"Vault" `
 }
 
 // AzureLocation Microsoft Azure specific fields

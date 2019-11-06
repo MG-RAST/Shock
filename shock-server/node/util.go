@@ -23,7 +23,6 @@ import (
 	"cloud.google.com/go/storage"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
-	
 
 	"github.com/MG-RAST/Shock/shock-server/cache"
 	"github.com/MG-RAST/Shock/shock-server/conf"
@@ -135,6 +134,8 @@ LocationLoop:
 		var md5sum string
 		begin := time.Now()
 
+		// below are the location types that will allow streaming download, there are also batch
+		// download location types that are handled by external scripts
 		switch locationConfig.Type {
 		case "S3":
 			err, md5sum = S3Download(uuid, nodeInstance, locationConfig)
@@ -242,7 +243,9 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 	//fmt.Printf("(S3Download) attempting download, UUID: %s, nodeID: %s from: %s\n", uuid, nodeInstance.Id, location.URL)
 
 	Bucket := location.Bucket
-	logger.Debug(4, "(S3Download) attempting download, UUID: %s, nodeID: %s, Bucket:%s", uuid, nodeInstance.Id, Bucket)
+	logger.Debug(1, "(S3Download) attempting download, UUID: %s, nodeID: %s, Bucket:%s", uuid, nodeInstance.Id, Bucket)
+
+	//logger.Infof("(S3Download) attempting download, UUID: %s, nodeID: %s, Bucket:%s", uuid, nodeInstance.Id, Bucket)
 
 	// 2) Create an AWS session
 	s3Config := &aws.Config{
@@ -253,17 +256,17 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 		//DisableSSL:       aws.Bool(true),
 		S3ForcePathStyle: aws.Bool(true),
 	}
+	//logger.Infof("(S3Download) creating S3 session failed with Endpoint: %s, Region: %s, Bucket: %s, Authkey: %s, SessionKey: %s ",
+	//	location.URL, location.Region, location.Bucket, location.AuthKey, location.SecretKey)
+
 	sess, err := session.NewSession(s3Config)
 	if err != nil {
 		logger.Errorf("(S3Download) creating S3 session failed with Endpoint: %s, Region: %s, Bucket: %s, Authkey: %s, SessionKey: %s (err: %s)",
-			aws.String(location.URL),
-			aws.String("us-east-1"),
-			Bucket,
-			location.AuthKey,
-			location.SecretKey,
-			err.Error())
+			location.URL, location.Region, location.Bucket, location.AuthKey, location.SecretKey, err.Error())
 		return
 	}
+
+	//logger.Infof("(S3Download) Session established")
 
 	// 3) Create a new AWS S3 downloader
 	downloader := s3manager.NewDownloader(sess)
@@ -274,24 +277,34 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 			Key:    aws.String(itemkey),
 		})
 
+	//logger.Infof("(S3Download) downloaded %d Bytes for %s into %s", numBytes, itemkey, tmpfile.Name())
+
 	if err != nil {
 		log.Fatalf("(S3Download) Unable to download item %q for %s, %s", itemkey, uuid, err.Error())
+		//	logger.Infof("(S3Download) Unable to download item %q for %s, %s", itemkey, uuid, err.Error())
+
 		return
 	}
 
-	var dst io.Writer
+	//var dst io.Writer
 	md5h := md5.New()
-	dst = md5h
 
-	_, err = io.Copy(dst, tmpfile)
+	_, err = io.Copy(md5h, tmpfile)
 	if err != nil {
 		// md5 checksum creation did not work
 		return
 	}
+	//	tmpfile.Close()
+
+	//logger.Infof("(S3Download) md5checked %d Bytes for %s", newNumBytes, itemkey)
 
 	md5sum = fmt.Sprintf("%x", md5h.Sum(nil))
 
-	err = handleDataFile(tmpfile, uuid, "S3Download")
+	//logger.Infof("(S3Download) MD5 for %s, %s", itemkey, md5sum)
+
+	tmpFileName := tmpfile.Name()
+	functionName := "S3Download"
+	err = handleDataFile(tmpFileName, uuid, functionName)
 	if err != nil {
 		logger.Debug(3, "(S3Download) error moving directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
 		return
@@ -301,7 +314,7 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 	//index bits now
 	tmpfile, err = ioutil.TempFile(conf.PATH_CACHE, "")
 	if err != nil {
-		log.Fatalf("(GCloudStoreDownload) cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		log.Fatalf("(S3Download) cannot create temporary file: %s [Err: %s]", uuid, err.Error())
 		return
 	}
 	defer tmpfile.Close()
@@ -318,6 +331,7 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 		if strings.HasPrefix(err.Error(), "NoSuchKey") {
 			// we did not find an index
 			//	logger.Infof("no index for %s", uuid)
+			err = nil
 			return
 		}
 		log.Fatalf("(S3Download) Unable to download item %q for %s, %s", indexfile, uuid, err.Error())
@@ -336,21 +350,6 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
-
-// TSMDownload support for downloading files of an existing IBM Tivoli service
-func TSMDownload(uuid string, nodeInstance *Node) (err error) {
-	logger.Infof("(S3Download--> TSMDownload ) needs to be implemented !! \n")
-
-	// the turn around time here is ~12-24 hours
-	// check a dedicated TSMrestore directory in the temp area
-	// move file sform there
-
-	// add .data and .idx.zip files to the list of files to be downloaded from TSM
-
-	//
-
-	return
-}
 
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
@@ -413,7 +412,7 @@ func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 
 	md5sum = fmt.Sprintf("%x", md5h.Sum(nil))
 
-	err = handleDataFile(tmpfile, uuid, "AzureDownload")
+	err = handleDataFile(tmpfile.Name(), uuid, "AzureDownload")
 	if err != nil {
 		logger.Debug(3, "(AzureDownload) error moving directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
 		return
@@ -445,7 +444,7 @@ func AzureDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 		return
 	}
 
-	err = handleDataFile(tmpfile, uuid, "AzureDownload")
+	err = handleDataFile(tmpfile.Name(), uuid, "AzureDownload")
 	if err != nil {
 		logger.Debug(3, "(AzureDownload) error moving index directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
 		return
@@ -506,7 +505,7 @@ func GCloudStoreDownload(uuid string, nodeInstance *Node, location *conf.Locatio
 	// end GCS specific
 	md5sum = fmt.Sprintf("%x", md5h.Sum(nil))
 
-	err = handleDataFile(tmpfile, uuid, "GCloudStoreDownload")
+	err = handleDataFile(tmpfile.Name(), uuid, "GCloudStoreDownload")
 	if err != nil {
 		logger.Debug(3, "(GCloudStoreDownload) error moving directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
 		return
@@ -570,8 +569,6 @@ func GCloudStoreDownload(uuid string, nodeInstance *Node, location *conf.Locatio
 // 	defer tmpfile.Close()
 // 	defer os.Remove(tmpfile.Name())
 
-	
-
 // 	// irods connection init
 // 	client, err := gorods.New(gorods.ConnectionOptions{
 // 		Type: gorods.UserDefined,
@@ -587,7 +584,7 @@ func GCloudStoreDownload(uuid string, nodeInstance *Node, location *conf.Locatio
 // 	// Ensure the client initialized successfully and connected to the iCAT server
 // 	if err != nil {
 // 		log.Fatalf("(IRodsDownload) cannot init connection: %s [Err: %s]", uuid, err.Error())
-// 		return 
+// 		return
 // 	}
 
 // 	// the paths for the objects in iRods include the Zone
@@ -595,27 +592,27 @@ func GCloudStoreDownload(uuid string, nodeInstance *Node, location *conf.Locatio
 // 	indexpath := filepath.Join(location.Zone, indexfile)
 
 // 	//irods file retrieval
-// 	// Open a data object reference 
-// 	err = client.OpenDataObject(itempath, func(myFile *gorods.DataObj, con *gorods.Connection) 
+// 	// Open a data object reference
+// 	err = client.OpenDataObject(itempath, func(myFile *gorods.DataObj, con *gorods.Connection)
 
 // 	if err != nil {
 // 		log.Fatalf("(IRodsDownload) cannot find iRODs object: %s [Err: %s]", uuid, err.Error())
-// 		return 
+// 		return
 // 	}
-	
+
 // 	var dst io.Writer
 // 	md5h := md5.New()
 // 	dst = io.MultiWriter(tmpfile, md5h)
-	
+
 // 	//
 // 	outBuff := make(chan *ByteArr, 100)
 
 // 	go func() {
 // 		err := obj.ReadChunkFree(10240000, func(chunk *ByteArr) {outBuff <- chunk } )
-		
+
 // 		if err != nil {
 // 			log.Fatalf("(IRodsDownload) cannot find iRODs object: %s [Err: %s]", uuid, err.Error())
-// 			return 
+// 			return
 // 		}
 
 // 		close(outBuff)
@@ -649,27 +646,27 @@ func GCloudStoreDownload(uuid string, nodeInstance *Node, location *conf.Locatio
 // 	defer os.Remove(tmpfile.Name())
 
 // 	//irods file retrieval
-// 	// Open a data object reference 
-// 	err = client.OpenDataObject(indexpath, func(myFile *gorods.DataObj, con *gorods.Connection) 
+// 	// Open a data object reference
+// 	err = client.OpenDataObject(indexpath, func(myFile *gorods.DataObj, con *gorods.Connection)
 
 // 	if err != nil {
 // 		log.Fatalf("(IRodsDownload) cannot find iRODs object: %s [Err: %s]", uuid, err.Error())
-// 		return 
+// 		return
 // 	}
-	
+
 // 	var dst io.Writer
 // 	md5h := md5.New()
 // 	dst = io.MultiWriter(tmpfile, md5h)
-	
+
 // 	//
 // 	outBuff := make(chan *ByteArr, 100)
 
 // 	go func() {
 // 		err := obj.ReadChunkFree(10240000, func(chunk *ByteArr) {outBuff <- chunk } )
-		
+
 // 		if err != nil {
 // 			log.Fatalf("(IRodsDownload) cannot find iRODs object: %s [Err: %s]", uuid, err.Error())
-// 			return 
+// 			return
 // 		}
 
 // 		close(outBuff)
@@ -776,7 +773,7 @@ func ShockDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 
 	md5sum = fmt.Sprintf("%x", md5h.Sum(nil))
 
-	err = handleDataFile(tmpfile, uuid, "ShockDownload")
+	err = handleDataFile(tmpfile.Name(), uuid, "ShockDownload")
 	if err != nil {
 		logger.Debug(3, "(ShockDownload) error moving directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
 		return
@@ -935,7 +932,9 @@ func handleIdxZipFile(fp *os.File, uuid string, funcName string) (err error) {
 // accept a file handle for the data file,
 // unpack it into the right cache location for uuid
 // create the directory infrastructure in Cache and Data and create symlinks
-func handleDataFile(fp *os.File, uuid string, funcName string) (err error) {
+func handleDataFile(filename string, uuid string, funcName string) (err error) {
+
+	//logger.Infof("(FMOpen-> handleDataFile) in ")
 
 	// 4) Download the item from the bucket. If an error occurs, log it and exit. Otherwise, notify the user that the download succeeded.
 	// needs to create a full path
@@ -945,17 +944,30 @@ func handleDataFile(fp *os.File, uuid string, funcName string) (err error) {
 	itempath := uuid2Path(uuid)
 	itemfile := path.Join(itempath, uuid+".data")
 
+	in, err := os.Open(filename)
+	if err != nil {
+		log.Fatalf("(%s) Cannot open file %s for reading [%s]", filename, err.Error())
+		return
+	}
+	defer in.Close()
+
+	//logger.Infof("(FMOpen-> handleDataFile) cacheFile: %s, itemfile: %s", cacheitemfile, itemfile)
+
 	// create cache dir path
 	err = os.MkdirAll(cacheitempath, 0777)
 	if err != nil {
 		log.Fatalf("(%s) Unable to create cache path for item %s [%s], %s", funcName, cacheitemfile, cacheitempath, err.Error())
 		return
 	}
+	//logger.Infof("(FMOpen-> handleDataFile) created cache path ")
+
 	err = os.MkdirAll(itempath, 0777)
 	if err != nil {
 		log.Fatalf("(%s) Unable to create path for item %s [%s], %s", funcName, itemfile, itempath, err.Error())
 		return
 	}
+
+	//logger.Infof("(FMOpen-> handleDataFile) created item path ")
 
 	// create a handle for the cache item here
 	file, err := os.Create(cacheitemfile)
@@ -965,11 +977,23 @@ func handleDataFile(fp *os.File, uuid string, funcName string) (err error) {
 	}
 	defer file.Close()
 
-	if _, err := io.Copy(file, fp); err != nil {
+	//logger.Infof("(FMOpen-> handleDataFile) created cache file  ")
+
+	_, err = io.Copy(file, in)
+	//logger.Infof("(%s) copied %d Bytes", funcName, numBytes)
+
+	if err != nil {
 		logger.Debug(3, "(%s)  cannot create local Cache file for uuid: %s at Path: %s [Err: %s]", funcName, uuid, cacheitempath, err.Error())
+		//	logger.Infof("(%s)  cannot create local Cache file for uuid: %s at Path: %s [Err: %s]", funcName, uuid, cacheitempath, err.Error())
+
+		return
 	}
-	// end GCS specific
+
+	//logger.Infof("(FMOpen-> handleDataFile) past create local Cache file for uuid: %s at Path: %s [Err: %s]", funcName, uuid, cacheitempath, err.Error())
+
 	file.Close()
+	in.Close()
+	//logger.Infof("(FMOpen-> handleDataFile) closed file ")
 
 	// add sym link from cacheItemPath to itemPath
 	err = os.Symlink(cacheitemfile, itemfile)
@@ -977,6 +1001,7 @@ func handleDataFile(fp *os.File, uuid string, funcName string) (err error) {
 		log.Fatalf("(%s) Unable to create symlink from %s to %s, %s", funcName, cacheitemfile, itemfile, err.Error())
 		return
 	}
+	//logger.Infof("(FMOpen-> handleDataFile) created symlink")
 
 	return
 }

@@ -719,10 +719,14 @@ class TestClass:
     def test_NODE_set_location(self):
         NODE = self.create_nodes([os.path.join(DATADIR, "AAA.txt")])[0]
              
-        PARAMS = {"id": "S3", "stored": "true"}
+        PARAMS = {"id" : "S3", "stored" : "true"}
+        FORMDATA = {"attributes_str": (None, PARAMS) } #'{"project_id":"TESTPROJECT"}')}
+        NEWHEADER= TESTAHEADERS 
+        NEWHEADER["Content-Type"]="application/json"
+
         TESTURL = "/".join( [SHOCK_URL , "node", NODE, "locations" ] )
 
-        response = requests.post(TESTURL, headers=TESTAHEADERS, params=PARAMS)
+        response = requests.post(TESTURL, headers=NEWHEADER, data=json.dumps(PARAMS))   
         
         if DEBUG:
             print ("URL", TESTURL)
