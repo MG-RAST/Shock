@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MG-RAST/AWE/lib/core"
 	"github.com/MG-RAST/Shock/shock-server/auth"
 	"github.com/MG-RAST/Shock/shock-server/cache"
 	"github.com/MG-RAST/Shock/shock-server/conf"
@@ -60,6 +59,8 @@ type resource struct {
 	Uptime string    `json:"uptime"`
 	V      string    `json:"version"`
 }
+
+var StartTime = time.Now()
 
 func mapRoutes() {
 	goweb.MapBefore(func(ctx context.Context) error {
@@ -266,7 +267,7 @@ func mapRoutes() {
 			S:      time.Now().Format(longDateForm),
 			T:      "Shock",
 			U:      host + "/",
-			Uptime: time.Since(core.StartTime).String(),
+			Uptime: time.Since(StartTime).String(),
 			V:      conf.VERSION,
 		}
 		return responder.WriteResponseObject(ctx, http.StatusOK, r)
