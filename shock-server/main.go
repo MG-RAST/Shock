@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MG-RAST/AWE/lib/core"
 	"github.com/MG-RAST/Shock/shock-server/auth"
 	"github.com/MG-RAST/Shock/shock-server/cache"
 	"github.com/MG-RAST/Shock/shock-server/conf"
@@ -47,16 +48,17 @@ type anonymous struct {
 }
 
 type resource struct {
-	A []string  `json:"attribute_indexes"`
-	C string    `json:"contact"`
-	I string    `json:"id"`
-	O []string  `json:"auth"`
-	P anonymous `json:"anonymous_permissions"`
-	R []string  `json:"resources"`
-	S string    `json:"server_time"`
-	T string    `json:"type"`
-	U string    `json:"url"`
-	V string    `json:"version"`
+	A      []string  `json:"attribute_indexes"`
+	C      string    `json:"contact"`
+	I      string    `json:"id"`
+	O      []string  `json:"auth"`
+	P      anonymous `json:"anonymous_permissions"`
+	R      []string  `json:"resources"`
+	S      string    `json:"server_time"`
+	T      string    `json:"type"`
+	U      string    `json:"url"`
+	Uptime string    `json:"uptime"`
+	V      string    `json:"version"`
 }
 
 func mapRoutes() {
@@ -255,16 +257,17 @@ func mapRoutes() {
 		}
 
 		r := resource{
-			A: attrs,
-			C: conf.ADMIN_EMAIL,
-			I: "Shock",
-			O: auth,
-			P: *anonPerms,
-			R: []string{"node"},
-			S: time.Now().Format(longDateForm),
-			T: "Shock",
-			U: host + "/",
-			V: conf.VERSION,
+			A:      attrs,
+			C:      conf.ADMIN_EMAIL,
+			I:      "Shock",
+			O:      auth,
+			P:      *anonPerms,
+			R:      []string{"node"},
+			S:      time.Now().Format(longDateForm),
+			T:      "Shock",
+			U:      host + "/",
+			Uptime: time.Since(core.StartTime).String(),
+			V:      conf.VERSION,
 		}
 		return responder.WriteResponseObject(ctx, http.StatusOK, r)
 	})
