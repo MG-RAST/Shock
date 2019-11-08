@@ -94,7 +94,7 @@ MainLoop:
 			}
 
 			cache.Remove(ID)
-			logger.Errorf("(Reaper-->CacheMapLoop) cannot delete %s from cache [This should not happen!!]", ID)
+			//logger.Errorf("(Reaper-->CacheMapLoop) cannot delete %s from cache [This should not happen!!]", ID)
 		}
 	}
 	return
