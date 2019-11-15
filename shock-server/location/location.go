@@ -30,7 +30,6 @@ func LocRequest(ctx context.Context) {
 	locationID := ctx.PathValue("loc")
 	function := ctx.PathValue("function")
 
-	fmt.Printf("LocRequest received locationID: %s, function: %s\n", locationID, function)
 	logger.Debug(2, "(LocRequest) received locationID: %s, function: %s", locationID, function)
 
 	rmeth := ctx.HttpRequest().Method
@@ -62,17 +61,12 @@ func LocRequest(ctx context.Context) {
 		return
 	}
 
-	fmt.Printf("LocRequest passed auth bits and rmeth \n")
-
 	locConf, err := Load(locationID)
 	if err != nil {
 		responder.RespondWithError(ctx, http.StatusInternalServerError, err.Error())
-		fmt.Printf("LocRequest LOAD error \n")
 
 		return
 	}
-
-	fmt.Printf("LocRequest worked \n")
 
 	// ensure we only list nodes with Priority higher or equal to the one defined for the location
 
