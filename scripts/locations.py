@@ -123,7 +123,8 @@ def get_nodes(config=None , location=None , action=None ) :
             except Exception as err :
                 sys.stderr.write( "Error parsing response: " + str(err) + "\n")
         else : 
-            sys.stderr.write( "Error retrieving data from MG-RAST (" + str(response.status_code) + ")\n")
+            sys.stderr.write( "Error retrieving data from Shock (" + str(response.status_code) + ")\n")
+            sys.stderr.write( "URL: " + location_url + "\n" )
             try:
                 error = response.json()
                 sys.stderr.write( "\n".join( error['error'] ) + "\n" )
@@ -132,7 +133,10 @@ def get_nodes(config=None , location=None , action=None ) :
                 sys.stderr.write("\n")
                 sys.stderr.write( str(response.text) + "\n" )
              
-    return data['data'] 
+    return data['data'] if data else []
+
+def get_location_info(config=None , location=None) :
+    return get_location(config=config , location=location , action='info')
 
 def get_location(config=None , location=None , action=None ):
 
@@ -163,7 +167,7 @@ def get_location(config=None , location=None , action=None ):
             except Exception as err :
                 sys.stderr.write( "Error parsing response: " + str(err) + "\n")
         else : 
-            sys.stderr.write( "Error retrieving data from MG-RAST (" + str(response.status_code) + ")\n")
+            sys.stderr.write( "Error retrieving data from " + location_url + " (" + str(response.status_code) + ")\n")
             try:
                 error = response.json()
                 sys.stderr.write( "\n".join( error['error'] ) + "\n" )
@@ -204,7 +208,7 @@ def set_node_location(config=None , node_id=None , location=None):
                 except Exception as err :
                     sys.stderr.write( "Error parsing response: " + str(err) + "\n")
         else : 
-            sys.stderr.write( "Error retrieving data from MG-RAST (" + str(response.status_code) + ")\n")
+            sys.stderr.write( "Error retrieving data from Shock (" + str(response.status_code) + ")\n")
             try:
                 error = response.json()
                 sys.stderr.write( "\n".join( error['error'] ) + "\n" )
@@ -241,7 +245,7 @@ def get_request(config=None , url=None , streaming=None) :
             except Exception as err :
                 sys.stderr.write( "Error parsing response: " + str(err) + "\n")
         else : 
-            sys.stderr.write( "Error retrieving data from MG-RAST (" + str(response.status_code) + ")\n")
+            sys.stderr.write( "Error retrieving data from Shock (" + str(response.status_code) + ")\n" + "URL: " + url + "\n")
             try:
                 error = response.json()
                 sys.stderr.write( "\n".join( error['error'] ) + "\n" )

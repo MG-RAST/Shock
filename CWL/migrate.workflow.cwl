@@ -35,6 +35,6 @@ steps:
       node_id       : predict-location/node_id
       location      : predict-location/location
       shock_url     : shock_url
-      token         : shock_token
+      token           : shock_token
     out: [migrated]
 
