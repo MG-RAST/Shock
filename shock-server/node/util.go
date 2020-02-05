@@ -237,7 +237,7 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 		return
 	}
 	defer tmpfile.Close()
-	defer os.Remove(tmpfile.Name())
+	//defer os.Remove(tmpfile.Name()) # we now move the tmpfile to its cache location, no need to remove
 
 	// return error if file not found in S3bucket
 	//fmt.Printf("(S3Download) attempting download, UUID: %s, nodeID: %s from: %s\n", uuid, nodeInstance.Id, location.URL)
@@ -259,7 +259,8 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 	//logger.Infof("(S3Download) creating S3 session failed with Endpoint: %s, Region: %s, Bucket: %s, Authkey: %s, SessionKey: %s ",
 	//	location.URL, location.Region, location.Bucket, location.AuthKey, location.SecretKey)
 
-	sess, err := session.NewSession(s3Config)
+	sess, err := session.NewSession(s3Config) //we might have to move this to ensure we only have one client per runtime
+
 	if err != nil {
 		logger.Errorf("(S3Download) creating S3 session failed with Endpoint: %s, Region: %s, Bucket: %s, Authkey: %s, SessionKey: %s (err: %s)",
 			location.URL, location.Region, location.Bucket, location.AuthKey, location.SecretKey, err.Error())
@@ -949,7 +950,7 @@ func handleDataFile(filename string, uuid string, funcName string) (err error) {
 		log.Fatalf("(%s) Cannot open file %s for reading [%s]", filename, err.Error())
 		return
 	}
-	defer in.Close()
+	in.Close()
 
 	//logger.Infof("(FMOpen-> handleDataFile) cacheFile: %s, itemfile: %s", cacheitemfile, itemfile)
 
@@ -970,30 +971,12 @@ func handleDataFile(filename string, uuid string, funcName string) (err error) {
 	//logger.Infof("(FMOpen-> handleDataFile) created item path ")
 
 	// create a handle for the cache item here
-	file, err := os.Create(cacheitemfile)
+	err = os.Rename(filename, cacheitemfile) // move the tmpfile into the correct cache path
 	if err != nil {
-		logger.Infof("(%s) attempting cache item file: %s FAILED", funcName, cacheitemfile)
+		logger.Infof("(%s) moving tmpfile (%s) to new path (%) failed: %s FAILED", funcName, filename, cacheitemfile)
 		return
 	}
-	defer file.Close()
-
-	//logger.Infof("(FMOpen-> handleDataFile) created cache file  ")
-
-	_, err = io.Copy(file, in)
-	//logger.Infof("(%s) copied %d Bytes", funcName, numBytes)
-
-	if err != nil {
-		logger.Debug(3, "(%s)  cannot create local Cache file for uuid: %s at Path: %s [Err: %s]", funcName, uuid, cacheitempath, err.Error())
-		//	logger.Infof("(%s)  cannot create local Cache file for uuid: %s at Path: %s [Err: %s]", funcName, uuid, cacheitempath, err.Error())
-
-		return
-	}
-
 	//logger.Infof("(FMOpen-> handleDataFile) past create local Cache file for uuid: %s at Path: %s [Err: %s]", funcName, uuid, cacheitempath, err.Error())
-
-	file.Close()
-	in.Close()
-	//logger.Infof("(FMOpen-> handleDataFile) closed file ")
 
 	// add sym link from cacheItemPath to itemPath
 	err = os.Symlink(cacheitemfile, itemfile)

@@ -6,7 +6,6 @@ import (
 
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
-	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
@@ -30,7 +29,7 @@ func LocRequest(ctx context.Context) {
 	locationID := ctx.PathValue("loc")
 	function := ctx.PathValue("function")
 
-	logger.Debug(2, "(LocRequest) received locationID: %s, function: %s", locationID, function)
+	//logger.Debug(2, "(LocRequest) received locationID: %s, function: %s", locationID, function)
 
 	rmeth := ctx.HttpRequest().Method
 
@@ -50,7 +49,7 @@ func LocRequest(ctx context.Context) {
 
 	if (u != nil) && (!u.Admin) && conf.USE_AUTH {
 		errMsg := e.UnAuth
-		logger.Debug(2, "(LocRequest) attempt to use as non admin (user: %s)", u.Username)
+		//	logger.Debug(2, "(LocRequest) attempt to use as non admin (user: %s)", u.Username)
 		responder.RespondWithError(ctx, http.StatusInternalServerError, errMsg)
 		return
 	}
