@@ -4,6 +4,8 @@
 # AWS_ACCESS_KEY_ID .. The access key for your AWS account.
 # AWS_SECRET_ACCESS_KEY .. The secret key for your AWS account.
 
+# folker@anl.gov
+
 import sys, getopt, boto3, hashlib, io
 import argparse
 
@@ -22,13 +24,14 @@ def usage():
 def main():
 
    parser = argparse.ArgumentParser()
-   parser.add_argument("-b","--bucket",  help="AWS bucket")
-   parser.add_argument("-t","--tmpfile",  help="filename to create")
-   parser.add_argument("-o","--objectname",  help="object to download")
-   parser.add_argument("-m","--md5",  default="None", help="md5 hash")
    parser.add_argument("-a","--keyid", default="None", help=" aws_access_key_id")
+   parser.add_argument("-b","--bucket", default="None", help="AWS bucket")
+   parser.add_argument("-t","--tmpfile",  default="None",help="filename to create")
+   parser.add_argument("-o","--objectname",  default="None",help="object to download")
+   parser.add_argument("-m","--md5",  default="None", help="md5 hash")
    parser.add_argument("-k","--accesskey",  default="None", help="aws_secret_access_key")
    parser.add_argument("-v", "--verbose", action="count", default=0, help="increase output verbosity")
+   parser.add_argument("-r","--region", default="None", help="AWS region")
    parser.add_argument("-s","--s3endpoint",  default="https://s3.it.anl.gov:18082") 
    args = parser.parse_args()
 
@@ -39,6 +42,7 @@ def main():
       print ('bucket is =', args.bucket)
       print ('tmpfile is =', args.tmpfile)
       print ('md5 is =', args.md5)
+      print ('region is=', args.region)
       print ('object is =', args.objectname)
 
    if args.tmpfile is None:
@@ -58,6 +62,7 @@ def main():
          print ('using credentials from cmd-line')
       s3 = boto3.client('s3',
          endpoint_url=args.s3endpoint,
+         region_name=args.region,
          aws_access_key_id=args.keyid,
          aws_secret_access_key=args.accesskey
       )

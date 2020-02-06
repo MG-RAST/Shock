@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"google.golang.org/api/option"
@@ -225,7 +226,7 @@ LocationLoop:
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
-// S3Download download a file and its indices from an S3 source
+// S3Download download a file and its indices from an S3 source using an external python script
 func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error, md5sum string) {
 
 	itemkey := fmt.Sprintf("%s.data", uuid)
@@ -236,11 +237,58 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 		log.Fatalf("(S3Download)  cannot create temporary file: %s [Err: %s]", uuid, err.Error())
 		return
 	}
-	defer tmpfile.Close()
-	//defer os.Remove(tmpfile.Name()) # we now move the tmpfile to its cache location, no need to remove
+	tmpfile.Close()
+	tmpFileName := tmpfile.Name()
 
-	// return error if file not found in S3bucket
-	//fmt.Printf("(S3Download) attempting download, UUID: %s, nodeID: %s from: %s\n", uuid, nodeInstance.Id, location.URL)
+	// initialize params for the exec slice
+	a := fmt.Sprintf("--accesskey=%s", location.AuthKey)
+	b := fmt.Sprintf("--bucket=%s", location.Bucket)
+	i := fmt.Sprintf("--object=%s", itemkey)
+	m := fmt.Sprintf("--md5=%s", md5sum)
+	r := fmt.Sprintf("--region=%s", location.Region)
+	s := fmt.Sprintf("--secretkey=%s", location.SecretKey)
+	t := fmt.Sprintf("--tmpfile=%s", tmpfile.Name())
+	u := fmt.Sprintf("--s3endpoint=%s", location.URL)
+
+	args := []string{"boto-s3-download.py", a, b, i, t, m, s, u, r}
+
+	logger.Errorf("creating S3 session failed with Endpoint: %s, Region: %s, Bucket: %s, Authkey: %s, SessionKey: %s (err: %s)",
+		location.URL, location.Region, location.Bucket, location.AuthKey, location.SecretKey, err.Error())
+	return
+
+	binary := "/usr/local/bin/boto-s3-download.py"
+	env := os.Environ()
+
+	execErr := syscall.Exec(binary, args, env)
+	if execErr != nil {
+		panic(execErr)
+	}
+
+	if err != nil {
+		log.Fatalf("cmd.Run() failed with %s\n", err)
+		return
+	}
+
+	// move the bits into place
+	functionName := "S3Download"
+	err = handleDataFile(tmpFileName, uuid, functionName)
+	if err != nil {
+		logger.Debug(3, "(S3Download) error moving directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
+		return
+	}
+
+	// ##############################################################################
+	// ##############################################################################
+	// ##############################################################################
+	//index bits now
+
+	tmpfile, err = ioutil.TempFile(conf.PATH_CACHE, "")
+	if err != nil {
+		log.Fatalf("(S3Download) cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		return
+	}
+	defer tmpfile.Close()
+	defer os.Remove(tmpfile.Name())
 
 	Bucket := location.Bucket
 	logger.Debug(1, "(S3Download) attempting download, UUID: %s, nodeID: %s, Bucket:%s", uuid, nodeInstance.Id, Bucket)
@@ -286,40 +334,6 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 
 		return
 	}
-
-	//var dst io.Writer
-	md5h := md5.New()
-
-	_, err = io.Copy(md5h, tmpfile)
-	if err != nil {
-		// md5 checksum creation did not work
-		return
-	}
-	//	tmpfile.Close()
-
-	//logger.Infof("(S3Download) md5checked %d Bytes for %s", newNumBytes, itemkey)
-
-	md5sum = fmt.Sprintf("%x", md5h.Sum(nil))
-
-	//logger.Infof("(S3Download) MD5 for %s, %s", itemkey, md5sum)
-
-	tmpFileName := tmpfile.Name()
-	functionName := "S3Download"
-	err = handleDataFile(tmpFileName, uuid, functionName)
-	if err != nil {
-		logger.Debug(3, "(S3Download) error moving directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
-		return
-	}
-	tmpfile.Close()
-
-	//index bits now
-	tmpfile, err = ioutil.TempFile(conf.PATH_CACHE, "")
-	if err != nil {
-		log.Fatalf("(S3Download) cannot create temporary file: %s [Err: %s]", uuid, err.Error())
-		return
-	}
-	defer tmpfile.Close()
-	defer os.Remove(tmpfile.Name())
 
 	_, err = downloader.Download(tmpfile,
 		&s3.GetObjectInput{
