@@ -4,10 +4,11 @@
 common
 common/**/*
 
+shock-server
+
+
 prod/*.yaml
 prod/*.conf
-
-devel/config.d/Locations.yaml
 
 # ignore files with # and ~
 *\#*

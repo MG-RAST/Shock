@@ -25,7 +25,6 @@ import (
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 
-	"github.com/MG-RAST/Shock/shock-server/cache"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 
@@ -96,9 +95,6 @@ func FMOpen(filepath string) (f *os.File, err error) {
 	ext := path.Ext(filepath)                     // identify extension
 	filename := strings.TrimSuffix(filepath, ext) // find filename
 	uuid := path.Base(filename)                   // implement basename cmd
-
-	// update cache LRU info
-	cache.Touch(uuid)
 
 	var nodeInstance, _ = Load(uuid)
 
@@ -206,9 +202,6 @@ LocationLoop:
 			return
 		}
 	}
-
-	// notify the Cache of the new local file
-	cache.Add(uuid, nodeInstance.File.Size)
 
 	// create file handle for newly downloaded file on local disk
 	// we use the symlink we have created here
