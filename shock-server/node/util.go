@@ -11,12 +11,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"google.golang.org/api/option"
@@ -228,6 +228,7 @@ LocationLoop:
 
 // S3Download download a file and its indices from an S3 source using an external python script
 func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error, md5sum string) {
+	functionName := "S3Download"
 
 	itemkey := fmt.Sprintf("%s.data", uuid)
 	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
@@ -241,36 +242,46 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 	tmpFileName := tmpfile.Name()
 
 	// initialize params for the exec slice
-	a := fmt.Sprintf("--accesskey=%s", location.AuthKey)
+	//a := fmt.Sprintf("--accesskey=%s", location.AuthKey)
+	//s := fmt.Sprintf("--secretkey=%s", location.SecretKey)
 	b := fmt.Sprintf("--bucket=%s", location.Bucket)
 	i := fmt.Sprintf("--object=%s", itemkey)
 	m := fmt.Sprintf("--md5=%s", md5sum)
 	r := fmt.Sprintf("--region=%s", location.Region)
-	s := fmt.Sprintf("--secretkey=%s", location.SecretKey)
 	t := fmt.Sprintf("--tmpfile=%s", tmpfile.Name())
 	u := fmt.Sprintf("--s3endpoint=%s", location.URL)
 
-	args := []string{"boto-s3-download.py", a, b, i, t, m, s, u, r}
-
-	logger.Errorf("creating S3 session failed with Endpoint: %s, Region: %s, Bucket: %s, Authkey: %s, SessionKey: %s (err: %s)",
-		location.URL, location.Region, location.Bucket, location.AuthKey, location.SecretKey, err.Error())
-	return
-
-	binary := "/usr/local/bin/boto-s3-download.py"
-	env := os.Environ()
-
-	execErr := syscall.Exec(binary, args, env)
-	if execErr != nil {
-		panic(execErr)
-	}
-
+	// find our executable
+	externalCmd := "/usr/local/bin/boto-s3-download.py"
+	path, err := exec.LookPath(externalCmd)
 	if err != nil {
-		log.Fatalf("cmd.Run() failed with %s\n", err)
+		logger.Debug(1, "(S3Download) didn't find %s executable\n", externalCmd)
 		return
 	}
 
+	cmd := exec.Command(path, b, i, t, m, u, r)
+
+	// passing parameters to external program via ENV variables, see https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html
+	envAuth := fmt.Sprintf("AWS_ACCESS_KEY_ID = %s", location.AuthKey)
+	envSecret := fmt.Sprintf("AWS_SECRET_ACCESS_KEY = %s", location.SecretKey)
+
+	newEnv := append(os.Environ(), envAuth, envSecret)
+	cmd.Env = newEnv
+
+	err = cmd.Run()
+	if err != nil {
+		logger.Debug(1, "(%s) cmd.Run(%s) failed with %s\n", functionName, externalCmd, err)
+		return
+	}
+
+	//logger.Errorf("creating S3 session failed with Endpoint: %s, Region: %s, Bucket: %s, Authkey: %s, SessionKey: %s (err: %s)",
+	//	location.URL, location.Region, location.Bucket, location.AuthKey, location.SecretKey, err.Error())
+
+	//fmt.Printf("node: %s MD5 of requested file: %s\n", itemkey, md5sum)
+
+	//fmt.Printf("node: %s DONE \n", itemkey)
+
 	// move the bits into place
-	functionName := "S3Download"
 	err = handleDataFile(tmpFileName, uuid, functionName)
 	if err != nil {
 		logger.Debug(3, "(S3Download) error moving directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
