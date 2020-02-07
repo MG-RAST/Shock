@@ -24,17 +24,24 @@ def usage():
 def main():
 
    parser = argparse.ArgumentParser()
-   parser.add_argument("-a","--keyid", default="None", help=" aws_access_key_id")
-   parser.add_argument("-b","--bucket", default="None", help="AWS bucket")
-   parser.add_argument("-t","--tmpfile",  default="None",help="filename to create")
-   parser.add_argument("-o","--objectname",  default="None",help="object to download")
-   parser.add_argument("-m","--md5",  default="None", help="md5 hash")
-   parser.add_argument("-k","--accesskey",  default="None", help="aws_secret_access_key")
+   parser.add_argument("-a","--keyid", default=None, help=" aws_access_key_id")
+   parser.add_argument("-b","--bucket", default=None, help="AWS bucket")
+   parser.add_argument("-t","--tmpfile",  default=None,help="filename to create")
+   parser.add_argument("-o","--objectname",  default=None,help="object to download")
+   # parser.add_argument("-m","--md5",  default=None, help="md5 hash", nargs='?')
+   parser.add_argument("-m","--md5",  default=None, help="md5 hash" )
+
+   parser.add_argument("-k","--accesskey",  default=None, help="aws_secret_access_key")
    parser.add_argument("-v", "--verbose", action="count", default=0, help="increase output verbosity")
-   parser.add_argument("-r","--region", default="None", help="AWS region")
+   parser.add_argument("-r","--region", default=None, help="AWS region")
    parser.add_argument("-s","--s3endpoint",  default="https://s3.it.anl.gov:18082") 
    args = parser.parse_args()
 
+   if args.md5 is '':
+      args.md5=None
+
+  # if args.region is '':
+  #  args.region=' '
     
    if args.verbose:
       print ('keyId  is =', args.keyid)
@@ -52,7 +59,7 @@ def main():
 
 
    # if passed use credentials to establish connection
-   if args.accesskey is "None":
+   if args.accesskey is None:
       if args.verbose:
          print ('using existing credentials from ENV vars or files')
       s3 = boto3.client('s3',
@@ -77,8 +84,8 @@ def main():
 
    # check md5
    if args.md5 is None:
-      #if args.verbose:
-      print ('exiting without checking md5, md5_new=', md5_new)
+      if args.verbose:
+         print ('exiting without checking md5, md5_new=', md5_new)
       sys.exit(0)
 
    # Finally compare original MD5 with freshly calculated
