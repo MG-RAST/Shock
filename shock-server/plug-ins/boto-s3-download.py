@@ -17,10 +17,6 @@ def md5sum(src, length=io.DEFAULT_BUFFER_SIZE):
     return md5.hexdigest()
 
 
-def usage():
-   print ('test.py --md5 <MD5 checksum> ---access_key <AWS_ACCESS_KEY> --key_id <AWS_KEY_ID> --tmpfile <FILENAME> --objectname <OBJECT> --bucket <BUCKET> --md5 <MD5>')
-
-
 def main():
 
    parser = argparse.ArgumentParser()
@@ -28,17 +24,11 @@ def main():
    parser.add_argument("-b","--bucket", default=None, help="AWS bucket")
    parser.add_argument("-t","--tmpfile",  default=None,help="filename to create")
    parser.add_argument("-o","--objectname",  default=None,help="object to download")
-   # parser.add_argument("-m","--md5",  default=None, help="md5 hash", nargs='?')
-   parser.add_argument("-m","--md5",  default=None, help="md5 hash" )
-
    parser.add_argument("-k","--accesskey",  default=None, help="aws_secret_access_key")
    parser.add_argument("-v", "--verbose", action="count", default=0, help="increase output verbosity")
    parser.add_argument("-r","--region", default=None, help="AWS region")
    parser.add_argument("-s","--s3endpoint",  default="https://s3.it.anl.gov:18082") 
    args = parser.parse_args()
-
-   if args.md5 is '':
-      args.md5=None
 
   # if args.region is '':
   #  args.region=' '
@@ -48,12 +38,10 @@ def main():
       print ('accessKey is =', args.accesskey)
       print ('bucket is =', args.bucket)
       print ('tmpfile is =', args.tmpfile)
-      print ('md5 is =', args.md5)
       print ('region is=', args.region)
       print ('object is =', args.objectname)
 
    if args.tmpfile is None:
-      usage
       print ('we need a filename')
       sys.exit(2)  
 
@@ -80,25 +68,10 @@ def main():
    with open(args.tmpfile, 'wb') as f:
       s3.download_fileobj(args.bucket, args.objectname, f)
    
+   
    md5_new = md5sum(args.tmpfile)
-
-   # check md5
-   if args.md5 is None:
-      if args.verbose:
-         print ('exiting without checking md5, md5_new=', md5_new)
-      sys.exit(0)
-
-   # Finally compare original MD5 with freshly calculated
-   if (args.md5 == md5_new):
-      if args.verbose:
-         print ("MD5 verified.")
-      sys.exit(0)
-   else:
-      if args.verbose:
-         print ("MD5 verification failed!.")
-         print ('MD5=', args.md5, "NEW_MD5=", md5_new)
-
-      sys.exit(1)
-
+   print(md5_new)
+  
+   sys.exit(0)
 
 main()
