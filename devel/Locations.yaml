@@ -1,0 +1,13 @@
+Locations:
+ -  ID: "S3"
+    Type: "S3"
+    Description: "Local Example S3 Service (using MINIO) "
+    URL: "http://shock-minio:9000"
+    AuthKey: "minio"
+    SecretKey: "minio123"
+    Bucket: ""
+    Persistent: true
+    Region: "us-east-1"
+    Priority: 0
+    Tier: 5
+    Cost: 0

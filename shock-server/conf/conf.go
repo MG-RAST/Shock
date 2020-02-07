@@ -342,7 +342,6 @@ func Print() {
 	fmt.Printf("##### Max Revisions #####\nmax_revisions:\t%d\n\n", MAX_REVISIONS)
 	fmt.Printf("##### Node migration #####\nnode_migration::\t%t\n\n", NODE_MIGRATION)
 	fmt.Printf("##### Node file deletion (after migration) #####\nnode_data_removal::\t%t\n\n", NODE_DATA_REMOVAL)
-
 	fmt.Printf("API_PORT: %d\n", API_PORT)
 }
 
