@@ -336,13 +336,6 @@ func main() {
 	node.Initialize()
 	preauth.Initialize()
 	auth.Initialize()
-	err = cache.Initialize()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Err@cache.Initialize: %s\n", err.Error())
-		logger.Error("Err@cache.Initialize: " + err.Error())
-		os.Exit(1)
-
-	}
 
 	node.InitReaper()
 

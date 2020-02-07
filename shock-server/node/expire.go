@@ -4,7 +4,10 @@ import (
 	"regexp"
 	"time"
 
+<<<<<<< HEAD
+=======
 	"github.com/MG-RAST/Shock/shock-server/cache"
+>>>>>>> dc34e8103804a3797c83c529391486b4e1d66fd0
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node/locker"
@@ -28,7 +31,6 @@ func NewNodeReaper() *NodeReaper {
 
 func (nr *NodeReaper) Handle() {
 	waitDuration := time.Duration(conf.EXPIRE_WAIT) * time.Minute
-MainLoop:
 	for {
 
 		// sleep
@@ -71,31 +73,8 @@ MainLoop:
 			locker.FileLockMgr.RemoveOld(6)
 			locker.IndexLockMgr.RemoveOld(6)
 
-			//  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
-			// we do not start deletings files if we are not in cache mode
-			// we might want to change this, if we are in shock-migrate or we do not have a cache_path we skip this
-			if conf.PATH_CACHE == "" {
-				continue MainLoop
-			}
 		}
-	CacheMapLoop:
-		// start a FILE REAPER that loops thru CacheMap[*]
-		for ID := range cache.CacheMap {
-			logger.Debug(3, "(Reaper-->CacheMapLoop) checking %s in cache\n", ID)
 
-			now := time.Now()
-			lru := cache.CacheMap[ID].Access
-			diff := now.Sub(lru)
-
-			// we use a very simple scheme for caching initially (file not used for 1 day)
-			if diff.Hours() < float64(conf.CACHE_TTL) {
-				logger.Debug(3, "Reaper-->CacheMapLoop) not deleting %s from cache it was last accessed %s hours ago\n", ID, diff.Hours())
-				continue CacheMapLoop
-			}
-
-			cache.Remove(ID)
-			logger.Errorf("(Reaper-->CacheMapLoop) cannot delete %s from cache [This should not happen!!]", ID)
-		}
 	}
 	return
 }

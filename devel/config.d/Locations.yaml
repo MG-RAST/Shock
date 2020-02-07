@@ -1,0 +1,14 @@
+Locations:
+ -  ID: "s3"
+    Type: "S3"
+    Description: "Minio based local server on port 9000 in devel"
+    URL: "http://shock-minio:9000"
+    AuthKey: "minio"
+    SecretKey: "minio123"
+    Bucket: "bucket1"
+    Persistent: true
+    Region: "nil"
+    Priority: 0
+    Tier: 5
+    Cost: 0
+    MinPriority: 7

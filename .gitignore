@@ -4,6 +4,9 @@
 common
 common/**/*
 
+shock-server/shock-server
+devel/lo.data
+
 prod/*.yaml
 prod/*.conf
 
@@ -45,3 +48,6 @@ shock.code-workspace
 
 .swagger-codegen-ignore
 .swagger-codegen/
+devel/lo.data
+shock-server/shock-server
+shock-server/shock-server

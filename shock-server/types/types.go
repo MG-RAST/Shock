@@ -52,7 +52,7 @@ func TypeRequest(ctx context.Context) {
 		return
 	}
 
-	fmt.Printf("TypeRequest passed auth bits and rmeth \n")
+	//fmt.Printf("TypeRequest passed auth bits and rmeth \n")
 
 	// print details for one typeID or list all types
 
@@ -64,11 +64,11 @@ func TypeRequest(ctx context.Context) {
 		}
 		err = fmt.Errorf("(TypeRequest) type %s not found (found: %s)", typeID, list)
 		responder.RespondWithError(ctx, http.StatusInternalServerError, err.Error())
-		fmt.Printf("TypeRequest LOAD error \n")
+		//	fmt.Printf("TypeRequest LOAD error \n")
 		return
 	}
 
-	fmt.Printf("conf.TypesMap[typeID] worked \n")
+	//fmt.Printf("conf.TypesMap[typeID] worked \n")
 
 	// ensure we only list nodes with Priority higher or equal to the one defined for the location
 
