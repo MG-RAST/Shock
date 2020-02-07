@@ -27,12 +27,6 @@ import (
 
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/logger"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
 type mappy map[string]bool
@@ -174,6 +168,7 @@ LocationLoop:
 		}
 
 		if md5sum != nodeMd5 {
+			logger.Errorf("(FMOpen) md5sum=%s AND nodeMd5= %s", md5sum, nodeMd5)
 			logger.Errorf("(FMOpen) %s download returned: %s", locationConfig.Type, err.Error())
 			continue LocationLoop
 		}
@@ -219,65 +214,54 @@ LocationLoop:
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
-// S3Download download a file and its indices from an S3 source using an external python script
+// S3Download download a file and its indices from an S3 source using an external boto3 python script
 func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error, md5sum string) {
 	functionName := "S3Download"
 
 	itemkey := fmt.Sprintf("%s.data", uuid)
 	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
 
+	//fmt.Printf("(%s) downloading node: %s \n", functionName, uuid)
+
 	tmpfile, err := ioutil.TempFile(conf.PATH_CACHE, "")
 	if err != nil {
-		log.Fatalf("(S3Download)  cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		log.Fatalf("(%s) cannot create temporary file: %s [Err: %s]", functionName, uuid, err.Error())
 		return
 	}
 	tmpfile.Close()
-	tmpFileName := tmpfile.Name()
 
-	// initialize params for the exec slice
-	//a := fmt.Sprintf("--accesskey=%s", location.AuthKey)
-	//s := fmt.Sprintf("--secretkey=%s", location.SecretKey)
-	b := fmt.Sprintf("--bucket=%s", location.Bucket)
-	i := fmt.Sprintf("--object=%s", itemkey)
-	m := fmt.Sprintf("--md5=%s", md5sum)
-	r := fmt.Sprintf("--region=%s", location.Region)
-	t := fmt.Sprintf("--tmpfile=%s", tmpfile.Name())
-	u := fmt.Sprintf("--s3endpoint=%s", location.URL)
-
-	// find our executable
-	externalCmd := "/usr/local/bin/boto-s3-download.py"
-	path, err := exec.LookPath(externalCmd)
-	if err != nil {
-		logger.Debug(1, "(S3Download) didn't find %s executable\n", externalCmd)
-		return
-	}
-
-	cmd := exec.Command(path, b, i, t, m, u, r)
+	baseArgString := fmt.Sprintf("boto-s3-download.py --bucket=%s --region=%s --tmpfile=%s --s3endpoint=%s",
+		location.Bucket, location.Region, tmpfile.Name(), location.URL)
+	argString := fmt.Sprintf("%s --object=%s",
+		baseArgString, itemkey)
+	args := strings.Fields(argString)
+	cmd := exec.Command(args[0], args[1:]...)
 
 	// passing parameters to external program via ENV variables, see https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html
+	// this is more secure than cmd-line
 	envAuth := fmt.Sprintf("AWS_ACCESS_KEY_ID = %s", location.AuthKey)
 	envSecret := fmt.Sprintf("AWS_SECRET_ACCESS_KEY = %s", location.SecretKey)
-
 	newEnv := append(os.Environ(), envAuth, envSecret)
 	cmd.Env = newEnv
 
-	err = cmd.Run()
+	// run and capture the output
+	out, err := cmd.Output()
 	if err != nil {
-		logger.Debug(1, "(%s) cmd.Run(%s) failed with %s\n", functionName, externalCmd, err)
+		logger.Debug(1, "(%s) cmd.Run(%s) failed with %s\n", functionName, cmd, err)
+		//fmt.Printf("(%s) cmd.Run(%s) failed with %s\n", functionName, cmd, err.Error())
 		return
 	}
 
-	//logger.Errorf("creating S3 session failed with Endpoint: %s, Region: %s, Bucket: %s, Authkey: %s, SessionKey: %s (err: %s)",
-	//	location.URL, location.Region, location.Bucket, location.AuthKey, location.SecretKey, err.Error())
+	//md5sum = fmt.Sprintf("%s", string(out))
 
-	//fmt.Printf("node: %s MD5 of requested file: %s\n", itemkey, md5sum)
-
+	md5sum = string(out)
+	md5sum = strings.TrimRight(md5sum, "\r\n")
 	//fmt.Printf("node: %s DONE \n", itemkey)
 
 	// move the bits into place
-	err = handleDataFile(tmpFileName, uuid, functionName)
+	err = handleDataFile(tmpfile.Name(), uuid, functionName)
 	if err != nil {
-		logger.Debug(3, "(S3Download) error moving directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
+		logger.Debug(3, "(%s) error moving directory structure and symkink into place for : %s [Err: %s]", functionName, uuid, err.Error())
 		return
 	}
 
@@ -285,84 +269,37 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 	// ##############################################################################
 	// ##############################################################################
 	//index bits now
-
 	tmpfile, err = ioutil.TempFile(conf.PATH_CACHE, "")
 	if err != nil {
-		log.Fatalf("(S3Download) cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		log.Fatalf("(%s) cannot create temporary file: %s [Err: %s]", functionName, uuid, err.Error())
 		return
 	}
-	defer tmpfile.Close()
-	defer os.Remove(tmpfile.Name())
+	tmpfile.Close()
 
-	Bucket := location.Bucket
-	logger.Debug(1, "(S3Download) attempting download, UUID: %s, nodeID: %s, Bucket:%s", uuid, nodeInstance.Id, Bucket)
+	argString = fmt.Sprintf("%s --object=%s", baseArgString, indexfile)
+	args = strings.Fields(argString)
+	cmd = exec.Command(args[0], args[1:]...)
 
-	//logger.Infof("(S3Download) attempting download, UUID: %s, nodeID: %s, Bucket:%s", uuid, nodeInstance.Id, Bucket)
+	// passing parameters to external program via ENV variables, see https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html
+	// this is more secure than cmd-line
+	cmd.Env = newEnv
 
-	// 2) Create an AWS session
-	s3Config := &aws.Config{
-		Credentials: credentials.NewStaticCredentials(location.AuthKey, location.SecretKey, ""),
-		Endpoint:    aws.String(location.URL),
-		Region:      aws.String(location.Region),
-
-		//DisableSSL:       aws.Bool(true),
-		S3ForcePathStyle: aws.Bool(true),
-	}
-	//logger.Infof("(S3Download) creating S3 session failed with Endpoint: %s, Region: %s, Bucket: %s, Authkey: %s, SessionKey: %s ",
-	//	location.URL, location.Region, location.Bucket, location.AuthKey, location.SecretKey)
-
-	sess, err := session.NewSession(s3Config) //we might have to move this to ensure we only have one client per runtime
-
+	// run and capture the output
+	out, err = cmd.Output()
 	if err != nil {
-		logger.Errorf("(S3Download) creating S3 session failed with Endpoint: %s, Region: %s, Bucket: %s, Authkey: %s, SessionKey: %s (err: %s)",
-			location.URL, location.Region, location.Bucket, location.AuthKey, location.SecretKey, err.Error())
+		logger.Debug(1, "(%s) cmd.Run(%s) failed with %s\n", functionName, cmd, err)
+		fmt.Printf("(%s) cmd.Run(%s) failed with %s\n", functionName, cmd, err.Error())
+		err = nil
 		return
 	}
 
-	//logger.Infof("(S3Download) Session established")
-
-	// 3) Create a new AWS S3 downloader
-	downloader := s3manager.NewDownloader(sess)
-
-	_, err = downloader.Download(tmpfile,
-		&s3.GetObjectInput{
-			Bucket: aws.String(Bucket),
-			Key:    aws.String(itemkey),
-		})
-
-	//logger.Infof("(S3Download) downloaded %d Bytes for %s into %s", numBytes, itemkey, tmpfile.Name())
-
-	if err != nil {
-		log.Fatalf("(S3Download) Unable to download item %q for %s, %s", itemkey, uuid, err.Error())
-		//	logger.Infof("(S3Download) Unable to download item %q for %s, %s", itemkey, uuid, err.Error())
-
-		return
-	}
-
-	_, err = downloader.Download(tmpfile,
-		&s3.GetObjectInput{
-			Bucket: aws.String(Bucket),
-			Key:    aws.String(indexfile),
-		})
-
-	if err != nil {
-		// check if S3 tells us there is no file
-		if strings.HasPrefix(err.Error(), "NoSuchKey") {
-			// we did not find an index
-			//	logger.Infof("no index for %s", uuid)
-			err = nil
-			return
-		}
-		log.Fatalf("(S3Download) Unable to download item %q for %s, %s", indexfile, uuid, err.Error())
-		return
-	}
 	//logger.Infof("Downloaded: %s (%d Bytes) \n", file.Name(), numBytes)
 	err = handleIdxZipFile(tmpfile, uuid, "S3Download")
 	if err != nil {
 		logger.Debug(3, "(S3Download) error moving index directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
 		return
 	}
-	tmpfile.Close()
+
 	return
 }
 
