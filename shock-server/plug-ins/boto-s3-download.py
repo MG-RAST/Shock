@@ -18,7 +18,7 @@ def md5sum(src, length=io.DEFAULT_BUFFER_SIZE):
 
 
 def usage():
-   print ('test.py --md5  <MD5 checksum> ---access_key <AWS_ACCESS_KEY> --key_id <AWS_KEY_ID> --tmpfile <FILENAME> --objectname <OBJECT> --bucket <BUCKET> --md5 <MD5>')
+   print ('test.py --md5 <MD5 checksum> ---access_key <AWS_ACCESS_KEY> --key_id <AWS_KEY_ID> --tmpfile <FILENAME> --objectname <OBJECT> --bucket <BUCKET> --md5 <MD5>')
 
 
 def main():
@@ -52,10 +52,13 @@ def main():
 
 
    # if passed use credentials to establish connection
-   if args.accesskey is None:
+   if args.accesskey is "None":
       if args.verbose:
          print ('using existing credentials from ENV vars or files')
-      s3 = boto3.client('s3')
+      s3 = boto3.client('s3',
+            endpoint_url=args.s3endpoint,
+            region_name=args.region
+            )
    else:
    # use env. default for connection details --> see  https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html
       if args.verbose:
