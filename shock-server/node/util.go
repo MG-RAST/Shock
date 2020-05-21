@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"sort"
@@ -24,15 +25,8 @@ import (
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 
-	"github.com/MG-RAST/Shock/shock-server/cache"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/logger"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
 type mappy map[string]bool
@@ -95,9 +89,6 @@ func FMOpen(filepath string) (f *os.File, err error) {
 	ext := path.Ext(filepath)                     // identify extension
 	filename := strings.TrimSuffix(filepath, ext) // find filename
 	uuid := path.Base(filename)                   // implement basename cmd
-
-	// update cache LRU info
-	cache.Touch(uuid)
 
 	var nodeInstance, _ = Load(uuid)
 
@@ -177,6 +168,7 @@ LocationLoop:
 		}
 
 		if md5sum != nodeMd5 {
+			logger.Errorf("(FMOpen) md5sum=%s AND nodeMd5= %s", md5sum, nodeMd5)
 			logger.Errorf("(FMOpen) %s download returned: %s", locationConfig.Type, err.Error())
 			continue LocationLoop
 		}
@@ -206,9 +198,6 @@ LocationLoop:
 		}
 	}
 
-	// notify the Cache of the new local file
-	cache.Add(uuid, nodeInstance.File.Size)
-
 	// create file handle for newly downloaded file on local disk
 	// we use the symlink we have created here
 	f, err = os.Open(filepath)
@@ -225,125 +214,92 @@ LocationLoop:
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 //  ************************ ************************ ************************ ************************ ************************ ************************ ************************ ************************
 
-// S3Download download a file and its indices from an S3 source
+// S3Download download a file and its indices from an S3 source using an external boto3 python script
 func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error, md5sum string) {
+	functionName := "S3Download"
 
 	itemkey := fmt.Sprintf("%s.data", uuid)
 	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
 
+	//fmt.Printf("(%s) downloading node: %s \n", functionName, uuid)
+
 	tmpfile, err := ioutil.TempFile(conf.PATH_CACHE, "")
 	if err != nil {
-		log.Fatalf("(S3Download)  cannot create temporary file: %s [Err: %s]", uuid, err.Error())
-		return
-	}
-	defer tmpfile.Close()
-	defer os.Remove(tmpfile.Name())
-
-	// return error if file not found in S3bucket
-	//fmt.Printf("(S3Download) attempting download, UUID: %s, nodeID: %s from: %s\n", uuid, nodeInstance.Id, location.URL)
-
-	Bucket := location.Bucket
-	logger.Debug(1, "(S3Download) attempting download, UUID: %s, nodeID: %s, Bucket:%s", uuid, nodeInstance.Id, Bucket)
-
-	//logger.Infof("(S3Download) attempting download, UUID: %s, nodeID: %s, Bucket:%s", uuid, nodeInstance.Id, Bucket)
-
-	// 2) Create an AWS session
-	s3Config := &aws.Config{
-		Credentials: credentials.NewStaticCredentials(location.AuthKey, location.SecretKey, ""),
-		Endpoint:    aws.String(location.URL),
-		Region:      aws.String(location.Region),
-
-		//DisableSSL:       aws.Bool(true),
-		S3ForcePathStyle: aws.Bool(true),
-	}
-	//logger.Infof("(S3Download) creating S3 session failed with Endpoint: %s, Region: %s, Bucket: %s, Authkey: %s, SessionKey: %s ",
-	//	location.URL, location.Region, location.Bucket, location.AuthKey, location.SecretKey)
-
-	sess, err := session.NewSession(s3Config)
-	if err != nil {
-		logger.Errorf("(S3Download) creating S3 session failed with Endpoint: %s, Region: %s, Bucket: %s, Authkey: %s, SessionKey: %s (err: %s)",
-			location.URL, location.Region, location.Bucket, location.AuthKey, location.SecretKey, err.Error())
-		return
-	}
-
-	//logger.Infof("(S3Download) Session established")
-
-	// 3) Create a new AWS S3 downloader
-	downloader := s3manager.NewDownloader(sess)
-
-	_, err = downloader.Download(tmpfile,
-		&s3.GetObjectInput{
-			Bucket: aws.String(Bucket),
-			Key:    aws.String(itemkey),
-		})
-
-	//logger.Infof("(S3Download) downloaded %d Bytes for %s into %s", numBytes, itemkey, tmpfile.Name())
-
-	if err != nil {
-		log.Fatalf("(S3Download) Unable to download item %q for %s, %s", itemkey, uuid, err.Error())
-		//	logger.Infof("(S3Download) Unable to download item %q for %s, %s", itemkey, uuid, err.Error())
-
-		return
-	}
-
-	//var dst io.Writer
-	md5h := md5.New()
-
-	_, err = io.Copy(md5h, tmpfile)
-	if err != nil {
-		// md5 checksum creation did not work
-		return
-	}
-	//	tmpfile.Close()
-
-	//logger.Infof("(S3Download) md5checked %d Bytes for %s", newNumBytes, itemkey)
-
-	md5sum = fmt.Sprintf("%x", md5h.Sum(nil))
-
-	//logger.Infof("(S3Download) MD5 for %s, %s", itemkey, md5sum)
-
-	tmpFileName := tmpfile.Name()
-	functionName := "S3Download"
-	err = handleDataFile(tmpFileName, uuid, functionName)
-	if err != nil {
-		logger.Debug(3, "(S3Download) error moving directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
+		log.Fatalf("(%s) cannot create temporary file: %s [Err: %s]", functionName, uuid, err.Error())
 		return
 	}
 	tmpfile.Close()
 
+	baseArgString := fmt.Sprintf("boto-s3-download.py --bucket=%s --region=%s --tmpfile=%s --s3endpoint=%s",
+		location.Bucket, location.Region, tmpfile.Name(), location.URL)
+	argString := fmt.Sprintf("%s --object=%s",
+		baseArgString, itemkey)
+	args := strings.Fields(argString)
+	cmd := exec.Command(args[0], args[1:]...)
+
+	// passing parameters to external program via ENV variables, see https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html
+	// this is more secure than cmd-line
+	envAuth := fmt.Sprintf("AWS_ACCESS_KEY_ID = %s", location.AuthKey)
+	envSecret := fmt.Sprintf("AWS_SECRET_ACCESS_KEY = %s", location.SecretKey)
+	newEnv := append(os.Environ(), envAuth, envSecret)
+	cmd.Env = newEnv
+
+	// run and capture the output
+	out, err := cmd.Output()
+	if err != nil {
+		logger.Debug(1, "(%s) cmd.Run(%s) failed with %s\n", functionName, cmd, err)
+		//fmt.Printf("(%s) cmd.Run(%s) failed with %s\n", functionName, cmd, err.Error())
+		return
+	}
+
+	//md5sum = fmt.Sprintf("%s", string(out))
+
+	md5sum = string(out)
+	md5sum = strings.TrimRight(md5sum, "\r\n")
+	//fmt.Printf("node: %s DONE \n", itemkey)
+
+	// move the bits into place
+	err = handleDataFile(tmpfile.Name(), uuid, functionName)
+	if err != nil {
+		logger.Debug(3, "(%s) error moving directory structure and symkink into place for : %s [Err: %s]", functionName, uuid, err.Error())
+		return
+	}
+
+	// ##############################################################################
+	// ##############################################################################
+	// ##############################################################################
 	//index bits now
 	tmpfile, err = ioutil.TempFile(conf.PATH_CACHE, "")
 	if err != nil {
-		log.Fatalf("(S3Download) cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		log.Fatalf("(%s) cannot create temporary file: %s [Err: %s]", functionName, uuid, err.Error())
 		return
 	}
-	defer tmpfile.Close()
-	defer os.Remove(tmpfile.Name())
+	tmpfile.Close()
 
-	_, err = downloader.Download(tmpfile,
-		&s3.GetObjectInput{
-			Bucket: aws.String(Bucket),
-			Key:    aws.String(indexfile),
-		})
+	argString = fmt.Sprintf("%s --object=%s", baseArgString, indexfile)
+	args = strings.Fields(argString)
+	cmd = exec.Command(args[0], args[1:]...)
 
+	// passing parameters to external program via ENV variables, see https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html
+	// this is more secure than cmd-line
+	cmd.Env = newEnv
+
+	// run and capture the output
+	out, err = cmd.Output()
 	if err != nil {
-		// check if S3 tells us there is no file
-		if strings.HasPrefix(err.Error(), "NoSuchKey") {
-			// we did not find an index
-			//	logger.Infof("no index for %s", uuid)
-			err = nil
-			return
-		}
-		log.Fatalf("(S3Download) Unable to download item %q for %s, %s", indexfile, uuid, err.Error())
+		logger.Debug(1, "(%s) cmd.Run(%s) failed with %s\n", functionName, cmd, err)
+		fmt.Printf("(%s) cmd.Run(%s) failed with %s\n", functionName, cmd, err.Error())
+		err = nil
 		return
 	}
+
 	//logger.Infof("Downloaded: %s (%d Bytes) \n", file.Name(), numBytes)
 	err = handleIdxZipFile(tmpfile, uuid, "S3Download")
 	if err != nil {
 		logger.Debug(3, "(S3Download) error moving index directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
 		return
 	}
-	tmpfile.Close()
+
 	return
 }
 
@@ -949,7 +905,7 @@ func handleDataFile(filename string, uuid string, funcName string) (err error) {
 		log.Fatalf("(%s) Cannot open file %s for reading [%s]", filename, err.Error())
 		return
 	}
-	defer in.Close()
+	in.Close()
 
 	//logger.Infof("(FMOpen-> handleDataFile) cacheFile: %s, itemfile: %s", cacheitemfile, itemfile)
 
@@ -970,30 +926,12 @@ func handleDataFile(filename string, uuid string, funcName string) (err error) {
 	//logger.Infof("(FMOpen-> handleDataFile) created item path ")
 
 	// create a handle for the cache item here
-	file, err := os.Create(cacheitemfile)
+	err = os.Rename(filename, cacheitemfile) // move the tmpfile into the correct cache path
 	if err != nil {
-		logger.Infof("(%s) attempting cache item file: %s FAILED", funcName, cacheitemfile)
+		logger.Infof("(%s) moving tmpfile (%s) to new path (%) failed: %s FAILED", funcName, filename, cacheitemfile)
 		return
 	}
-	defer file.Close()
-
-	//logger.Infof("(FMOpen-> handleDataFile) created cache file  ")
-
-	_, err = io.Copy(file, in)
-	//logger.Infof("(%s) copied %d Bytes", funcName, numBytes)
-
-	if err != nil {
-		logger.Debug(3, "(%s)  cannot create local Cache file for uuid: %s at Path: %s [Err: %s]", funcName, uuid, cacheitempath, err.Error())
-		//	logger.Infof("(%s)  cannot create local Cache file for uuid: %s at Path: %s [Err: %s]", funcName, uuid, cacheitempath, err.Error())
-
-		return
-	}
-
 	//logger.Infof("(FMOpen-> handleDataFile) past create local Cache file for uuid: %s at Path: %s [Err: %s]", funcName, uuid, cacheitempath, err.Error())
-
-	file.Close()
-	in.Close()
-	//logger.Infof("(FMOpen-> handleDataFile) closed file ")
 
 	// add sym link from cacheItemPath to itemPath
 	err = os.Symlink(cacheitemfile, itemfile)

@@ -152,11 +152,13 @@ func LocationsRequest(ctx context.Context) {
 					}
 				}
 
-				fmt.Println(requestedDate)
+				// I do not see why we would print this
+				//fmt.Println(requestedDate)
 				newLocation.RequestedDate = &requestedDate
 
-			} else {
-				fmt.Println("date not found")
+				// there is no need to do this
+				//} else {
+				//	fmt.Println("date not found")
 			}
 
 		default:

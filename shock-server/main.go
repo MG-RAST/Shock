@@ -47,17 +47,20 @@ type anonymous struct {
 }
 
 type resource struct {
-	A []string  `json:"attribute_indexes"`
-	C string    `json:"contact"`
-	I string    `json:"id"`
-	O []string  `json:"auth"`
-	P anonymous `json:"anonymous_permissions"`
-	R []string  `json:"resources"`
-	S string    `json:"server_time"`
-	T string    `json:"type"`
-	U string    `json:"url"`
-	V string    `json:"version"`
+	A      []string  `json:"attribute_indexes"`
+	C      string    `json:"contact"`
+	I      string    `json:"id"`
+	O      []string  `json:"auth"`
+	P      anonymous `json:"anonymous_permissions"`
+	R      []string  `json:"resources"`
+	S      string    `json:"server_time"`
+	T      string    `json:"type"`
+	U      string    `json:"url"`
+	Uptime string    `json:"uptime"`
+	V      string    `json:"version"`
 }
+
+var StartTime = time.Now()
 
 func mapRoutes() {
 	goweb.MapBefore(func(ctx context.Context) error {
@@ -255,16 +258,17 @@ func mapRoutes() {
 		}
 
 		r := resource{
-			A: attrs,
-			C: conf.ADMIN_EMAIL,
-			I: "Shock",
-			O: auth,
-			P: *anonPerms,
-			R: []string{"node"},
-			S: time.Now().Format(longDateForm),
-			T: "Shock",
-			U: host + "/",
-			V: conf.VERSION,
+			A:      attrs,
+			C:      conf.ADMIN_EMAIL,
+			I:      "Shock",
+			O:      auth,
+			P:      *anonPerms,
+			R:      []string{"node"},
+			S:      time.Now().Format(longDateForm),
+			T:      "Shock",
+			U:      host + "/",
+			Uptime: time.Since(StartTime).String(),
+			V:      conf.VERSION,
 		}
 		return responder.WriteResponseObject(ctx, http.StatusOK, r)
 	})
@@ -332,13 +336,6 @@ func main() {
 	node.Initialize()
 	preauth.Initialize()
 	auth.Initialize()
-	err = cache.Initialize()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Err@cache.Initialize: %s\n", err.Error())
-		logger.Error("Err@cache.Initialize: " + err.Error())
-		os.Exit(1)
-
-	}
 
 	node.InitReaper()
 

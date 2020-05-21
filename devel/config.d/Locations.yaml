@@ -1,50 +1,14 @@
 Locations:
- -  ID: "anls3_anlseq"
+ -  ID: "s3"
     Type: "S3"
-    Description: "Argonne S3 Service bucket for DNA sequencing service (Sarah Owens)"
-    URL: "https://s3.it.anl.gov:18082"
-    AuthKey: "32KYCBDRPWTJBATSI7F6"
-    SecretKey: "oqGd8So/7mH+Vkby9PYebBzJa7dMaujU8RO3UhrK"
-    Bucket: "anlseq"
+    Description: "Minio based local server on port 9000 in devel"
+    URL: "http://shock-minio:9000"
+    AuthKey: "minio"
+    SecretKey: "minio123"
+    Bucket: "bucket1"
     Persistent: true
-    Region: "us-east-1"
+    Region: "nil"
     Priority: 0
     Tier: 5
     Cost: 0
     MinPriority: 7
- -  ID: "anls3_mgrast"
-    Type: "S3"
-    Description: "Argonne S3 Service bucket for MG-RAST"
-    URL: "https://s3.it.anl.gov:18082"
-    AuthKey: "DICXJS0TQ7R4JEGVNKRZ"
-    SecretKey: "WjgYtTraCVruHGFf35RttxkaTqfBX7EEtwPZco8s"
-    Bucket: "mgrast"
-    Persistent: true
-    Region: "us-east-1" 
-    Priority: 0
-    Tier: 5
-    Cost: 0
-    MinPriority: 7
- -  ID: "mgrast_shock"
-    Type: "shock"
-    Description: "MG-RAST shock service on britain"
-    URL: "shock.mg-rast.org"
-    AuthKey: ""
-    SecretKey: ""
-    Prefix: ""
-    Priority: 0
-    Tier: 0
-    Cost: 0
- -  ID: "anltsm"
-    Type: "tsm_archive"  
-    Description: "MG-RAST archiving service run via CELS systems group off britain"
-    URL: ""
-    AuthKey: ""
-    SecretKey: ""
-    Prefix:  ""
-    Restorecommand: "dsmc restore %ID%  -latest"
-    Priority: 0
-    Tier: 10
-    Cost: 0
-    MinPriority: 7
-
