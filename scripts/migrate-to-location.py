@@ -106,11 +106,11 @@ def get_shock_node(node_id , config=None) :
                         }
 
     sleep = 60
-    max   = 3
+    max_tries   = 3
     tries = 0
 
     response = None
-    while (not response) and tries < max :
+    while (not response) and tries < max_tries :
         try:
             response = requests.get(config['shock']['host'] + "/node/" + node_id , headers=headers)
         except Exception as e: 
@@ -141,10 +141,11 @@ def get_shock_node(node_id , config=None) :
 
     return node
 
-def get_file_from_shock(node , max=1 , current = 0 ):
+def get_file_from_shock(node , max_tries=1 , current = 0 ):
 
     # counter for tries
     current = current + 1
+    sleep = 60
 
     print("Downloading " + node['id'] )
     file_name = node['id'] + ".data"
@@ -168,12 +169,12 @@ def get_file_from_shock(node , max=1 , current = 0 ):
     if local_md5 == node['file']['checksum']['md5'] :
         print("Download ok")
     else:
-        print("Error, download failed (%s)" , download_url  )
+        print("Error, download failed (%s)" % download_url  )
         print(local_md5 , node['file']['checksum']['md5'])
-        if max > current :
+        if max_tries > current :
             # wait before trying again
             time.sleep(sleep * current)
-            file_name , tmp = get_file_from_shock(node=node , max=max , current=current)
+            file_name , tmp = get_file_from_shock(node=node , max_tries=max_tries , current=current)
         else:
             file_name = None
 
@@ -380,7 +381,7 @@ def main(config) :
             print("Skipping " + node_id  )
             continue
 
-        file_name , md5  = get_file_from_shock(node , max=max)
+        file_name , md5  = get_file_from_shock(node , max_tries=3)
 
         print(file_name)
         
@@ -398,7 +399,7 @@ def main(config) :
             else :
                 print( "Error:\tCan not set location for " + node_id )
         if not success :
-            print("Error pushing " + file_name )
+            print("Error pushing " + str(node_id) )
 
 
 if __name__== "__main__" :

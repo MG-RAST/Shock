@@ -206,14 +206,17 @@ def set_node_location(config=None , node_id=None , location=None):
                 try:
                     data = response.json()
                 except Exception as err :
+                    sys.stderr.write( "Error response status: " + str(response.status_code) + "\n")
                     sys.stderr.write( "Error parsing response: " + str(err) + "\n")
         else : 
             sys.stderr.write( "Error retrieving data from Shock (" + str(response.status_code) + ")\n")
             try:
                 error = response.json()
                 sys.stderr.write( "\n".join( error['error'] ) + "\n" )
+            except JSONDecodeError as err:
+                sys.stderr.write( str(response.text) + "\n" )
             except Exception as err :
-                sys.stderr.write(err)
+                sys.stderr.write(str(err))
                 sys.stderr.write("\n")
                 sys.stderr.write( str(response.text) + "\n" )
     
