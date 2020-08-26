@@ -345,7 +345,8 @@ def main(config) :
     # remove in production
     if args.debug :
         print(ids)
-        
+    
+    max_tries   = 3
     s3session   = None
     s3resource  = None
     s3client    = None    
@@ -369,7 +370,7 @@ def main(config) :
         node = get_shock_node(node_id , config=config)
         print(node)
         found = False
-        if "locations" in node:
+        if "locations" in node and isinstance( node["locations"] , list) :
             for l in node['locations'] :
                 print(l)
                 if l['id'] == args.location :
@@ -381,7 +382,11 @@ def main(config) :
             print("Skipping " + node_id  )
             continue
 
+<<<<<<< HEAD
         file_name , md5  = get_file_from_shock(node , max_tries=3)
+=======
+        file_name , md5  = get_file_from_shock(node , max_tries=max_tries)
+>>>>>>> wilke/python-service/location
 
         print(file_name)
         
