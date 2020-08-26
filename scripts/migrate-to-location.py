@@ -106,11 +106,11 @@ def get_shock_node(node_id , config=None) :
                         }
 
     sleep = 60
-    max   = 3
+    max_tries   = 3
     tries = 0
 
     response = None
-    while (not response) and tries < max :
+    while (not response) and tries < max_tries :
         try:
             response = requests.get(config['shock']['host'] + "/node/" + node_id , headers=headers)
         except Exception as e: 
@@ -141,7 +141,7 @@ def get_shock_node(node_id , config=None) :
 
     return node
 
-def get_file_from_shock(node , max=1 , current = 0 ):
+def get_file_from_shock(node , max_tries=1 , current = 0 ):
 
     # counter for tries
     current = current + 1
@@ -170,10 +170,10 @@ def get_file_from_shock(node , max=1 , current = 0 ):
     else:
         print("Error, download failed (%s)" , download_url  )
         print(local_md5 , node['file']['checksum']['md5'])
-        if max > current :
+        if max_tries > current :
             # wait before trying again
             time.sleep(sleep * current)
-            file_name , tmp = get_file_from_shock(node=node , max=max , current=current)
+            file_name , tmp = get_file_from_shock(node=node , max_tries=max_tries , current=current)
         else:
             file_name = None
 
@@ -344,7 +344,8 @@ def main(config) :
     # remove in production
     if args.debug :
         print(ids)
-        
+    
+    max_tries   = 3
     s3session   = None
     s3resource  = None
     s3client    = None    
@@ -368,7 +369,7 @@ def main(config) :
         node = get_shock_node(node_id , config=config)
         print(node)
         found = False
-        if "locations" in node:
+        if "locations" in node and isinstance( node["locations"] , list) :
             for l in node['locations'] :
                 print(l)
                 if l['id'] == args.location :
@@ -380,7 +381,7 @@ def main(config) :
             print("Skipping " + node_id  )
             continue
 
-        file_name , md5  = get_file_from_shock(node , max=max)
+        file_name , md5  = get_file_from_shock(node , max_tries=max_tries)
 
         print(file_name)
         
