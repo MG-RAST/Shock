@@ -7,7 +7,7 @@ RUN apt-get -y install \
     curl \
     cwltool \
     less \
-    python3.6 \
+    python3 \
     python3-boto3 \
     python3-pip \
     python3-requests \
@@ -30,8 +30,9 @@ RUN add-apt-repository \
 RUN apt-get install -y  docker-ce docker-ce-cli containerd.io
 
 
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1 && \
-    update-alternatives --install /usr/bin/python python /usr/bin/python3.6 2
+# RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1 && \
+#     update-alternatives --install /usr/bin/python python /usr/bin/python3.6 2
+RUN  update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 COPY *.py /usr/local/bin/
 RUN chmod a+x /usr/local/bin/*
 
