@@ -90,7 +90,7 @@ def configure(args) :
 
 def get_ids_for_location(config=None , location=None , action=None ):
     ids = []
-    if action is not 'info' :
+    if action != 'info' :
         for i in  get_nodes(config=config , location=location, action=action) :
             ids.append( i['id'] )    
     return ids
