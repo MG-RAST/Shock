@@ -4,10 +4,6 @@ import (
 	"regexp"
 	"time"
 
-<<<<<<< HEAD
-=======
-	"github.com/MG-RAST/Shock/shock-server/cache"
->>>>>>> dc34e8103804a3797c83c529391486b4e1d66fd0
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node/locker"
