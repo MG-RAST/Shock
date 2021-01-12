@@ -877,7 +877,8 @@ func handleIdxZipFile(fp *os.File, uuid string, funcName string) (err error) {
 	// add sym link from cacheItemPath to itemPath
 	err = os.Symlink(cacheindexpath+"/idx", indexpath+"/idx")
 	if err != nil {
-		log.Fatalf("(%s) Unable to create symlink from %s to %s, %s", funcName, cacheindexpath, indexpath, err.Error())
+		// log.Fatalf("(%s) Unable to create symlink from %s to %s, %s", funcName, cacheindexpath, indexpath, err.Error())
+		log.Printf("(%s) Unable to create symlink from %s to %s, %s", funcName, cacheindexpath, indexpath, err.Error())
 		return
 	}
 
@@ -936,7 +937,8 @@ func handleDataFile(filename string, uuid string, funcName string) (err error) {
 	// add sym link from cacheItemPath to itemPath
 	err = os.Symlink(cacheitemfile, itemfile)
 	if err != nil {
-		log.Fatalf("(%s) Unable to create symlink from %s to %s, %s", funcName, cacheitemfile, itemfile, err.Error())
+		// log.Fatalf("(%s) Unable to create symlink from %s to %s, %s", funcName, cacheitemfile, itemfile, err.Error())
+		log.Printf("(%s) Unable to create symlink from %s to %s, %s", funcName, cacheitemfile, itemfile, err.Error())
 		return
 	}
 	//logger.Infof("(FMOpen-> handleDataFile) created symlink")
