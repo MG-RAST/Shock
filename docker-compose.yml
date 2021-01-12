@@ -26,6 +26,9 @@ services:
         ports:
           - 7445:7445
           
+        volumes:
+          # mount config dir
+          - ${CONFIGDIR}:/etc/shock.d
   
   
 
