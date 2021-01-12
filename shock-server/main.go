@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/MG-RAST/Shock/shock-server/auth"
-	"github.com/MG-RAST/Shock/shock-server/cache"
+	// "github.com/MG-RAST/Shock/shock-server/cache"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	ncon "github.com/MG-RAST/Shock/shock-server/controller/node"
 	acon "github.com/MG-RAST/Shock/shock-server/controller/node/acl"
