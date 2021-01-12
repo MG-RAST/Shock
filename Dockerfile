@@ -40,5 +40,5 @@ RUN cd ${DIR} && \
      go get github.com/MG-RAST/go-shock-client  &&\
      ./compile-server.sh
 
-
+RUN mkdir -p /etc/shock.d/ ; touch /etc/shock.d/shock-server.conf
 CMD ["/go/bin/shock-server"]
