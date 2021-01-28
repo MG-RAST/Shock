@@ -37,7 +37,8 @@ RUN mkdir -p /var/log/shock /usr/local/shock/data ${DIR}
 
 # compile
 RUN cd ${DIR} && \
-     go get github.com/MG-RAST/go-shock-client  &&\
+     go get github.com/MG-RAST/go-shock-client
+RUN cd ${DIR} &&\
      ./compile-server.sh
 
 RUN mkdir -p /etc/shock.d/ ; touch /etc/shock.d/shock-server.conf
