@@ -265,6 +265,10 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 		return
 	}
 
+	// IDX not implemented
+	return
+	// CONTINIUE HERE after API is updated
+
 	// ##############################################################################
 	// ##############################################################################
 	// ##############################################################################
@@ -662,12 +666,13 @@ func DaosDownload(uuid string, nodeInstance *Node) (err error, md5sum string) {
 // ShockDownload download a file from a Shock server
 func ShockDownload(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error, md5sum string) {
 
+	funcName := "ShockDownload"
 	itemkey := fmt.Sprintf("%s.data", uuid)
 	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
 
 	tmpfile, err := ioutil.TempFile(conf.PATH_CACHE, "")
 	if err != nil {
-		log.Fatalf("(GCloudStoreDownload)  cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		log.Fatalf("(ShockDownload)  cannot create temporary file: %s [Err: %s]", uuid, err.Error())
 		return
 	}
 	defer tmpfile.Close()
@@ -741,18 +746,25 @@ func ShockDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 
 	tmpfile, err = ioutil.TempFile(conf.PATH_CACHE, "")
 	if err != nil {
-		log.Fatalf("(GCloudStoreDownload) cannot create temporary file: %s [Err: %s]", uuid, err.Error())
+		log.Printf("(ShockDownload) cannot create temporary file: %s [Err: %s]", uuid, err.Error())
 		return
 	}
 	defer tmpfile.Close()
 	defer os.Remove(tmpfile.Name())
 
+	// END HERE - index file down;oad not supported
+	return
+	// DONE
+
 	url = fmt.Sprintf("%s/%s.?download", location.URL, indexfile)
+
+	log.Printf("(%s) Getting IDX %s", funcName, indexfile)
 
 	// Get the data
 	resp, err = http.Get(url)
 	if err != nil {
-		return
+		log.Printf("(ShockDownload) cannot download IDX file: %s [Err: %s]", itemkey, err.Error())
+		// return
 	}
 	defer resp.Body.Close()
 
@@ -760,19 +772,20 @@ func ShockDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 	if resp.StatusCode != http.StatusOK {
 		err = fmt.Errorf("bad status: %s", resp.Status)
 		return
-	}
-
-	// Writer the body to file
-	_, err = io.Copy(tmpfile, resp.Body)
-	if err != nil {
-		logger.Debug(1, "(ShockDownload) Unable to download item %q for %s, %v", indexfile, indexfile, err)
-		return
-	}
-	// unzip the index file
-	err = handleIdxZipFile(tmpfile, uuid, "ShockDownload")
-	if err != nil {
-		logger.Debug(3, "(ShockDownload) error moving index directory structures and symkink into place for : %s [Err: %s]", uuid, err.Error())
-		return
+	} else {
+		log.Printf("(%s) Response  %s", funcName, resp.Status)
+		// Writer the body to file
+		_, err = io.Copy(tmpfile, resp.Body)
+		if err != nil {
+			logger.Debug(1, "(ShockDownload) Unable to download item %q for %s, %v", indexfile, indexfile, err)
+			return
+		}
+		// unzip the index file
+		err = handleIdxZipFile(tmpfile, uuid, "ShockDownload")
+		if err != nil {
+			logger.Debug(3, "(ShockDownload) error moving index directory structures and symkink into place for : %s [Err: %s]", uuid, err.Error())
+			return
+		}
 	}
 
 	return
@@ -879,10 +892,10 @@ func handleIdxZipFile(fp *os.File, uuid string, funcName string) (err error) {
 	if err != nil {
 		// log.Fatalf("(%s) Unable to create symlink from %s to %s, %s", funcName, cacheindexpath, indexpath, err.Error())
 		log.Printf("(%s) Unable to create symlink from %s to %s, %s", funcName, cacheindexpath, indexpath, err.Error())
-		return
+		// return
 	}
 
-	return
+	return nil
 }
 
 // handleDataFile handle <uuid>.data files
@@ -939,11 +952,11 @@ func handleDataFile(filename string, uuid string, funcName string) (err error) {
 	if err != nil {
 		// log.Fatalf("(%s) Unable to create symlink from %s to %s, %s", funcName, cacheitemfile, itemfile, err.Error())
 		log.Printf("(%s) Unable to create symlink from %s to %s, %s", funcName, cacheitemfile, itemfile, err.Error())
-		return
+		// return
 	}
 	//logger.Infof("(FMOpen-> handleDataFile) created symlink")
 
-	return
+	return nil
 }
 
 // // Transitlock - lock the mutex controlling access to the Transitlock
