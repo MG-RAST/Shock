@@ -382,11 +382,7 @@ def main(config) :
             print("Skipping " + node_id  )
             continue
 
-<<<<<<< HEAD
-        file_name , md5  = get_file_from_shock(node , max_tries=3)
-=======
         file_name , md5  = get_file_from_shock(node , max_tries=max_tries)
->>>>>>> wilke/python-service/location
 
         print(file_name)
         
