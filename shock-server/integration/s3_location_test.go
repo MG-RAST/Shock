@@ -8,11 +8,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// requireS3 skips the test if the Shock server has no "s3" location configured.
+// This allows S3 tests to coexist in the same package with non-S3 tests.
+func requireS3(t *testing.T) {
+	t.Helper()
+	resp := doRequest(t, "GET", "/location/s3/info", adminAuth, nil, "")
+	sr := parseStandardResponse(t, resp)
+	if sr.Status != http.StatusOK {
+		t.Skip("skipping: server has no S3 location configured")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Location Config tests
 // ---------------------------------------------------------------------------
 
 func TestLocationS3ConfigInfo(t *testing.T) {
+	requireS3(t)
 	resp := doRequest(t, "GET", "/location/s3/info", adminAuth, nil, "")
 	sr := parseStandardResponse(t, resp)
 	assert.Equal(t, http.StatusOK, sr.Status)
@@ -25,6 +37,7 @@ func TestLocationS3ConfigInfo(t *testing.T) {
 }
 
 func TestLocationInfoRequiresAdmin(t *testing.T) {
+	requireS3(t)
 	resp := doRequest(t, "GET", "/location/s3/info", user1Auth, nil, "")
 	sr := parseStandardResponse(t, resp)
 	// Server returns 500 for non-admin users (see location.go:49)
@@ -37,6 +50,7 @@ func TestLocationInfoRequiresAdmin(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestAutoUploadCreatesLocation(t *testing.T) {
+	requireS3(t)
 	content := []byte("auto-upload integration test data")
 	nodeID := createNodeWithFile(t, user1Auth, "auto_upload_test.txt", content)
 	cleanupNode(t, user1Auth, nodeID)
@@ -62,6 +76,7 @@ func TestAutoUploadCreatesLocation(t *testing.T) {
 }
 
 func TestAutoUploadMultipleFiles(t *testing.T) {
+	requireS3(t)
 	files := []struct {
 		name    string
 		content []byte
@@ -90,6 +105,7 @@ func TestAutoUploadMultipleFiles(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestViewNodeLocations(t *testing.T) {
+	requireS3(t)
 	content := []byte("view locations test data")
 	nodeID := createNodeWithFile(t, user1Auth, "view_locations.txt", content)
 	cleanupNode(t, user1Auth, nodeID)
@@ -120,6 +136,7 @@ func TestViewNodeLocations(t *testing.T) {
 }
 
 func TestViewSpecificLocation(t *testing.T) {
+	requireS3(t)
 	content := []byte("view specific location test data")
 	nodeID := createNodeWithFile(t, user1Auth, "view_specific_loc.txt", content)
 	cleanupNode(t, user1Auth, nodeID)
@@ -141,6 +158,7 @@ func TestViewSpecificLocation(t *testing.T) {
 }
 
 func TestAdminDeleteLocation(t *testing.T) {
+	requireS3(t)
 	content := []byte("delete location test data")
 	nodeID := createNodeWithFile(t, user1Auth, "delete_location.txt", content)
 	cleanupNode(t, user1Auth, nodeID)
@@ -167,6 +185,7 @@ func TestAdminDeleteLocation(t *testing.T) {
 }
 
 func TestDeleteLocationRequiresAdmin(t *testing.T) {
+	requireS3(t)
 	content := []byte("delete auth test data")
 	nodeID := createNodeWithFile(t, user1Auth, "delete_auth_test.txt", content)
 	cleanupNode(t, user1Auth, nodeID)
