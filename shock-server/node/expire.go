@@ -72,7 +72,6 @@ func (nr *NodeReaper) Handle() {
 		}
 
 	}
-	return
 }
 
 func (nr *NodeReaper) getQuery() (query bson.M) {

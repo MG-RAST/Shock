@@ -1,9 +1,7 @@
 package responder
 
 import (
-	"github.com/MG-RAST/golib/stretchr/codecs/services"
-	"github.com/MG-RAST/golib/stretchr/goweb"
-	"github.com/MG-RAST/golib/stretchr/goweb/context"
+	"encoding/json"
 	"net/http"
 )
 
@@ -24,44 +22,43 @@ type paginatedResponse struct {
 	Count  int         `json:"total_count"`
 }
 
-func RespondOK(ctx context.Context) error {
-	addResponseHeaders(ctx)
+func RespondOK(w http.ResponseWriter, r *http.Request) error {
 	response := new(standardResponse)
 	response.S = http.StatusOK
 	response.D = nil
 	response.E = nil
-	goweb.API.SetCodecService(getJsonCodec())
-	return goweb.API.WriteResponseObject(ctx, http.StatusOK, response)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	return json.NewEncoder(w).Encode(response)
 }
 
-func WriteResponseObject(ctx context.Context, status int, responseObject interface{}) error {
-	addResponseHeaders(ctx)
-	goweb.API.SetCodecService(getJsonCodec())
-	return goweb.API.WriteResponseObject(ctx, status, responseObject)
+func WriteResponseObject(w http.ResponseWriter, r *http.Request, status int, responseObject interface{}) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	return json.NewEncoder(w).Encode(responseObject)
 }
 
-func RespondWithData(ctx context.Context, data interface{}) error {
-	addResponseHeaders(ctx)
+func RespondWithData(w http.ResponseWriter, r *http.Request, data interface{}) error {
 	response := new(standardResponse)
 	response.S = http.StatusOK
 	response.D = data
 	response.E = nil
-	goweb.API.SetCodecService(getJsonCodec())
-	return goweb.API.WriteResponseObject(ctx, http.StatusOK, response)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	return json.NewEncoder(w).Encode(response)
 }
 
-func RespondWithError(ctx context.Context, status int, err string) error {
-	addResponseHeaders(ctx)
+func RespondWithError(w http.ResponseWriter, r *http.Request, status int, err string) error {
 	response := new(standardResponse)
 	response.S = status
 	response.D = nil
 	response.E = append(response.E, err)
-	goweb.API.SetCodecService(getJsonCodec())
-	return goweb.API.WriteResponseObject(ctx, status, response)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	return json.NewEncoder(w).Encode(response)
 }
 
-func RespondWithPaginatedData(ctx context.Context, data interface{}, limit, offset, count int) error {
-	addResponseHeaders(ctx)
+func RespondWithPaginatedData(w http.ResponseWriter, r *http.Request, data interface{}, limit, offset, count int) error {
 	response := new(paginatedResponse)
 	response.S = http.StatusOK
 	response.D = data
@@ -69,21 +66,7 @@ func RespondWithPaginatedData(ctx context.Context, data interface{}, limit, offs
 	response.Limit = limit
 	response.Offset = offset
 	response.Count = count
-	goweb.API.SetCodecService(getJsonCodec())
-	return goweb.API.WriteResponseObject(ctx, http.StatusOK, response)
-}
-
-func addResponseHeaders(ctx context.Context) {
-	ctx.HttpResponseWriter().Header().Set("Connection", "close")
-	ctx.HttpResponseWriter().Header().Set("Access-Control-Allow-Headers", "Authorization")
-	ctx.HttpResponseWriter().Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS")
-	ctx.HttpResponseWriter().Header().Set("Access-Control-Allow-Origin", "*")
-}
-
-func getJsonCodec() services.CodecService {
-	codecService := services.NewWebCodecService()
-	myCodecService := new(services.WebCodecService)
-	codec, _ := codecService.GetCodec("application/json")
-	myCodecService.AddCodec(codec)
-	return myCodecService
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	return json.NewEncoder(w).Encode(response)
 }

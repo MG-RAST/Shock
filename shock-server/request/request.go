@@ -27,7 +27,6 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
 	"github.com/MG-RAST/golib/httpclient"
-	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"github.com/jum/tinyftp"
 )
 
@@ -71,18 +70,18 @@ func Authenticate(req *http.Request) (u *user.User, err error) {
 }
 
 // AuthError _
-func AuthError(err error, ctx context.Context) error {
+func AuthError(err error, w http.ResponseWriter, r *http.Request) error {
 
 	if conf.DEBUG_AUTH {
-		return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+		return responder.RespondWithError(w, r, http.StatusBadRequest, err.Error())
 	}
 
 	if err.Error() == e.InvalidAuth {
-		return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid authorization header or content")
+		return responder.RespondWithError(w, r, http.StatusBadRequest, "Invalid authorization header or content")
 	}
 	err_msg := "Error at Auth: " + err.Error()
 	logger.Error(err_msg)
-	return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+	return responder.RespondWithError(w, r, http.StatusInternalServerError, err_msg)
 }
 
 // DataUpload helper function to create a node from an http data post (not multi-part)
@@ -165,7 +164,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files file.F
 				// ignore EOF
 			}
 
-			formValue := fmt.Sprintf("%s", buffer[0:n])
+			formValue := string(buffer[0:n])
 			//fmt.Printf("(ParseMultipartForm) part.FormName(): %s\n", part.FormName())
 			if part.FormName() == "upload_url" {
 				tempDir := path.Join(conf.PATH_DATA, "temp")
@@ -296,7 +295,7 @@ func fetchFileStream(urlStr string) (f string, r io.ReadCloser, err error) {
 		}
 		if res.StatusCode != 200 { //err in fetching data
 			resbody, _ := ioutil.ReadAll(res.Body)
-			return "", nil, errors.New(fmt.Sprintf("url=%s, res=%s", u.String(), resbody))
+			return "", nil, fmt.Errorf("url=%s, res=%s", u.String(), resbody)
 		}
 		return fileName, res.Body, err
 	} else if u.Scheme == "ftp" {

@@ -3,8 +3,9 @@ package line
 
 import (
 	"bufio"
-	"github.com/MG-RAST/Shock/shock-server/node/file"
 	"io"
+
+	"github.com/MG-RAST/Shock/shock-server/node/file"
 )
 
 type Reader struct {
@@ -25,15 +26,24 @@ func NewReader(f file.SectionReader) LineReader {
 }
 
 // Read a single line and return it or an error.
+// If data is read but EOF is encountered without a newline, return the data without an error.
+// Only return EOF when no data is read.
 func (self *Reader) ReadLine() (p []byte, err error) {
 	if self.r == nil {
 		self.r = bufio.NewReader(self.f)
 	}
 	p, err = self.r.ReadBytes('\n')
+
+	// If we read some data but got EOF without a newline, return the data without an error
+	if err == io.EOF && len(p) > 0 {
+		err = nil
+	}
 	return
 }
 
 // Read a single line and return the offset for indexing.
+// If data is read but EOF is encountered without a newline, return the offset without an error.
+// Only return EOF when no data is read.
 func (self *Reader) GetReadOffset() (n int, err error) {
 	if self.r == nil {
 		self.r = bufio.NewReader(self.f)
@@ -41,5 +51,10 @@ func (self *Reader) GetReadOffset() (n int, err error) {
 	var p []byte
 	p, err = self.r.ReadBytes('\n')
 	n = len(p)
+
+	// If we read some data but got EOF without a newline, return the offset without an error
+	if err == io.EOF && n > 0 {
+		err = nil
+	}
 	return
 }

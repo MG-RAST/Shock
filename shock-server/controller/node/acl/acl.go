@@ -15,7 +15,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/golib/go-uuid/uuid"
-	"github.com/MG-RAST/golib/stretchr/goweb/context"
+	"github.com/go-chi/chi/v5"
 	mgo "gopkg.in/mgo.v2"
 )
 
@@ -26,13 +26,13 @@ var (
 
 // GET, POST, PUT, DELETE: /node/{nid}/acl/
 // GET is the only action implemented here.
-func AclRequest(ctx context.Context) {
-	nid := ctx.PathValue("nid")
-	rmeth := ctx.HttpRequest().Method
+func AclRequest(w http.ResponseWriter, r *http.Request) {
+	nid := chi.URLParam(r, "nid")
+	rmeth := r.Method
 
-	u, err := request.Authenticate(ctx.HttpRequest())
+	u, err := request.Authenticate(r)
 	if err != nil && err.Error() != e.NoAuth {
-		request.AuthError(err, ctx)
+		request.AuthError(err, w, r)
 		return
 	}
 
@@ -41,7 +41,7 @@ func AclRequest(ctx context.Context) {
 		if rmeth == "GET" && conf.ANON_READ {
 			u = &user.User{Uuid: "public"}
 		} else {
-			responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
+			responder.RespondWithError(w, r, http.StatusUnauthorized, e.NoAuth)
 			return
 		}
 	}
@@ -51,14 +51,14 @@ func AclRequest(ctx context.Context) {
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			logger.Error("err@node_Acl: (node.Load) id=" + nid + ": " + e.NodeNotFound)
-			responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
+			responder.RespondWithError(w, r, http.StatusNotFound, e.NodeNotFound)
 			return
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
 			err_msg := "err@node_Acl: (node.Load) id=" + nid + ": " + err.Error()
 			logger.Error(err_msg)
-			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+			responder.RespondWithError(w, r, http.StatusInternalServerError, err_msg)
 			return
 		}
 	}
@@ -71,42 +71,42 @@ func AclRequest(ctx context.Context) {
 	rights := n.Acl.Check(u.Uuid)
 	if n.Acl.Owner != u.Uuid && u.Admin == false && n.Acl.Owner != "public" && rights["read"] == false {
 		logger.Error("err@node_Acl: (Authenticate) id=" + nid + ": " + e.UnAuth)
-		responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+		responder.RespondWithError(w, r, http.StatusUnauthorized, e.UnAuth)
 		return
 	}
 
 	if rmeth == "GET" {
-		query := ctx.HttpRequest().URL.Query()
+		query := r.URL.Query()
 		verbosity := ""
 		if _, ok := query["verbosity"]; ok {
 			verbosity = query.Get("verbosity")
 		}
-		responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
+		responder.RespondWithData(w, r, n.Acl.FormatDisplayAcl(verbosity))
 	} else {
-		responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
+		responder.RespondWithError(w, r, http.StatusNotImplemented, "This request type is not implemented.")
 	}
 	return
 }
 
 // GET, POST, PUT, DELETE: /node/{nid}/acl/{type}
-func AclTypedRequest(ctx context.Context) {
-	nid := ctx.PathValue("nid")
-	rtype := ctx.PathValue("type")
-	rmeth := ctx.HttpRequest().Method
-	query := ctx.HttpRequest().URL.Query()
+func AclTypedRequest(w http.ResponseWriter, r *http.Request) {
+	nid := chi.URLParam(r, "nid")
+	rtype := chi.URLParam(r, "type")
+	rmeth := r.Method
+	query := r.URL.Query()
 	verbosity := ""
 	if _, ok := query["verbosity"]; ok {
 		verbosity = query.Get("verbosity")
 	}
 
-	u, err := request.Authenticate(ctx.HttpRequest())
+	u, err := request.Authenticate(r)
 	if err != nil && err.Error() != e.NoAuth {
-		request.AuthError(err, ctx)
+		request.AuthError(err, w, r)
 		return
 	}
 
 	if !validAclTypes[rtype] {
-		responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid acl type")
+		responder.RespondWithError(w, r, http.StatusBadRequest, "Invalid acl type")
 		return
 	}
 
@@ -115,14 +115,14 @@ func AclTypedRequest(ctx context.Context) {
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			logger.Error("err@node_Acl: (node.Load) id=" + nid + ": " + e.NodeNotFound)
-			responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
+			responder.RespondWithError(w, r, http.StatusNotFound, e.NodeNotFound)
 			return
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
 			err_msg := "err@node_Acl: (node.Load) id=" + nid + ": " + err.Error()
 			logger.Error(err_msg)
-			responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+			responder.RespondWithError(w, r, http.StatusInternalServerError, err_msg)
 			return
 		}
 	}
@@ -131,10 +131,10 @@ func AclTypedRequest(ctx context.Context) {
 	if u == nil {
 		rights := n.Acl.Check("public")
 		if rmeth == "GET" && conf.ANON_READ && (rights["read"] || n.Acl.Owner == "public") {
-			responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
+			responder.RespondWithData(w, r, n.Acl.FormatDisplayAcl(verbosity))
 			return
 		} else {
-			responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
+			responder.RespondWithError(w, r, http.StatusUnauthorized, e.NoAuth)
 			return
 		}
 	}
@@ -144,7 +144,7 @@ func AclTypedRequest(ctx context.Context) {
 	if err != nil {
 		err_msg := "err@node_Acl: (LockNode) id=" + nid + ": " + err.Error()
 		logger.Error(err_msg)
-		responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+		responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
 		return
 	}
 	defer locker.NodeLockMgr.UnlockNode(nid)
@@ -155,29 +155,29 @@ func AclTypedRequest(ctx context.Context) {
 		if rtype == "public_read" || rtype == "public_write" || rtype == "public_delete" || rtype == "public_all" {
 			err_msg := "Users that are not node owners can only delete themselves from ACLs."
 			logger.Error("err@node_Acl: id=" + nid + ": " + err_msg)
-			responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+			responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
 			return
 		}
 
 		// Parse user list
-		ids, err := parseAclRequestTyped(ctx)
+		ids, err := parseAclRequestTyped(r)
 		if err != nil {
 			err_msg := "err@node_Acl: (parseAclRequestTyped) id=" + nid + ": " + err.Error()
 			logger.Error(err_msg)
-			responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+			responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
 			return
 		}
 		if rmeth == "DELETE" {
 			if len(ids) != 1 || (len(ids) == 1 && ids[0] != u.Uuid) {
 				err_msg := "Users that are not node owners can delete only themselves from ACLs."
 				logger.Error("err@node_Acl: id=" + nid + ": " + err_msg)
-				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
 				return
 			}
 			if rtype == "owner" {
 				err_msg := "Deleting node ownership is not a supported request type."
 				logger.Error("err@node_Acl: id=" + nid + ": " + err_msg)
-				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
 				return
 			}
 			if rtype == "all" {
@@ -186,19 +186,19 @@ func AclTypedRequest(ctx context.Context) {
 				n.Acl.UnSet(ids[0], map[string]bool{rtype: true})
 			}
 			n.Save()
-			responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
+			responder.RespondWithData(w, r, n.Acl.FormatDisplayAcl(verbosity))
 			return
 		}
 		err_msg := "Users that are not node owners can only delete themselves from ACLs."
 		logger.Error("err@node_Acl: id=" + nid + ": " + err_msg)
-		responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+		responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
 		return
 	}
 
 	// At this point we know we're dealing with an admin or the node owner.
 	// Admins and node owners can view/edit/delete ACLs
 	if rmeth == "GET" {
-		responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
+		responder.RespondWithData(w, r, n.Acl.FormatDisplayAcl(verbosity))
 		return
 	} else if rmeth == "POST" || rmeth == "PUT" {
 		if rtype == "public_read" || rtype == "public_write" || rtype == "public_delete" || rtype == "public_all" {
@@ -212,16 +212,16 @@ func AclTypedRequest(ctx context.Context) {
 				n.Acl.Set("public", map[string]bool{"read": true, "write": true, "delete": true})
 			}
 			n.Save()
-			responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
+			responder.RespondWithData(w, r, n.Acl.FormatDisplayAcl(verbosity))
 			return
 		}
 
 		// Parse user list
-		ids, err := parseAclRequestTyped(ctx)
+		ids, err := parseAclRequestTyped(r)
 		if err != nil {
 			err_msg := "err@node_Acl: (parseAclRequestTyped) id=" + nid + ": " + err.Error()
 			logger.Error(err_msg)
-			responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+			responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
 			return
 		}
 		if rtype == "owner" {
@@ -230,7 +230,7 @@ func AclTypedRequest(ctx context.Context) {
 			} else {
 				err_msg := "Too many users. Nodes may have only one owner."
 				logger.Error("err@node_Acl: id=" + nid + ": " + err_msg)
-				responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
 				return
 			}
 		} else if rtype == "all" {
@@ -243,7 +243,7 @@ func AclTypedRequest(ctx context.Context) {
 			}
 		}
 		n.Save()
-		responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
+		responder.RespondWithData(w, r, n.Acl.FormatDisplayAcl(verbosity))
 		return
 	} else if rmeth == "DELETE" {
 		if rtype == "public_read" || rtype == "public_write" || rtype == "public_delete" || rtype == "public_all" {
@@ -257,22 +257,22 @@ func AclTypedRequest(ctx context.Context) {
 				n.Acl.UnSet("public", map[string]bool{"read": true, "write": true, "delete": true})
 			}
 			n.Save()
-			responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
+			responder.RespondWithData(w, r, n.Acl.FormatDisplayAcl(verbosity))
 			return
 		}
 
 		// Parse user list
-		ids, err := parseAclRequestTyped(ctx)
+		ids, err := parseAclRequestTyped(r)
 		if err != nil {
 			err_msg := "err@node_Acl: (parseAclRequestTyped) id=" + nid + ": " + err.Error()
 			logger.Error(err_msg)
-			responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+			responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
 			return
 		}
 		if rtype == "owner" {
 			err_msg := "Deleting ownership is not a supported request type."
 			logger.Error("err@node_Acl: id=" + nid + ": " + err_msg)
-			responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+			responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
 			return
 		} else if rtype == "all" {
 			for _, i := range ids {
@@ -284,18 +284,18 @@ func AclTypedRequest(ctx context.Context) {
 			}
 		}
 		n.Save()
-		responder.RespondWithData(ctx, n.Acl.FormatDisplayAcl(verbosity))
+		responder.RespondWithData(w, r, n.Acl.FormatDisplayAcl(verbosity))
 		return
 	} else {
-		responder.RespondWithError(ctx, http.StatusNotImplemented, "This request type is not implemented.")
+		responder.RespondWithError(w, r, http.StatusNotImplemented, "This request type is not implemented.")
 		return
 	}
 }
 
-func parseAclRequestTyped(ctx context.Context) (ids []string, err error) {
+func parseAclRequestTyped(r *http.Request) (ids []string, err error) {
 	var users []string
-	query := ctx.HttpRequest().URL.Query()
-	params, _, err := request.ParseMultipartForm(ctx.HttpRequest())
+	query := r.URL.Query()
+	params, _, err := request.ParseMultipartForm(r)
 	if _, ok := query["users"]; ok && err != nil && strings.Contains(err.Error(), http.ErrNotMultipart.ErrorString) {
 		users = strings.Split(query.Get("users"), ",")
 	} else if params["users"] != "" {

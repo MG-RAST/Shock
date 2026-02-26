@@ -56,6 +56,40 @@ func Errorf(format string, a ...interface{}) {
 	return
 }
 
+// Warning is a short cut function that uses package initialized logger and error log
+func Warning(message string) {
+	Log.Log("error", l4g.WARNING, message)
+	return
+}
+
+// Warningf is a formatted warning short cut
+func Warningf(format string, a ...interface{}) {
+	Log.Log("error", l4g.WARNING, fmt.Sprintf(format, a...))
+	return
+}
+
+// Debugf is a formatted debug short cut
+func Debugf(level int, format string, a ...interface{}) {
+	Debug(level, format, a...)
+	return
+}
+
+// Trace is a short cut function for trace logging
+func Trace(message string) {
+	if conf.LOG_TRACE {
+		Log.Info(message)
+	}
+	return
+}
+
+// Tracef is a formatted trace short cut
+func Tracef(format string, a ...interface{}) {
+	if conf.LOG_TRACE {
+		Log.Info(fmt.Sprintf(format, a...))
+	}
+	return
+}
+
 // Perf is a short cut function that uses package initialized logger and performance log
 func Perf(message string) {
 	Log.Perf(message)

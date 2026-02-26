@@ -31,7 +31,7 @@ func validateCV(name string, value string) bool {
 }
 
 func exitHelp() {
-	fmt.Fprintln(os.Stdout, USAGE)
+	fmt.Fprint(os.Stdout, USAGE)
 	os.Exit(0)
 }
 

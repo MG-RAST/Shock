@@ -67,6 +67,11 @@ func New(username string, password string, isAdmin bool) (u *User, err error) {
 }
 
 func FindByUuid(uuid string) (u *User, err error) {
+	// Use mock if provided
+	if MockFindByUuid != nil {
+		return MockFindByUuid(uuid)
+	}
+
 	session := db.Connection.Session.Copy()
 	defer session.Close()
 	c := session.DB(conf.MONGODB_DATABASE).C("Users")
@@ -101,6 +106,11 @@ func AdminGet(u *Users) (err error) {
 }
 
 func (u *User) SetMongoInfo() (err error) {
+	// Use mock if provided
+	if MockSetMongoInfo != nil {
+		return MockSetMongoInfo(u)
+	}
+
 	if uu, admin, err := dbGetInfo(u.Username); err == nil {
 		u.Uuid = uu
 		u.Admin = admin
@@ -119,7 +129,7 @@ func (u *User) SetMongoInfo() (err error) {
 			return err
 		}
 	}
-	return
+	return nil
 }
 
 func dbGetInfo(username string) (uuid string, admin bool, err error) {

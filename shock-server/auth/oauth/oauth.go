@@ -5,12 +5,18 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
-	"github.com/MG-RAST/Shock/shock-server/conf"
-	e "github.com/MG-RAST/Shock/shock-server/errors"
-	"github.com/MG-RAST/Shock/shock-server/user"
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"github.com/MG-RAST/Shock/shock-server/conf"
+	e "github.com/MG-RAST/Shock/shock-server/errors"
+	"github.com/MG-RAST/Shock/shock-server/user"
+)
+
+// Variables for testing
+var (
+	MockAuth func(header string) (*user.User, error)
 )
 
 type resErr struct {
@@ -36,6 +42,11 @@ func authHeaderType(header string) string {
 // Auth takes the request authorization header and returns user
 // bearer token "oauth" returns default url (first item in auth_oauth_url conf value)
 func Auth(header string) (*user.User, error) {
+	// Use mock if provided
+	if MockAuth != nil {
+		return MockAuth(header)
+	}
+
 	bearer := authHeaderType(header)
 	if bearer == "" {
 		return nil, errors.New("(oauth) Invalid authentication header, missing bearer token.")

@@ -3,6 +3,7 @@ package node
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -10,10 +11,9 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/node/file/index"
 	"github.com/MG-RAST/Shock/shock-server/node/locker"
 	"github.com/MG-RAST/Shock/shock-server/request"
-	"github.com/MG-RAST/golib/stretchr/goweb/context"
 )
 
-func AsyncIndexer(idxType string, nid string, colNum int, ctx context.Context) {
+func AsyncIndexer(idxType string, nid string, colNum int, r *http.Request) {
 	// use function closure to get current value of err at return time
 	var err error
 	defer func() {
@@ -56,7 +56,7 @@ func AsyncIndexer(idxType string, nid string, colNum int, ctx context.Context) {
 		// Utilizing the multipart form parser since we need to upload a file.
 		var params map[string]string
 		var files file.FormFiles
-		params, files, err = request.ParseMultipartForm(ctx.HttpRequest())
+		params, files, err = request.ParseMultipartForm(r)
 		// clean up temp dir !!
 		defer file.RemoveAllFormFiles(files)
 		if err != nil {

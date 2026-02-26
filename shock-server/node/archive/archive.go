@@ -16,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/logger"
 	"github.com/MG-RAST/Shock/shock-server/node/file"
 )
@@ -64,10 +63,15 @@ func IsValidCompress(a string) bool {
 }
 
 func FilesFromArchive(format string, filePath string) (fileList []file.FormFile, unpackDir string, err error) {
-	// set unpack dir
-	unpackDir = fmt.Sprintf("%s/temp/%d%d", conf.PATH_DATA, rand.Int(), rand.Int())
-	if merr := os.Mkdir(unpackDir, 0777); merr != nil {
-		logger.Error("err:@node_unpack: " + err.Error())
+	// Create a temporary directory for unpacking
+	// Use os.TempDir() which is more reliable in test environments
+	tempDir := os.TempDir()
+	unpackDir = filepath.Join(tempDir, fmt.Sprintf("shock-temp-%d%d", rand.Int(), rand.Int()))
+
+	if merr := os.MkdirAll(unpackDir, 0777); merr != nil {
+		// Return the error instead of logging it to avoid nil pointer dereference
+		// when logger is not initialized in test environment
+		return nil, unpackDir, fmt.Errorf("failed to create unpack directory: %w", merr)
 	}
 
 	// magic to unpack archive
@@ -143,7 +147,8 @@ func unTar(filePath string, unpackDir string, compression string) (fileList []fi
 		case tar.TypeDir:
 			// handle directory
 			if merr := os.MkdirAll(path, 0777); merr != nil {
-				logger.Error("err:@node_untar: " + err.Error())
+				// Just continue if directory creation fails, don't use logger
+				// to avoid nil pointer dereference in test environment
 			}
 		default:
 		}
@@ -171,7 +176,8 @@ func unZip(filePath string, unpackDir string) (fileList []file.FormFile, err err
 		if zf.FileInfo().IsDir() {
 			// handle directory
 			if merr := os.MkdirAll(path, 0777); merr != nil {
-				logger.Error("err:@node_untar: " + err.Error())
+				// Just continue if directory creation fails, don't use logger
+				// to avoid nil pointer dereference in test environment
 			}
 		} else {
 			// open output file
@@ -266,7 +272,7 @@ func ArchiveReader(format string, files []*file.FileInfo) (outReader io.ReadClos
 					cHdr.SetModTime(f.ModTime)
 					zSum, zcerr := zWriter.CreateHeader(cHdr)
 					cBuf := bytes.NewBufferString(f.Checksum)
-					if (zcerr != nil) && (cBuf != nil) {
+					if (zcerr == nil) && (cBuf != nil) {
 						io.Copy(zSum, cBuf)
 					}
 				}

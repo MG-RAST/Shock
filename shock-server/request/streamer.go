@@ -1,7 +1,6 @@
 package request
 
 import (
-	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/node/archive"
 	"github.com/MG-RAST/Shock/shock-server/node/file"
@@ -243,7 +242,7 @@ func ParseSamtoolsArgs(query url.Values) (argv []string, err error) {
 				argv = append(argv, des)
 				argv = append(argv, val)
 			} else {
-				return nil, errors.New(fmt.Sprintf("required value not found for query arg: %s ", src))
+				return nil, fmt.Errorf("required value not found for query arg: %s ", src)
 			}
 		}
 	}

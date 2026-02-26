@@ -10,32 +10,32 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/preauth"
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
-	"github.com/MG-RAST/golib/stretchr/goweb/context"
+	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
 	"strconv"
 )
 
-func PreAuthRequest(ctx context.Context) {
-	id := ctx.PathValue("id")
+func PreAuthRequest(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
 	if p, err := preauth.Load(id); err != nil {
 		err_msg := "err:@preAuth load: " + err.Error()
 		logger.Error(err_msg)
-		responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+		responder.RespondWithError(w, r, http.StatusInternalServerError, err_msg)
 	} else {
 		switch p.Type {
 		case "download":
-			streamDownload(ctx, id, p.Nodes, p.Options)
+			streamDownload(w, r, id, p.Nodes, p.Options)
 			preauth.Delete(id)
 		default:
-			responder.RespondWithError(ctx, http.StatusNotFound, "Preauthorization type not supported: "+p.Type)
+			responder.RespondWithError(w, r, http.StatusNotFound, "Preauthorization type not supported: "+p.Type)
 		}
 	}
 	return
 }
 
 // handle download and its options
-func streamDownload(ctx context.Context, pid string, nodes []string, options map[string]string) {
+func streamDownload(w http.ResponseWriter, r *http.Request, pid string, nodes []string, options map[string]string) {
 	// get defaults
 	filename := pid
 	var filterFunc filter.FilterFunc = nil
@@ -108,7 +108,7 @@ func streamDownload(ctx context.Context, pid string, nodes []string, options map
 		// create single node / file streamer
 		s := &request.Streamer{
 			R:           files[0].R,
-			W:           ctx.HttpResponseWriter(),
+			W:           w,
 			ContentType: "application/octet-stream",
 			Filename:    filename,
 			Size:        files[0].Size,
@@ -124,7 +124,7 @@ func streamDownload(ctx context.Context, pid string, nodes []string, options map
 		// create multi node / file streamer, must have archive format
 		m := &request.MultiStreamer{
 			Files:       files,
-			W:           ctx.HttpResponseWriter(),
+			W:           w,
 			ContentType: "application/octet-stream",
 			Filename:    filename,
 			Archive:     archiveFormat,
@@ -138,7 +138,7 @@ func streamDownload(ctx context.Context, pid string, nodes []string, options map
 		// something broke
 		err_msg := "err:@preAuth: no files available to download for given combination of options"
 		logger.Error(err_msg)
-		responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+		responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
 	}
 	return
 }

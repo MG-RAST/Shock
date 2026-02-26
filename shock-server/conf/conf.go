@@ -191,6 +191,12 @@ var (
 	NODE_MIGRATION    bool   // if true shock server will attempt to migrate data to remote Locations (see locations.yaml)
 	NODE_DATA_REMOVAL bool   // if true shock server will attempt to remove local if at least MIN_REPLICA_COUNT copies exist
 
+	// Cache TTL and auto-upload settings
+	CACHE_TTL        string // TTL for cache items, e.g., "24H", "7D"
+	AUTO_UPLOAD      bool   // enable automatic upload to remote location
+	DEFAULT_LOCATION string // location ID for auto-upload target
+	UPLOAD_WORKERS   int    // number of concurrent upload workers
+
 	// internal config control
 	FAKE_VAR = false
 )
@@ -238,14 +244,14 @@ func Initialize() (err error) {
 	CONFIG_PATH := path.Dir(CONFIG_FILE)
 	fmt.Printf("CONFIG_PATH %s\n", CONFIG_PATH)
 
-	c_store, err := getConfiguration(c) // from config file and command line arguments
+	c_store, err := GetConfiguration(c) // from config file and command line arguments
 	if err != nil {
 		return errors.New("error reading conf file: " + err.Error())
 	}
 
 	// ####### at this point configuration variables are set ########
 
-	err = parseConfiguration()
+	err = ParseConfiguration()
 	if err != nil {
 		return errors.New("error parsing conf file: " + err.Error())
 	}
@@ -342,10 +348,16 @@ func Print() {
 	fmt.Printf("##### Max Revisions #####\nmax_revisions:\t%d\n\n", MAX_REVISIONS)
 	fmt.Printf("##### Node migration #####\nnode_migration::\t%t\n\n", NODE_MIGRATION)
 	fmt.Printf("##### Node file deletion (after migration) #####\nnode_data_removal::\t%t\n\n", NODE_DATA_REMOVAL)
+	if CACHE_TTL != "" {
+		fmt.Printf("##### Cache TTL #####\ncache_ttl:\t%s\n\n", CACHE_TTL)
+	}
+	if AUTO_UPLOAD {
+		fmt.Printf("##### Auto Upload #####\nauto_upload:\t%t\ndefault_location:\t%s\nupload_workers:\t%d\n\n", AUTO_UPLOAD, DEFAULT_LOCATION, UPLOAD_WORKERS)
+	}
 	fmt.Printf("API_PORT: %d\n", API_PORT)
 }
 
-func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
+func GetConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store = NewCS(c)
 
 	// Admin
@@ -432,6 +444,10 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 
 	// cache
 	c_store.AddString(&PATH_CACHE, "", "Cache", "cache_path", "", "cache directory path, default is nil, if this is set the system will function as a cache")
+	c_store.AddString(&CACHE_TTL, "", "Cache", "cache_ttl", "", "TTL for cache items, e.g., 24H, 7D")
+	c_store.AddBool(&AUTO_UPLOAD, false, "Cache", "auto_upload", "", "enable automatic upload to remote location after file upload")
+	c_store.AddString(&DEFAULT_LOCATION, "", "Cache", "default_location", "", "location ID for auto-upload target")
+	c_store.AddInt(&UPLOAD_WORKERS, 4, "Cache", "upload_workers", "", "number of concurrent upload workers")
 
 	// migrate
 	c_store.AddInt(&MIN_REPLICA_COUNT, 2, "Migrate", "min_replica_count", "", "minimum number of locations required before enabling local Node file deletion")
@@ -457,7 +473,7 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	return
 }
 
-func parseConfiguration() (err error) {
+func ParseConfiguration() (err error) {
 	// get admin users
 	if ADMIN_USERS != "" {
 		for _, name := range strings.Split(ADMIN_USERS, ",") {
@@ -490,17 +506,17 @@ func parseConfiguration() (err error) {
 	}
 
 	// clean paths
-	PATH_SITE = cleanPath(PATH_SITE)
-	PATH_DATA = cleanPath(PATH_DATA)
-	PATH_LOGS = cleanPath(PATH_LOGS)
-	PATH_LOCAL = cleanPath(PATH_LOCAL)
-	PATH_PIDFILE = cleanPath(PATH_PIDFILE)
-	PATH_CACHE = cleanPath(PATH_CACHE)
+	PATH_SITE = CleanPath(PATH_SITE)
+	PATH_DATA = CleanPath(PATH_DATA)
+	PATH_LOGS = CleanPath(PATH_LOGS)
+	PATH_LOCAL = CleanPath(PATH_LOCAL)
+	PATH_PIDFILE = CleanPath(PATH_PIDFILE)
+	PATH_CACHE = CleanPath(PATH_CACHE)
 
 	return
 }
 
-func cleanPath(p string) string {
+func CleanPath(p string) string {
 	if p != "" {
 		p, _ = filepath.Abs(p)
 	}

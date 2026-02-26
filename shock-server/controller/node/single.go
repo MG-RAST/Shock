@@ -1,7 +1,6 @@
 package node
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,7 +25,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
 	sc "github.com/MG-RAST/go-shock-client"
-	"github.com/MG-RAST/golib/stretchr/goweb/context"
+	"github.com/go-chi/chi/v5"
 	mgo "gopkg.in/mgo.v2"
 )
 
@@ -37,10 +36,13 @@ type responseWrapper struct {
 }
 
 // GET: /node/{id}
-func (cr *NodeController) Read(id string, ctx context.Context) error {
-	u, err := request.Authenticate(ctx.HttpRequest())
+func (cr *NodeController) Read(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	u, err := request.Authenticate(r)
 	if err != nil && err.Error() != e.NoAuth {
-		return request.AuthError(err, ctx)
+		request.AuthError(err, w, r)
+		return
 	}
 
 	// public user (no auth) can be used in some cases
@@ -48,7 +50,8 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		if conf.ANON_READ {
 			u = &user.User{Uuid: "public"}
 		} else {
-			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
+			responder.RespondWithError(w, r, http.StatusUnauthorized, e.NoAuth)
+			return
 		}
 	}
 
@@ -57,13 +60,15 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			logger.Error("err@node_Read: (node.Load) id=" + id + ": " + e.NodeNotFound)
-			return responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
+			responder.RespondWithError(w, r, http.StatusNotFound, e.NodeNotFound)
+			return
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
 			err_msg := "err@node_Read: (node.Load) id=" + id + ": " + err.Error()
 			logger.Error(err_msg)
-			return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+			responder.RespondWithError(w, r, http.StatusInternalServerError, err_msg)
+			return
 		}
 	}
 
@@ -71,11 +76,12 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 	prights := n.Acl.Check("public")
 	if rights["read"] == false && u.Admin == false && n.Acl.Owner != u.Uuid && prights["read"] == false {
 		logger.Error("err@node_Read: (Authenticate) id=" + id + ": " + e.UnAuth)
-		return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+		responder.RespondWithError(w, r, http.StatusUnauthorized, e.UnAuth)
+		return
 	}
 
 	// Gather query params
-	query := ctx.HttpRequest().URL.Query()
+	query := r.URL.Query()
 	// set defaults
 	filename := n.Id
 	if n.File.Name != "" {
@@ -104,33 +110,20 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		var data bool
 		data = n.GetRestore()
 		// this shoudl return true/false
-		return responder.RespondWithData(ctx, data)
+		responder.RespondWithData(w, r, data)
+		return
 	}
 
 	if _, ok := query["download_idx"]; ok {
 
 		// create a zip file from the idx_directory
-		//var indexfiles []os.FileInfo
 
 		indexfiles := n.IndexFiles()
-		// list all index files
-		//	logger.Infof("(Single-->Download_idx: n.IndexFiles \n) ")
-
-		//spew.Dump(n)
-		//logger.Infof("(Single-->Download_idx: indexfiles) ")
-
-		//spew.Dump(indexfiles)
 
 		var files []*file.FileInfo
 
-		//		logger.Infof("(Single-->Download_idx) ")
-
 		// process nodes
 		for _, indexfile := range indexfiles { // loop thru index files
-
-			//logger.Infof("(Single-->Download_idx: file %s) ", indexfile)
-
-			// get node
 
 			// get filereader
 			nf, err := os.Open(indexfile)
@@ -147,24 +140,15 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 
 			// add to file info
 			fileInfo.Name = path.Base(indexfile)
-			//fileInfo.Size = nf.
-			//fileInfo.ModTime = n.File.CreatedOn
-			// if _, ok := n.File.Checksum["md5"]; ok {
-			// 	fileInfo.Checksum = n.File.Checksum["md5"]
-			// }
 			files = append(files, &fileInfo)
 		}
 
 		zipfilename := fmt.Sprintf("%s.idx.zip", n.Id)
 
-		// if there are no index files, just return
-
 		//	create a read for Zip file	and hand into streamer object
-		//if (len(files) > 1) && (archiveFormat != "")
-		// create multi node / file streamer, must have archive format
 		m := &request.MultiStreamer{
 			Files:       files,
-			W:           ctx.HttpResponseWriter(),
+			W:           w,
 			ContentType: "application/octet-stream",
 			Filename:    zipfilename,
 			Archive:     "zip", // supported: tar , zip
@@ -172,10 +156,9 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		if err := m.MultiStream(); err != nil {
 			err_msg := "err:@preAuth: " + err.Error()
 			logger.Errorf("(single->download_idx) %s ", err_msg)
-			return err
 		}
 
-		return nil
+		return
 	}
 
 	// Switch though param flags
@@ -184,11 +167,13 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 	if _, ok := query["download"]; ok || download_raw {
 		if n.HasFileLock() {
 			logger.Error("err@node_Read: id=" + id + ": " + e.NodeFileLock)
-			return responder.RespondWithError(ctx, http.StatusLocked, e.NodeFileLock)
+			responder.RespondWithError(w, r, http.StatusLocked, e.NodeFileLock)
+			return
 		}
 		if !n.HasFile() {
 			logger.Error("err@node_Read: id=" + id + ": " + e.NodeNoFile)
-			return responder.RespondWithError(ctx, http.StatusBadRequest, e.NodeNoFile)
+			responder.RespondWithError(w, r, http.StatusBadRequest, e.NodeNoFile)
+			return
 		}
 
 		_, seek_ok := query["seek"]
@@ -196,7 +181,8 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			if n.Type == "subset" {
 				err_msg := "subset nodes do not currently support seek/length offset retrieval"
 				logger.Error("err@node_Read: (subset) id=" + id + ": " + err_msg)
-				return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+				return
 			}
 
 			var seek int64
@@ -208,7 +194,8 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				if err != nil {
 					err_msg := "length must be an integer value"
 					logger.Error("err@node_Read: (seek/length) id=" + id + ": " + err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+					return
 				}
 				if length > n.File.Size {
 					length = n.File.Size
@@ -219,7 +206,8 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				if err != nil {
 					err_msg := "seek must be an integer value"
 					logger.Error("err@node_Read: (seek/length) id=" + id + ": " + err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+					return
 				}
 				length = n.File.Size - seek
 			} else {
@@ -228,78 +216,83 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				if err != nil {
 					err_msg := "seek must be an integer value"
 					logger.Error("err@node_Read: (seek/length) id=" + id + ": " + err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+					return
 				}
 				length_str := query.Get("length")
 				length, err = strconv.ParseInt(length_str, 10, 0)
 				if err != nil {
 					err_msg := "length must be an integer value"
 					logger.Error("err@node_Read: (seek/length) id=" + id + ": " + err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+					return
 				}
 				if length > n.File.Size-seek {
 					length = n.File.Size - seek
 				}
 			}
-			r, err := n.FileReader()
-			defer r.Close()
+			fr, err := n.FileReader()
+			defer fr.Close()
 			if err != nil {
 				err_msg := "err@node_Read: (node.FileReader) id=" + id + ": " + err.Error()
 				logger.Error(err_msg)
-				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+				responder.RespondWithError(w, r, http.StatusInternalServerError, err_msg)
+				return
 			}
-			s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: length, Filter: fFunc, Compression: compressionFormat}
-			s.R = append(s.R, io.NewSectionReader(r, seek, length))
+			s := &request.Streamer{R: []file.SectionReader{}, W: w, ContentType: "application/octet-stream", Filename: filename, Size: length, Filter: fFunc, Compression: compressionFormat}
+			s.R = append(s.R, io.NewSectionReader(fr, seek, length))
 			if err = s.Stream(download_raw); err != nil {
 				err_msg := "err:@node_Read: (Stream) id=" + id + ": " + err.Error()
 				logger.Error(err_msg)
-				return errors.New(err_msg)
 			}
 		} else if _, ok := query["index"]; ok {
 			idxName := query.Get("index")
 			// check for lock
 			if n.HasIndexLock(idxName) {
 				logger.Error("err@node_Read: (index) id=" + id + ": " + e.NodeFileLock)
-				return responder.RespondWithError(ctx, http.StatusBadRequest, e.NodeFileLock)
+				responder.RespondWithError(w, r, http.StatusBadRequest, e.NodeFileLock)
+				return
 			}
 			//handling bam file
 			if idxName == "bai" {
 				if n.Type == "subset" {
 					err_msg := "subset nodes do not support bam indices"
 					logger.Error("err@node_Read: (index/bai) id=" + id + ": " + err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+					return
 				}
 
-				s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, Compression: compressionFormat}
+				s := &request.Streamer{R: []file.SectionReader{}, W: w, ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, Compression: compressionFormat}
 
 				var region string
 				if _, ok := query["region"]; ok {
 					//retrieve alingments overlapped with specified region
 					region = query.Get("region")
 				}
-				queries := ctx.HttpRequest().URL.Query()
+				queries := r.URL.Query()
 				argv, err := request.ParseSamtoolsArgs(queries)
 				if err != nil {
 					err_msg := "Invaid args in query url"
 					logger.Error("err@node_Read: (index/bai) id=" + id + ": " + err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+					return
 				}
 				err = s.StreamSamtools(n.FilePath(), region, argv...)
 				if err != nil {
 					err_msg := "err:@node_Read: (index/bai) id=" + id + ": " + err.Error()
 					logger.Error(err_msg)
-					return errors.New(err_msg)
 				}
-				return nil
+				return
 			}
 
 			// open file
-			r, err := n.FileReader()
-			defer r.Close()
+			fr, err := n.FileReader()
+			defer fr.Close()
 			if err != nil {
 				err_msg := "err@node_Read: (node.FileReader) id=" + id + ": " + err.Error()
 				logger.Error(err_msg)
-				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+				responder.RespondWithError(w, r, http.StatusInternalServerError, err_msg)
+				return
 			}
 
 			// load index obj and info
@@ -325,18 +318,21 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					if err != nil {
 						err_msg := "err@node_Read: (LockNode) id=" + n.Id + ": " + err.Error()
 						logger.Error(err_msg)
-						return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+						responder.RespondWithError(w, r, http.StatusInternalServerError, err_msg)
+						return
 					}
 					err = n.Save()
 					locker.NodeLockMgr.UnlockNode(n.Id)
 					if err != nil {
 						err_msg := "Size index could not be auto-generated for node that did not have one."
 						logger.Error("err@node_Read: (index/size) id=" + id + ": " + err_msg)
-						return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+						responder.RespondWithError(w, r, http.StatusInternalServerError, err_msg)
+						return
 					}
 				} else {
 					logger.Error("err@node_Read: (index) id=" + id + ": " + e.InvalidIndex)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, e.InvalidIndex)
+					responder.RespondWithError(w, r, http.StatusBadRequest, e.InvalidIndex)
+					return
 				}
 			}
 
@@ -344,14 +340,16 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			if err != nil {
 				err_msg := "err@node_Read: (DynamicIndex) id=" + id + ": " + err.Error()
 				logger.Error(err_msg)
-				return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+				return
 			}
 
 			if idx.Type() == "virtual" {
 				if n.Type == "subset" {
 					err_msg := "subset nodes do not currently support virtual indices"
 					logger.Error("err@node_Read: (index/virtual) id=" + id + ": " + err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+					return
 				}
 
 				csize := conf.CHUNK_SIZE
@@ -360,14 +358,15 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					if err != nil {
 						err_msg := "Invalid chunk_size"
 						logger.Error("err@node_Read: (index/virtual) id=" + id + ": " + err_msg)
-						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+						responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+						return
 					}
 				}
 				idx.Set(map[string]interface{}{"ChunkSize": csize})
 			}
 
 			var size int64 = 0
-			s := &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Filter: fFunc, Compression: compressionFormat}
+			s := &request.Streamer{R: []file.SectionReader{}, W: w, ContentType: "application/octet-stream", Filename: filename, Filter: fFunc, Compression: compressionFormat}
 
 			_, hasPart := query["part"]
 			if n.Type == "subset" && idxName == "chunkrecord" {
@@ -376,13 +375,15 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				if !ok {
 					err_msg := "Invalid request, record index must exist to retrieve chunkrecord index on a subset node."
 					logger.Error("err@node_Read: (index/chunkrecord) id=" + id + ": " + err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+					return
 				}
 				recordIdx, err := n.DynamicIndex(recordIdxName)
 				if err != nil {
 					err_msg := "err@node_Read: (DynamicIndex) id=" + id + ": " + err.Error()
 					logger.Error(err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+					return
 				}
 
 				if !hasPart {
@@ -392,11 +393,12 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					if err != nil {
 						err_msg := "err@node_Read: (recordIdx.Range) id=" + id + ": " + err.Error()
 						logger.Error(err_msg)
-						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+						responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+						return
 					}
 					for _, rec := range recSlice {
 						size += rec[1]
-						s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
+						s.R = append(s.R, io.NewSectionReader(fr, rec[0], rec[1]))
 					}
 				} else if hasPart {
 					// download parts
@@ -405,7 +407,8 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 						if err != nil {
 							err_msg := "err@node_Read: (idx.Range) id=" + id + ": " + err.Error()
 							logger.Error(err_msg)
-							return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+							responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+							return
 						}
 						// This gets us the parts of the chunkrecord index, but we still need to convert these to record indices.
 						for _, chunkRec := range chunkRecSlice {
@@ -415,11 +418,12 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 							if err != nil {
 								err_msg := "err@node_Read: (recordIdx.Range) id=" + id + ": " + err.Error()
 								logger.Error(err_msg)
-								return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+								responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+								return
 							}
 							for _, rec := range recSlice {
 								size += rec[1]
-								s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
+								s.R = append(s.R, io.NewSectionReader(fr, rec[0], rec[1]))
 							}
 						}
 					}
@@ -427,7 +431,8 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					// bad request
 					err_msg := "Index parameter requires part parameter"
 					logger.Error("err@node_Read: (index) id=" + id + ": " + err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+					return
 				}
 			} else {
 				if (!hasPart) && (idxInfo.Type == "subset") {
@@ -437,11 +442,12 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					if err != nil {
 						err_msg := "err@node_Read: (idx.Range) id=" + id + ": " + err.Error()
 						logger.Error(err_msg)
-						return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+						responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+						return
 					}
 					for _, rec := range recSlice {
 						size += rec[1]
-						s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
+						s.R = append(s.R, io.NewSectionReader(fr, rec[0], rec[1]))
 					}
 				} else if hasPart {
 					// download parts
@@ -452,40 +458,43 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 							if err != nil {
 								err_msg := "err@node_Read: (idx.Range) id=" + id + ": " + err.Error()
 								logger.Error(err_msg)
-								return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+								responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+								return
 							}
 							for _, rec := range recSlice {
 								size += rec[1]
-								s.R = append(s.R, io.NewSectionReader(r, rec[0], rec[1]))
+								s.R = append(s.R, io.NewSectionReader(fr, rec[0], rec[1]))
 							}
 						} else {
 							// empty node has no parts
 							if n.File.Size == 0 {
 								logger.Error("err@node_Read: (File.Size) id=" + id + ": " + e.IndexOutBounds)
-								return responder.RespondWithError(ctx, http.StatusBadRequest, e.IndexOutBounds)
+								responder.RespondWithError(w, r, http.StatusBadRequest, e.IndexOutBounds)
+								return
 							}
 							pos, length, err := idx.Part(p, n.IndexPath()+"/"+idxName+".idx", idxInfo.TotalUnits)
 							if err != nil {
 								err_msg := "err@node_Read: (idx.Part) id=" + id + ": " + err.Error()
 								logger.Error(err_msg)
-								return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+								responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+								return
 							}
 							size += length
-							s.R = append(s.R, io.NewSectionReader(r, pos, length))
+							s.R = append(s.R, io.NewSectionReader(fr, pos, length))
 						}
 					}
 				} else {
 					// bad request
 					err_msg := "Index parameter requires part parameter"
 					logger.Error("err@node_Read: (index) id=" + id + ": " + err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+					return
 				}
 			}
 			s.Size = size
 			if err = s.Stream(download_raw); err != nil {
 				err_msg := "err:@node_Read: " + err.Error()
 				logger.Error(err_msg)
-				return errors.New(err_msg)
 			}
 			// download full file
 		} else {
@@ -494,11 +503,12 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			if err != nil {
 				err_msg := "err:@node_Read: (node.FileReader) " + err.Error()
 				logger.Error(err_msg)
-				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+				responder.RespondWithError(w, r, http.StatusInternalServerError, err_msg)
+				return
 			}
 			var s *request.Streamer
 			if n.Type == "subset" {
-				s = &request.Streamer{R: []file.SectionReader{}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, Compression: compressionFormat}
+				s = &request.Streamer{R: []file.SectionReader{}, W: w, ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, Compression: compressionFormat}
 				if n.File.Size == 0 {
 					// handle empty subset file
 					s.R = append(s.R, nf)
@@ -509,28 +519,28 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 					if err != nil {
 						err_msg := "err@node_Read: (idx.Range) id=" + id + ": " + err.Error()
 						logger.Error(err_msg)
-						return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+						responder.RespondWithError(w, r, http.StatusInternalServerError, err_msg)
+						return
 					}
 					for _, rec := range recSlice {
 						s.R = append(s.R, io.NewSectionReader(nf, rec[0], rec[1]))
 					}
 				}
 			} else {
-				s = &request.Streamer{R: []file.SectionReader{nf}, W: ctx.HttpResponseWriter(), ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, Compression: compressionFormat}
+				s = &request.Streamer{R: []file.SectionReader{nf}, W: w, ContentType: "application/octet-stream", Filename: filename, Size: n.File.Size, Filter: fFunc, Compression: compressionFormat}
 			}
 			if err = s.Stream(download_raw); err != nil {
 				err_msg := "err:@node_Read: (Stream) " + err.Error()
 				logger.Error(err_msg)
-				return errors.New(err_msg)
 			}
 		}
 	} else if _, ok := query["download_url"]; ok {
 		if n.HasFileLock() {
 			logger.Error("err@node_Read: id=" + id + ": " + e.NodeFileLock)
-			return responder.RespondWithError(ctx, http.StatusLocked, e.NodeFileLock)
+			responder.RespondWithError(w, r, http.StatusLocked, e.NodeFileLock)
 		} else if !n.HasFile() {
 			logger.Error("err:@node_Read: (download_url) " + e.NodeNoFile)
-			return responder.RespondWithError(ctx, http.StatusBadRequest, e.NodeNoFile)
+			responder.RespondWithError(w, r, http.StatusBadRequest, e.NodeNoFile)
 		} else {
 			preauthFilename := filename
 			// add options
@@ -547,17 +557,17 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			if p, err := preauth.New(util.RandString(20), "download", []string{n.Id}, options); err != nil {
 				err_msg := "err:@node_Read: (download_url) " + err.Error()
 				logger.Error(err_msg)
-				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+				responder.RespondWithError(w, r, http.StatusInternalServerError, err_msg)
 			} else {
 				data := preauth.PreAuthResponse{
-					Url:       util.ApiUrl(ctx) + "/preauth/" + p.Id,
+					Url:       util.ApiUrl(r) + "/preauth/" + p.Id,
 					ValidTill: p.ValidTill.Format(time.ANSIC),
 					Format:    options["compression"],
 					Filename:  preauthFilename,
 					Files:     1,
 					Size:      n.File.Size,
 				}
-				return responder.RespondWithData(ctx, data)
+				responder.RespondWithData(w, r, data)
 			}
 		}
 	} else if _, ok := query["download_post"]; ok {
@@ -567,7 +577,8 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		if n.Type == "subset" {
 			err_msg := "subset nodes do not currently support download_post operation"
 			logger.Error("err@node_Read: (download_post) id=" + id + ": " + err_msg)
-			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+			responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+			return
 		}
 
 		post_url := ""
@@ -576,8 +587,10 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 		} else {
 			err_msg := "Request type requires post_url parameter of where to post new Shock node"
 			logger.Error("err@node_Read: (download_post) id=" + id + ": " + err_msg)
-			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+			responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+			return
 		}
+		_ = post_url
 
 		post_opts := map[string]int{
 			"post_data": 1,
@@ -593,14 +606,15 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 				} else {
 					err_msg := "Parameter " + k + " must be either 0 or 1"
 					logger.Error("err@node_Read: (download_post) id=" + id + ": " + err_msg)
-					return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+					responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+					return
 				}
 			}
 		}
 
 		var authToken string
-		if _, hasAuth := ctx.HttpRequest().Header["Authorization"]; hasAuth {
-			authToken = ctx.HttpRequest().Header.Get("Authorization")
+		if _, hasAuth := r.Header["Authorization"]; hasAuth {
+			authToken = r.Header.Get("Authorization")
 		}
 		client := sc.NewShockClient(post_url, authToken, false)
 
@@ -616,22 +630,22 @@ func (cr *NodeController) Read(id string, ctx context.Context) error {
 			if !ok {
 				err_msg := "Node corrupted, got type " + reflect.TypeOf(n.Attributes).String() + " for attributes"
 				logger.Error("err@node_Read: (download_post) id=" + id + ": " + err_msg)
-				return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+				return
 			}
 		}
 
-		node, err := client.PostFileWithAttributes(uploadPath, n.File.Name, nodeAttr)
+		postedNode, err := client.PostFileWithAttributes(uploadPath, n.File.Name, nodeAttr)
 		if err != nil {
 			err_msg := "err:@node_Read POST: " + err.Error()
 			logger.Error(err_msg)
-			return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+			responder.RespondWithError(w, r, http.StatusInternalServerError, err_msg)
+			return
 		}
-		return responder.RespondWithData(ctx, node)
+		responder.RespondWithData(w, r, postedNode)
 
 	} else {
 		// Base case respond with node in json
-		return responder.RespondWithData(ctx, n)
+		responder.RespondWithData(w, r, n)
 	}
-
-	return nil
 }

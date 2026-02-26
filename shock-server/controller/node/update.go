@@ -12,15 +12,18 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
-	"github.com/MG-RAST/golib/stretchr/goweb/context"
+	"github.com/go-chi/chi/v5"
 	mgo "gopkg.in/mgo.v2"
 )
 
 // PUT: /node/{id} -> multipart-form
-func (cr *NodeController) Replace(id string, ctx context.Context) (err error) {
-	u, err := request.Authenticate(ctx.HttpRequest())
+func (cr *NodeController) Replace(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	u, err := request.Authenticate(r)
 	if err != nil && err.Error() != e.NoAuth {
-		return request.AuthError(err, ctx)
+		request.AuthError(err, w, r)
+		return
 	}
 
 	// public user (no auth) can be used in some cases
@@ -28,7 +31,8 @@ func (cr *NodeController) Replace(id string, ctx context.Context) (err error) {
 		if conf.ANON_WRITE {
 			u = &user.User{Uuid: "public"}
 		} else {
-			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
+			responder.RespondWithError(w, r, http.StatusUnauthorized, e.NoAuth)
+			return
 		}
 	}
 
@@ -37,7 +41,8 @@ func (cr *NodeController) Replace(id string, ctx context.Context) (err error) {
 	if err != nil {
 		err_msg := "err@node_Update: (LockMgr.LockNode) id=" + id + ": " + err.Error()
 		logger.Error(err_msg)
-		return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+		responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+		return
 	}
 	defer locker.NodeLockMgr.UnlockNode(id)
 
@@ -46,13 +51,15 @@ func (cr *NodeController) Replace(id string, ctx context.Context) (err error) {
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			logger.Error("err@node_Update: (node.Load) id=" + id + ": " + e.NodeNotFound)
-			return responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
+			responder.RespondWithError(w, r, http.StatusNotFound, e.NodeNotFound)
+			return
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
 			err_msg := "err@node_Update: (node.Load) " + id + ": " + err.Error()
 			logger.Error(err_msg)
-			return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+			responder.RespondWithError(w, r, http.StatusInternalServerError, err_msg)
+			return
 		}
 	}
 
@@ -60,26 +67,29 @@ func (cr *NodeController) Replace(id string, ctx context.Context) (err error) {
 	prights := n.Acl.Check("public")
 	if rights["write"] == false && u.Admin == false && n.Acl.Owner != u.Uuid && prights["write"] == false {
 		logger.Error("err@node_Update: (Authenticate) id=" + id + ": " + e.UnAuth)
-		return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+		responder.RespondWithError(w, r, http.StatusUnauthorized, e.UnAuth)
+		return
 	}
 
 	if conf.LOG_PERF {
 		logger.Perf("START PUT data: " + id)
 	}
-	params, files, err := request.ParseMultipartForm(ctx.HttpRequest())
+	params, files, err := request.ParseMultipartForm(r)
 	// clean up temp dir !!
 	defer file.RemoveAllFormFiles(files)
 	if err != nil {
 		err_msg := "err@node_Update: (ParseMultipartForm) id=" + id + ": " + err.Error()
 		logger.Error(err_msg)
-		return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+		responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+		return
 	}
 
 	// need delete rights to set expiration
 	if _, hasExpiration := params["expiration"]; hasExpiration {
 		if rights["delete"] == false && u.Admin == false && n.Acl.Owner != u.Uuid && prights["delete"] == false {
 			logger.Error("err@node_Update: (Authenticate) id=" + id + ": " + e.UnAuth)
-			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+			responder.RespondWithError(w, r, http.StatusUnauthorized, e.UnAuth)
+			return
 		}
 	}
 
@@ -93,8 +103,7 @@ func (cr *NodeController) Replace(id string, ctx context.Context) (err error) {
 		rights := copy_data_node.Acl.Check(u.Uuid)
 		if copy_data_node.Acl.Owner != u.Uuid && u.Admin == false && copy_data_node.Acl.Owner != "public" && rights["read"] == false {
 			logger.Error("err@node_Update: (Authenticate) id=" + copy_data_id + ": " + e.UnAuth)
-			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
-			err = request.AuthError(err, ctx)
+			responder.RespondWithError(w, r, http.StatusUnauthorized, e.UnAuth)
 			return
 		}
 	}
@@ -109,8 +118,7 @@ func (cr *NodeController) Replace(id string, ctx context.Context) (err error) {
 		rights := parentNode.Acl.Check(u.Uuid)
 		if parentNode.Acl.Owner != u.Uuid && u.Admin == false && parentNode.Acl.Owner != "public" && rights["read"] == false {
 			logger.Error("err@node_Update: (Authenticate) id=" + parentNode_id + ": " + e.UnAuth)
-			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
-			err = request.AuthError(err, ctx)
+			responder.RespondWithError(w, r, http.StatusUnauthorized, e.UnAuth)
 			return
 		}
 	}
@@ -119,11 +127,11 @@ func (cr *NodeController) Replace(id string, ctx context.Context) (err error) {
 	if err != nil {
 		err_msg := "err@node_Update: (node.Update) id=" + id + ": " + err.Error()
 		logger.Error(err_msg)
-		return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+		responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+		return
 	}
-	responder.RespondWithData(ctx, n)
+	responder.RespondWithData(w, r, n)
 	if conf.LOG_PERF {
 		logger.Perf("END PUT data: " + id)
 	}
-	return nil
 }

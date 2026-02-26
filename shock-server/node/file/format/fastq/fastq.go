@@ -288,8 +288,6 @@ func (self *Writer) Write(s *seq.Seq) (n int, err error) {
 	} else {
 		return 0, errors.New("Sequence length and quality length do not match")
 	}
-
-	return
 }
 
 // Format a single sequence into fastq string
