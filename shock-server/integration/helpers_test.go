@@ -49,12 +49,35 @@ type paginatedResponse struct {
 	TotalCount int             `json:"total_count"`
 }
 
+// nodeLocation represents a storage location entry on a node
+type nodeLocation struct {
+	ID            string  `json:"id"`
+	Stored        bool    `json:"stored,omitempty"`
+	RequestedDate *string `json:"requestedDate,omitempty"`
+}
+
+// locationConfigData represents fields from GET /location/{loc}/info
+type locationConfigData struct {
+	ID          string `json:"ID"`
+	Type        string `json:"type"`
+	URL         string `json:"url"`
+	Bucket      string `json:"bucket"`
+	Region      string `json:"region"`
+	Persistent  bool   `json:"persistent"`
+	Description string `json:"Description"`
+	Priority    int    `json:"priority"`
+	MinPriority int    `json:"minpriority"`
+	Tier        int    `json:"tier"`
+	Cost        int    `json:"cost"`
+}
+
 // nodeData represents the essential fields of a node returned by the API
 type nodeData struct {
 	Id           string                 `json:"id"`
 	File         nodeFile               `json:"file"`
 	Attributes   map[string]interface{} `json:"attributes"`
 	Tags         []string               `json:"tags"`
+	Locations    []nodeLocation         `json:"locations"`
 	CreatedOn    string                 `json:"created_on"`
 	LastModified string                 `json:"last_modified"`
 	Type         string                 `json:"type"`
@@ -361,4 +384,79 @@ func cleanupNode(t *testing.T, auth, nodeID string) {
 	t.Cleanup(func() {
 		deleteNode(t, auth, nodeID)
 	})
+}
+
+// parseLocationConfigData extracts location config from a standard response
+func parseLocationConfigData(t *testing.T, sr standardResponse) locationConfigData {
+	t.Helper()
+	var lcd locationConfigData
+	err := json.Unmarshal(sr.Data, &lcd)
+	if err != nil {
+		t.Fatalf("unmarshalling location config data: %s: %v", string(sr.Data), err)
+	}
+	return lcd
+}
+
+// parseLocationList extracts a list of node locations from a standard response
+func parseLocationList(t *testing.T, sr standardResponse) []nodeLocation {
+	t.Helper()
+	var locs []nodeLocation
+	err := json.Unmarshal(sr.Data, &locs)
+	if err != nil {
+		t.Fatalf("unmarshalling location list: %s: %v", string(sr.Data), err)
+	}
+	return locs
+}
+
+// parseSingleLocation extracts a single node location from a standard response
+func parseSingleLocation(t *testing.T, sr standardResponse) nodeLocation {
+	t.Helper()
+	var loc nodeLocation
+	err := json.Unmarshal(sr.Data, &loc)
+	if err != nil {
+		t.Fatalf("unmarshalling single location: %s: %v", string(sr.Data), err)
+	}
+	return loc
+}
+
+// waitForLocation polls GET /node/{nid} with exponential backoff until the
+// specified location appears with Stored: true. Returns the final nodeData and
+// whether the location was found within the timeout (30s).
+func waitForLocation(t *testing.T, auth, nodeID, locationID string, timeout time.Duration) (nodeData, bool) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	interval := 500 * time.Millisecond
+	maxInterval := 4 * time.Second
+
+	for time.Now().Before(deadline) {
+		resp := doRequest(t, "GET", "/node/"+nodeID, auth, nil, "")
+		sr := parseStandardResponse(t, resp)
+		if sr.Status != http.StatusOK {
+			t.Fatalf("waitForLocation: expected 200 getting node, got %d", sr.Status)
+		}
+		nd := parseNodeData(t, sr)
+
+		for _, loc := range nd.Locations {
+			if loc.ID == locationID && loc.Stored {
+				return nd, true
+			}
+		}
+
+		time.Sleep(interval)
+		interval *= 2
+		if interval > maxInterval {
+			interval = maxInterval
+		}
+	}
+
+	// Final attempt
+	resp := doRequest(t, "GET", "/node/"+nodeID, auth, nil, "")
+	sr := parseStandardResponse(t, resp)
+	nd := parseNodeData(t, sr)
+	for _, loc := range nd.Locations {
+		if loc.ID == locationID && loc.Stored {
+			return nd, true
+		}
+	}
+	return nd, false
 }
