@@ -22,7 +22,6 @@ func TestNodeCreation(t *testing.T) {
 		Fullname:     "Test User",
 		Email:        "test@example.com",
 		Admin:        false,
-		CustomFields: map[string][]string{},
 	}
 
 	// Create a temporary file for testing
@@ -83,7 +82,6 @@ func TestNodeFileOperations(t *testing.T) {
 		Fullname:     "Test User",
 		Email:        "test@example.com",
 		Admin:        false,
-		CustomFields: map[string][]string{},
 	}
 
 	// Create a new node without a file
@@ -150,7 +148,6 @@ func TestNodeAttributes(t *testing.T) {
 		Fullname:     "Test User",
 		Email:        "test@example.com",
 		Admin:        false,
-		CustomFields: map[string][]string{},
 	}
 
 	// Create a new node
@@ -221,7 +218,6 @@ func TestNodeExpiration(t *testing.T) {
 		Fullname:     "Test User",
 		Email:        "test@example.com",
 		Admin:        false,
-		CustomFields: map[string][]string{},
 	}
 
 	// Create a new node

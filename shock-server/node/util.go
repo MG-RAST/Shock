@@ -233,7 +233,6 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 	functionName := "S3Download"
 
 	itemkey := fmt.Sprintf("%s.data", uuid)
-	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
 
 	//fmt.Printf("(%s) downloading node: %s \n", functionName, uuid)
 
@@ -280,44 +279,6 @@ func S3Download(uuid string, nodeInstance *Node, location *conf.LocationConfig) 
 	}
 
 	// IDX not implemented
-	return
-	// CONTINIUE HERE after API is updated
-
-	// ##############################################################################
-	// ##############################################################################
-	// ##############################################################################
-	//index bits now
-	tmpfile, err = ioutil.TempFile(conf.PATH_CACHE, "")
-	if err != nil {
-		log.Fatalf("(%s) cannot create temporary file: %s [Err: %s]", functionName, uuid, err.Error())
-		return
-	}
-	tmpfile.Close()
-
-	argString = fmt.Sprintf("%s --object=%s", baseArgString, indexfile)
-	args = strings.Fields(argString)
-	cmd = exec.Command(args[0], args[1:]...)
-
-	// passing parameters to external program via ENV variables, see https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html
-	// this is more secure than cmd-line
-	cmd.Env = newEnv
-
-	// run and capture the output
-	out, err = cmd.Output()
-	if err != nil {
-		logger.Debug(1, "(%s) cmd.Run(%s) failed with %s\n", functionName, cmd, err)
-		fmt.Printf("(%s) cmd.Run(%s) failed with %s\n", functionName, cmd, err.Error())
-		err = nil
-		return
-	}
-
-	//logger.Infof("Downloaded: %s (%d Bytes) \n", file.Name(), numBytes)
-	err = handleIdxZipFile(tmpfile, uuid, "S3Download")
-	if err != nil {
-		logger.Debug(3, "(S3Download) error moving index directory structure and symkink into place for : %s [Err: %s]", uuid, err.Error())
-		return
-	}
-
 	return
 }
 
@@ -778,9 +739,7 @@ func DaosDownload(uuid string, nodeInstance *Node) (err error, md5sum string) {
 // ShockDownload download a file from a Shock server
 func ShockDownload(uuid string, nodeInstance *Node, location *conf.LocationConfig) (err error, md5sum string) {
 
-	funcName := "ShockDownload"
 	itemkey := fmt.Sprintf("%s.data", uuid)
-	indexfile := fmt.Sprintf("%s.idx.zip", uuid) // the zipped contents of the idx directory in S3
 
 	tmpfile, err := ioutil.TempFile(conf.PATH_CACHE, "")
 	if err != nil {
@@ -864,42 +823,7 @@ func ShockDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 	defer tmpfile.Close()
 	defer os.Remove(tmpfile.Name())
 
-	// END HERE - index file down;oad not supported
-	return
-	// DONE
-
-	url = fmt.Sprintf("%s/%s.?download", location.URL, indexfile)
-
-	log.Printf("(%s) Getting IDX %s", funcName, indexfile)
-
-	// Get the data
-	resp, err = http.Get(url)
-	if err != nil {
-		log.Printf("(ShockDownload) cannot download IDX file: %s [Err: %s]", itemkey, err.Error())
-		// return
-	}
-	defer resp.Body.Close()
-
-	// Check server response
-	if resp.StatusCode != http.StatusOK {
-		err = fmt.Errorf("bad status: %s", resp.Status)
-		return
-	} else {
-		log.Printf("(%s) Response  %s", funcName, resp.Status)
-		// Writer the body to file
-		_, err = io.Copy(tmpfile, resp.Body)
-		if err != nil {
-			logger.Debug(1, "(ShockDownload) Unable to download item %q for %s, %v", indexfile, indexfile, err)
-			return
-		}
-		// unzip the index file
-		err = handleIdxZipFile(tmpfile, uuid, "ShockDownload")
-		if err != nil {
-			logger.Debug(3, "(ShockDownload) error moving index directory structures and symkink into place for : %s [Err: %s]", uuid, err.Error())
-			return
-		}
-	}
-
+	// END HERE - index file download not supported
 	return
 }
 
@@ -988,14 +912,14 @@ func handleIdxZipFile(fp *os.File, uuid string, funcName string) (err error) {
 	_, err = Unzip(indexfile, cacheindexpath) // unzip into idx folder
 	if err != nil {
 		// debug output
-		err = fmt.Errorf("(%s) error decompressing d: %s", err.Error())
+		err = fmt.Errorf("(%s) error decompressing: %s", funcName, err.Error())
 		return
 	}
 	// remove the zip file
 	err = os.Remove(indextemppath)
 	if err != nil {
 		// debug output
-		err = fmt.Errorf("(%s) error removing temp file d: %s", err.Error())
+		err = fmt.Errorf("(%s) error removing temp file: %s", funcName, err.Error())
 		return
 	}
 
@@ -1028,7 +952,7 @@ func handleDataFile(filename string, uuid string, funcName string) (err error) {
 
 	in, err := os.Open(filename)
 	if err != nil {
-		log.Fatalf("(%s) Cannot open file %s for reading [%s]", filename, err.Error())
+		log.Fatalf("(%s) Cannot open file %s for reading [%s]", funcName, filename, err.Error())
 		return
 	}
 	in.Close()
@@ -1054,7 +978,7 @@ func handleDataFile(filename string, uuid string, funcName string) (err error) {
 	// create a handle for the cache item here
 	err = os.Rename(filename, cacheitemfile) // move the tmpfile into the correct cache path
 	if err != nil {
-		logger.Infof("(%s) moving tmpfile (%s) to new path (%) failed: %s FAILED", funcName, filename, cacheitemfile)
+		logger.Infof("(%s) moving tmpfile (%s) to new path (%s) failed: %s", funcName, filename, cacheitemfile, err.Error())
 		return
 	}
 	//logger.Infof("(FMOpen-> handleDataFile) past create local Cache file for uuid: %s at Path: %s [Err: %s]", funcName, uuid, cacheitempath, err.Error())

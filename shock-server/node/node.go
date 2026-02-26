@@ -447,12 +447,12 @@ func (node *Node) Delete() (deleted bool, err error) {
 
 	err = dbDelete(bson.M{"id": node.Id})
 	if err != nil {
-		logger.Debug(2, "(Node->Delete) we failed to delete %s from Mongo database", node.Id, err.Error())
+		logger.Debug(2, "(Node->Delete) we failed to delete %s from Mongo database: %s", node.Id, err.Error())
 		return
 	}
 	err = node.Rmdir()
 	if err != nil {
-		logger.Debug(2, "(Node->Delete) we failed to delete %s from disk", node.Id, err.Error())
+		logger.Debug(2, "(Node->Delete) we failed to delete %s from disk: %s", node.Id, err.Error())
 		return
 	}
 	deleted = true
@@ -484,7 +484,7 @@ LocationsLoop:
 		// delete only if other locations exist
 		locObj, ok := conf.LocationsMap[loc.ID]
 		if !ok {
-			logger.Errorf("(Reaper-->FileReaper) location %s is not defined in this server instance \n ", loc)
+			logger.Errorf("(Reaper-->FileReaper) location %s is not defined in this server instance", loc.ID)
 			continue LocationsLoop
 		}
 		//fmt.Printf("(Reaper-->FileReaper) locObj.Persistent =  %b  \n ", locObj.Persistent)
