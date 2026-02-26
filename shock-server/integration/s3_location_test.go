@@ -2,6 +2,7 @@ package integration_test
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -9,14 +10,21 @@ import (
 )
 
 // requireS3 skips the test if the Shock server has no "s3" location configured.
-// This allows S3 tests to coexist in the same package with non-S3 tests.
+// Only skips for the specific "not found" error; other failures are real errors.
 func requireS3(t *testing.T) {
 	t.Helper()
 	resp := doRequest(t, "GET", "/location/s3/info", adminAuth, nil, "")
 	sr := parseStandardResponse(t, resp)
-	if sr.Status != http.StatusOK {
-		t.Skip("skipping: server has no S3 location configured")
+	if sr.Status == http.StatusOK {
+		return
 	}
+	// Server returns 500 with "Location s3 not found" when unconfigured
+	for _, e := range sr.Error {
+		if strings.Contains(e, "not found") {
+			t.Skip("skipping: server has no S3 location configured")
+		}
+	}
+	t.Fatalf("unexpected response from /location/s3/info: status=%d error=%q", sr.Status, sr.Error)
 }
 
 // ---------------------------------------------------------------------------

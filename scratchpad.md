@@ -39,7 +39,7 @@
 ### Architecture
 - MinIO as S3 backend (port 9000 API, 9001 console)
 - minio-init one-shot creates `shock-data` bucket
-- mongo-seed creates admin/user1 accounts in shock_minio_test DB
+- mongo-seed creates admin/user1 accounts in shock_integration_test DB
 - Shock server reads config from /etc/shock.d/ (conf + Locations.yaml + Types.yaml mounted individually)
 - Test runner uses SHOCK_SERVER_URL=http://shock-server:7445
 

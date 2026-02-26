@@ -129,10 +129,28 @@ func TestMain(m *testing.M) {
 			fmt.Fprintf(os.Stderr, "ERROR: reading config %s: %s\n", configFile, err.Error())
 			os.Exit(1)
 		}
-		conf.MONGODB_HOSTS, _ = c.String("Mongodb", "hosts")
-		conf.MONGODB_DATABASE, _ = c.String("Mongodb", "database")
+		mongoHosts, err := c.String("Mongodb", "hosts")
+		if err != nil || mongoHosts == "" {
+			fmt.Fprintf(os.Stderr, "ERROR: missing or invalid [Mongodb] hosts in %s: %v\n", configFile, err)
+			os.Exit(1)
+		}
+		conf.MONGODB_HOSTS = mongoHosts
+
+		mongoDB, err := c.String("Mongodb", "database")
+		if err != nil || mongoDB == "" {
+			fmt.Fprintf(os.Stderr, "ERROR: missing or invalid [Mongodb] database in %s: %v\n", configFile, err)
+			os.Exit(1)
+		}
+		conf.MONGODB_DATABASE = mongoDB
+
 		conf.LOG_OUTPUT, _ = c.String("Log", "logoutput")
+		if conf.LOG_OUTPUT == "" {
+			conf.LOG_OUTPUT = "console"
+		}
 		conf.PATH_LOGS, _ = c.String("Paths", "logs")
+		if conf.PATH_LOGS == "" {
+			conf.PATH_LOGS = "/var/log/shock"
+		}
 	} else {
 		mongoHost := os.Getenv("MONGO_HOST")
 		if mongoHost == "" {
@@ -452,6 +470,9 @@ func waitForLocation(t *testing.T, auth, nodeID, locationID string, timeout time
 	// Final attempt
 	resp := doRequest(t, "GET", "/node/"+nodeID, auth, nil, "")
 	sr := parseStandardResponse(t, resp)
+	if sr.Status != http.StatusOK {
+		t.Fatalf("waitForLocation: expected 200 getting node on final attempt, got %d", sr.Status)
+	}
 	nd := parseNodeData(t, sr)
 	for _, loc := range nd.Locations {
 		if loc.ID == locationID && loc.Stored {

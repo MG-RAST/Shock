@@ -27,6 +27,7 @@ Types:
     - gif
     - tif
     - png
+- ID: "cv"
   Description: "Controlled Vocabulary"
   Priority: 7
 - ID: "ontology"
