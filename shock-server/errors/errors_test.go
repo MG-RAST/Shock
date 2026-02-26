@@ -112,7 +112,7 @@ func TestErrorConstants(t *testing.T) {
 	assert.NotEmpty(t, errors.ClientNoEligibleTokens, "ClientNoEligibleTokens should not be empty")
 	assert.NotEmpty(t, errors.IndexNoFile, "IndexNoFile should not be empty")
 	assert.NotEmpty(t, errors.IndexNoAvail, "IndexNoAvail should not be empty")
-	assert.NotEmpty(t, errors.IndexOutOfBounds, "IndexOutOfBounds should not be empty")
+	assert.NotEmpty(t, errors.IndexOutBounds, "IndexOutBounds should not be empty")
 	assert.NotEmpty(t, errors.IndexTypeMismatch, "IndexTypeMismatch should not be empty")
 	assert.NotEmpty(t, errors.InvalidAuth, "InvalidAuth should not be empty")
 	assert.NotEmpty(t, errors.InvalidIndex, "InvalidIndex should not be empty")

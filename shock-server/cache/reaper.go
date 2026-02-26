@@ -41,7 +41,7 @@ func InitCacheReaper() {
 		ttl: ttl,
 	}
 
-	logger.Infof("(InitCacheReaper) CacheReaper started with TTL: %s", conf.CACHE_TTL)
+	logger.Infof("(InitCacheReaper) CacheReaper initialized with TTL: %s", conf.CACHE_TTL)
 }
 
 // Handle runs the cache cleanup loop

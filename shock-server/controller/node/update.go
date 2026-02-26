@@ -104,7 +104,6 @@ func (cr *NodeController) Replace(w http.ResponseWriter, r *http.Request) {
 		if copy_data_node.Acl.Owner != u.Uuid && u.Admin == false && copy_data_node.Acl.Owner != "public" && rights["read"] == false {
 			logger.Error("err@node_Update: (Authenticate) id=" + copy_data_id + ": " + e.UnAuth)
 			responder.RespondWithError(w, r, http.StatusUnauthorized, e.UnAuth)
-			request.AuthError(err, w, r)
 			return
 		}
 	}
@@ -120,7 +119,6 @@ func (cr *NodeController) Replace(w http.ResponseWriter, r *http.Request) {
 		if parentNode.Acl.Owner != u.Uuid && u.Admin == false && parentNode.Acl.Owner != "public" && rights["read"] == false {
 			logger.Error("err@node_Update: (Authenticate) id=" + parentNode_id + ": " + e.UnAuth)
 			responder.RespondWithError(w, r, http.StatusUnauthorized, e.UnAuth)
-			request.AuthError(err, w, r)
 			return
 		}
 	}

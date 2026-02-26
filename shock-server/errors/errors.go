@@ -37,7 +37,6 @@ const (
 	InvalidIndexForFilter    = "Invalid index for filter"
 	InvalidIndexNoAvail      = "Invalid index not available"
 	IndexOutBounds           = "Index record out of bounds"
-	IndexOutOfBounds         = "Index record out of bounds"
 	IndexNoFile              = "Index file is missing"
 	IndexExists              = "Index already exists"
 	IndexNotFound            = "Index not found"

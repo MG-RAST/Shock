@@ -209,3 +209,39 @@ func TestConcurrentAccess(t *testing.T) {
 
 	// This test is mainly to ensure that there are no race conditions or panics
 }
+
+// TestParseTTL tests the ParseTTL function
+func TestParseTTL(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected time.Duration
+	}{
+		{"minutes", "30M", 30 * time.Minute},
+		{"hours", "24H", 24 * time.Hour},
+		{"days", "7D", 7 * 24 * time.Hour},
+		{"one minute", "1M", 1 * time.Minute},
+		{"one hour", "1H", 1 * time.Hour},
+		{"one day", "1D", 24 * time.Hour},
+		{"large value", "365D", 365 * 24 * time.Hour},
+		{"zero minutes", "0M", 0},
+		{"zero hours", "0H", 0},
+		{"zero days", "0D", 0},
+		{"empty string", "", 0},
+		{"lowercase unit", "24h", 0},
+		{"no unit", "24", 0},
+		{"no value", "H", 0},
+		{"invalid string", "abc", 0},
+		{"whitespace", " 24H ", 0},
+		{"negative", "-1H", 0},
+		{"decimal", "1.5H", 0},
+		{"wrong unit", "24S", 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := cache.ParseTTL(tt.input)
+			assert.Equal(t, tt.expected, result, "ParseTTL(%q) should return %v", tt.input, tt.expected)
+		})
+	}
+}

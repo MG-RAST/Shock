@@ -19,11 +19,6 @@ services:
       - SHOCK_AUTH=basic
       - SHOCK_ADMIN_USERS=test_admin
       - SHOCK_SERVER_URL=http://shock-server-test:7445
-      - GO_TEST_ARGS=${GO_TEST_ARGS:-./...}
-      - GO_TEST_COVERAGE=${GO_TEST_COVERAGE:-false}
-      - GO_TEST_COVERAGE_FILE=${GO_TEST_COVERAGE_FILE:-/test-output/coverage.out}
-      - GO_TEST_COVERAGE_HTML=${GO_TEST_COVERAGE_HTML:-/test-output/coverage.html}
-      - GO_TEST_RESULTS_FILE=${GO_TEST_RESULTS_FILE:-/test-output/test-results.log}
     volumes:
       - .:/go/src/github.com/MG-RAST/Shock
       - ./test-output:/test-output

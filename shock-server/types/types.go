@@ -20,7 +20,6 @@ func TypeRequest(w http.ResponseWriter, r *http.Request) {
 	typeID := chi.URLParam(r, "type")
 	function := chi.URLParam(r, "function")
 
-	fmt.Printf("v received typeID: %s\n", typeID)
 	logger.Debug(2, "(TypeRequest) received typeID: %s", typeID)
 
 	rmeth := r.Method
@@ -41,13 +40,13 @@ func TypeRequest(w http.ResponseWriter, r *http.Request) {
 	if (u != nil) && (!u.Admin) && conf.USE_AUTH {
 		errMsg := e.UnAuth
 		logger.Debug(2, "(TypeRequest) attempt to use as non admin (user: %s)", u.Username)
-		responder.RespondWithError(w, r, http.StatusInternalServerError, errMsg)
+		responder.RespondWithError(w, r, http.StatusForbidden, errMsg)
 		return
 	}
 
 	if rmeth != "GET" {
 		errMsg := fmt.Sprintf("(TypeRequest) %s not supported", rmeth)
-		responder.RespondWithError(w, r, http.StatusInternalServerError, errMsg)
+		responder.RespondWithError(w, r, http.StatusMethodNotAllowed, errMsg)
 		return
 	}
 

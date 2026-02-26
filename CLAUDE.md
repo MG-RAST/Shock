@@ -48,7 +48,7 @@ Test utilities are available in `shock-server/test/` with mock implementations f
 ## Architecture
 
 ### Entry Point
-- `shock-server/main.go` - Server initialization and HTTP routing via goweb
+- `shock-server/main.go` - Server initialization and HTTP routing via chi
 
 ### Core Packages
 
@@ -82,7 +82,7 @@ REST API → Controllers → Node Package → MongoDB (metadata) + Filesystem/Cl
 
 ## Dependencies
 
-- **Go 1.21.4**
+- **Go 1.22**
 - **MongoDB** - Required for metadata storage
 - **gopkg.in/mgo.v2** - MongoDB driver
 - **github.com/stretchr/testify** - Testing assertions
