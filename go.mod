@@ -1,6 +1,6 @@
 module github.com/MG-RAST/Shock
 
-go 1.21.4
+go 1.22
 
 require (
 	cloud.google.com/go v0.45.2-0.20190912001407-6ae710637747
@@ -10,6 +10,7 @@ require (
 	github.com/MG-RAST/golib v0.0.0-20190510221542-86643de6f9e0
 	github.com/aws/aws-sdk-go v1.23.16-0.20190904183301-ed1c1dc0f009
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
+	github.com/go-chi/chi/v5 v5.2.5
 	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6
 	github.com/golang/protobuf v1.3.3-0.20190827175835-822fe56949f5
 	github.com/googleapis/gax-go/v2 v2.0.6-0.20190829211521-e18837313485

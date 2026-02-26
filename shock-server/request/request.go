@@ -27,7 +27,6 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
 	"github.com/MG-RAST/golib/httpclient"
-	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"github.com/jum/tinyftp"
 )
 
@@ -71,18 +70,18 @@ func Authenticate(req *http.Request) (u *user.User, err error) {
 }
 
 // AuthError _
-func AuthError(err error, ctx context.Context) error {
+func AuthError(err error, w http.ResponseWriter, r *http.Request) error {
 
 	if conf.DEBUG_AUTH {
-		return responder.RespondWithError(ctx, http.StatusBadRequest, err.Error())
+		return responder.RespondWithError(w, r, http.StatusBadRequest, err.Error())
 	}
 
 	if err.Error() == e.InvalidAuth {
-		return responder.RespondWithError(ctx, http.StatusBadRequest, "Invalid authorization header or content")
+		return responder.RespondWithError(w, r, http.StatusBadRequest, "Invalid authorization header or content")
 	}
 	err_msg := "Error at Auth: " + err.Error()
 	logger.Error(err_msg)
-	return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+	return responder.RespondWithError(w, r, http.StatusInternalServerError, err_msg)
 }
 
 // DataUpload helper function to create a node from an http data post (not multi-part)

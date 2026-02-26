@@ -13,7 +13,6 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
 	"github.com/MG-RAST/golib/go-uuid/uuid"
-	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	"gopkg.in/mgo.v2/bson"
 	"net/http"
 	"regexp"
@@ -34,14 +33,15 @@ const (
 // GET: /node
 // To do:
 // - Iterate node queries
-func (cr *NodeController) ReadMany(ctx context.Context) error {
-	u, err := request.Authenticate(ctx.HttpRequest())
+func (cr *NodeController) ReadMany(w http.ResponseWriter, r *http.Request) {
+	u, err := request.Authenticate(r)
 	if err != nil && err.Error() != e.NoAuth {
-		return request.AuthError(err, ctx)
+		request.AuthError(err, w, r)
+		return
 	}
 
 	// Gather query params
-	query := ctx.HttpRequest().URL.Query()
+	query := r.URL.Query()
 
 	// Setup query and nodes objects
 	// Note: query is composed of 3 sub-query objects:
@@ -65,7 +65,8 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 			// select on only nodes that are publicly readable
 			qPerm["acl.read"] = "public"
 		} else {
-			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
+			responder.RespondWithError(w, r, http.StatusUnauthorized, e.NoAuth)
+			return
 		}
 	}
 
@@ -124,7 +125,8 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 						if err = u.SetMongoInfo(); err != nil {
 							err_msg := "err@node_ReadMany: (SetMongoInfo) " + err.Error()
 							logger.Error(err_msg)
-							return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+							responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+							return
 						}
 						AclsMArray = append(AclsMArray, bson.M{"acl." + atype: u.Uuid})
 					}
@@ -152,15 +154,18 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 		if !node.HasAttributeField(dField) {
 			err_msg := "unable to run distinct query on non-indexed attributes field: " + dField
 			logger.Error("err@node_ReadMany: (HasAttributeField) " + err_msg)
-			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+			responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+			return
 		}
 		results, err := node.DbFindDistinct(q, dField)
 		if err != nil {
 			err_msg := "err@node_ReadMany: (DbFindDistinct) " + err.Error()
 			logger.Error(err_msg)
-			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+			responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+			return
 		}
-		return responder.RespondWithData(ctx, results)
+		responder.RespondWithData(w, r, results)
+		return
 	}
 
 	// defaults
@@ -197,7 +202,8 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 	if err != nil {
 		err_msg := "err@node_ReadMany: (GetPaginated) " + err.Error()
 		logger.Error(err_msg)
-		return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+		responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+		return
 	}
 
 	// process preauth url request, requires archive option
@@ -231,27 +237,29 @@ func (cr *NodeController) ReadMany(ctx context.Context) error {
 		if len(nodeIds) == 0 {
 			err_msg := "err@node_ReadMany: (download_url) no available files found"
 			logger.Error(err_msg)
-			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+			responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+			return
 		}
 		// set preauth
 		if p, err := preauth.New(preauthId, "download", nodeIds, options); err != nil {
 			err_msg := "err@node_ReadMany: (download_url) " + err.Error()
 			logger.Error(err_msg)
-			return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+			responder.RespondWithError(w, r, http.StatusInternalServerError, err_msg)
 		} else {
 			data := preauth.PreAuthResponse{
-				Url:       util.ApiUrl(ctx) + "/preauth/" + p.Id,
+				Url:       util.ApiUrl(r) + "/preauth/" + p.Id,
 				ValidTill: p.ValidTill.Format(time.ANSIC),
 				Format:    options["archive"],
 				Filename:  options["filename"],
 				Files:     len(nodeIds),
 				Size:      totalBytes,
 			}
-			return responder.RespondWithData(ctx, data)
+			responder.RespondWithData(w, r, data)
 		}
+		return
 	}
 
-	return responder.RespondWithPaginatedData(ctx, nodes, limit, offset, count)
+	responder.RespondWithPaginatedData(w, r, nodes, limit, offset, count)
 }
 
 func parseOption(key string, value string) bson.M {

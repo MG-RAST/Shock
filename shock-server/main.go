@@ -32,8 +32,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
 	"github.com/MG-RAST/Shock/shock-server/versions"
-	"github.com/MG-RAST/golib/stretchr/goweb"
-	"github.com/MG-RAST/golib/stretchr/goweb/context"
+	"github.com/go-chi/chi/v5"
 )
 
 const (
@@ -62,180 +61,116 @@ type resource struct {
 
 var StartTime = time.Now()
 
-func mapRoutes() {
-	goweb.MapBefore(func(ctx context.Context) error {
-		req := ctx.HttpRequest()
-		host, _, _ := net.SplitHostPort(req.RemoteAddr)
+// requestLogger is middleware that logs incoming requests and responses.
+func requestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		host, _, _ := net.SplitHostPort(r.RemoteAddr)
 		if host == "::1" {
 			host = "localhost"
 		}
 		suffix := ""
-		if _, ok := req.Header["Authorization"]; ok {
+		if _, ok := r.Header["Authorization"]; ok {
 			suffix += " AUTH"
 		}
-		if l, has := req.Header["Content-Length"]; has {
+		if l, has := r.Header["Content-Length"]; has {
 			suffix += " Content-Length: " + l[0]
 		}
-		logger.Infof("%s REQ RECEIVED \"%s %s%s\"", host, ctx.MethodString(), req.RequestURI, suffix)
-		return nil
+		logger.Infof("%s REQ RECEIVED \"%s %s%s\"", host, r.Method, r.RequestURI, suffix)
+		next.ServeHTTP(w, r)
+		logger.Infof("RESPONDED TO %s \"%s %s%s\"", host, r.Method, r.RequestURI, suffix)
 	})
+}
 
-	goweb.MapAfter(func(ctx context.Context) error {
-		req := ctx.HttpRequest()
-		host, _, _ := net.SplitHostPort(req.RemoteAddr)
-		if host == "::1" {
-			host = "localhost"
+// corsMiddleware handles CORS headers and OPTIONS preflight globally.
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Connection", "close")
+		w.Header().Set("Access-Control-Allow-Headers", "Authorization")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
 		}
-		suffix := ""
-		if _, ok := req.Header["Authorization"]; ok {
-			suffix += " AUTH"
-		}
-		if l, has := req.Header["Content-Length"]; has {
-			suffix += " Content-Length: " + l[0]
-		}
-		logger.Infof("RESPONDED TO %s \"%s %s%s\"", host, ctx.MethodString(), req.RequestURI, suffix)
-		return nil
+		next.ServeHTTP(w, r)
 	})
+}
 
-	goweb.Map("/preauth/{id}", func(ctx context.Context) error {
-		if ctx.HttpRequest().Method == "OPTIONS" {
-			return responder.RespondOK(ctx)
-		}
-		pcon.PreAuthRequest(ctx)
-		return nil
-	})
+func newRouter() chi.Router {
+	router := chi.NewRouter()
+	router.Use(requestLogger)
+	router.Use(corsMiddleware)
 
-	goweb.Map("/node/{nid}/acl/{type}", func(ctx context.Context) error {
-		if ctx.HttpRequest().Method == "OPTIONS" {
-			return responder.RespondOK(ctx)
-		}
-		acon.AclTypedRequest(ctx)
-		return nil
-	})
-
-	goweb.Map("/node/{nid}/acl/", func(ctx context.Context) error {
-		if ctx.HttpRequest().Method == "OPTIONS" {
-			return responder.RespondOK(ctx)
-		}
-		acon.AclRequest(ctx)
-		return nil
-	})
-
-	goweb.Map("/node/{nid}/index/{idxType}", func(ctx context.Context) error {
-		if ctx.HttpRequest().Method == "OPTIONS" {
-			return responder.RespondOK(ctx)
-		}
-		icon.IndexTypedRequest(ctx)
-		return nil
-	})
-
-	goweb.Map("/node/{nid}/locations/", func(ctx context.Context) error {
-		if ctx.HttpRequest().Method == "OPTIONS" {
-			return responder.RespondOK(ctx)
-		}
-		node.LocationsRequest(ctx)
-		return nil
-	})
-
-	goweb.Map("/node/{nid}/locations/{loc}", func(ctx context.Context) error {
-		if ctx.HttpRequest().Method == "OPTIONS" {
-			return responder.RespondOK(ctx)
-		}
-		node.LocationsRequest(ctx)
-		return nil
-	})
-
-	goweb.Map("/node/{nid}/restore/", func(ctx context.Context) error {
-		if ctx.HttpRequest().Method == "OPTIONS" {
-			return responder.RespondOK(ctx)
-		}
-		node.RestoreRequest(ctx)
-		return nil
-	})
-
-	goweb.Map("/node/{nid}/restore/{val}", func(ctx context.Context) error {
-		if ctx.HttpRequest().Method == "OPTIONS" {
-			return responder.RespondOK(ctx)
-		}
-		node.RestoreRequest(ctx)
-		return nil
-	})
-
-	// goweb.Map("/location/{loc}", func(ctx context.Context) error {
-	// 	if ctx.HttpRequest().Method == "OPTIONS" {
-	// 		return responder.RespondOK(ctx)
-	// 	}
-	// 	LocationRequest(ctx)
-	// 	return nil
-	// })
-
-	goweb.Map("/location/{loc}/{function}", func(ctx context.Context) error {
-		if ctx.HttpRequest().Method == "OPTIONS" {
-			return responder.RespondOK(ctx)
-		}
-		location.LocRequest(ctx)
-		return nil
-	})
+	// Specific sub-resource routes first
+	router.HandleFunc("/preauth/{id}", pcon.PreAuthRequest)
+	router.HandleFunc("/node/{nid}/acl/{type}", acon.AclTypedRequest)
+	router.HandleFunc("/node/{nid}/acl/", acon.AclRequest)
+	router.HandleFunc("/node/{nid}/index/{idxType}", icon.IndexTypedRequest)
+	router.HandleFunc("/node/{nid}/locations/{loc}", node.LocationsRequest)
+	router.HandleFunc("/node/{nid}/locations/", node.LocationsRequest)
+	router.HandleFunc("/node/{nid}/restore/{val}", node.RestoreRequest)
+	router.HandleFunc("/node/{nid}/restore/", node.RestoreRequest)
+	router.HandleFunc("/location/{loc}/{function}", location.LocRequest)
+	router.HandleFunc("/types/{type}/{function}/", types.TypeRequest)
 
 	// view lock status
-	goweb.Map("/locker", func(ctx context.Context) error {
+	router.Get("/locker", func(w http.ResponseWriter, r *http.Request) {
 		ids := locker.NodeLockMgr.GetAll()
-		return responder.RespondWithData(ctx, ids)
+		responder.RespondWithData(w, r, ids)
 	})
-	goweb.Map("/locked/node", func(ctx context.Context) error {
+	router.Get("/locked/node", func(w http.ResponseWriter, r *http.Request) {
 		ids := locker.NodeLockMgr.GetLocked()
-		return responder.RespondWithData(ctx, ids)
+		responder.RespondWithData(w, r, ids)
 	})
-	goweb.Map("/locked/file", func(ctx context.Context) error {
+	router.Get("/locked/file", func(w http.ResponseWriter, r *http.Request) {
 		ids := locker.FileLockMgr.GetAll()
-		return responder.RespondWithData(ctx, ids)
+		responder.RespondWithData(w, r, ids)
 	})
-	goweb.Map("/locked/index", func(ctx context.Context) error {
+	router.Get("/locked/index", func(w http.ResponseWriter, r *http.Request) {
 		ids := locker.IndexLockMgr.GetAll()
-		return responder.RespondWithData(ctx, ids)
+		responder.RespondWithData(w, r, ids)
 	})
 
 	// admin control of trace file
-	goweb.Map("/trace/start", func(ctx context.Context) error {
-		u, err := request.Authenticate(ctx.HttpRequest())
+	router.Get("/trace/start", func(w http.ResponseWriter, r *http.Request) {
+		u, err := request.Authenticate(r)
 		if err != nil && err.Error() != e.NoAuth {
-			return request.AuthError(err, ctx)
+			request.AuthError(err, w, r)
+			return
 		}
 		if u == nil || !u.Admin {
-			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
+			responder.RespondWithError(w, r, http.StatusUnauthorized, e.NoAuth)
+			return
 		}
 		fname := traceFileName()
 		err = startTrace(fname)
 		if err != nil {
-			return responder.RespondWithError(ctx, http.StatusInternalServerError, fmt.Sprintf("unable to start trace: %s", err.Error()))
+			responder.RespondWithError(w, r, http.StatusInternalServerError, fmt.Sprintf("unable to start trace: %s", err.Error()))
+			return
 		}
-		return responder.RespondWithData(ctx, fmt.Sprintf("trace started: %s", fname))
+		responder.RespondWithData(w, r, fmt.Sprintf("trace started: %s", fname))
 	})
-	goweb.Map("/trace/stop", func(ctx context.Context) error {
-		u, err := request.Authenticate(ctx.HttpRequest())
+	router.Get("/trace/stop", func(w http.ResponseWriter, r *http.Request) {
+		u, err := request.Authenticate(r)
 		if err != nil && err.Error() != e.NoAuth {
-			return request.AuthError(err, ctx)
+			request.AuthError(err, w, r)
+			return
 		}
 		if u == nil || !u.Admin {
-			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
+			responder.RespondWithError(w, r, http.StatusUnauthorized, e.NoAuth)
+			return
 		}
 		err = stopTrace()
 		if err != nil {
-			return responder.RespondWithError(ctx, http.StatusInternalServerError, fmt.Sprintf("error stopping trace: %s", err.Error()))
+			responder.RespondWithError(w, r, http.StatusInternalServerError, fmt.Sprintf("error stopping trace: %s", err.Error()))
+			return
 		}
-		return responder.RespondWithData(ctx, "trace stoped")
+		responder.RespondWithData(w, r, "trace stoped")
 	})
 
-	goweb.Map("/types/{type}/{function}/", func(ctx context.Context) error {
-		if ctx.HttpRequest().Method == "OPTIONS" {
-			return responder.RespondOK(ctx)
-		}
-		types.TypeRequest(ctx)
-		return nil
-	})
-
-	goweb.Map("/", func(ctx context.Context) error {
-		host := util.ApiUrl(ctx)
+	// Root endpoint
+	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		host := util.ApiUrl(r)
 
 		attrs := strings.Split(conf.MONGODB_ATTRIBUTE_INDEXES, ",")
 		for k, v := range attrs {
@@ -247,21 +182,21 @@ func mapRoutes() {
 		anonPerms.Write = conf.ANON_WRITE
 		anonPerms.Delete = conf.ANON_DELETE
 
-		var auth []string
+		var authList []string
 		if conf.AUTH_GLOBUS_TOKEN_URL != "" && conf.AUTH_GLOBUS_PROFILE_URL != "" {
-			auth = append(auth, "globus")
+			authList = append(authList, "globus")
 		}
 		if len(conf.AUTH_OAUTH) > 0 {
 			for b := range conf.AUTH_OAUTH {
-				auth = append(auth, b)
+				authList = append(authList, b)
 			}
 		}
 
-		r := resource{
+		res := resource{
 			A:      attrs,
 			C:      conf.ADMIN_EMAIL,
 			I:      "Shock",
-			O:      auth,
+			O:      authList,
 			P:      *anonPerms,
 			R:      []string{"node"},
 			S:      time.Now().Format(longDateForm),
@@ -270,19 +205,29 @@ func mapRoutes() {
 			Uptime: time.Since(StartTime).String(),
 			V:      conf.VERSION,
 		}
-		return responder.WriteResponseObject(ctx, http.StatusOK, r)
+		responder.WriteResponseObject(w, r, http.StatusOK, res)
 	})
 
-	nodeController := new(ncon.NodeController)
-	goweb.MapController(nodeController)
-
-	// Map the favicon
-	//goweb.MapStaticFile("/favicon.ico", "static-files/favicon.ico")
+	// Node CRUD (replaces goweb.MapController)
+	nc := &ncon.NodeController{}
+	router.Route("/node", func(nr chi.Router) {
+		nr.Get("/", nc.ReadMany)
+		nr.Post("/", nc.Create)
+		nr.Put("/", nc.UpdateMany)
+		nr.Delete("/", nc.DeleteMany)
+		nr.Options("/", nc.Options)
+		nr.Get("/{id}", nc.Read)
+		nr.Put("/{id}", nc.Replace)
+		nr.Delete("/{id}", nc.Delete)
+		nr.Options("/{id}", nc.Options)
+	})
 
 	// Catch-all handler for everything that we don't understand
-	goweb.Map(func(ctx context.Context) error {
-		return responder.RespondWithError(ctx, http.StatusBadRequest, "Parameters do not match a valid Shock request type.")
+	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
+		responder.RespondWithError(w, r, http.StatusBadRequest, "Parameters do not match a valid Shock request type.")
 	})
+
+	return router
 }
 
 func main() {
@@ -294,11 +239,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Err@conf.Initialize: %s\n", err.Error())
 		os.Exit(1)
 	}
-
-	// init trace
-	//if conf.LOG_TRACE {
-	//	go hourlyTrace()
-	//}
 
 	// init profile
 	go func() {
@@ -444,11 +384,10 @@ func main() {
 	}
 
 	Address := fmt.Sprintf("%s:%d", conf.API_IP, conf.API_PORT)
-	mapRoutes()
 
 	s := &http.Server{
 		Addr:           ":" + Address,
-		Handler:        goweb.DefaultHttpHandler(),
+		Handler:        newRouter(),
 		ReadTimeout:    48 * time.Hour,
 		WriteTimeout:   48 * time.Hour,
 		MaxHeaderBytes: 1 << 20,

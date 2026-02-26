@@ -10,20 +10,20 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/request"
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
-	"github.com/MG-RAST/golib/stretchr/goweb/context"
+	"github.com/go-chi/chi/v5"
 	mgo "gopkg.in/mgo.v2"
 )
 
 // GET, PUT, DELETE: /node/{nid}/restore/  , for PUT send body: {loc}, specify -H "Content-Type: application/json"
-func RestoreRequest(ctx context.Context) {
-	nid := ctx.PathValue("nid")
-	value := ctx.PathValue("val")
+func RestoreRequest(w http.ResponseWriter, r *http.Request) {
+	nid := chi.URLParam(r, "nid")
+	value := chi.URLParam(r, "val")
 
-	rmeth := ctx.HttpRequest().Method
+	rmeth := r.Method
 
-	u, err := request.Authenticate(ctx.HttpRequest())
+	u, err := request.Authenticate(r)
 	if err != nil && err.Error() != e.NoAuth {
-		request.AuthError(err, ctx)
+		request.AuthError(err, w, r)
 		return
 	}
 
@@ -32,7 +32,7 @@ func RestoreRequest(ctx context.Context) {
 		if (rmeth == "GET" && conf.ANON_READ) || (rmeth == "POST" && conf.ANON_WRITE) || (rmeth == "DELETE" && conf.ANON_WRITE) {
 			u = &user.User{Uuid: "public"}
 		} else {
-			responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
+			responder.RespondWithError(w, r, http.StatusUnauthorized, e.NoAuth)
 			return
 		}
 	}
@@ -42,13 +42,13 @@ func RestoreRequest(ctx context.Context) {
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			logger.Error("(LocationsRequest) (node.Load) id=" + nid + ": " + e.NodeNotFound)
-			responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
+			responder.RespondWithError(w, r, http.StatusNotFound, e.NodeNotFound)
 		} else {
 			// In theory the db connection could be lost between
 			// checking user and load but seems unlikely.
 			errMsg := "(LocationsRequest) (node.Load) id=" + nid + ":" + err.Error()
 			logger.Error(errMsg)
-			responder.RespondWithError(ctx, http.StatusInternalServerError, errMsg)
+			responder.RespondWithError(w, r, http.StatusInternalServerError, errMsg)
 		}
 		return
 	}
@@ -57,7 +57,7 @@ func RestoreRequest(ctx context.Context) {
 		rights := n.Acl.Check(u.Uuid)
 		if n.Acl.Owner != u.Uuid && u.Admin == false && n.Acl.Owner != "public" && rights["read"] == false {
 			logger.Error("err@node_Acl: (Authenticate) id=" + nid + ": " + e.UnAuth)
-			responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+			responder.RespondWithError(w, r, http.StatusUnauthorized, e.UnAuth)
 			return
 		}
 	}
@@ -67,7 +67,7 @@ func RestoreRequest(ctx context.Context) {
 	case "GET":
 		if value == "" { // /node/{nid}/restore/
 			restore := n.GetRestore()
-			responder.RespondWithData(ctx, restore)
+			responder.RespondWithData(w, r, restore)
 			return
 		}
 		// we might have to handle an error here
@@ -79,7 +79,7 @@ func RestoreRequest(ctx context.Context) {
 				errmsg = "admin required"
 			}
 
-			responder.RespondWithError(ctx, http.StatusUnauthorized, errmsg) //
+			responder.RespondWithError(w, r, http.StatusUnauthorized, errmsg) //
 			return
 		}
 
@@ -92,12 +92,12 @@ func RestoreRequest(ctx context.Context) {
 		n.Save()
 
 		restore := n.GetRestore()
-		responder.RespondWithData(ctx, restore)
+		responder.RespondWithData(w, r, restore)
 
 		// of case
 	default:
 		errMsg := fmt.Sprintf("(LocationsRequest) %s not supported", rmeth)
-		responder.RespondWithError(ctx, http.StatusInternalServerError, errMsg)
+		responder.RespondWithError(w, r, http.StatusInternalServerError, errMsg)
 
 	}
 

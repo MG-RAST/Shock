@@ -16,15 +16,15 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/responder"
 	"github.com/MG-RAST/Shock/shock-server/user"
 	"github.com/MG-RAST/Shock/shock-server/util"
-	"github.com/MG-RAST/golib/stretchr/goweb/context"
 	mgo "gopkg.in/mgo.v2"
 )
 
 // POST: /node
-func (cr *NodeController) Create(ctx context.Context) error {
-	u, err := request.Authenticate(ctx.HttpRequest())
+func (cr *NodeController) Create(w http.ResponseWriter, r *http.Request) {
+	u, err := request.Authenticate(r)
 	if err != nil && err.Error() != e.NoAuth {
-		return request.AuthError(err, ctx)
+		request.AuthError(err, w, r)
+		return
 	}
 
 	// public user
@@ -32,15 +32,14 @@ func (cr *NodeController) Create(ctx context.Context) error {
 		if conf.ANON_WRITE {
 			u = &user.User{Uuid: "public"}
 		} else {
-			return responder.RespondWithError(ctx, http.StatusUnauthorized, e.NoAuth)
+			responder.RespondWithError(w, r, http.StatusUnauthorized, e.NoAuth)
+			return
 		}
 	}
 
 	// Parse uploaded form
 	// all POSTed files writen to temp dir
-	params, files, err := request.ParseMultipartForm(ctx.HttpRequest())
-	//fmt.Println("params:")
-	//spew.Dump(params)
+	params, files, err := request.ParseMultipartForm(r)
 	// clean up temp dir !!
 	defer file.RemoveAllFormFiles(files)
 	if err != nil {
@@ -50,19 +49,21 @@ func (cr *NodeController) Create(ctx context.Context) error {
 			// Blame the user, Its probaby their fault anyway.
 			err_msg := "err@node_Create: unable to parse form: " + err.Error()
 			logger.Error(err_msg)
-			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+			responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+			return
 		}
 
 		// If not multipart/form-data it will try to read the Body of the
 		// request. If the Body is not empty it will create a file from
 		// the Body contents. If the Body is empty it will create an empty
 		// node.
-		if ctx.HttpRequest().ContentLength != 0 {
-			params, files, err = request.DataUpload(ctx.HttpRequest())
+		if r.ContentLength != 0 {
+			params, files, err = request.DataUpload(r)
 			if err != nil {
 				err_msg := "err@node_Create: (request.DataUpload) " + err.Error()
 				logger.Error(err_msg)
-				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+				responder.RespondWithError(w, r, http.StatusInternalServerError, err_msg)
+				return
 			}
 		}
 
@@ -71,16 +72,19 @@ func (cr *NodeController) Create(ctx context.Context) error {
 		if cn_err != nil {
 			err_msg := "err@node_Create: (node.CreateNodeUpload) " + cn_err.Error()
 			logger.Error(err_msg)
-			return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+			responder.RespondWithError(w, r, http.StatusInternalServerError, err_msg)
+			return
 		}
 		if n == nil {
 			// Not sure how you could get an empty node with no error
 			// Assume it's the user's fault
 			err_msg := "err@node_Create: could not create node"
 			logger.Error(err_msg)
-			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+			responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+			return
 		} else {
-			return responder.RespondWithData(ctx, n)
+			responder.RespondWithData(w, r, n)
+			return
 		}
 
 	}
@@ -98,13 +102,15 @@ func (cr *NodeController) Create(ctx context.Context) error {
 				if err != nil {
 					if err == mgo.ErrNotFound {
 						logger.Error("err@node_Create: (download_url) (node.Load) id=" + id + ": " + e.NodeNotFound)
-						return responder.RespondWithError(ctx, http.StatusNotFound, e.NodeNotFound)
+						responder.RespondWithError(w, r, http.StatusNotFound, e.NodeNotFound)
+						return
 					} else {
 						// In theory the db connection could be lost between
 						// checking user and load but seems unlikely.
 						err_msg := "err@node_Create (download_url) (node.Load) id=" + id + ": " + err.Error()
 						logger.Error(err_msg)
-						return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+						responder.RespondWithError(w, r, http.StatusInternalServerError, err_msg)
+						return
 					}
 				}
 				// check ACLs
@@ -112,7 +118,8 @@ func (cr *NodeController) Create(ctx context.Context) error {
 				prights := n.Acl.Check("public")
 				if rights["read"] == false && u.Admin == false && n.Acl.Owner != u.Uuid && prights["read"] == false {
 					logger.Error("err@node_Create: (download_url) (Authenticate) id=" + id + ": " + e.UnAuth)
-					return responder.RespondWithError(ctx, http.StatusUnauthorized, e.UnAuth)
+					responder.RespondWithError(w, r, http.StatusUnauthorized, e.UnAuth)
+					return
 				}
 				if n.HasFile() && !n.HasFileLock() {
 					nodeIds = append(nodeIds, n.Id)
@@ -122,7 +129,8 @@ func (cr *NodeController) Create(ctx context.Context) error {
 			if len(nodeIds) == 0 {
 				err_msg := "err:@node_Create: (download_url) no available files found"
 				logger.Error(err_msg)
-				return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+				responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+				return
 			}
 			// add options - set defaults first
 			options := map[string]string{}
@@ -145,18 +153,19 @@ func (cr *NodeController) Create(ctx context.Context) error {
 			if p, err := preauth.New(preauthId, "download", nodeIds, options); err != nil {
 				err_msg := "err:@node_Create: (download_url) " + err.Error()
 				logger.Error(err_msg)
-				return responder.RespondWithError(ctx, http.StatusInternalServerError, err_msg)
+				responder.RespondWithError(w, r, http.StatusInternalServerError, err_msg)
 			} else {
 				data := preauth.PreAuthResponse{
-					Url:       util.ApiUrl(ctx) + "/preauth/" + p.Id,
+					Url:       util.ApiUrl(r) + "/preauth/" + p.Id,
 					ValidTill: p.ValidTill.Format(time.ANSIC),
 					Format:    options["archive"],
 					Filename:  options["filename"],
 					Files:     len(nodeIds),
 					Size:      totalBytes,
 				}
-				return responder.RespondWithData(ctx, data)
+				responder.RespondWithData(w, r, data)
 			}
+			return
 		}
 	}
 	// special case, creates multiple nodes
@@ -165,16 +174,19 @@ func (cr *NodeController) Create(ctx context.Context) error {
 		if err != nil {
 			err_msg := "err@node_Create: (node.CreateNodesFromArchive) " + err.Error()
 			logger.Error(err_msg)
-			return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+			responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+			return
 		}
-		return responder.RespondWithData(ctx, ns)
+		responder.RespondWithData(w, r, ns)
+		return
 	}
 	// Create node
 	n, err := node.CreateNodeUpload(u, params, files)
 	if err != nil {
 		err_msg := "err@node_Create: (node.CreateNodeUpload) " + err.Error()
 		logger.Error(err_msg)
-		return responder.RespondWithError(ctx, http.StatusBadRequest, err_msg)
+		responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+		return
 	}
-	return responder.RespondWithData(ctx, n)
+	responder.RespondWithData(w, r, n)
 }

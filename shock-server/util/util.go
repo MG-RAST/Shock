@@ -3,13 +3,13 @@ package util
 import (
 	"io"
 	"math/rand"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/MG-RAST/Shock/shock-server/conf"
-	"github.com/MG-RAST/golib/stretchr/goweb/context"
 )
 
 const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"
@@ -61,11 +61,11 @@ func ToInt(s string) (i int) {
 	return
 }
 
-func ApiUrl(ctx context.Context) string {
+func ApiUrl(r *http.Request) string {
 	if conf.API_URL != "" {
 		return conf.API_URL
 	}
-	return "http://" + ctx.HttpRequest().Host
+	return "http://" + r.Host
 }
 
 func StringInSlice(a string, list []string) bool {

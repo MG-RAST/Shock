@@ -1,6 +1,9 @@
 package responder
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -84,8 +87,54 @@ func TestStandardResponseWithMultipleErrors(t *testing.T) {
 	assert.Contains(t, r.E, "error3")
 }
 
-// TestGetJsonCodec tests that getJsonCodec returns a non-nil codec service
-func TestGetJsonCodec(t *testing.T) {
-	codec := getJsonCodec()
-	assert.NotNil(t, codec)
+// TestRespondOK tests the RespondOK function produces valid JSON
+func TestRespondOK(t *testing.T) {
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/", nil)
+
+	err := RespondOK(w, req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
+
+	var resp standardResponse
+	err = json.Unmarshal(w.Body.Bytes(), &resp)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.S)
+	assert.Nil(t, resp.D)
+	assert.Nil(t, resp.E)
+}
+
+// TestRespondWithData tests the RespondWithData function produces valid JSON
+func TestRespondWithData(t *testing.T) {
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/", nil)
+
+	err := RespondWithData(w, req, "hello")
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp standardResponse
+	err = json.Unmarshal(w.Body.Bytes(), &resp)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.S)
+	assert.Equal(t, "hello", resp.D)
+	assert.Nil(t, resp.E)
+}
+
+// TestRespondWithError tests the RespondWithError function produces valid JSON
+func TestRespondWithError(t *testing.T) {
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/", nil)
+
+	err := RespondWithError(w, req, http.StatusBadRequest, "something went wrong")
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var resp standardResponse
+	err = json.Unmarshal(w.Body.Bytes(), &resp)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, resp.S)
+	assert.Nil(t, resp.D)
+	assert.Equal(t, []string{"something went wrong"}, resp.E)
 }
