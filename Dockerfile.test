@@ -40,6 +40,4 @@ COPY . ${DIR}
 # Create test configuration
 RUN echo '{"address":"0.0.0.0:7445","auth":{"basic":true},"mongodb":{"hosts":["shock-mongo-test"],"database":"shock_test"},"paths":{"data":"/var/log/shock/data","logs":"/var/log/shock","site":"/usr/local/shock/site"},"ssl":{"enable":false},"admin_users":["test_admin"]}' > /etc/shock.d/shock-server.conf
 
-# Set up entrypoint
-ENTRYPOINT ["/bin/sh", "-c"]
-CMD ["go test -v ./..."]
+CMD ["go", "test", "-v", "./..."]
