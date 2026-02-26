@@ -16,6 +16,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/db"
 	"github.com/MG-RAST/Shock/shock-server/user"
+	"github.com/MG-RAST/golib/goconfig/config"
 )
 
 var (
@@ -96,15 +97,29 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	// 3. Connect to MongoDB and seed test users
-	mongoHost := os.Getenv("MONGO_HOST")
-	if mongoHost == "" {
-		mongoHost = "shock-mongo-test"
+	// 3. Connect to MongoDB and seed test users.
+	// Read settings from the server config file (shared single source of truth)
+	// when SHOCK_CONFIG is set; otherwise fall back to env vars / defaults.
+	if configFile := os.Getenv("SHOCK_CONFIG"); configFile != "" {
+		c, err := config.ReadDefault(configFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: reading config %s: %s\n", configFile, err.Error())
+			os.Exit(1)
+		}
+		conf.MONGODB_HOSTS, _ = c.String("Mongodb", "hosts")
+		conf.MONGODB_DATABASE, _ = c.String("Mongodb", "database")
+		conf.LOG_OUTPUT, _ = c.String("Log", "logoutput")
+		conf.PATH_LOGS, _ = c.String("Paths", "logs")
+	} else {
+		mongoHost := os.Getenv("MONGO_HOST")
+		if mongoHost == "" {
+			mongoHost = "shock-mongo-test"
+		}
+		conf.MONGODB_HOSTS = mongoHost
+		conf.MONGODB_DATABASE = "shock_integration_test"
+		conf.LOG_OUTPUT = "console"
+		conf.PATH_LOGS = "/var/log/shock"
 	}
-	conf.MONGODB_HOSTS = mongoHost
-	conf.MONGODB_DATABASE = "shock_integration_test"
-	conf.LOG_OUTPUT = "console"
-	conf.PATH_LOGS = "/var/log/shock"
 
 	if err := db.Initialize(); err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: db.Initialize: %s\n", err.Error())

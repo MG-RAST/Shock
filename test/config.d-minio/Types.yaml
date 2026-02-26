@@ -1,0 +1,50 @@
+Types:
+- ID: "default"
+  Description: "default"
+  Priority: 0
+- ID: "temp"
+  Description: "temporary file"
+  Priority: 0
+- ID: "VM"
+  Description: "Virtual Machine"
+  Priority: 1
+- ID: "metagenome"
+  Description: "MG-RAST metagenome"
+  Priority: 9
+  Data-Types:
+    - fa
+    - fasta
+    - fastq
+    - fq
+    - bam
+    - sam
+- ID: "image"
+  Description: "image file"
+  Priority: 1
+  Data-Types:
+    - jpeg
+    - jpg
+    - gif
+    - tif
+    - png
+  Description: "Controlled Vocabulary"
+  Priority: 7
+- ID: "ontology"
+  Description: "ontology"
+  Priority: 7
+- ID: "backup"
+  Description: "Backup or Dump from another system e.g. MongoDB or MySQL"
+  Priority: 9
+- ID: "metadata"
+  Description: "metadata"
+  Priority: 7
+- ID: "mixs"
+  Description: "GSC MIxS Metadata file XLS format"
+  Priority: 9
+  Data-Types:
+    - xls
+    - xlsx
+    - json
+- ID: "reference"
+  Description: "reference database"
+  Priority: 7

@@ -1,0 +1,124 @@
+# Docker Compose for Shock + MinIO + MongoDB
+#
+# Usage:
+#   docker-compose -f docker-compose.minio.yml build --no-cache
+#   docker-compose -f docker-compose.minio.yml up -d shock-mongo shock-minio shock-minio-init shock-server
+#   docker-compose -f docker-compose.minio.yml up --abort-on-container-exit shock-test
+#   docker-compose -f docker-compose.minio.yml down -v
+
+services:
+
+  # MinIO S3-compatible object store
+  shock-minio:
+    image: minio/minio
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # One-shot bucket creator — runs after MinIO is healthy, then exits
+  shock-minio-init:
+    image: minio/mc
+    depends_on:
+      shock-minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://shock-minio:9000 minioadmin minioadmin &&
+        mc mb --ignore-existing local/shock-data &&
+        echo 'Bucket shock-data ready'
+      "
+
+  # MongoDB for metadata storage
+  shock-mongo:
+    image: mongo:3.6
+    ports:
+      - "27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    command: --smallfiles
+
+  # Seed MongoDB with admin and test users
+  shock-mongo-seed:
+    image: mongo:3.6
+    depends_on:
+      shock-mongo:
+        condition: service_healthy
+    entrypoint: >
+      /bin/bash -c "
+        set -x;
+        mongo mongodb://shock-mongo:27017/shock_integration_test --eval 'db.Users.updateOne({username: \"admin\"}, {$$setOnInsert: { uuid: UUID(), password: \"secret\", shock_admin: true }}, {upsert: true})';
+        mongo mongodb://shock-mongo:27017/shock_integration_test --eval 'db.Users.updateOne({username: \"user1\"}, {$$setOnInsert: { uuid: UUID(), password: \"secret\", shock_admin: false }}, {upsert: true})';
+        echo 'Users seeded';
+      "
+
+  # Shock server with cache-to-S3 auto-upload
+  shock-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      shock-mongo:
+        condition: service_healthy
+      shock-mongo-seed:
+        condition: service_completed_successfully
+      shock-minio-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./test/shock-server-minio.conf:/etc/shock.d/shock-server.conf:ro
+      - ./test/config.d-minio/Locations.yaml:/etc/shock.d/Locations.yaml:ro
+      - ./test/config.d-minio/Types.yaml:/etc/shock.d/Types.yaml:ro
+      - shock-cache:/var/cache/shock
+      - shock-data:/usr/local/shock/data
+    command: ["/go/bin/shock-server", "-conf", "/etc/shock.d/shock-server.conf"]
+    ports:
+      - "7445:7445"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:7445/"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  # Go test runner for integration tests
+  shock-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      shock-server:
+        condition: service_healthy
+      shock-mongo:
+        condition: service_healthy
+    environment:
+      - SHOCK_SERVER_URL=http://shock-server:7445
+      - SHOCK_CONFIG=/etc/shock.d/shock-server.conf
+    volumes:
+      - .:/go/src/github.com/MG-RAST/Shock
+      - ./test-output:/test-output
+      - ./test/shock-server-minio.conf:/etc/shock.d/shock-server.conf:ro
+    entrypoint: ""
+    command: ["go", "test", "-mod=vendor", "-v", "./shock-server/integration/...", "./shock-server/router/..."]
+
+volumes:
+  minio-data:
+  mongo-data:
+  shock-cache:
+  shock-data:

@@ -30,5 +30,10 @@ RUN mkdir -p /var/log/shock /usr/local/shock/data ${DIR}
 RUN cd ${DIR} &&\
      ./compile-server.sh
 
-RUN mkdir -p /etc/shock.d/ ; touch /etc/shock.d/shock-server.conf
+RUN mkdir -p /etc/shock.d/ /var/cache/shock && touch /etc/shock.d/shock-server.conf
+
+# Put boto3 S3 scripts on PATH so exec.Command can find them by bare name
+RUN cp ${DIR}/shock-server/plug-ins/boto-s3-*.py /usr/local/bin/ && \
+    chmod +x /usr/local/bin/boto-s3-*.py
+
 CMD ["/go/bin/shock-server"]
