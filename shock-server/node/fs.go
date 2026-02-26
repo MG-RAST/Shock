@@ -46,6 +46,11 @@ func (node *Node) SetFile(file file.FormFile) (err error) {
 		CreatedOn:   time.Now(),
 	}
 
+	// Queue for auto-upload if enabled
+	if conf.AUTO_UPLOAD && conf.DEFAULT_LOCATION != "" {
+		QueueUpload(node.Id)
+	}
+
 	return
 }
 
@@ -229,6 +234,11 @@ func (node *Node) SetFileFromPath(path string, action string) (err error) {
 		node.File.Path = path
 	}
 
+	// Queue for auto-upload if enabled
+	if conf.AUTO_UPLOAD && conf.DEFAULT_LOCATION != "" {
+		QueueUpload(node.Id)
+	}
+
 	return
 }
 
@@ -372,6 +382,11 @@ func SetFileFromParts(id string, compress string, numParts int, allowEmpty bool)
 		return
 	}
 	locker.FileLockMgr.Remove(id)
+
+	// Queue for auto-upload if enabled
+	if conf.AUTO_UPLOAD && conf.DEFAULT_LOCATION != "" {
+		QueueUpload(id)
+	}
 
 	return
 }

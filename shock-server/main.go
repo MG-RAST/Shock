@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/MG-RAST/Shock/shock-server/auth"
-	// "github.com/MG-RAST/Shock/shock-server/cache"
+	"github.com/MG-RAST/Shock/shock-server/cache"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	ncon "github.com/MG-RAST/Shock/shock-server/controller/node"
 	acon "github.com/MG-RAST/Shock/shock-server/controller/node/acl"
@@ -338,6 +338,8 @@ func main() {
 	auth.Initialize()
 
 	node.InitReaper()
+	node.InitUploader()
+	cache.InitCacheReaper()
 
 	err = versions.Initialize()
 	if err != nil {
@@ -464,6 +466,9 @@ func main() {
 	}
 
 	go node.Ttl.Handle()
+	if cache.CacheReaper != nil {
+		go cache.CacheReaper.Handle()
+	}
 	go func() {
 		for _ = range c {
 			// sig is a ^C, handle it
