@@ -1,3 +1,5 @@
+// NOTE: golib and tinyftp are pinned to vendored versions whose APIs differ
+// from latest upstream. Always build with -mod=vendor.
 module github.com/MG-RAST/Shock
 
 go 1.22

@@ -31,7 +31,7 @@ services:
       - shock-test-logs:/var/log/shock
       - shock-test-config:/etc/shock.d
     entrypoint: ""
-    command: ["go", "test", "-v", "./shock-server/integration/...", "./shock-server/router/..."]
+    command: ["go", "test", "-mod=vendor", "-v", "./shock-server/integration/...", "./shock-server/router/..."]
 
   # Shock server for integration testing
   shock-server-test:

@@ -26,9 +26,7 @@ RUN mkdir -p /var/log/shock /usr/local/shock/data ${DIR}
 #  VERSION=$(cat VERSION) && \
 #  sed -i "s/\[% VERSION %\]/${VERSION}/" shock-server/conf/conf.go
 
-# compile
-RUN cd ${DIR} && \
-     go get github.com/MG-RAST/go-shock-client
+# compile (uses vendored dependencies via -mod=vendor)
 RUN cd ${DIR} &&\
      ./compile-server.sh
 
