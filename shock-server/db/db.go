@@ -2,7 +2,6 @@
 package db
 
 import (
-	"errors"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	"github.com/MG-RAST/Shock/shock-server/logger"
@@ -43,7 +42,7 @@ func Initialize() (err error) {
 	// get handle
 	s, err := mgo.DialWithTimeout(conf.MONGODB_HOSTS, DbTimeout)
 	if err != nil {
-		return errors.New(fmt.Sprintf("no reachable mongodb server(s) at %s", conf.MONGODB_HOSTS))
+		return fmt.Errorf("no reachable mongodb server(s) at %s", conf.MONGODB_HOSTS)
 	}
 	c.Session = s
 	c.DB = c.Session.DB(conf.MONGODB_DATABASE)

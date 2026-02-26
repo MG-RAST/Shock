@@ -146,7 +146,7 @@ func (i *chunkRecord) Create(file string) (count int64, format string, err error
 				_, er := rfh.ReadAt(ibuf[0:16], int64((riCount)*16))
 				if er != nil {
 					if er != io.EOF {
-						err = errors.New(fmt.Sprintf("Could not read record index file for part: %d", riCount))
+						err = fmt.Errorf("Could not read record index file for part: %d", riCount)
 						return
 					}
 					break

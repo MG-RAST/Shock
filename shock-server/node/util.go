@@ -803,7 +803,7 @@ func ShockDownload(uuid string, nodeInstance *Node, location *conf.LocationConfi
 	client := &http.Client{Transport: transport}
 
 	// we expect the form "authorization: mgrast 12345678A123456789012345" the auth has to make sense for the remote Shock instance
-	authkey := fmt.Sprintf("%s", location.AuthKey)
+	authkey := location.AuthKey
 
 	url := fmt.Sprintf("%s/%s?download", location.URL, uuid)
 

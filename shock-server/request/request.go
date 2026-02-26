@@ -164,7 +164,7 @@ func ParseMultipartForm(r *http.Request) (params map[string]string, files file.F
 				// ignore EOF
 			}
 
-			formValue := fmt.Sprintf("%s", buffer[0:n])
+			formValue := string(buffer[0:n])
 			//fmt.Printf("(ParseMultipartForm) part.FormName(): %s\n", part.FormName())
 			if part.FormName() == "upload_url" {
 				tempDir := path.Join(conf.PATH_DATA, "temp")
@@ -295,7 +295,7 @@ func fetchFileStream(urlStr string) (f string, r io.ReadCloser, err error) {
 		}
 		if res.StatusCode != 200 { //err in fetching data
 			resbody, _ := ioutil.ReadAll(res.Body)
-			return "", nil, errors.New(fmt.Sprintf("url=%s, res=%s", u.String(), resbody))
+			return "", nil, fmt.Errorf("url=%s, res=%s", u.String(), resbody)
 		}
 		return fileName, res.Body, err
 	} else if u.Scheme == "ftp" {

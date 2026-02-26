@@ -79,19 +79,19 @@ func CreateSubsetIndex(s *subset, oifile string, ifile string, iformat string, i
 			}
 
 			if curr_int <= prev_int {
-				err = errors.New(fmt.Sprintf("Subset indices must be numerically sorted and non-redundant, found value %d after value %d", curr_int, prev_int))
+				err = fmt.Errorf("Subset indices must be numerically sorted and non-redundant, found value %d after value %d", curr_int, prev_int)
 				return -1, -1, err
 			}
 
 			if int64(curr_int) > ilength {
-				err = errors.New(fmt.Sprintf("Subset index: %d does not exist in parent index file.", curr_int))
+				err = fmt.Errorf("Subset index: %d does not exist in parent index file.", curr_int)
 				return -1, -1, err
 			}
 
 			var ibuf [16]byte
 			_, er = ifh.ReadAt(ibuf[0:16], int64((curr_int-1)*16))
 			if er != nil {
-				err = errors.New(fmt.Sprintf("Subset index could not read parent index file for part: %d", curr_int))
+				err = fmt.Errorf("Subset index could not read parent index file for part: %d", curr_int)
 				return -1, -1, err
 			}
 
@@ -206,19 +206,19 @@ func CreateSubsetNodeIndexes(s *subset, cofile string, ofile string, ifile strin
 			}
 
 			if curr_int <= prev_int {
-				err = errors.New(fmt.Sprintf("Subset indices must be numerically sorted and non-redundant, found value %d after value %d", curr_int, prev_int))
+				err = fmt.Errorf("Subset indices must be numerically sorted and non-redundant, found value %d after value %d", curr_int, prev_int)
 				return
 			}
 
 			if int64(curr_int) > ilength {
-				err = errors.New(fmt.Sprintf("Subset index: %d does not exist in parent index file.", curr_int))
+				err = fmt.Errorf("Subset index: %d does not exist in parent index file.", curr_int)
 				return
 			}
 
 			var ibuf [16]byte
 			_, er = ifh.ReadAt(ibuf[0:16], int64((curr_int-1)*16))
 			if er != nil {
-				err = errors.New(fmt.Sprintf("Subset index could not read parent index file for part: %d", curr_int))
+				err = fmt.Errorf("Subset index could not read parent index file for part: %d", curr_int)
 				return
 			}
 
