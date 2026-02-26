@@ -244,14 +244,14 @@ func Initialize() (err error) {
 	CONFIG_PATH := path.Dir(CONFIG_FILE)
 	fmt.Printf("CONFIG_PATH %s\n", CONFIG_PATH)
 
-	c_store, err := getConfiguration(c) // from config file and command line arguments
+	c_store, err := GetConfiguration(c) // from config file and command line arguments
 	if err != nil {
 		return errors.New("error reading conf file: " + err.Error())
 	}
 
 	// ####### at this point configuration variables are set ########
 
-	err = parseConfiguration()
+	err = ParseConfiguration()
 	if err != nil {
 		return errors.New("error parsing conf file: " + err.Error())
 	}
@@ -357,7 +357,7 @@ func Print() {
 	fmt.Printf("API_PORT: %d\n", API_PORT)
 }
 
-func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
+func GetConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	c_store = NewCS(c)
 
 	// Admin
@@ -473,7 +473,7 @@ func getConfiguration(c *config.Config) (c_store *Config_store, err error) {
 	return
 }
 
-func parseConfiguration() (err error) {
+func ParseConfiguration() (err error) {
 	// get admin users
 	if ADMIN_USERS != "" {
 		for _, name := range strings.Split(ADMIN_USERS, ",") {
@@ -506,17 +506,17 @@ func parseConfiguration() (err error) {
 	}
 
 	// clean paths
-	PATH_SITE = cleanPath(PATH_SITE)
-	PATH_DATA = cleanPath(PATH_DATA)
-	PATH_LOGS = cleanPath(PATH_LOGS)
-	PATH_LOCAL = cleanPath(PATH_LOCAL)
-	PATH_PIDFILE = cleanPath(PATH_PIDFILE)
-	PATH_CACHE = cleanPath(PATH_CACHE)
+	PATH_SITE = CleanPath(PATH_SITE)
+	PATH_DATA = CleanPath(PATH_DATA)
+	PATH_LOGS = CleanPath(PATH_LOGS)
+	PATH_LOCAL = CleanPath(PATH_LOCAL)
+	PATH_PIDFILE = CleanPath(PATH_PIDFILE)
+	PATH_CACHE = CleanPath(PATH_CACHE)
 
 	return
 }
 
-func cleanPath(p string) string {
+func CleanPath(p string) string {
 	if p != "" {
 		p, _ = filepath.Abs(p)
 	}

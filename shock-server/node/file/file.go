@@ -207,3 +207,66 @@ func (mr *multiReaderAt) Stat() (fi os.FileInfo, err error) {
 func (mr *multiReaderAt) Close() (err error) {
 	return
 }
+
+// NewTestReaderAt creates a test implementation of ReaderAt for testing
+func NewTestReaderAt(name string, data []byte) ReaderAt {
+	return &testReaderAt{
+		name: name,
+		data: data,
+		pos:  0,
+	}
+}
+
+// testReaderAt is a test implementation of ReaderAt for testing
+type testReaderAt struct {
+	name string
+	data []byte
+	pos  int
+}
+
+func (r *testReaderAt) Read(p []byte) (n int, err error) {
+	if r.pos >= len(r.data) {
+		return 0, io.EOF
+	}
+	n = copy(p, r.data[r.pos:])
+	r.pos += n
+	if r.pos >= len(r.data) {
+		err = io.EOF
+	}
+	return
+}
+
+func (r *testReaderAt) ReadAt(p []byte, off int64) (n int, err error) {
+	if off >= int64(len(r.data)) {
+		return 0, io.EOF
+	}
+	n = copy(p, r.data[off:])
+	if n < len(p) {
+		err = io.EOF
+	}
+	return
+}
+
+func (r *testReaderAt) Close() error {
+	return nil
+}
+
+func (r *testReaderAt) Stat() (os.FileInfo, error) {
+	return &testFileInfo{
+		name: r.name,
+		size: int64(len(r.data)),
+	}, nil
+}
+
+// testFileInfo is a test implementation of os.FileInfo for testing
+type testFileInfo struct {
+	name string
+	size int64
+}
+
+func (fi *testFileInfo) Name() string       { return fi.name }
+func (fi *testFileInfo) Size() int64        { return fi.size }
+func (fi *testFileInfo) Mode() os.FileMode  { return 0644 }
+func (fi *testFileInfo) ModTime() time.Time { return time.Now() }
+func (fi *testFileInfo) IsDir() bool        { return false }
+func (fi *testFileInfo) Sys() interface{}   { return nil }

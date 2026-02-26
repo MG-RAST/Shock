@@ -13,6 +13,12 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/user"
 )
 
+// Variables for testing
+var (
+	MockFindByUsernamePassword func(username, password string) (*user.User, error)
+	MockAuth                   func(header string) (*user.User, error)
+)
+
 // DecodeHeader takes the request authorization header and returns
 // username and password if it is correctly encoded.
 func DecodeHeader(header string) (username string, password string, err error) {
@@ -65,6 +71,11 @@ func DecodeHeader(header string) (username string, password string, err error) {
 // Auth takes the request authorization header and returns
 // user
 func Auth(header string) (u *user.User, err error) {
+	// Use mock if provided
+	if MockAuth != nil {
+		return MockAuth(header)
+	}
+
 	//fmt.Printf("auth: %s\n", header)
 	username, password, err := DecodeHeader(header)
 	if err != nil {
@@ -74,6 +85,11 @@ func Auth(header string) (u *user.User, err error) {
 		return
 	}
 	//fmt.Printf("auth: %s %s\n", username, password)
+
+	// Use mock if provided
+	if MockFindByUsernamePassword != nil {
+		return MockFindByUsernamePassword(username, password)
+	}
 
 	u, err = user.FindByUsernamePassword(username, password)
 	if err != nil {

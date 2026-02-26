@@ -156,6 +156,21 @@ func (a *Acl) Check(str string) (r Rights) {
 	return
 }
 
+// Del removes a string from a string slice (exported for testing)
+func Del(arr []string, s string) []string {
+	return del(arr, s)
+}
+
+// Insert adds a string to a string slice if not already present (exported for testing)
+func Insert(arr []string, s string) []string {
+	return insert(arr, s)
+}
+
+// InsertUser adds a user to a user slice if not already present (exported for testing)
+func InsertUser(arr []user.User, s user.User) []user.User {
+	return insertUser(arr, s)
+}
+
 func del(arr []string, s string) (narr []string) {
 	narr = []string{}
 	for i, item := range arr {

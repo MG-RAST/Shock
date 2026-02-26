@@ -5,13 +5,14 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"io/ioutil"
+	"net/http"
+	"strings"
+
 	"github.com/MG-RAST/Shock/shock-server/auth/basic"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
 	"github.com/MG-RAST/Shock/shock-server/user"
-	"io/ioutil"
-	"net/http"
-	"strings"
 )
 
 // Token response struct
@@ -40,6 +41,11 @@ func authHeaderType(header string) string {
 // Auth takes the request authorization header and returns
 // user
 func Auth(header string) (usr *user.User, err error) {
+	// Use mock function if provided
+	if MockAuth != nil {
+		return MockAuth(header)
+	}
+
 	bearer := authHeaderType(header)
 	if bearer == "" {
 		return nil, errors.New("(globus) Invalid authentication header, missing bearer token.")

@@ -30,7 +30,7 @@ var CacheMap map[string]*Item
 var CacheMapLock = sync.RWMutex{}
 
 // Path2uuid extract uuid from path
-func path2uuid(fpath string) string {
+func Path2uuid(fpath string) string {
 
 	ext := path.Ext(fpath)                     // identify extension
 	filename := strings.TrimSuffix(fpath, ext) // find filename
@@ -72,7 +72,7 @@ func Initialize() (err error) {
 			logger.Errorf("(cache->Initialize) error reading %s (Error:%s)", file, err.Error())
 			continue
 		}
-		filename := path2uuid(file)
+		filename := Path2uuid(file)
 
 		var entry Item
 

@@ -1,0 +1,45 @@
+FROM golang:alpine
+
+ENV PYTHONUNBUFFERED=1
+
+# Install required packages
+RUN apk update && apk add --no-cache \
+    git \
+    curl \
+    python3 \
+    py3-boto3 \
+    build-base \
+    bash \
+    ca-certificates \
+    && if [ ! -e /usr/bin/python ]; then ln -sf python3 /usr/bin/python ; fi
+
+# Alternative approach if py3-boto3 is not available:
+# RUN python3 -m venv /opt/venv && \
+#     . /opt/venv/bin/activate && \
+#     pip install boto3 && \
+#     ln -s /opt/venv/bin/boto3 /usr/local/bin/boto3
+
+# Set up environment
+ENV DIR=/go/src/github.com/MG-RAST/Shock
+WORKDIR ${DIR}
+
+# Create necessary directories
+RUN mkdir -p /var/log/shock /usr/local/shock/data /etc/shock.d /test-output && \
+    chmod 777 /test-output
+
+# Initialize Go module and install dependencies for testing
+RUN go mod init github.com/MG-RAST/Shock \
+    && go get github.com/stretchr/testify/assert@latest \
+    && go get github.com/stretchr/testify/require@latest \
+    && go get github.com/stretchr/testify/mock@latest \
+    && go get github.com/MG-RAST/go-shock-client@latest
+
+# Copy source code
+COPY . ${DIR}
+
+# Create test configuration
+RUN echo '{"address":"0.0.0.0:7445","auth":{"basic":true},"mongodb":{"hosts":["shock-mongo-test"],"database":"shock_test"},"paths":{"data":"/var/log/shock/data","logs":"/var/log/shock","site":"/usr/local/shock/site"},"ssl":{"enable":false},"admin_users":["test_admin"]}' > /etc/shock.d/shock-server.conf
+
+# Set up entrypoint
+ENTRYPOINT ["/bin/sh", "-c"]
+CMD ["go test -v ./..."]

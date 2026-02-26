@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # Service for running Go tests
+  shock-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      shock-mongo-test:
+        condition: service_healthy
+    environment:
+      - MONGO_HOST=shock-mongo-test
+      - MONGO_DATABASE=shock_test
+      - SHOCK_PATH=/go/src/github.com/MG-RAST/Shock
+      - SHOCK_DATA=/var/log/shock/data
+      - SHOCK_LOGS=/var/log/shock
+      - SHOCK_CONFIG=/etc/shock.d
+      - SHOCK_AUTH=basic
+      - SHOCK_ADMIN_USERS=test_admin
+      - GO_TEST_ARGS=${GO_TEST_ARGS:-./...}
+      - GO_TEST_COVERAGE=${GO_TEST_COVERAGE:-false}
+      - GO_TEST_COVERAGE_FILE=${GO_TEST_COVERAGE_FILE:-/test-output/coverage.out}
+      - GO_TEST_COVERAGE_HTML=${GO_TEST_COVERAGE_HTML:-/test-output/coverage.html}
+      - GO_TEST_RESULTS_FILE=${GO_TEST_RESULTS_FILE:-/test-output/test-results.log}
+    volumes:
+      - .:/go/src/github.com/MG-RAST/Shock
+      - ./test-output:/test-output
+      - shock-test-data:/var/log/shock/data
+      - shock-test-logs:/var/log/shock
+      - shock-test-config:/etc/shock.d
+    command: >
+      sh -c "
+        echo 'Waiting for MongoDB to be ready...' &&
+        sleep 2 &&
+        echo 'Running tests...' &&
+        mkdir -p /test-output &&
+        chmod 777 /test-output &&
+        echo "Test file created at $(date)" > /test-output/test-file.txt &&
+        chmod 666 /test-output/test-file.txt &&
+        # Always run tests with coverage
+        echo 'Running tests with coverage...' &&
+        echo "Test file created at $(date)" > /test-output/test-file.txt &&
+        chmod 666 /test-output/test-file.txt &&
+        go test -mod=mod -v -coverprofile=/test-output/coverage.out ./... 2>&1 | tee /test-output/test-results.log &&
+        
+        # Try to generate HTML coverage report with Go tool
+        if go tool cover -html=/test-output/coverage.out -o /test-output/coverage.html; then
+          echo 'Coverage report generated at /test-output/coverage.html'
+        else
+          # If Go tool fails, create a simple Python script to generate the report
+          echo '#!/usr/bin/env python3' > /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo 'import os, sys' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo 'def parse_coverage_file(coverage_file):' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo '    coverage_data = {}' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo '    with open(coverage_file, \"r\") as f:' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo '        for line in f:' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo '            line = line.strip()' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo '            if line.startswith(\"mode:\"): continue' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo '            if \":\" in line:' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo '                parts = line.split(\":\")' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo '                file_path = parts[0]' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo '                rest = \":\".join(parts[1:])' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo '                if file_path not in coverage_data: coverage_data[file_path] = []' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo '                coverage_data[file_path].append(rest)' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo '    return coverage_data' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo 'def generate_html_report(coverage_data, output_file):' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo '    with open(output_file, \"w\") as f:' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo '        f.write(\"<!DOCTYPE html>\\n<html>\\n<head>\\n    <title>Coverage Report</title>\\n    <style>\\n        body { font-family: Arial, sans-serif; margin: 20px; }\\n        h1 { color: #333; }\\n        table { border-collapse: collapse; width: 100%; }\\n        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }\\n        th { background-color: #f2f2f2; }\\n        tr:nth-child(even) { background-color: #f9f9f9; }\\n        .file-name { font-weight: bold; }\\n        .covered { color: green; }\\n        .not-covered { color: red; }\\n    </style>\\n</head>\\n<body>\\n    <h1>Coverage Report</h1>\\n    <table>\\n        <tr>\\n            <th>File</th>\\n            <th>Coverage Lines</th>\\n        </tr>\\n\")' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo '        for file_path, lines in coverage_data.items():' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo '            f.write(f\"\\n        <tr>\\n            <td class=\\\"file-name\\\">{file_path}</td>\\n            <td>{len(lines)} lines</td>\\n        </tr>\\n\")' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo '        f.write(\"\\n    </table>\\n</body>\\n</html>\\n\")' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo 'coverage_file = \"/test-output/coverage.out\"' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo 'output_file = \"/test-output/coverage.html\"' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo 'if os.path.exists(coverage_file):' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo '    coverage_data = parse_coverage_file(coverage_file)' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo '    generate_html_report(coverage_data, output_file)' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo '    print(f\"Coverage report generated at {output_file}\")' >> /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          chmod +x /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          python3 /go/src/github.com/MG-RAST/Shock/create-coverage-report.py &&
+          echo 'Coverage report generated using Python script'
+        fi &&
+        
+        # Make sure the coverage files have the right permissions
+        chmod 666 /test-output/coverage.out /test-output/test-results.log &&
+        [ -f /test-output/coverage.html ] && chmod 666 /test-output/coverage.html || true &&
+        echo "Contents of /test-output directory:" &&
+        ls -la /test-output/
+      "
+
+  # MongoDB for testing
+  shock-mongo-test:
+    image: mongo:3.6
+    ports:
+      - "27017"
+    volumes:
+      - shock-mongo-test-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    command: --smallfiles
+
+volumes:
+  shock-test-data:
+  shock-test-logs:
+  shock-test-config:
+  shock-mongo-test-data:
