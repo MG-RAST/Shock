@@ -1,0 +1,13 @@
+Locations:
+ - ID: "s3"
+   Type: "S3"
+   Description: "Local MinIO S3 storage"
+   URL: "http://shock-minio:9000"
+   AuthKey: "minioadmin"
+   SecretKey: "minioadmin"
+   Bucket: "shock-data"
+   Persistent: true
+   Region: "us-east-1"
+   Priority: 0
+   Tier: 5
+   Cost: 0

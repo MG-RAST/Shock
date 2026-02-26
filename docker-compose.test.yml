@@ -10,21 +10,14 @@ services:
       shock-server-test:
         condition: service_healthy
     environment:
-      - MONGO_HOST=shock-mongo-test
-      - MONGO_DATABASE=shock_test
-      - SHOCK_PATH=/go/src/github.com/MG-RAST/Shock
-      - SHOCK_DATA=/var/log/shock/data
-      - SHOCK_LOGS=/var/log/shock
-      - SHOCK_CONFIG=/etc/shock.d
-      - SHOCK_AUTH=basic
-      - SHOCK_ADMIN_USERS=test_admin
       - SHOCK_SERVER_URL=http://shock-server-test:7445
+      - SHOCK_CONFIG=/etc/shock.d/shock-server-test.conf
     volumes:
       - .:/go/src/github.com/MG-RAST/Shock
       - ./test-output:/test-output
+      - ./test:/etc/shock.d:ro
       - shock-test-data:/var/log/shock/data
       - shock-test-logs:/var/log/shock
-      - shock-test-config:/etc/shock.d
     entrypoint: ""
     command: ["go", "test", "-mod=vendor", "-v", "./shock-server/integration/...", "./shock-server/router/..."]
 
@@ -68,7 +61,6 @@ services:
 volumes:
   shock-test-data:
   shock-test-logs:
-  shock-test-config:
   shock-mongo-test-data:
   shock-server-test-data:
   shock-server-test-logs:
