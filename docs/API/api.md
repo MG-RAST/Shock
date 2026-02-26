@@ -36,13 +36,13 @@ Follow the links above for more details.
 [Examples to set permissions](api.html#api-Node-nodeNodeidAclPUT)
 
 
-#### Node incides: 
+#### Node indices: 
 
 [Examples to create indices](api.html#api-Node-nodeNodeidIndexTypePut)
 
 
 
-## API repsonse
+## API response
 
 
 ### Response wrapper:

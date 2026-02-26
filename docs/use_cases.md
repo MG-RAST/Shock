@@ -17,7 +17,7 @@ Shock implements a FileReaper() function that expires nodes when they expire.
 ### Firewalls and a bit of history
 Shock was initially created around the year 2009 and one of the main driving forces was our frustation with installing and maintaining large shared file systems. We operated a large NFS store, a GPFS store, A Lustre store. Each of them had good sides, but every one of them was not designed for the scale of our opertion (many hundreds of gigabytes at the time). In addition, we are experts at stealing computational cycles wherever they can be found (sound familiar in cloud times?), with traditional shared file systems the following dialogue got really old: "Ok, we need to mount X on Y and need to have a number of ports openend up on the firewall(s)." Response: "No we cannot do that, why don't you ...".
 
-Shock is our answer to this dilemma. All you need is port 80. Ah and btw. proxies work as does chaching. All we use is HTTP.
+Shock is our answer to this dilemma. All you need is port 80. Ah and btw. proxies work as does caching. All we use is HTTP.
 
 
 ## Some example use cases

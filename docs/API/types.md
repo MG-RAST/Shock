@@ -14,7 +14,7 @@
 - Permitted by everyone:
 - N/A
 
-- Permitted by admis 
+- Permitted by admins
   - `/types/<type_id>/info`  provide info on a data type
   
 ##### GET
@@ -22,7 +22,7 @@
 - Permitted by everyone:
  - N/A
 
-- Permitted by admis 
+- Permitted by admins
    
 
 

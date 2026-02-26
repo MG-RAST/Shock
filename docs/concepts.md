@@ -17,13 +17,13 @@
     * Amazon Glacier
     * Google Cloud Storage
     * Microsoft Azure Data Storage
-- Shock nodes are migrated listed for migration by external scripts (check the /scripts folder in this repo) by the server according to the paramters provided
+- Shock nodes are migrated listed for migration by external scripts (check the /scripts folder in this repo) by the server according to the parameters provided
 - the new /location/<locname>/{missing|present|inflight} query lists the files that need to be backed up missing, the ones current being backed-up (inflight) and those stored already (present)
 
 ![Overview of Shock v2](./Images/shock_v2_overview2.png "Overview of Shock v2")
 
 ### Caching
-Shock can cache nodes on local disk from remove Locations.
+Shock can cache nodes on local disk from remote Locations.
 
 ### Data and Metadata
 Shock stores data in files and metadata in a MongoDB database.

@@ -5,7 +5,7 @@ An object store for scientific data that is:
 
 -  a storage platform designed from the ground up to be fast, scalable and fault tolerant.
 
--  fully RESTful. The [API](./API/README.md) is accessible from desktops, HPC systems, exotic hardware, the cloud and your smartphone.
+-  fully RESTful. The [API](./API/api.md) is accessible from desktops, HPC systems, exotic hardware, the cloud and your smartphone.
 
 -  designed from scratch for complex scientific data and allows the storage and querying of complex user-defined metadata.   
 
@@ -15,7 +15,7 @@ An object store for scientific data that is:
 
 - integrated with HSM operations and caching
 
--  part of our reproducible science platform [Skyport]([https://github.com/MG-RAST/Skyport2) combined to create [Researchobjects](http://www.researchobject.org/) when combined with [CWL](http://www.commonwl.org) and 
+-  part of our reproducible science platform [Skyport](https://github.com/MG-RAST/Skyport2) combined to create [Researchobjects](http://www.researchobject.org/) when combined with [CWL](http://www.commonwl.org) and
 [CWLprov](https://github.com/common-workflow-language/cwlprov)
 
 Shock is actively being developed at [github.com/MG-RAST/Shock](https://github.com/MG-RAST/Shock).
@@ -142,10 +142,12 @@ curl 'http://localhost:7445/node?query&project=extraterrestrial_lifeforms' | jq 
 
 
 ## Documentation
-- [API documentation](./API/README.md).
-- [Building shock](./building.md).
-- [Configuring](./configuration.md).
-- [Concepts](./concepts.md).
-- [Caching and data migration](./caching_and_data_migration.md).
-- For further information about Shock's functionality, please refer to our [Shock documentation](https://github.com/MG-RAST/Shock/docs/).
+- [Getting Started Tutorial](./tutorial.md) -- hands-on walkthrough with curl examples.
+- [API Documentation](./API/api.md) -- full REST API reference with examples.
+- [Building Shock](./building.md) -- build from source, Docker images, and testing.
+- [Configuration Guide](./configuration.md) -- all config options, Locations.yaml, and Types.yaml.
+- [Concepts](./concepts.md) -- architecture, caching, HSM, and locations.
+- [Caching and Data Migration](./caching_and_data_migration.md) -- cache TTL, auto-upload, S3/MinIO setup.
+- [Data Types](./Data-Types.md) -- Types.yaml format and type system.
+- [Use Cases](./use_cases.md) -- real-world deployment examples.
 

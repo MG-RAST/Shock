@@ -75,7 +75,76 @@ curl -X GET "localhost:7445/node/96576d58-6e2d-4bf5-8edf-8224cf29291c?download"
 
 #### Cache maintenance
 
-Cached items (and their index files) are kept in the cache hierarchy until for _cache_ttl_ hours (default=24).
+Cached items (and their index files) are kept in the cache hierarchy for the duration specified by `cache_ttl` (default: 24 hours). The CacheReaper periodically scans the cache directory and removes files that have exceeded their TTL.
+
+### Cache TTL
+
+The `cache_ttl` configuration option controls how long cached files remain before they are eligible for eviction. It supports three time unit suffixes:
+
+| Format | Meaning | Example |
+|--------|---------|---------|
+| `M` | Minutes | `30M` = 30 minutes |
+| `H` | Hours | `24H` = 24 hours (default) |
+| `D` | Days | `7D` = 7 days |
+
+Set `cache_ttl` in the `[Cache]` section of the configuration file:
+
+```ini
+[Cache]
+cache_path = /usr/local/shock/cache
+cache_ttl = 24H
+```
+
+### Auto-Upload
+
+When `auto_upload` is enabled, Shock automatically uploads newly created node files to a remote storage location. This is configured with the following options in the `[Cache]` section:
+
+```ini
+[Cache]
+auto_upload = true
+default_location = s3
+upload_workers = 3
+```
+
+- `auto_upload`: Enable automatic upload of files to the default remote location.
+- `default_location`: The Location ID (as defined in `Locations.yaml`) that receives the uploaded files.
+- `upload_workers`: Number of concurrent upload workers (default: 3).
+
+When a file is uploaded to Shock, the auto-upload workers will asynchronously copy it to the configured remote location. The node's `locations` field is updated once the upload completes.
+
+### MinIO as S3 Backend
+
+[MinIO](https://min.io/) is an S3-compatible object store that can be used as a local development and testing backend for Shock's S3 storage features. The repository includes a ready-to-use Docker Compose stack:
+
+```bash
+docker-compose -f docker-compose.minio.yml up -d shock-mongo shock-minio shock-minio-init shock-server
+```
+
+This starts:
+- **MinIO** on port 9000 (API) and 9001 (console) with default credentials `minioadmin`/`minioadmin`
+- **MongoDB** for metadata storage
+- **Shock** configured with cache-to-S3 auto-upload pointing at MinIO
+
+The MinIO Locations.yaml entry looks like:
+
+```yaml
+Locations:
+  - ID: "s3"
+    Type: "S3"
+    Description: "Local MinIO S3"
+    URL: "http://shock-minio:9000"
+    AuthKey: "minioadmin"
+    SecretKey: "minioadmin"
+    Bucket: "shock-data"
+    Persistent: true
+    Region: "us-east-1"
+    Priority: 100
+    MinPriority: 0
+    Tier: 5
+    Cost: 0
+```
+
+See `test/config.d-minio/` for example configuration files used in integration testing.
 
 ## Data migration
 Turn on _NODE_MIGRATION_ (e.g.  `--node_migration=true`) to create sets of files to be uploaded to remote locations.

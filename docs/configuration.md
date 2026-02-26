@@ -113,6 +113,10 @@ name=unique:true,dropDups:true,sparse:false
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | cache_path | string | "" | Path to cache directory. If set, the system will function as a cache |
+| cache_ttl | string | "24H" | Time before cached files are eligible for eviction. Formats: `30M` (minutes), `24H` (hours), `7D` (days) |
+| auto_upload | bool | false | Automatically upload files to the default remote location after creation |
+| default_location | string | "" | Location ID (from Locations.yaml) used as the target for auto-upload |
+| upload_workers | int | 3 | Number of concurrent upload workers for auto-upload |
 
 ### [Migrate]
 | Option | Type | Default | Description |
@@ -440,19 +444,13 @@ To run the Shock server with a specific configuration file:
 shock-server -conf /path/to/shock-server.conf
 ```
 
-With Docker:
+With Docker Compose (recommended):
 
 ```bash
-mkdir -p /mnt/shock-server/log
-mkdir -p /mnt/shock-server/data
-export DATADIR="/mnt/shock-server"
-docker run --rm --name shock-server -p 7445:7445 \
-  -v ${DATADIR}/shock-server.cfg:/shock-config/shock-server.cfg \
-  -v ${DATADIR}/log:/var/log/shock \
-  -v ${DATADIR}/data:/usr/local/shock \
-  --link=shock-server-mongodb:mongodb \
-  mgrast/shock /go/bin/shock-server --conf /shock-config/shock-server.cfg
+docker-compose up -d
 ```
+
+The included `docker-compose.yml` starts both Shock and MongoDB with the correct networking. For S3-compatible storage with MinIO, use `docker-compose.minio.yml` instead. See the [building guide](./building.md) for details.
 
 ### Data Migration Example
 
