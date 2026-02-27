@@ -8,6 +8,7 @@ require (
 	cloud.google.com/go v0.45.2-0.20190912001407-6ae710637747
 	github.com/Azure/azure-pipeline-go v0.2.2
 	github.com/Azure/azure-storage-blob-go v0.8.0
+	github.com/MG-RAST/Shock/clients/shock-go v0.0.0-00010101000000-000000000000
 	github.com/MG-RAST/go-shock-client v0.0.0-20190828185941-363c96852f00
 	github.com/MG-RAST/golib v0.0.0-20190510221542-86643de6f9e0
 	github.com/aws/aws-sdk-go v1.23.16-0.20190904183301-ed1c1dc0f009
@@ -37,3 +38,5 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/MG-RAST/Shock/clients/shock-go => ./clients/shock-go

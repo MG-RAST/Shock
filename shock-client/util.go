@@ -3,22 +3,19 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
-	"net/url"
 	"os"
-	"strconv"
 	"time"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 var CV = map[string]map[string]bool{
-	"acl":         map[string]bool{"all": true, "delete": true, "read": true, "write": true},
-	"archive":     map[string]bool{"tar": true, "tar.gz": true, "tar.bz2": true, "zip": true},
-	"compression": map[string]bool{"bzip2": true, "gzip": true},
-	"direction":   map[string]bool{"asc": true, "desc": true},
-	"index":       map[string]bool{"bai": true, "chunkrecord": true, "column": true, "line": true, "record": true, "size": true},
+	"acl":         {"all": true, "delete": true, "read": true, "write": true},
+	"archive":     {"tar": true, "tar.gz": true, "tar.bz2": true, "zip": true},
+	"compression": {"bzip2": true, "gzip": true},
+	"direction":   {"asc": true, "desc": true},
+	"index":       {"bai": true, "chunkrecord": true, "column": true, "line": true, "record": true, "size": true},
 }
 
 func validateCV(name string, value string) bool {
@@ -36,7 +33,6 @@ func exitHelp() {
 }
 
 func exitError(msg string) {
-	//fmt.Fprintln(os.Stderr, USAGE)
 	if msg != "" {
 		fmt.Fprintln(os.Stderr, "Error: "+msg)
 	}
@@ -58,7 +54,7 @@ func exitOutput(v interface{}) {
 		fmt.Println(string(b))
 	} else {
 		b = append(b, '\n')
-		e = ioutil.WriteFile(output, b, 0644)
+		e = os.WriteFile(output, b, 0644)
 		if e != nil {
 			exitError(e.Error())
 		}
@@ -66,7 +62,7 @@ func exitOutput(v interface{}) {
 	os.Exit(0)
 }
 
-func getUserInfo() (host string, auth string) {
+func getUserInfo() (host string, tkn string, br string) {
 	// set from env if exists
 	if os.Getenv("SHOCK_URL") != "" {
 		shock_url = os.Getenv("SHOCK_URL")
@@ -77,38 +73,14 @@ func getUserInfo() (host string, auth string) {
 	if os.Getenv("BEARER") != "" {
 		bearer = os.Getenv("BEARER")
 	}
-	// test and return
-	if token != "" {
-		auth = bearer + " " + token
-	}
 	host = shock_url
+	tkn = token
+	br = bearer
 	return
 }
 
 func buildDownloadUrl(host string, id string) string {
-	query := url.Values{}
-	query.Add("download", "")
-
-	if (index != "") && (parts != "") {
-		if !validateCV("index", index) {
-			exitError("invalid index type")
-		}
-		query.Add("index", index)
-		query.Add("part", parts)
-	} else if (seek > -1) && (length > 0) {
-		query.Add("seek", strconv.Itoa(seek))
-		query.Add("length", strconv.Itoa(length))
-	}
-
-	var myurl *url.URL
-	myurl, err := url.ParseRequestURI(host)
-	if err != nil {
-		exitError("error parsing shock url")
-	}
-	(*myurl).Path = "/node/" + id
-	(*myurl).RawQuery = query.Encode()
-
-	return myurl.String()
+	return host + "/node/" + id + "?download"
 }
 
 func isDir(d string) bool {
