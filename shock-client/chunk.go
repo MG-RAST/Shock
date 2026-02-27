@@ -1,17 +1,18 @@
 package main
 
 import (
+	"context"
 	"crypto/md5"
 	"errors"
 	"fmt"
-	sc "github.com/MG-RAST/go-shock-client"
 	"io"
-	"io/ioutil"
 	"math"
 	"os"
 	"path"
 	"regexp"
 	"strconv"
+
+	sc "github.com/MG-RAST/Shock/clients/shock-go"
 )
 
 const MaxBuffer = 64 * 1024
@@ -38,7 +39,7 @@ func newChunkUploader(f string, c string) (cu chunkUploader) {
 	return
 }
 
-func (cu *chunkUploader) validateChunkNode(node *sc.ShockNode) (msg string) {
+func (cu *chunkUploader) validateChunkNode(node *sc.Node) (msg string) {
 	// basic check
 	if (node.Type != "parts") || (node.Parts == nil) {
 		return "node " + node.Id + " is not a valid parts node"
@@ -131,7 +132,7 @@ func (cu *chunkUploader) setMd5() {
 	cu.md5 = fmt.Sprintf("%x", h.Sum(nil))
 }
 
-func (cu *chunkUploader) uploadParts(nid string, start int, dir string) (err error) {
+func (cu *chunkUploader) uploadParts(ctx context.Context, nid string, start int, dir string) (err error) {
 	if start >= cu.parts {
 		err = errors.New("invalid start position")
 		return
@@ -162,12 +163,12 @@ func (cu *chunkUploader) uploadParts(nid string, start int, dir string) (err err
 			if ferr == io.EOF {
 				break
 			}
-			ioutil.WriteFile(tempFile, byteBuffer, os.ModeAppend)
+			os.WriteFile(tempFile, byteBuffer, os.ModeAppend)
 			currSize += int64(bufferSize)
 		}
 		currSize = 0
 		// upload file part
-		_, err = client.PutOrPostFile(tempFile, nid, i, "", "", nil, nil)
+		_, err = client.UpdateNode(ctx, nid, sc.WithPartFile(i, tempFile))
 		if err != nil {
 			return
 		}
