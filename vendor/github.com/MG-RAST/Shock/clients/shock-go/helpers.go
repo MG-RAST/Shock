@@ -128,10 +128,9 @@ func (c *Client) doMultipart(ctx context.Context, method, urlPath string, cfg *c
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {
-		// Also check goroutine error
-		if wErr := <-errCh; wErr != nil {
-			return nil, fmt.Errorf("multipart write error: %w; http error: %w", wErr, err)
-		}
+		// Close the pipe reader to unblock the writer goroutine
+		pr.Close()
+		<-errCh
 		return nil, err
 	}
 	defer res.Body.Close()

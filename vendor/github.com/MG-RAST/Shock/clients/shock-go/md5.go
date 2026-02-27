@@ -64,7 +64,7 @@ func (c *Client) PostFileLazy(ctx context.Context, filepath, filename string) (s
 
 		baseName := path.Base(filepath)
 		md5sumFileContent := md5sum + " " + baseName
-		if writeErr := os.WriteFile(md5Filename, []byte(md5sumFileContent), 0644); writeErr != nil {
+		if writeErr := os.WriteFile(md5Filename, []byte(md5sumFileContent), 0600); writeErr != nil {
 			c.debugf("PostFileLazy: could not write md5sum: %s, continuing", writeErr.Error())
 		}
 	} else {

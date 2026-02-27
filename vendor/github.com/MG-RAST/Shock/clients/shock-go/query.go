@@ -97,12 +97,6 @@ func itoa(n int) string {
 
 func (c *Client) nodeQuery(ctx context.Context, query url.Values) (*QueryResult, error) {
 	var resp nodesResponse
-	if err := c.doRequest(ctx, "GET", "/node", query, nil); err != nil {
-		// doRequest with nil result won't unmarshal data, so we need raw approach
-		return nil, err
-	}
-	// We need to get the full paginated response, not just the data field.
-	// Use a raw request instead.
 	u := c.buildURL("/node", query)
 	req, err := c.rawRequest(ctx, "GET", u)
 	if err != nil {

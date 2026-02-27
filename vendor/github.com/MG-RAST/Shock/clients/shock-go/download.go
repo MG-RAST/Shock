@@ -127,14 +127,7 @@ func (c *Client) DownloadToFile(ctx context.Context, nodeID, filepath string, op
 		var src io.Reader = body
 		if cfg.computeMD5 {
 			// MD5 on compressed stream, then decompress
-			pReader, pWriter := io.Pipe()
-			defer pReader.Close()
-			dst := io.MultiWriter(pWriter, md5h)
-			go func() {
-				io.Copy(dst, body)
-				pWriter.Close()
-			}()
-			src = pReader
+			src = io.TeeReader(body, md5h)
 		}
 		gr, gerr := gzip.NewReader(src)
 		if gerr != nil {

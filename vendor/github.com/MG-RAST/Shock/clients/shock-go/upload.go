@@ -83,7 +83,10 @@ func WithFileContent(content string) CreateOption {
 // WithAttributes sets node attributes from a map (serialized as JSON).
 func WithAttributes(attrs map[string]interface{}) CreateOption {
 	return func(cfg *createConfig) {
-		b, _ := json.Marshal(attrs)
+		b, err := json.Marshal(attrs)
+		if err != nil {
+			return
+		}
 		cfg.params["attributes_str"] = string(b)
 	}
 }

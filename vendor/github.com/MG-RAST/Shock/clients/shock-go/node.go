@@ -1,9 +1,6 @@
 package shock
 
-import (
-	"context"
-	"net/url"
-)
+import "context"
 
 // GetNode retrieves a node by ID.
 func (c *Client) GetNode(ctx context.Context, id string) (*Node, error) {
@@ -109,11 +106,6 @@ func (c *Client) PutOrPostFile(ctx context.Context, filename, nodeid string, ran
 		opts = append(opts, WithParts(rank))
 		if compression != "" {
 			opts = append(opts, WithPartsCompression(compression))
-		}
-		// Also handle file_name from parts option
-		if v, ok := formopts["parts"]; ok {
-			n, _ := url.QueryUnescape(v)
-			_ = n
 		}
 	} else if rank > 0 && filename != "" {
 		// Part upload
