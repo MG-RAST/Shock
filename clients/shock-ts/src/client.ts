@@ -3,6 +3,12 @@ import type {
   DisplayAcl,
   AclType,
   DownloadOptions,
+  LocationInfo,
+  LocationNodeList,
+  LockedFiles,
+  LockedIndexes,
+  LockedNodes,
+  LockerState,
   NodeListQuery,
   NodeLocation,
   PaginatedResult,
@@ -23,12 +29,14 @@ export class ShockClient {
   private baseUrl: string;
   private staticToken?: string;
   private getTokenFn?: () => string | undefined;
+  private authType: "basic" | "oauth";
 
   constructor(options: ShockClientOptions) {
     // Strip trailing slash
     this.baseUrl = options.url.replace(/\/+$/, "");
     this.staticToken = options.token;
     this.getTokenFn = options.getToken;
+    this.authType = options.authType ?? "oauth";
   }
 
   /** Update the static auth token. */
@@ -207,6 +215,92 @@ export class ShockClient {
     return this.request<NodeLocation[]>("GET", `/node/${nodeId}/locations/`);
   }
 
+  // ─── Index Management ────────────────────────────────────────
+
+  /** `DELETE /node/{id}/index/{type}` — delete an index. */
+  async deleteIndex(nodeId: string, indexType: string): Promise<void> {
+    this.validateId(nodeId);
+    await this.request<unknown>("DELETE", `/node/${nodeId}/index/${indexType}`);
+  }
+
+  // ─── Admin: Location Info ────────────────────────────────────
+
+  /** `GET /location/{loc}/info` — get location configuration info (admin only). */
+  async getLocationInfo(locId: string): Promise<LocationInfo> {
+    return this.request<LocationInfo>("GET", `/location/${locId}/info`);
+  }
+
+  /** `GET /location/{loc}/missing` — get nodes missing from a location (admin only). */
+  async getLocationMissing(locId: string): Promise<LocationNodeList> {
+    return this.request<LocationNodeList>("GET", `/location/${locId}/missing`);
+  }
+
+  /** `GET /location/{loc}/present` — get nodes present in a location (admin only). */
+  async getLocationPresent(locId: string): Promise<LocationNodeList> {
+    return this.request<LocationNodeList>("GET", `/location/${locId}/present`);
+  }
+
+  // ─── Admin: Locker ───────────────────────────────────────────
+
+  /** `GET /locker` — get all lock manager states (admin check). */
+  async getLocker(): Promise<LockerState> {
+    return this.request<LockerState>("GET", "/locker");
+  }
+
+  /** `GET /locked/node` — get locked node IDs. */
+  async getLockedNodes(): Promise<LockedNodes> {
+    return this.request<LockedNodes>("GET", "/locked/node");
+  }
+
+  /** `GET /locked/file` — get locked file IDs. */
+  async getLockedFiles(): Promise<LockedFiles> {
+    return this.request<LockedFiles>("GET", "/locked/file");
+  }
+
+  /** `GET /locked/index` — get locked index IDs. */
+  async getLockedIndexes(): Promise<LockedIndexes> {
+    return this.request<LockedIndexes>("GET", "/locked/index");
+  }
+
+  // ─── Admin: Trace ────────────────────────────────────────────
+
+  /** `GET /trace/start` — start execution trace (admin only). */
+  async startTrace(): Promise<string> {
+    return this.request<string>("GET", "/trace/start");
+  }
+
+  /** `GET /trace/stop` — stop execution trace (admin only). */
+  async stopTrace(): Promise<string> {
+    return this.request<string>("GET", "/trace/stop");
+  }
+
+  /** `GET /trace/download` — download the latest trace file as a Blob (admin only). */
+  async downloadTrace(): Promise<Blob> {
+    const response = await this.rawFetch("GET", "/trace/download");
+    if (!response.ok) {
+      await this.throwFromResponse(response);
+    }
+    return response.blob();
+  }
+
+  /** `GET /trace/summary` — get trace footprint summary as text (admin only). */
+  async getTraceSummary(): Promise<string> {
+    const response = await this.rawFetch("GET", "/trace/summary");
+    if (!response.ok) {
+      await this.throwFromResponse(response);
+    }
+    return response.text();
+  }
+
+  /** `GET /trace/events` — get parsed trace events as text (admin only). */
+  async getTraceEvents(): Promise<string> {
+    const response = await this.rawFetch("GET", "/trace/events");
+    if (!response.ok) {
+      await this.throwFromResponse(response);
+    }
+    return response.text();
+  }
+
   // ─── Polling ───────────────────────────────────────────────────
 
   /**
@@ -245,7 +339,8 @@ export class ShockClient {
   private authHeaders(): Record<string, string> {
     const token = this.resolveToken();
     if (token) {
-      return { Authorization: `OAuth ${token}` };
+      const prefix = this.authType === "basic" ? "Basic" : "OAuth";
+      return { Authorization: `${prefix} ${token}` };
     }
     return {};
   }
@@ -422,7 +517,8 @@ export class ShockClient {
 
       const token = this.resolveToken();
       if (token) {
-        xhr.setRequestHeader("Authorization", `OAuth ${token}`);
+        const prefix = this.authType === "basic" ? "Basic" : "OAuth";
+        xhr.setRequestHeader("Authorization", `${prefix} ${token}`);
       }
 
       xhr.upload.addEventListener("progress", (e) => {

@@ -1,9 +1,44 @@
 # Shock Project Scratchpad
 
-## Current State: On `feature/s3-setup` branch
+## Current State (2026-03-03)
 
-- **Branch**: `feature/s3-setup`
-- **Previous**: PR #402 merged to master, tag v2.1.0-alpha
+- **Branch**: `feature/UI`
+
+### Shock UI — React SPA (completed)
+- Full React SPA at `clients/shock-ui/` — Vite + React 18 + TypeScript + TailwindCSS v4
+- Embedded in Go binary via `go:embed` at `shock-server/ui/`
+- Served at `/ui/` with SPA fallback routing
+- All phases implemented: auth, node CRUD, upload/download, ACLs, indexes, admin dashboard
+
+**Key commands:**
+```bash
+cd clients/shock-ui && npm run dev    # Dev mode (Vite proxy → :7445)
+./build-ui.sh && ./compile-server.sh  # Build embedded binary
+```
+**shock-ts updates:** added `authType` (basic/oauth), admin methods (locker, locked/*, trace, location info), deleteIndex, corresponding React hooks
+
+### Local Dev Server Running (Docker Compose)
+- `docker-compose.local.yml` — Shock + MongoDB + user seed
+- Shock API: http://localhost:7445
+- MongoDB: localhost:27017
+- Docker network: `shock-net` (named, other compose setups can join as external)
+
+**Auth Credentials (Basic Auth):**
+| User   | Password | Admin | Authorization Header |
+|--------|----------|-------|---------------------|
+| admin  | secret   | yes   | `Basic YWRtaW46c2VjcmV0` |
+| user1  | secret   | no    | `Basic dXNlcjE6c2VjcmV0` |
+
+**Commands:**
+```bash
+docker compose -f docker-compose.local.yml up --build -d   # start
+docker compose -f docker-compose.local.yml down             # stop
+docker compose -f docker-compose.local.yml down -v          # stop + destroy data
+docker compose -f docker-compose.local.yml logs -f shock-server  # logs
+```
+
+### Vendor Fix Applied
+- `vendor/github.com/MG-RAST/golib/httpclient/restclient.go` — `Get()` and `Delete()` were missing `io.Reader` parameter (added `nil`)
 
 ## Session Summary (2026-02-26) — S3 Integration Tests
 

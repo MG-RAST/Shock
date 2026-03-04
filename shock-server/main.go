@@ -6,6 +6,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"path/filepath"
 	"os/signal"
 	"runtime"
 	"strconv"
@@ -15,6 +16,7 @@ import (
 	"github.com/MG-RAST/Shock/shock-server/auth"
 	"github.com/MG-RAST/Shock/shock-server/cache"
 	"github.com/MG-RAST/Shock/shock-server/conf"
+	"github.com/MG-RAST/Shock/shock-server/ui"
 	ncon "github.com/MG-RAST/Shock/shock-server/controller/node"
 	acon "github.com/MG-RAST/Shock/shock-server/controller/node/acl"
 	icon "github.com/MG-RAST/Shock/shock-server/controller/node/index"
@@ -168,6 +170,77 @@ func newRouter() chi.Router {
 		responder.RespondWithData(w, r, "trace stoped")
 	})
 
+	// download latest trace file
+	router.Get("/trace/download", func(w http.ResponseWriter, r *http.Request) {
+		u, err := request.Authenticate(r)
+		if err != nil && err.Error() != e.NoAuth {
+			request.AuthError(err, w, r)
+			return
+		}
+		if u == nil || !u.Admin {
+			responder.RespondWithError(w, r, http.StatusUnauthorized, e.NoAuth)
+			return
+		}
+		path, err := latestTraceFile()
+		if err != nil {
+			responder.RespondWithError(w, r, http.StatusNotFound, err.Error())
+			return
+		}
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filepath.Base(path)))
+		w.Header().Set("Content-Type", "application/octet-stream")
+		http.ServeFile(w, r, path)
+	})
+
+	// trace summary (footprint)
+	router.Get("/trace/summary", func(w http.ResponseWriter, r *http.Request) {
+		u, err := request.Authenticate(r)
+		if err != nil && err.Error() != e.NoAuth {
+			request.AuthError(err, w, r)
+			return
+		}
+		if u == nil || !u.Admin {
+			responder.RespondWithError(w, r, http.StatusUnauthorized, e.NoAuth)
+			return
+		}
+		path, err := latestTraceFile()
+		if err != nil {
+			responder.RespondWithError(w, r, http.StatusNotFound, err.Error())
+			return
+		}
+		out, err := runGoToolTrace(path, "footprint")
+		if err != nil {
+			responder.RespondWithError(w, r, http.StatusInternalServerError, err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Write(out)
+	})
+
+	// trace parsed events
+	router.Get("/trace/events", func(w http.ResponseWriter, r *http.Request) {
+		u, err := request.Authenticate(r)
+		if err != nil && err.Error() != e.NoAuth {
+			request.AuthError(err, w, r)
+			return
+		}
+		if u == nil || !u.Admin {
+			responder.RespondWithError(w, r, http.StatusUnauthorized, e.NoAuth)
+			return
+		}
+		path, err := latestTraceFile()
+		if err != nil {
+			responder.RespondWithError(w, r, http.StatusNotFound, err.Error())
+			return
+		}
+		out, err := runGoToolTrace(path, "parsed")
+		if err != nil {
+			responder.RespondWithError(w, r, http.StatusInternalServerError, err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Write(out)
+	})
+
 	// Root endpoint
 	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		host := util.ApiUrl(r)
@@ -207,6 +280,10 @@ func newRouter() chi.Router {
 		}
 		responder.WriteResponseObject(w, r, http.StatusOK, res)
 	})
+
+	// Embedded web UI
+	router.Handle("/ui", http.RedirectHandler("/ui/", http.StatusMovedPermanently))
+	router.Handle("/ui/*", http.StripPrefix("/ui", ui.Handler()))
 
 	// Node CRUD (replaces goweb.MapController)
 	nc := &ncon.NodeController{}

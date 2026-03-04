@@ -30,4 +30,10 @@ export type {
   ChunkedUploadOptions,
   ChunkedUploadResult,
   SmartUploadOptions,
+  LockerState,
+  LockedNodes,
+  LockedFiles,
+  LockedIndexes,
+  LocationInfo,
+  LocationNodeList,
 } from "./types.js";

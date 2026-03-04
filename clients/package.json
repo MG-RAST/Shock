@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "workspaces": [
+    "shock-ts",
+    "shock-ui"
+  ]
+}

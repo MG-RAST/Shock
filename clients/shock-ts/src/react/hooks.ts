@@ -9,6 +9,12 @@ import { useShockClient } from "./provider.js";
 import type {
   DisplayAcl,
   AclType,
+  LocationInfo,
+  LocationNodeList,
+  LockedFiles,
+  LockedIndexes,
+  LockedNodes,
+  LockerState,
   NodeListQuery,
   PaginatedResult,
   ShockNode,
@@ -24,6 +30,15 @@ export const shockKeys = {
   nodes: (query?: NodeListQuery) => ["shock", "nodes", query] as const,
   node: (id: string | undefined) => ["shock", "node", id] as const,
   acl: (id: string | undefined) => ["shock", "node", id, "acl"] as const,
+  locker: () => ["shock", "locker"] as const,
+  lockedNodes: () => ["shock", "locked", "nodes"] as const,
+  lockedFiles: () => ["shock", "locked", "files"] as const,
+  lockedIndexes: () => ["shock", "locked", "indexes"] as const,
+  locationInfo: (locId: string) => ["shock", "location", locId, "info"] as const,
+  locationMissing: (locId: string) => ["shock", "location", locId, "missing"] as const,
+  locationPresent: (locId: string) => ["shock", "location", locId, "present"] as const,
+  traceSummary: () => ["shock", "trace", "summary"] as const,
+  traceEvents: () => ["shock", "trace", "events"] as const,
 };
 
 // ─── Queries ─────────────────────────────────────────────────────
@@ -135,5 +150,165 @@ export function useRemoveAcl(
     onSuccess: (acl) => {
       qc.setQueryData(shockKeys.acl(nodeId), acl);
     },
+  });
+}
+
+// ─── Index Mutations ──────────────────────────────────────────
+
+export function useCreateIndex(
+  nodeId: string
+): UseMutationResult<void, Error, string> {
+  const client = useShockClient();
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (indexType: string) => client.createIndex(nodeId, indexType),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: shockKeys.node(nodeId) });
+    },
+  });
+}
+
+export function useDeleteIndex(
+  nodeId: string
+): UseMutationResult<void, Error, string> {
+  const client = useShockClient();
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (indexType: string) => client.deleteIndex(nodeId, indexType),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: shockKeys.node(nodeId) });
+    },
+  });
+}
+
+// ─── Admin Queries ────────────────────────────────────────────
+
+export function useLocker(): UseQueryResult<LockerState> {
+  const client = useShockClient();
+  return useQuery({
+    queryKey: shockKeys.locker(),
+    queryFn: () => client.getLocker(),
+    staleTime: 10_000,
+  });
+}
+
+export function useLockedNodes(): UseQueryResult<LockedNodes> {
+  const client = useShockClient();
+  return useQuery({
+    queryKey: shockKeys.lockedNodes(),
+    queryFn: () => client.getLockedNodes(),
+    staleTime: 10_000,
+  });
+}
+
+export function useLockedFiles(): UseQueryResult<LockedFiles> {
+  const client = useShockClient();
+  return useQuery({
+    queryKey: shockKeys.lockedFiles(),
+    queryFn: () => client.getLockedFiles(),
+    staleTime: 10_000,
+  });
+}
+
+export function useLockedIndexes(): UseQueryResult<LockedIndexes> {
+  const client = useShockClient();
+  return useQuery({
+    queryKey: shockKeys.lockedIndexes(),
+    queryFn: () => client.getLockedIndexes(),
+    staleTime: 10_000,
+  });
+}
+
+export function useLocationInfo(
+  locId: string,
+  enabled = true
+): UseQueryResult<LocationInfo> {
+  const client = useShockClient();
+  return useQuery({
+    queryKey: shockKeys.locationInfo(locId),
+    queryFn: () => client.getLocationInfo(locId),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useLocationMissing(
+  locId: string,
+  enabled = true
+): UseQueryResult<LocationNodeList> {
+  const client = useShockClient();
+  return useQuery({
+    queryKey: shockKeys.locationMissing(locId),
+    queryFn: () => client.getLocationMissing(locId),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useLocationPresent(
+  locId: string,
+  enabled = true
+): UseQueryResult<LocationNodeList> {
+  const client = useShockClient();
+  return useQuery({
+    queryKey: shockKeys.locationPresent(locId),
+    queryFn: () => client.getLocationPresent(locId),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+// ─── Admin Mutations ──────────────────────────────────────────
+
+export function useStartTrace(): UseMutationResult<string, Error, void> {
+  const client = useShockClient();
+  return useMutation({
+    mutationFn: () => client.startTrace(),
+  });
+}
+
+export function useStopTrace(): UseMutationResult<string, Error, void> {
+  const client = useShockClient();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => client.stopTrace(),
+    onSuccess: () => {
+      // Invalidate summary/events so they reload after a new trace is captured
+      qc.invalidateQueries({ queryKey: shockKeys.traceSummary() });
+      qc.invalidateQueries({ queryKey: shockKeys.traceEvents() });
+    },
+  });
+}
+
+export function useTraceSummary(
+  enabled = true
+): UseQueryResult<string> {
+  const client = useShockClient();
+  return useQuery({
+    queryKey: shockKeys.traceSummary(),
+    queryFn: () => client.getTraceSummary(),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useTraceEvents(
+  enabled = true
+): UseQueryResult<string> {
+  const client = useShockClient();
+  return useQuery({
+    queryKey: shockKeys.traceEvents(),
+    queryFn: () => client.getTraceEvents(),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useDownloadTrace(): UseMutationResult<Blob, Error, void> {
+  const client = useShockClient();
+  return useMutation({
+    mutationFn: () => client.downloadTrace(),
   });
 }

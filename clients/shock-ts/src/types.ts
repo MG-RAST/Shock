@@ -170,7 +170,40 @@ export interface ShockClientOptions {
   token?: string;
   /** Dynamic token getter (takes priority over static `token`). */
   getToken?: () => string | undefined;
+  /** Auth header prefix: "basic" → `Basic <token>`, "oauth" → `OAuth <token>`. Defaults to "oauth". */
+  authType?: "basic" | "oauth";
 }
+
+// ─── Admin Types ──────────────────────────────────────────────────
+
+/** Response from `GET /locker` — all lock manager states. */
+export interface LockerState {
+  [key: string]: string[];
+}
+
+/** Response from `GET /locked/node` — list of locked node IDs. */
+export type LockedNodes = string[];
+
+/** Response from `GET /locked/file` — all file locks. */
+export interface LockedFiles {
+  [key: string]: string[];
+}
+
+/** Response from `GET /locked/index` — all index locks. */
+export interface LockedIndexes {
+  [key: string]: string[];
+}
+
+/** Location info from `GET /location/{loc}/info`. */
+export interface LocationInfo {
+  id: string;
+  description?: string;
+  type?: string;
+  [key: string]: unknown;
+}
+
+/** Missing/present node list from location endpoints. */
+export type LocationNodeList = string[];
 
 // ─── Query & Upload Options ────────────────────────────────────────
 
