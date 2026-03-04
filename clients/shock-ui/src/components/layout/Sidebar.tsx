@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   Database,
   Upload,
+  Settings,
   Shield,
   MapPin,
   Lock,
@@ -59,6 +60,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <NavLink to="/ui/upload" className={navLinkClass}>
           <Upload className="h-4 w-4 shrink-0" />
           {!collapsed && <span>Upload</span>}
+        </NavLink>
+        <NavLink to="/ui/settings" className={navLinkClass}>
+          <Settings className="h-4 w-4 shrink-0" />
+          {!collapsed && <span>Settings</span>}
         </NavLink>
 
         {isAdmin && (

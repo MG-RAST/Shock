@@ -15,6 +15,7 @@ const AdminDashboardPage = lazy(() => import("@/pages/AdminDashboardPage").then(
 const AdminLocationsPage = lazy(() => import("@/pages/AdminLocationsPage").then((m) => ({ default: m.AdminLocationsPage })));
 const AdminLockerPage = lazy(() => import("@/pages/AdminLockerPage").then((m) => ({ default: m.AdminLockerPage })));
 const AdminTracePage = lazy(() => import("@/pages/AdminTracePage").then((m) => ({ default: m.AdminTracePage })));
+const SettingsPage = lazy(() => import("@/pages/SettingsPage").then((m) => ({ default: m.SettingsPage })));
 
 function PageLoader() {
   return (
@@ -61,6 +62,14 @@ export function App() {
                 element={
                   <Suspense fallback={<PageLoader />}>
                     <UploadPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/ui/settings"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <SettingsPage />
                   </Suspense>
                 }
               />

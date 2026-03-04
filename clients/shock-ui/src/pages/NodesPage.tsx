@@ -5,10 +5,11 @@ import { NodeTable } from "@/components/nodes/NodeTable";
 import { NodeFilters } from "@/components/nodes/NodeFilters";
 import { Pagination } from "@/components/nodes/Pagination";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getStoredPageSize } from "@/pages/SettingsPage";
 
 export function NodesPage() {
   const [query, setQuery] = useState<NodeListQuery>({
-    limit: 25,
+    limit: getStoredPageSize(),
     offset: 0,
     direction: "desc",
     order: "created_on",
