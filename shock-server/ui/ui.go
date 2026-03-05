@@ -20,6 +20,13 @@ func Handler() http.Handler {
 	}
 	fileServer := http.FileServer(http.FS(dist))
 
+	// Verify index.html exists at init time
+	if _, err := dist.Open("index.html"); err != nil {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "UI not built. Run build-ui.sh to generate the UI assets.", http.StatusNotFound)
+		})
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Try to serve the exact file first
 		path := strings.TrimPrefix(r.URL.Path, "/")

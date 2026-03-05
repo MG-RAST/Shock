@@ -3,7 +3,7 @@ import type { ShockNode } from "shock-client";
 import { formatBytes, formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, Trash2, Download } from "lucide-react";
+import { FileText, Trash2, Eye } from "lucide-react";
 
 interface NodeTableProps {
   nodes: ShockNode[];
@@ -64,13 +64,11 @@ export function NodeTable({ nodes, onDelete, deleting }: NodeTableProps) {
               </td>
               <td className="px-4 py-3 text-right">
                 <div className="flex items-center justify-end gap-1">
-                  {node.file.size > 0 && (
-                    <Link to={`/ui/nodes/${node.id}`}>
-                      <Button variant="ghost" size="icon" title="Download">
-                        <Download className="h-3.5 w-3.5" />
-                      </Button>
-                    </Link>
-                  )}
+                  <Link to={`/ui/nodes/${node.id}`}>
+                    <Button variant="ghost" size="icon" title="View">
+                      <Eye className="h-3.5 w-3.5" />
+                    </Button>
+                  </Link>
                   <Button
                     variant="ghost"
                     size="icon"

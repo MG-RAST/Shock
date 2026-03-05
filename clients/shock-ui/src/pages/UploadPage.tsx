@@ -11,6 +11,7 @@ export function UploadPage() {
   const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [attrsText, setAttrsText] = useState("");
+  const [jsonError, setJsonError] = useState<string | null>(null);
   const { upload, progress, isUploading, error, node, reset } = useUpload();
 
   const handleFileSelect = useCallback((file: File) => {
@@ -24,8 +25,10 @@ export function UploadPage() {
     if (attrsText.trim()) {
       try {
         attributes = JSON.parse(attrsText);
-      } catch {
-        return; // Don't upload if JSON is invalid
+        setJsonError(null);
+      } catch (e) {
+        setJsonError(e instanceof Error ? e.message : "Invalid JSON");
+        return;
       }
     }
 
@@ -86,12 +89,15 @@ export function UploadPage() {
               </label>
               <textarea
                 value={attrsText}
-                onChange={(e) => setAttrsText(e.target.value)}
+                onChange={(e) => { setAttrsText(e.target.value); setJsonError(null); }}
                 className="h-24 w-full rounded-md border bg-muted/30 p-3 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-ring"
                 placeholder='{"type": "metagenome", "project": "..."}'
                 spellCheck={false}
               />
             </div>
+            {jsonError && (
+              <p className="text-sm text-destructive">{jsonError}</p>
+            )}
             <Button onClick={handleUpload}>Upload File</Button>
           </CardContent>
         </Card>

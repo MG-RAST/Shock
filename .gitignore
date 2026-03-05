@@ -60,3 +60,4 @@ shock-server/ui/dist/
 !shock-server/ui/dist/.gitkeep
 clients/shock-ts/dist/
 clients/shock-ui/dist/
+*.tsbuildinfo

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -8,13 +9,17 @@ import (
 	"runtime/trace"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/MG-RAST/Shock/shock-server/conf"
 )
 
-var traceFile *os.File
-var traceOn bool
+var (
+	traceFile *os.File
+	traceOn   bool
+	traceMu   sync.Mutex
+)
 
 func traceFileName() string {
 	return fmt.Sprintf("trace.%d.log", time.Now().Unix())
@@ -26,11 +31,18 @@ func latestTraceFile() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("cannot read logs directory: %w", err)
 	}
+
+	traceMu.Lock()
+	activeFile := ""
+	if traceOn && traceFile != nil {
+		activeFile = filepath.Base(traceFile.Name())
+	}
+	traceMu.Unlock()
+
 	var traces []string
 	for _, e := range entries {
 		if strings.HasPrefix(e.Name(), "trace.") && strings.HasSuffix(e.Name(), ".log") {
-			// Skip the currently-active trace file
-			if traceOn && traceFile != nil && e.Name() == filepath.Base(traceFile.Name()) {
+			if e.Name() == activeFile {
 				continue
 			}
 			traces = append(traces, e.Name())
@@ -44,13 +56,19 @@ func latestTraceFile() (string, error) {
 }
 
 // runGoToolTrace runs "go tool trace -d=<mode> <file>" and returns the output.
+// A 60-second timeout prevents runaway processes on large trace files.
 func runGoToolTrace(traceFilePath string, mode string) ([]byte, error) {
 	goPath, err := exec.LookPath("go")
 	if err != nil {
 		return nil, fmt.Errorf("go toolchain not found on PATH: %w", err)
 	}
-	cmd := exec.Command(goPath, "tool", "trace", "-d="+mode, traceFilePath)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, goPath, "tool", "trace", "-d="+mode, traceFilePath)
 	out, err := cmd.CombinedOutput()
+	if ctx.Err() == context.DeadlineExceeded {
+		return nil, fmt.Errorf("go tool trace timed out after 60s")
+	}
 	if err != nil {
 		return out, fmt.Errorf("go tool trace failed: %w\n%s", err, string(out))
 	}
@@ -79,6 +97,8 @@ func durationTrace(wait time.Duration) {
 }
 
 func startTrace(name string) (err error) {
+	traceMu.Lock()
+	defer traceMu.Unlock()
 	if traceOn && (traceFile != nil) {
 		err = fmt.Errorf("tracing is already enabled with file %s", traceFile.Name())
 		return
@@ -97,6 +117,8 @@ func startTrace(name string) (err error) {
 }
 
 func stopTrace() (err error) {
+	traceMu.Lock()
+	defer traceMu.Unlock()
 	if traceOn {
 		trace.Stop()
 		traceOn = false

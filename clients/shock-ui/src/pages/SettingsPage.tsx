@@ -11,7 +11,8 @@ const PAGE_SIZE_KEY = "shock_page_size";
 
 export function getStoredPageSize(): number {
   const stored = localStorage.getItem(PAGE_SIZE_KEY);
-  return stored ? Number(stored) : 25;
+  const parsed = stored ? Number(stored) : 25;
+  return Number.isFinite(parsed) ? parsed : 25;
 }
 
 export function setStoredPageSize(size: number): void {

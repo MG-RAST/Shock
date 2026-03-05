@@ -167,7 +167,7 @@ func newRouter() chi.Router {
 			responder.RespondWithError(w, r, http.StatusInternalServerError, fmt.Sprintf("error stopping trace: %s", err.Error()))
 			return
 		}
-		responder.RespondWithData(w, r, "trace stoped")
+		responder.RespondWithData(w, r, "trace stopped")
 	})
 
 	// download latest trace file
