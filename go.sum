@@ -20,7 +20,6 @@ github.com/MG-RAST/go-shock-client v0.0.0-20190828185941-363c96852f00 h1:wgaLmG6
 github.com/MG-RAST/go-shock-client v0.0.0-20190828185941-363c96852f00/go.mod h1:4hrHNPD7jrLwBpwoY8QrCMKdQgPYVPEVAdFBH1o/GSw=
 github.com/MG-RAST/golib v0.0.0-20190510221542-86643de6f9e0 h1:dpLDKeQAQyLzTAy4DswClnAehH2OjkLXTd6FpCagY7Q=
 github.com/MG-RAST/golib v0.0.0-20190510221542-86643de6f9e0/go.mod h1:FSiHAcuJMtb0F/+KcBAR+ySakq3sHbTeSUvmoUME3p4=
-github.com/aws/aws-sdk-go v1.23.16-0.20190904183301-ed1c1dc0f009/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -51,7 +50,6 @@ github.com/googleapis/gax-go/v2 v2.0.6-0.20190829211521-e18837313485 h1:VBvEGYiK
 github.com/googleapis/gax-go/v2 v2.0.6-0.20190829211521-e18837313485/go.mod h1:DWXyrwAJ9X0FpwwEdw+IPEYBICEFu5mhpdKc/us6bOk=
 github.com/hashicorp/golang-lru v0.5.0/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
 github.com/hashicorp/golang-lru v0.5.1/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
-github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af/go.mod h1:Nht3zPeWKUH0NzdCt2Blrr5ys8VGpn0CEB0cQHVjt7k=
 github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1:6v2b51hI/fHJwM22ozAgKL4VKDeJcHhJFhtBdhmNjmU=
 github.com/jum/tinyftp v1.0.0 h1:Geu3CZbeRSuq1wQrrqWksNmCBDw254bYQygGNYoS0xE=
 github.com/jum/tinyftp v1.0.0/go.mod h1:gx7gI6zSFhnb/eINgXz5xKzoiLoJlmgApryRBuotBJo=
