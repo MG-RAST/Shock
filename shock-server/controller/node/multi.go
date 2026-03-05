@@ -1,6 +1,7 @@
 package node
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/MG-RAST/Shock/shock-server/conf"
 	e "github.com/MG-RAST/Shock/shock-server/errors"
@@ -101,6 +102,28 @@ func (cr *NodeController) ReadMany(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+	} else if queryJSON, ok := query["querymongo"]; ok {
+		rawJSON := queryJSON[0]
+		if len(rawJSON) > maxQueryJSONSize {
+			err_msg := fmt.Sprintf("err@node_ReadMany: querymongo JSON exceeds maximum size of %d bytes", maxQueryJSONSize)
+			logger.Error(err_msg)
+			responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+			return
+		}
+		var userQuery bson.M
+		if err := json.Unmarshal([]byte(rawJSON), &userQuery); err != nil {
+			err_msg := "err@node_ReadMany: invalid JSON in querymongo parameter: " + err.Error()
+			logger.Error(err_msg)
+			responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+			return
+		}
+		if err := sanitizeQuery(userQuery); err != nil {
+			err_msg := "err@node_ReadMany: " + err.Error()
+			logger.Error(err_msg)
+			responder.RespondWithError(w, r, http.StatusBadRequest, err_msg)
+			return
+		}
+		qOpts = userQuery
 	}
 
 	if len(OptsMArray) > 0 {
@@ -371,4 +394,33 @@ func parseTypedValue(i *interface{}) {
 		*i = t
 	}
 	return
+}
+
+var blockedOperators = map[string]bool{
+	"$where": true, "$expr": true, "$function": true, "$accumulator": true,
+}
+
+const maxQueryJSONSize = 16 * 1024
+
+func sanitizeQuery(m map[string]interface{}) error {
+	for key, val := range m {
+		if blockedOperators[key] {
+			return fmt.Errorf("operator %s is not allowed in passthrough queries", key)
+		}
+		switch v := val.(type) {
+		case map[string]interface{}:
+			if err := sanitizeQuery(v); err != nil {
+				return err
+			}
+		case []interface{}:
+			for _, item := range v {
+				if subMap, ok := item.(map[string]interface{}); ok {
+					if err := sanitizeQuery(subMap); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+	return nil
 }
