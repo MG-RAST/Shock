@@ -1,0 +1,109 @@
+# Local development Shock server with MongoDB
+#
+# Usage:
+#   docker compose -f docker-compose.local.yml up --build -d
+#   docker compose -f docker-compose.local.yml down
+#
+# Custom port:
+#   SHOCK_PORT=8080 docker compose -f docker-compose.local.yml up --build -d
+#
+# Exposes:
+#   - Shock API on http://localhost:${SHOCK_PORT:-7445}
+#   - MongoDB on localhost:27017 (for debugging)
+#
+# Auth credentials (basic auth):
+#   admin:secret  -> Authorization: Basic YWRtaW46c2VjcmV0
+#   user1:secret  -> Authorization: Basic dXNlcjE6c2VjcmV0
+#
+# Other compose setups can connect via the "shock-net" network:
+#   networks:
+#     shock-net:
+#       external: true
+
+services:
+  shock-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      shock-mongo:
+        condition: service_healthy
+    entrypoint:
+      - /go/bin/shock-server
+      - --hosts=shock-mongo
+      - --basic=true
+      - --users=admin
+      - --force_yes=true
+      - --api-url=http://localhost:${SHOCK_PORT:-7445}
+      - --api-port=${SHOCK_PORT:-7445}
+    ports:
+      - "${SHOCK_PORT:-7445}:${SHOCK_PORT:-7445}"
+    volumes:
+      - shock-data:/usr/local/shock/data
+      - shock-logs:/var/log/shock
+    networks:
+      - shock-net
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:${SHOCK_PORT:-7445}/"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  shock-mongo:
+    image: mongo:5.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - shock-mongo-data:/data/db
+    networks:
+      - shock-net
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # Seeds admin and test user passwords into MongoDB after Shock creates them
+  shock-seed:
+    image: mongo:5.0
+    depends_on:
+      shock-server:
+        condition: service_healthy
+    networks:
+      - shock-net
+    restart: "no"
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        set -e
+        echo "Waiting for Shock to create users..."
+        sleep 2
+        echo "Setting passwords for admin and user1..."
+        mongo mongodb://shock-mongo:27017/ShockDB --eval '
+          db.Users.updateOne(
+            { username: "admin" },
+            { $$set: { password: "secret", shock_admin: true } },
+            { upsert: true }
+          );
+          db.Users.updateOne(
+            { username: "user1" },
+            { $$set: { password: "secret", shock_admin: false } },
+            { upsert: true }
+          );
+          print("Users seeded:");
+          printjson(db.Users.find({}, {username:1, shock_admin:1, _id:0}).toArray());
+        '
+        echo "Done seeding users."
+
+volumes:
+  shock-data:
+  shock-logs:
+  shock-mongo-data:
+
+networks:
+  shock-net:
+    name: shock-net
+    driver: bridge

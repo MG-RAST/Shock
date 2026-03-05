@@ -51,3 +51,13 @@ shock.code-workspace
 devel/lo.data
 shock-server/shock-server
 shock-server/shock-server
+
+# Node.js
+node_modules/
+
+# UI build outputs (embedded copy)
+shock-server/ui/dist/
+!shock-server/ui/dist/.gitkeep
+clients/shock-ts/dist/
+clients/shock-ui/dist/
+*.tsbuildinfo

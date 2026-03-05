@@ -7,6 +7,13 @@
 # This allows the shock-server to bind to port 80 if desired.
 #setcap 'cap_net_bind_service=+ep' bin/shock-server
 
+FROM node:20-alpine AS ui-builder
+WORKDIR /build/clients
+COPY clients/ .
+RUN npm install && \
+    cd shock-ts && npm run build && \
+    cd ../shock-ui && npm run build
+
 FROM golang:alpine
 
 ENV PYTHONUNBUFFERED=1
@@ -18,6 +25,9 @@ ENV DIR=/go/src/github.com/MG-RAST/Shock
 WORKDIR /go/bin
 
 COPY . /go/src/github.com/MG-RAST/Shock
+
+# Copy built UI into the Go embed directory
+COPY --from=ui-builder /build/clients/shock-ui/dist ${DIR}/shock-server/ui/dist
 
 RUN mkdir -p /var/log/shock /usr/local/shock/data ${DIR}
 

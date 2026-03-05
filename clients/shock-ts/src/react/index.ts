@@ -11,6 +11,20 @@ export {
   useUpdateAttributes,
   useAddAcl,
   useRemoveAcl,
+  useCreateIndex,
+  useDeleteIndex,
+  useLocker,
+  useLockedNodes,
+  useLockedFiles,
+  useLockedIndexes,
+  useLocationInfo,
+  useLocationMissing,
+  useLocationPresent,
+  useStartTrace,
+  useStopTrace,
+  useTraceSummary,
+  useTraceEvents,
+  useDownloadTrace,
 } from "./hooks.js";
 
 export { useUpload } from "./use-upload.js";

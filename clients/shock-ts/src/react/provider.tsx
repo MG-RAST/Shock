@@ -20,6 +20,8 @@ export interface ShockProviderProps {
   token?: string;
   /** Dynamic token getter (takes priority over `token`). */
   getToken?: () => string | undefined;
+  /** Auth header prefix: "basic" or "oauth". Defaults to "oauth". */
+  authType?: "basic" | "oauth";
   /** Optional externally-managed QueryClient. */
   queryClient?: QueryClient;
   children: ReactNode;
@@ -35,6 +37,7 @@ export function ShockProvider({
   url,
   token,
   getToken,
+  authType,
   queryClient: externalQc,
   children,
 }: ShockProviderProps) {
@@ -45,10 +48,10 @@ export function ShockProvider({
   }
   const qc = externalQc ?? internalQcRef.current!;
 
-  // Memoize the client on [url, getToken]. Token changes go through setToken.
+  // Memoize the client on [url, getToken, authType]. Token changes go through setToken.
   const client = useMemo(
-    () => new ShockClient({ url, token, getToken }),
-    [url, getToken] // eslint-disable-line react-hooks/exhaustive-deps
+    () => new ShockClient({ url, token, getToken, authType }),
+    [url, getToken, authType] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   // Update token without re-creating client
