@@ -20,10 +20,10 @@ require (
 	github.com/mattn/go-ieproxy v0.0.0-20190805055040-f9202b1cfdeb
 	github.com/stretchr/testify v1.10.0
 	go.opencensus.io v0.22.2-0.20190911211948-65310139a05d
-	golang.org/x/net v0.0.0-20190918130420-a8b05e9114ab
+	golang.org/x/net v0.33.0
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
-	golang.org/x/sys v0.0.0-20190916202348-b4ddaad3f8a3
-	golang.org/x/text v0.3.3-0.20190829152558-3d0f7978add9
+	golang.org/x/sys v0.28.0
+	golang.org/x/text v0.21.0
 	google.golang.org/api v0.10.1-0.20190918000732-634b73c1f50b
 	google.golang.org/appengine v1.6.2
 	google.golang.org/genproto v0.0.0-20190916214212-f660b8655731

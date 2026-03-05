@@ -1,5 +1,5 @@
 # cloud.google.com/go v0.45.2-0.20190912001407-6ae710637747
-## explicit
+## explicit; go 1.9
 cloud.google.com/go/compute/metadata
 cloud.google.com/go/iam
 cloud.google.com/go/internal
@@ -21,47 +21,21 @@ github.com/MG-RAST/Shock/clients/shock-go
 github.com/MG-RAST/go-shock-client
 # github.com/MG-RAST/golib v0.0.0-20190510221542-86643de6f9e0
 ## explicit
-github.com/MG-RAST/golib/clbanning/x2j
 github.com/MG-RAST/golib/go-uuid/uuid
 github.com/MG-RAST/golib/goconfig/config
-github.com/MG-RAST/golib/gopass
 github.com/MG-RAST/golib/httpclient
 github.com/MG-RAST/golib/log4go
-github.com/MG-RAST/golib/mgo/bson
-github.com/MG-RAST/golib/pool
-github.com/MG-RAST/golib/stretchr/codecs
-github.com/MG-RAST/golib/stretchr/codecs/bson
-github.com/MG-RAST/golib/stretchr/codecs/constants
-github.com/MG-RAST/golib/stretchr/codecs/csv
-github.com/MG-RAST/golib/stretchr/codecs/json
-github.com/MG-RAST/golib/stretchr/codecs/jsonp
-github.com/MG-RAST/golib/stretchr/codecs/msgpack
-github.com/MG-RAST/golib/stretchr/codecs/services
-github.com/MG-RAST/golib/stretchr/codecs/xml
-github.com/MG-RAST/golib/stretchr/goweb
-github.com/MG-RAST/golib/stretchr/goweb/context
-github.com/MG-RAST/golib/stretchr/goweb/controllers
-github.com/MG-RAST/golib/stretchr/goweb/handlers
-github.com/MG-RAST/golib/stretchr/goweb/http
-github.com/MG-RAST/golib/stretchr/goweb/paths
-github.com/MG-RAST/golib/stretchr/goweb/responders
-github.com/MG-RAST/golib/stretchr/goweb/webcontext
-github.com/MG-RAST/golib/stretchr/objx
-github.com/MG-RAST/golib/stretchr/testify/assert
-github.com/MG-RAST/golib/stretchr/testify/http
-github.com/MG-RAST/golib/stretchr/testify/mock
 # github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 ## explicit
 github.com/davecgh/go-spew/spew
 # github.com/go-chi/chi/v5 v5.2.5
 ## explicit; go 1.22
 github.com/go-chi/chi/v5
-github.com/go-chi/chi/v5/middleware
 # github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6
 ## explicit
 github.com/golang/groupcache/lru
 # github.com/golang/protobuf v1.3.3-0.20190827175835-822fe56949f5
-## explicit
+## explicit; go 1.12
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/protoc-gen-go/descriptor
 github.com/golang/protobuf/ptypes
@@ -72,13 +46,20 @@ github.com/golang/protobuf/ptypes/timestamp
 ## explicit
 github.com/googleapis/gax-go/v2
 # github.com/jum/tinyftp v1.0.0
-## explicit
+## explicit; go 1.11
 github.com/jum/tinyftp
 # github.com/mattn/go-ieproxy v0.0.0-20190805055040-f9202b1cfdeb
 ## explicit
 github.com/mattn/go-ieproxy
-# go.opencensus.io v0.22.2-0.20190911211948-65310139a05d
+# github.com/pmezard/go-difflib v1.0.0
 ## explicit
+github.com/pmezard/go-difflib/difflib
+# github.com/stretchr/testify v1.10.0
+## explicit; go 1.17
+github.com/stretchr/testify/assert
+github.com/stretchr/testify/assert/yaml
+# go.opencensus.io v0.22.2-0.20190911211948-65310139a05d
+## explicit; go 1.13
 go.opencensus.io
 go.opencensus.io/internal
 go.opencensus.io/internal/tagencoding
@@ -95,34 +76,37 @@ go.opencensus.io/trace
 go.opencensus.io/trace/internal
 go.opencensus.io/trace/propagation
 go.opencensus.io/trace/tracestate
-# golang.org/x/net v0.0.0-20190918130420-a8b05e9114ab
-## explicit
+# golang.org/x/net v0.33.0
+## explicit; go 1.18
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
 golang.org/x/net/http/httpguts
+golang.org/x/net/http/httpproxy
 golang.org/x/net/http2
 golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
 # golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
-## explicit
+## explicit; go 1.11
 golang.org/x/oauth2
 golang.org/x/oauth2/google
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sys v0.0.0-20190916202348-b4ddaad3f8a3
-## explicit
+# golang.org/x/sys v0.28.0
+## explicit; go 1.18
 golang.org/x/sys/unix
-# golang.org/x/text v0.3.3-0.20190829152558-3d0f7978add9
-## explicit
+golang.org/x/sys/windows
+golang.org/x/sys/windows/registry
+# golang.org/x/text v0.21.0
+## explicit; go 1.18
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
 # google.golang.org/api v0.10.1-0.20190918000732-634b73c1f50b
-## explicit
+## explicit; go 1.9
 google.golang.org/api/googleapi
 google.golang.org/api/googleapi/internal/uritemplates
 google.golang.org/api/googleapi/transport
@@ -146,7 +130,7 @@ google.golang.org/appengine/internal/remote_api
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/urlfetch
 # google.golang.org/genproto v0.0.0-20190916214212-f660b8655731
-## explicit
+## explicit; go 1.9
 google.golang.org/genproto/googleapis/api/annotations
 google.golang.org/genproto/googleapis/iam/v1
 google.golang.org/genproto/googleapis/rpc/code
@@ -183,17 +167,9 @@ google.golang.org/grpc/peer
 google.golang.org/grpc/resolver
 google.golang.org/grpc/resolver/dns
 google.golang.org/grpc/resolver/passthrough
-google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
-# github.com/pmezard/go-difflib v1.0.0
-## explicit
-github.com/pmezard/go-difflib/difflib
-# github.com/stretchr/testify v1.10.0
-## explicit; go 1.20
-github.com/stretchr/testify/assert
-github.com/stretchr/testify/assert/yaml
 # gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
 ## explicit
 gopkg.in/mgo.v2
@@ -205,6 +181,6 @@ gopkg.in/mgo.v2/internal/scram
 ## explicit
 gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.1
-## explicit; go 1.15
+## explicit
 gopkg.in/yaml.v3
 # github.com/MG-RAST/Shock/clients/shock-go => ./clients/shock-go
